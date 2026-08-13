@@ -1,0 +1,554 @@
+{
+  "anomalies": [],
+  "dataLength": 7298,
+  "format": "ssd-sheet",
+  "input": {
+    "length": 40044
+  },
+  "operation": "inspect",
+  "rowCount": 77,
+  "rows": [
+    {
+      "index": 0,
+      "span": {
+        "length": 37,
+        "offset": 0
+      }
+    },
+    {
+      "index": 1,
+      "span": {
+        "length": 37,
+        "offset": 37
+      }
+    },
+    {
+      "index": 2,
+      "span": {
+        "length": 37,
+        "offset": 74
+      }
+    },
+    {
+      "index": 3,
+      "span": {
+        "length": 45,
+        "offset": 111
+      }
+    },
+    {
+      "index": 4,
+      "span": {
+        "length": 45,
+        "offset": 156
+      }
+    },
+    {
+      "index": 5,
+      "span": {
+        "length": 45,
+        "offset": 201
+      }
+    },
+    {
+      "index": 6,
+      "span": {
+        "length": 45,
+        "offset": 246
+      }
+    },
+    {
+      "index": 1000,
+      "span": {
+        "length": 72,
+        "offset": 291
+      }
+    },
+    {
+      "index": 1001,
+      "span": {
+        "length": 75,
+        "offset": 363
+      }
+    },
+    {
+      "index": 1002,
+      "span": {
+        "length": 99,
+        "offset": 438
+      }
+    },
+    {
+      "index": 1003,
+      "span": {
+        "length": 84,
+        "offset": 537
+      }
+    },
+    {
+      "index": 1004,
+      "span": {
+        "length": 84,
+        "offset": 621
+      }
+    },
+    {
+      "index": 1005,
+      "span": {
+        "length": 96,
+        "offset": 705
+      }
+    },
+    {
+      "index": 1006,
+      "span": {
+        "length": 84,
+        "offset": 801
+      }
+    },
+    {
+      "index": 1007,
+      "span": {
+        "length": 84,
+        "offset": 885
+      }
+    },
+    {
+      "index": 1008,
+      "span": {
+        "length": 84,
+        "offset": 969
+      }
+    },
+    {
+      "index": 1009,
+      "span": {
+        "length": 84,
+        "offset": 1053
+      }
+    },
+    {
+      "index": 1010,
+      "span": {
+        "length": 96,
+        "offset": 1137
+      }
+    },
+    {
+      "index": 1011,
+      "span": {
+        "length": 84,
+        "offset": 1233
+      }
+    },
+    {
+      "index": 1012,
+      "span": {
+        "length": 84,
+        "offset": 1317
+      }
+    },
+    {
+      "index": 1013,
+      "span": {
+        "length": 233,
+        "offset": 1401
+      }
+    },
+    {
+      "index": 1014,
+      "span": {
+        "length": 55,
+        "offset": 1634
+      }
+    },
+    {
+      "index": 1015,
+      "span": {
+        "length": 79,
+        "offset": 1689
+      }
+    },
+    {
+      "index": 1016,
+      "span": {
+        "length": 74,
+        "offset": 1768
+      }
+    },
+    {
+      "index": 1017,
+      "span": {
+        "length": 106,
+        "offset": 1842
+      }
+    },
+    {
+      "index": 1018,
+      "span": {
+        "length": 85,
+        "offset": 1948
+      }
+    },
+    {
+      "index": 1019,
+      "span": {
+        "length": 76,
+        "offset": 2033
+      }
+    },
+    {
+      "index": 1020,
+      "span": {
+        "length": 76,
+        "offset": 2109
+      }
+    },
+    {
+      "index": 1021,
+      "span": {
+        "length": 130,
+        "offset": 2185
+      }
+    },
+    {
+      "index": 1022,
+      "span": {
+        "length": 139,
+        "offset": 2315
+      }
+    },
+    {
+      "index": 1023,
+      "span": {
+        "length": 85,
+        "offset": 2454
+      }
+    },
+    {
+      "index": 1024,
+      "span": {
+        "length": 125,
+        "offset": 2539
+      }
+    },
+    {
+      "index": 1025,
+      "span": {
+        "length": 128,
+        "offset": 2664
+      }
+    },
+    {
+      "index": 1026,
+      "span": {
+        "length": 74,
+        "offset": 2792
+      }
+    },
+    {
+      "index": 1027,
+      "span": {
+        "length": 61,
+        "offset": 2866
+      }
+    },
+    {
+      "index": 1028,
+      "span": {
+        "length": 143,
+        "offset": 2927
+      }
+    },
+    {
+      "index": 1029,
+      "span": {
+        "length": 136,
+        "offset": 3070
+      }
+    },
+    {
+      "index": 1030,
+      "span": {
+        "length": 145,
+        "offset": 3206
+      }
+    },
+    {
+      "index": 1031,
+      "span": {
+        "length": 192,
+        "offset": 3351
+      }
+    },
+    {
+      "index": 1032,
+      "span": {
+        "length": 210,
+        "offset": 3543
+      }
+    },
+    {
+      "index": 1033,
+      "span": {
+        "length": 210,
+        "offset": 3753
+      }
+    },
+    {
+      "index": 1034,
+      "span": {
+        "length": 284,
+        "offset": 3963
+      }
+    },
+    {
+      "index": 1035,
+      "span": {
+        "length": 62,
+        "offset": 4247
+      }
+    },
+    {
+      "index": 1036,
+      "span": {
+        "length": 37,
+        "offset": 4309
+      }
+    },
+    {
+      "index": 1037,
+      "span": {
+        "length": 156,
+        "offset": 4346
+      }
+    },
+    {
+      "index": 1038,
+      "span": {
+        "length": 142,
+        "offset": 4502
+      }
+    },
+    {
+      "index": 2000,
+      "span": {
+        "length": 98,
+        "offset": 4644
+      }
+    },
+    {
+      "index": 2001,
+      "span": {
+        "length": 119,
+        "offset": 4742
+      }
+    },
+    {
+      "index": 3000,
+      "span": {
+        "length": 67,
+        "offset": 4861
+      }
+    },
+    {
+      "index": 3001,
+      "span": {
+        "length": 113,
+        "offset": 4928
+      }
+    },
+    {
+      "index": 3002,
+      "span": {
+        "length": 147,
+        "offset": 5041
+      }
+    },
+    {
+      "index": 3003,
+      "span": {
+        "length": 105,
+        "offset": 5188
+      }
+    },
+    {
+      "index": 3004,
+      "span": {
+        "length": 142,
+        "offset": 5293
+      }
+    },
+    {
+      "index": 3005,
+      "span": {
+        "length": 141,
+        "offset": 5435
+      }
+    },
+    {
+      "index": 3006,
+      "span": {
+        "length": 96,
+        "offset": 5576
+      }
+    },
+    {
+      "index": 3007,
+      "span": {
+        "length": 96,
+        "offset": 5672
+      }
+    },
+    {
+      "index": 3008,
+      "span": {
+        "length": 113,
+        "offset": 5768
+      }
+    },
+    {
+      "index": 3009,
+      "span": {
+        "length": 113,
+        "offset": 5881
+      }
+    },
+    {
+      "index": 3010,
+      "span": {
+        "length": 113,
+        "offset": 5994
+      }
+    },
+    {
+      "index": 3100,
+      "span": {
+        "length": 134,
+        "offset": 6107
+      }
+    },
+    {
+      "index": 3101,
+      "span": {
+        "length": 166,
+        "offset": 6241
+      }
+    },
+    {
+      "index": 4000,
+      "span": {
+        "length": 49,
+        "offset": 6407
+      }
+    },
+    {
+      "index": 4001,
+      "span": {
+        "length": 49,
+        "offset": 6456
+      }
+    },
+    {
+      "index": 5000,
+      "span": {
+        "length": 49,
+        "offset": 6505
+      }
+    },
+    {
+      "index": 5001,
+      "span": {
+        "length": 57,
+        "offset": 6554
+      }
+    },
+    {
+      "index": 5002,
+      "span": {
+        "length": 57,
+        "offset": 6611
+      }
+    },
+    {
+      "index": 10000,
+      "span": {
+        "length": 66,
+        "offset": 6668
+      }
+    },
+    {
+      "index": 10001,
+      "span": {
+        "length": 66,
+        "offset": 6734
+      }
+    },
+    {
+      "index": 10002,
+      "span": {
+        "length": 66,
+        "offset": 6800
+      }
+    },
+    {
+      "index": 10003,
+      "span": {
+        "length": 66,
+        "offset": 6866
+      }
+    },
+    {
+      "index": 10004,
+      "span": {
+        "length": 69,
+        "offset": 6932
+      }
+    },
+    {
+      "index": 10005,
+      "span": {
+        "length": 112,
+        "offset": 7001
+      }
+    },
+    {
+      "index": 10006,
+      "span": {
+        "length": 37,
+        "offset": 7113
+      }
+    },
+    {
+      "index": 10007,
+      "span": {
+        "length": 37,
+        "offset": 7150
+      }
+    },
+    {
+      "index": 10008,
+      "span": {
+        "length": 37,
+        "offset": 7187
+      }
+    },
+    {
+      "index": 10009,
+      "span": {
+        "length": 37,
+        "offset": 7224
+      }
+    },
+    {
+      "index": 10010,
+      "span": {
+        "length": 37,
+        "offset": 7261
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "slotCount": 10011,
+  "view": "row-offsets"
+}

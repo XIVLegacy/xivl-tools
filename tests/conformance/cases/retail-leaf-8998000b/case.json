@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-leaf-8998000b",
+    "kind": "private"
+  },
+  "formatId": "sedb",
+  "id": "retail-leaf-8998000b",
+  "notes": "leaf, the other family whose 0x10 field is a sub-file extent. Retail 1.23b, game.ver 2012.09.19.0001. The expected output carries spans, counts, and digests only; no payload bytes.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

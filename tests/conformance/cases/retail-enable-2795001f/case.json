@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "enable-file"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-enable-2795001f",
+    "kind": "private"
+  },
+  "formatId": "enable-file",
+  "id": "retail-enable-2795001f",
+  "notes": "An enable file of eight ranges over a 10011-slot block.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

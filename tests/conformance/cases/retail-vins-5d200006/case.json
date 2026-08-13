@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-vins-5d200006",
+    "kind": "private"
+  },
+  "formatId": "sedb",
+  "id": "retail-vins-5d200006",
+  "notes": "vins, one of the 98 resources whose 0x10 field is a genuine sub-file extent, leaving real trailing content. Retail 1.23b, game.ver 2012.09.19.0001. The expected output carries spans, counts, and digests only; no payload bytes.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

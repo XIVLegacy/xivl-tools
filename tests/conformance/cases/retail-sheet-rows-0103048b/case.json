@@ -1,0 +1,21 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data",
+    "--columns",
+    "s32,s32,u8,s32,float,float,s16,s16,s8"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-sheet-rows-0103048b",
+    "kind": "private"
+  },
+  "formatId": "ssd-sheet",
+  "id": "retail-sheet-rows-0103048b",
+  "notes": "Retail parity for the s16 and s8 widths.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

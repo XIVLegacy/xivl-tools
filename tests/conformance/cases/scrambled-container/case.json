@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/master.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-container",
+  "notes": "The container view, which is what a retail case can record: spans, keys, a digest, and a census of element and attribute names, with no value from the document.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

@@ -1,0 +1,44 @@
+{
+  "container": {
+    "blockCount": 6,
+    "decodedLength": 48,
+    "decodedSha256": "bb764feecdc1577258d524da65da9e130590473aa0a352520a72a28aaa61b4c5",
+    "enciphered": {
+      "length": 48,
+      "offset": 8
+    },
+    "header": {
+      "length": 8,
+      "offset": 0
+    },
+    "keyName": "aligned.bin",
+    "kind": "sqwt",
+    "plaintextTail": {
+      "length": 0,
+      "offset": 56
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 1,
+        "name": "Name"
+      }
+    ],
+    "byteOrderMark": false,
+    "comments": 0,
+    "elementCounts": [
+      {
+        "count": 1,
+        "name": "SyntheticRoot"
+      }
+    ],
+    "root": "SyntheticRoot"
+  },
+  "format": "sqwt",
+  "input": {
+    "length": 56
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

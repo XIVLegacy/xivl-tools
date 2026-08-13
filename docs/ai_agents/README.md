@@ -1,0 +1,35 @@
+# AI-assisted contributions
+
+AI-assisted work follows the same ownership standard as any other change.
+The contributor owns the result and must be able to explain what it does, why it
+belongs here, and what evidence supports it.
+
+Agent output is not retail evidence. Use [Evidence and claims](evidence-and-claims.md)
+when turning research, observations, or reports into a claim.
+
+## Public contract
+
+`README.md`, the Markdown pages below `docs/`, and the pages in this policy
+shelf are tracked public documents. They stand on their own in a bare
+checkout and contain the durable project contract.
+
+## Public documentation
+
+Tracked prose describes the current contract. Do not record branch state, work
+history, progress, completeness, or private maintainer context in a public
+project page. Keep stable format facts, evidence locators, and support limits
+when readers need them to use the tool safely.
+
+Use ASCII punctuation. Prefer short paragraphs and direct sentences. Use a list
+for a real sequence and a table for repeated mappings. Link the canonical policy,
+source file, or technical guide instead of copying details that can drift.
+
+## Policy shelf
+
+Read these pages in order:
+
+1. [Evidence and claims](evidence-and-claims.md)
+2. [Comments and prose](comments-and-prose.md)
+
+The [documentation index](../README.md) provides entry points into the public
+documentation.

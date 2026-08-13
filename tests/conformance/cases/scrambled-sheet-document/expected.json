@@ -1,0 +1,183 @@
+{
+  "container": {
+    "decodedLength": 621,
+    "decodedSha256": "f244ce92c55c8fc7afbebd45742f333b18e9417e7ea066746a637fdfa592e094",
+    "encoded": {
+      "length": 621,
+      "offset": 0
+    },
+    "finalByteCorrected": true,
+    "keyA": 4347,
+    "keyB": 53992,
+    "kind": "scrambled-xml",
+    "trailer": {
+      "length": 1,
+      "offset": 621
+    }
+  },
+  "document": {
+    "byteOrderMark": true,
+    "declaration": {
+      "encoding": "utf-8",
+      "span": {
+        "length": 38,
+        "offset": 3
+      },
+      "version": "1.0"
+    },
+    "sheets": [
+      {
+        "attributes": [
+          {
+            "name": "name",
+            "span": {
+              "length": 24,
+              "offset": 72
+            },
+            "value": "synthetic/widened"
+          },
+          {
+            "name": "mode",
+            "span": {
+              "length": 13,
+              "offset": 97
+            },
+            "value": "client"
+          },
+          {
+            "name": "column_max",
+            "span": {
+              "length": 15,
+              "offset": 111
+            },
+            "value": "10"
+          },
+          {
+            "name": "column_count",
+            "span": {
+              "length": 17,
+              "offset": 127
+            },
+            "value": "10"
+          },
+          {
+            "name": "cache",
+            "span": {
+              "length": 10,
+              "offset": 145
+            },
+            "value": "-1"
+          },
+          {
+            "name": "type",
+            "span": {
+              "length": 11,
+              "offset": 156
+            },
+            "value": "none"
+          },
+          {
+            "name": "lang",
+            "span": {
+              "length": 10,
+              "offset": 168
+            },
+            "value": "chs"
+          },
+          {
+            "name": "infofile",
+            "span": {
+              "length": 11,
+              "offset": 179
+            },
+            "value": ""
+          }
+        ],
+        "blocks": [
+          {
+            "begin": 10000,
+            "count": 2,
+            "data": {
+              "hex": "0x2795001E",
+              "id": 664076318,
+              "path": "data/27/95/00/1E.DAT"
+            },
+            "enable": {
+              "hex": "0x2795001F",
+              "id": 664076319,
+              "path": "data/27/95/00/1F.DAT"
+            },
+            "offsets": {
+              "hex": "0x27950020",
+              "id": 664076320,
+              "path": "data/27/95/00/20.DAT"
+            },
+            "span": {
+              "length": 84,
+              "offset": 504
+            }
+          }
+        ],
+        "columns": [
+          {
+            "type": "str",
+            "width": null
+          },
+          {
+            "type": "u8",
+            "width": 1
+          },
+          {
+            "type": "s8",
+            "width": 1
+          },
+          {
+            "type": "bool",
+            "width": 1
+          },
+          {
+            "type": "u16",
+            "width": 2
+          },
+          {
+            "type": "s16",
+            "width": 2
+          },
+          {
+            "type": "f16",
+            "width": 2
+          },
+          {
+            "type": "u32",
+            "width": 4
+          },
+          {
+            "type": "s32",
+            "width": 4
+          },
+          {
+            "type": "float",
+            "width": 4
+          }
+        ],
+        "index": [
+          0
+        ],
+        "kind": "definition",
+        "name": "synthetic/widened",
+        "span": {
+          "length": 546,
+          "offset": 65
+        }
+      }
+    ],
+    "version": "0.1"
+  },
+  "format": "ssd-sheet",
+  "input": {
+    "length": 622
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "spanBase": "decoded"
+}

@@ -1,0 +1,208 @@
+{
+  "container": {
+    "blockCount": 425,
+    "decodedLength": 3400,
+    "decodedSha256": "8637a1245808eaebbb4e5068cb2190287b80e2ab0bac7f45c5c7840e62a13c17",
+    "enciphered": {
+      "length": 3400,
+      "offset": 8
+    },
+    "header": {
+      "length": 8,
+      "offset": 0
+    },
+    "keyName": "ActionEquipDetailWidget.form",
+    "kind": "sqwt",
+    "plaintextTail": {
+      "length": 0,
+      "offset": 3408
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 1,
+        "name": "FontEdge"
+      },
+      {
+        "count": 5,
+        "name": "FontSize"
+      },
+      {
+        "count": 1,
+        "name": "FontStyle"
+      },
+      {
+        "count": 3,
+        "name": "Grid.Column"
+      },
+      {
+        "count": 3,
+        "name": "Grid.Row"
+      },
+      {
+        "count": 7,
+        "name": "Height"
+      },
+      {
+        "count": 4,
+        "name": "HorizontalAlignment"
+      },
+      {
+        "count": 2,
+        "name": "IconID"
+      },
+      {
+        "count": 8,
+        "name": "IsHitTestVisible"
+      },
+      {
+        "count": 4,
+        "name": "IsTabStop"
+      },
+      {
+        "count": 8,
+        "name": "Margin"
+      },
+      {
+        "count": 1,
+        "name": "MaxWidth"
+      },
+      {
+        "count": 1,
+        "name": "MinWidth"
+      },
+      {
+        "count": 6,
+        "name": "Name"
+      },
+      {
+        "count": 1,
+        "name": "ResourceKey"
+      },
+      {
+        "count": 1,
+        "name": "Source"
+      },
+      {
+        "count": 1,
+        "name": "SqwtStartupHorizontalAlignment"
+      },
+      {
+        "count": 1,
+        "name": "SqwtStartupVerticalAlignment"
+      },
+      {
+        "count": 8,
+        "name": "SqwtStyle"
+      },
+      {
+        "count": 1,
+        "name": "SqwtStyleFile"
+      },
+      {
+        "count": 4,
+        "name": "Text"
+      },
+      {
+        "count": 2,
+        "name": "TextWrapping"
+      },
+      {
+        "count": 4,
+        "name": "VerticalAlignment"
+      },
+      {
+        "count": 7,
+        "name": "Width"
+      },
+      {
+        "count": 1,
+        "name": "xmlns"
+      },
+      {
+        "count": 1,
+        "name": "xmlns:x"
+      }
+    ],
+    "byteOrderMark": false,
+    "comments": 0,
+    "elementCounts": [
+      {
+        "count": 2,
+        "name": "Border"
+      },
+      {
+        "count": 4,
+        "name": "ColumnDefinition"
+      },
+      {
+        "count": 5,
+        "name": "Grid"
+      },
+      {
+        "count": 2,
+        "name": "Grid.ColumnDefinitions"
+      },
+      {
+        "count": 2,
+        "name": "Grid.RowDefinitions"
+      },
+      {
+        "count": 2,
+        "name": "IconControl"
+      },
+      {
+        "count": 2,
+        "name": "IconControl.IconDatas"
+      },
+      {
+        "count": 2,
+        "name": "IconData"
+      },
+      {
+        "count": 2,
+        "name": "ResourceDictionary"
+      },
+      {
+        "count": 1,
+        "name": "ResourceDictionary.MergedDictionaries"
+      },
+      {
+        "count": 5,
+        "name": "RowDefinition"
+      },
+      {
+        "count": 1,
+        "name": "StaticResource"
+      },
+      {
+        "count": 4,
+        "name": "TextBlock"
+      },
+      {
+        "count": 1,
+        "name": "Window"
+      },
+      {
+        "count": 1,
+        "name": "Window.Resources"
+      },
+      {
+        "count": 1,
+        "name": "Window.Template"
+      },
+      {
+        "count": 1,
+        "name": "WrapPanel"
+      }
+    ],
+    "root": "Window"
+  },
+  "format": "sqwt",
+  "input": {
+    "length": 3408
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

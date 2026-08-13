@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "config-pad"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/config/pad-grid.bin"
+  },
+  "formatId": "config-pad",
+  "id": "config-pad-grid",
+  "notes": "The pad file's shape, including both of the run census's false positives: a device identifier that reads as printable UTF-16 and a byte mapping that reads as printable ASCII. Neither is text.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

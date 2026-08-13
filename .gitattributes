@@ -1,0 +1,5 @@
+# Deterministic across platforms: LF in the blob and in the working tree.
+* text=auto eol=lf
+
+# Authored synthetic fixtures are bytes, never line-ending normalized.
+*.bin binary

@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "errorKind": "malformed-xml",
+    "errorOffset": 0,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sqwt/not-a-document.bin"
+  },
+  "formatId": "sqwt",
+  "id": "sqwt-not-a-document",
+  "notes": "A body that deciphers cleanly and is not a document.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

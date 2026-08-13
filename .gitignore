@@ -1,0 +1,33 @@
+# Agent / AI tooling
+.claude/
+.agents/
+AGENTS.md
+CLAUDE.md
+docs/ai_agents/local/
+
+# Build trees
+build/
+out/
+target/
+
+# Private retail fixtures: identity is tracked in
+# tests/fixtures/private-manifest.json, the bytes never are.
+tests/fixtures/private/
+
+# Generated tool output (never tracked)
+export/
+extracted/
+
+# Machine-local settings
+local/
+CMakeUserPresets.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# IDE
+.vs/
+.vscode/
+.idea/

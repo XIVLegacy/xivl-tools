@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "errorKind": "bad-magic",
+    "errorOffset": 0,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sqwt/bad-magic.bin"
+  },
+  "formatId": "sqwt",
+  "id": "sqwt-bad-magic",
+  "notes": "A foreign tag. The 369 GTEX, SPKL, and plain CSS files stored beside these containers take this path.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

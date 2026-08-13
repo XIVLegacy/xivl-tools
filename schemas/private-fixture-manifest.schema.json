@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/XIVLegacy/xivl-tools/schemas/private-fixture-manifest.schema.json",
+  "title": "xivl-tools private fixture manifest",
+  "description": "Identity records for retail 1.23b files used by private conformance cases. The bytes never enter this repository; only hashes and locations do.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "clientVersion", "entries"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "clientVersion": { "type": "string", "const": "1.23b" },
+    "rootEnvironmentVariable": {
+      "type": "string",
+      "const": "XIVL_TOOLS_FIXTURE_ROOT"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "sourcePath", "sha256", "size", "formatIds", "addedOn"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "maxLength": 48
+          },
+          "root": {
+            "enum": ["client-install", "user-config"],
+            "description": "Which root sourcePath is relative to. Absent means client-install. The runner takes one directory per root and has no default for any of them."
+          },
+          "sourcePath": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._][A-Za-z0-9._/-]*$",
+            "description": "Path relative to this entry's fixture root, mirroring that root's own layout. Never an absolute or machine-local path."
+          },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "size": { "type": "integer", "minimum": 0 },
+          "formatIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+              "maxLength": 48
+            }
+          },
+          "addedOn": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+          "notes": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

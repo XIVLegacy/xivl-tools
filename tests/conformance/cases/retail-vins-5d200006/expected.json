@@ -1,0 +1,43 @@
+{
+  "format": "sedb",
+  "input": {
+    "length": 1120
+  },
+  "operation": "inspect",
+  "root": {
+    "anomalies": [],
+    "declaredSize": 1120,
+    "entries": [
+      {
+        "kind": "payload",
+        "sha256": "130af321a4f5b86971d5bd420ddf4d0d4eb1fd7dea44dcd87dcf4e8f99675fb6",
+        "span": {
+          "length": 1072,
+          "offset": 48
+        }
+      }
+    ],
+    "flags": 1024,
+    "headerSize": 48,
+    "headerUnknown": [
+      {
+        "kind": "unknown-gap",
+        "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+        "span": {
+          "length": 28,
+          "offset": 20
+        }
+      }
+    ],
+    "kind": "sedb-container",
+    "span": {
+      "length": 1120,
+      "offset": 0
+    },
+    "subtype": "vins",
+    "totalSize": 1120,
+    "unknownA": 0
+  },
+  "schemaVersion": 1,
+  "trailing": []
+}

@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "config-lng"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/config/lng-empty.bin"
+  },
+  "formatId": "config-lng",
+  "id": "config-lng-empty",
+  "notes": "A grid with no words. An unstamped file accepts it; a stamped one does not, which is the difference between the two shapes.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

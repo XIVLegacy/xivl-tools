@@ -1,0 +1,21 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data",
+    "--columns",
+    "u16"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-sheet-rows-01030087",
+    "kind": "private"
+  },
+  "formatId": "ssd-sheet",
+  "id": "retail-sheet-rows-01030087",
+  "notes": "Retail parity for the u16 width.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

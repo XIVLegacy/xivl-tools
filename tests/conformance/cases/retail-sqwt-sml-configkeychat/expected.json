@@ -1,0 +1,60 @@
+{
+  "container": {
+    "blockCount": 271,
+    "decodedLength": 2168,
+    "decodedSha256": "eb90cb904f600d7a972deb9efa9068906216f75cae5bb1dd7b0a3ca99dba1c71",
+    "enciphered": {
+      "length": 2168,
+      "offset": 8
+    },
+    "header": {
+      "length": 8,
+      "offset": 0
+    },
+    "keyName": "configkeyChat.sml",
+    "kind": "sqwt",
+    "plaintextTail": {
+      "length": 0,
+      "offset": 2176
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 7,
+        "name": "info1"
+      },
+      {
+        "count": 7,
+        "name": "info2"
+      },
+      {
+        "count": 7,
+        "name": "remark"
+      },
+      {
+        "count": 7,
+        "name": "text"
+      }
+    ],
+    "byteOrderMark": true,
+    "comments": 7,
+    "elementCounts": [
+      {
+        "count": 7,
+        "name": "config"
+      },
+      {
+        "count": 1,
+        "name": "root"
+      }
+    ],
+    "root": "root"
+  },
+  "format": "sqwt",
+  "input": {
+    "length": 2176
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

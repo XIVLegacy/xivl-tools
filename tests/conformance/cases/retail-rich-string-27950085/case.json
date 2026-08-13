@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-sheet-strings-27950085",
+    "kind": "private"
+  },
+  "formatId": "rich-string",
+  "id": "retail-rich-string-27950085",
+  "notes": "The same resource read for its control tokens: the expected output records their codes, spans, and payload digests and none of their bytes.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

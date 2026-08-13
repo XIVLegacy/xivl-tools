@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "unsupported-xml-construct",
+    "errorOffset": 80,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/ssd/entity.bin"
+  },
+  "formatId": "ssd-master",
+  "id": "ssd-entity",
+  "notes": "An entity reference in an attribute value. Refused for the same reason as the comment.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

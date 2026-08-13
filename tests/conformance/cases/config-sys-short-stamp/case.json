@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "config-sys"
+  ],
+  "expect": {
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 3,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/config/sys-short-stamp.bin"
+  },
+  "formatId": "config-sys",
+  "id": "config-sys-short-stamp",
+  "notes": "Less than the leading stamp the system file opens with.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

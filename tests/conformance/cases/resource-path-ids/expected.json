@@ -1,0 +1,52 @@
+{
+  "entries": [
+    {
+      "id": 0,
+      "line": 4,
+      "path": "data/00/00/00/00.DAT",
+      "text": "0x00000000"
+    },
+    {
+      "id": 4294967295,
+      "line": 5,
+      "path": "data/FF/FF/FF/FF.DAT",
+      "text": "0xFFFFFFFF"
+    },
+    {
+      "id": 702087169,
+      "line": 6,
+      "path": "data/29/D9/00/01.DAT",
+      "text": "0x29D90001"
+    },
+    {
+      "id": 2308179284,
+      "line": 7,
+      "path": "data/89/94/05/54.DAT",
+      "text": "89940554"
+    },
+    {
+      "id": 2125791234,
+      "line": 8,
+      "path": "data/7E/B5/00/02.DAT",
+      "text": "0x7eb50002"
+    },
+    {
+      "id": 255,
+      "line": 9,
+      "path": "data/00/00/00/FF.DAT",
+      "text": "0x000000FF"
+    },
+    {
+      "id": 4278190080,
+      "line": 10,
+      "path": "data/FF/00/00/00.DAT",
+      "text": "0xFF000000"
+    }
+  ],
+  "format": "resource-path",
+  "input": {
+    "length": 205
+  },
+  "operation": "resource-path",
+  "schemaVersion": 1
+}

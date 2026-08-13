@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data"
+  ],
+  "expect": {
+    "errorKind": "malformed-sheet-string",
+    "errorOffset": 25,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/string-bad-terminator.bin"
+  },
+  "formatId": "ssd-sheet",
+  "id": "sheet-string-bad-terminator",
+  "notes": "An obfuscated body whose last byte is not the key.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

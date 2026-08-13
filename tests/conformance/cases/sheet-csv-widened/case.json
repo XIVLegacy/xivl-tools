@@ -1,0 +1,21 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data",
+    "--columns",
+    "str,s8,s16,f16,u32"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/rows-widened.bin"
+  },
+  "formatId": "ssd-sheet",
+  "id": "sheet-csv-widened",
+  "notes": "A public CSV export view covering text, signed integers, IEEE-754 binary16, unsigned integers, and two rows.",
+  "operation": "extract",
+  "schemaVersion": 1
+}

@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/res/two-subresources.bin"
+  },
+  "formatId": "res",
+  "id": "res-two-subresources",
+  "notes": "A RES directory with two subresources, a nested SEDB child, and a hole between the two extents that must surface as an unknown gap.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

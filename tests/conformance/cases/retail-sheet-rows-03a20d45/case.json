@@ -1,0 +1,21 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data",
+    "--columns",
+    "u32,u32,str"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-sheet-rows-03a20d45",
+    "kind": "private"
+  },
+  "formatId": "ssd-sheet",
+  "id": "retail-sheet-rows-03a20d45",
+  "notes": "Retail parity for the u32 width, beside a string column.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

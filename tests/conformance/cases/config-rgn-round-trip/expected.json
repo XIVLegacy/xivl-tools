@@ -1,0 +1,21 @@
+{
+  "checks": [
+    {
+      "name": "parse",
+      "status": "pass"
+    },
+    {
+      "encodedLength": 5,
+      "encodedSha256": "74f81fe167d99b4cb41d6d0ccda82278caee9f3e2f25d5e5a3936ff3dcec60d0",
+      "name": "round-trip",
+      "status": "pass"
+    }
+  ],
+  "format": "config-rgn",
+  "input": {
+    "length": 5
+  },
+  "operation": "validate",
+  "schemaVersion": 1,
+  "sha256": "74f81fe167d99b4cb41d6d0ccda82278caee9f3e2f25d5e5a3936ff3dcec60d0"
+}

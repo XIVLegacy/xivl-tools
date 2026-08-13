@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/residue-1.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-residue-1",
+  "notes": "Encoded length 1 modulo 4, the one residue whose final byte sits outside both word passes and takes the extra correction.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

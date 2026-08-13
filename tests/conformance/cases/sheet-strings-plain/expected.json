@@ -1,0 +1,56 @@
+{
+  "format": "ssd-sheet",
+  "input": {
+    "length": 43
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "scrambledCount": 0,
+  "stringCount": 2,
+  "strings": [
+    {
+      "declaredLength": 23,
+      "decodedLength": 22,
+      "kind": "sheet-string",
+      "scrambled": false,
+      "segments": [
+        {
+          "characters": 22,
+          "kind": "text",
+          "span": {
+            "length": 22,
+            "offset": 2
+          }
+        }
+      ],
+      "sha256": "36b9d1157eb88d16500659ece5e466205ead4e6ce4b74fe4bdcf1291f255f524",
+      "span": {
+        "length": 25,
+        "offset": 0
+      }
+    },
+    {
+      "declaredLength": 16,
+      "decodedLength": 15,
+      "kind": "sheet-string",
+      "scrambled": false,
+      "segments": [
+        {
+          "characters": 9,
+          "kind": "text",
+          "span": {
+            "length": 15,
+            "offset": 27
+          }
+        }
+      ],
+      "sha256": "4fee5e944f5a79cac33b2d13e6abf05e474b5ad48d016f670155df662b42bdfb",
+      "span": {
+        "length": 18,
+        "offset": 25
+      }
+    }
+  ],
+  "tokenInventory": [],
+  "view": "strings"
+}

@@ -1,0 +1,132 @@
+{
+  "columns": [
+    {
+      "type": "s32",
+      "width": 4
+    },
+    {
+      "type": "s32",
+      "width": 4
+    },
+    {
+      "type": "u8",
+      "width": 1
+    },
+    {
+      "type": "s32",
+      "width": 4
+    },
+    {
+      "type": "float",
+      "width": 4
+    },
+    {
+      "type": "float",
+      "width": 4
+    },
+    {
+      "type": "s16",
+      "width": 2
+    },
+    {
+      "type": "s16",
+      "width": 2
+    },
+    {
+      "type": "s8",
+      "width": 1
+    }
+  ],
+  "format": "ssd-sheet",
+  "input": {
+    "length": 26
+  },
+  "operation": "inspect",
+  "rowCount": 1,
+  "rows": [
+    {
+      "index": 0,
+      "span": {
+        "length": 26,
+        "offset": 0
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 0
+          },
+          "type": "s32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 4
+          },
+          "type": "s32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 1,
+            "offset": 8
+          },
+          "type": "u8"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 9
+          },
+          "type": "s32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 13
+          },
+          "type": "float"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 17
+          },
+          "type": "float"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 2,
+            "offset": 21
+          },
+          "type": "s16"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 2,
+            "offset": 23
+          },
+          "type": "s16"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 1,
+            "offset": 25
+          },
+          "type": "s8"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 1,
+  "tokenInventory": [],
+  "view": "rows"
+}

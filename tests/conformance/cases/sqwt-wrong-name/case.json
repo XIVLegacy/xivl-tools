@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "errorKind": "invalid-utf8",
+    "errorOffset": 0,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sqwt/wrong-name.bin"
+  },
+  "formatId": "sqwt",
+  "id": "sqwt-wrong-name",
+  "notes": "Enciphered under a name that is not the one it is stored under, which is what reading a renamed container amounts to. The key is wrong, so the body is not text.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

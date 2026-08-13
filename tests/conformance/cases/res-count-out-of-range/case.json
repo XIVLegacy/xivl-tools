@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "subresource-count-out-of-range",
+    "errorOffset": 48,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/res/count-out-of-range.bin"
+  },
+  "formatId": "res",
+  "id": "res-count-out-of-range",
+  "notes": "A subresource directory that cannot fit inside the declared container.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

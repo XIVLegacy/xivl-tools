@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "errorKind": "unsupported-xml-construct",
+    "errorOffset": 15,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sqwt/cdata.bin"
+  },
+  "formatId": "sqwt",
+  "id": "sqwt-cdata",
+  "notes": "A CDATA section: inside the widget profile's reach and outside its grammar, so the profile stays bounded by what the install uses.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

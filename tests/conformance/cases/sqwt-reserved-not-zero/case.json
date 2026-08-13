@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "errorKind": "bad-magic",
+    "errorOffset": 4,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sqwt/reserved-not-zero.bin"
+  },
+  "formatId": "sqwt",
+  "id": "sqwt-reserved-not-zero",
+  "notes": "The tag with a non-zero reserved word. All 1155 retail containers set it to zero, so the whole eight bytes are the signature.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

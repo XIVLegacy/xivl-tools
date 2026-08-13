@@ -1,0 +1,272 @@
+{
+  "container": null,
+  "document": {
+    "byteOrderMark": true,
+    "declaration": {
+      "encoding": "utf-8",
+      "span": {
+        "length": 38,
+        "offset": 3
+      },
+      "version": "1.0"
+    },
+    "sheets": [
+      {
+        "attributes": [
+          {
+            "name": "name",
+            "span": {
+              "length": 22,
+              "offset": 73
+            },
+            "value": "synthetic/first"
+          },
+          {
+            "name": "mode",
+            "span": {
+              "length": 13,
+              "offset": 96
+            },
+            "value": "client"
+          },
+          {
+            "name": "column_max",
+            "span": {
+              "length": 14,
+              "offset": 110
+            },
+            "value": "5"
+          },
+          {
+            "name": "column_count",
+            "span": {
+              "length": 16,
+              "offset": 125
+            },
+            "value": "5"
+          },
+          {
+            "name": "cache",
+            "span": {
+              "length": 10,
+              "offset": 142
+            },
+            "value": "-1"
+          },
+          {
+            "name": "type",
+            "span": {
+              "length": 11,
+              "offset": 153
+            },
+            "value": "none"
+          },
+          {
+            "name": "lang",
+            "span": {
+              "length": 9,
+              "offset": 165
+            },
+            "value": "ja"
+          },
+          {
+            "name": "infofile",
+            "span": {
+              "length": 11,
+              "offset": 175
+            },
+            "value": ""
+          }
+        ],
+        "blocks": [
+          {
+            "begin": 10000,
+            "count": 7,
+            "data": {
+              "hex": "0x2795001E",
+              "id": 664076318,
+              "path": "data/27/95/00/1E.DAT"
+            },
+            "enable": {
+              "hex": "0x2795001F",
+              "id": 664076319,
+              "path": "data/27/95/00/1F.DAT"
+            },
+            "offsets": {
+              "hex": "0x27950020",
+              "id": 664076320,
+              "path": "data/27/95/00/20.DAT"
+            },
+            "span": {
+              "length": 84,
+              "offset": 450
+            }
+          },
+          {
+            "begin": 30000,
+            "count": 10,
+            "data": {
+              "hex": "0x27950067",
+              "id": 664076391,
+              "path": "data/27/95/00/67.DAT"
+            },
+            "enable": {
+              "hex": "0x27950068",
+              "id": 664076392,
+              "path": "data/27/95/00/68.DAT"
+            },
+            "offsets": {
+              "hex": "0x27950069",
+              "id": 664076393,
+              "path": "data/27/95/00/69.DAT"
+            },
+            "span": {
+              "length": 85,
+              "offset": 542
+            }
+          }
+        ],
+        "columns": [
+          {
+            "type": "str",
+            "width": null
+          },
+          {
+            "type": "s32",
+            "width": 4
+          },
+          {
+            "type": "bool",
+            "width": 1
+          },
+          {
+            "type": "float",
+            "width": 4
+          },
+          {
+            "type": "u8",
+            "width": 1
+          }
+        ],
+        "index": [
+          0,
+          3
+        ],
+        "kind": "definition",
+        "name": "synthetic/first",
+        "span": {
+          "length": 587,
+          "offset": 66
+        }
+      },
+      {
+        "attributes": [
+          {
+            "name": "name",
+            "span": {
+              "length": 23,
+              "offset": 664
+            },
+            "value": "synthetic/second"
+          },
+          {
+            "name": "mode",
+            "span": {
+              "length": 13,
+              "offset": 688
+            },
+            "value": "client"
+          },
+          {
+            "name": "column_max",
+            "span": {
+              "length": 14,
+              "offset": 702
+            },
+            "value": "1"
+          },
+          {
+            "name": "column_count",
+            "span": {
+              "length": 16,
+              "offset": 717
+            },
+            "value": "1"
+          },
+          {
+            "name": "cache",
+            "span": {
+              "length": 9,
+              "offset": 734
+            },
+            "value": "0"
+          },
+          {
+            "name": "type",
+            "span": {
+              "length": 10,
+              "offset": 744
+            },
+            "value": "all"
+          },
+          {
+            "name": "infofile",
+            "span": {
+              "length": 11,
+              "offset": 755
+            },
+            "value": ""
+          }
+        ],
+        "blocks": [
+          {
+            "begin": 0,
+            "count": 3,
+            "data": {
+              "hex": "0x02B80001",
+              "id": 45613057,
+              "path": "data/02/B8/00/01.DAT"
+            },
+            "enable": {
+              "hex": "0x02B80002",
+              "id": 45613058,
+              "path": "data/02/B8/00/02.DAT"
+            },
+            "offsets": {
+              "hex": "0x02B80003",
+              "id": 45613059,
+              "path": "data/02/B8/00/03.DAT"
+            },
+            "span": {
+              "length": 77,
+              "offset": 872
+            }
+          }
+        ],
+        "columns": [
+          {
+            "type": "str",
+            "width": null
+          }
+        ],
+        "index": [
+          0
+        ],
+        "kind": "definition",
+        "name": "synthetic/second",
+        "span": {
+          "length": 318,
+          "offset": 657
+        }
+      }
+    ],
+    "version": "0.1"
+  },
+  "format": "ssd-sheet",
+  "input": {
+    "length": 985
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "spanBase": "input"
+}

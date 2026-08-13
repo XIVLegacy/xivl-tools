@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-sqwt-tpl-chocoborental",
+    "kind": "private"
+  },
+  "formatId": "sqwt",
+  "id": "retail-sqwt-tpl-chocoborental",
+  "notes": "Retail parity for the container, recorded by span, block count, digest, and name census rather than by content. The second family: a ResourceDictionary document in a .tpl.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/XIVLegacy/xivl-tools/schemas/support-matrix.schema.json",
+  "title": "xivl-tools support matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "target", "platforms", "formats"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "version", "frozen"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "const": "1.23b" },
+        "frozen": { "type": "boolean", "const": true },
+        "dataReference": { "type": "string", "minLength": 1 },
+        "notes": { "type": "string", "minLength": 1 }
+      }
+    },
+    "platforms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "os", "arch", "tier"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "os": { "enum": ["windows", "linux", "macos"] },
+          "arch": { "enum": ["x86_64", "aarch64"] },
+          "tier": { "enum": ["supported", "best-effort"] },
+          "notes": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "formats": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "category",
+          "phase",
+          "read",
+          "write",
+          "export"
+        ],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "name": { "type": "string", "minLength": 1 },
+          "category": {
+            "enum": [
+              "resource",
+              "sheet",
+              "text",
+              "config",
+              "world",
+              "script",
+              "graphics",
+              "patch"
+            ]
+          },
+          "phase": { "type": "integer", "minimum": 1, "maximum": 6 },
+          "read": { "$ref": "#/$defs/status" },
+          "write": { "$ref": "#/$defs/status" },
+          "export": { "$ref": "#/$defs/status" },
+          "exportViews": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "enum": ["json", "csv", "dds", "png", "gltf", "xml", "lua", "text", "binary"] }
+          },
+          "notes": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 48
+    },
+    "status": {
+      "description": "none: unsupported and unplanned. planned: named in a phase, nothing implemented. partial: some inputs handled, gaps documented. supported: complete for the frozen target with public conformance coverage. verified: supported plus recorded retail 1.23b parity. not-applicable: the operation has no meaning for this format.",
+      "enum": [
+        "none",
+        "planned",
+        "partial",
+        "supported",
+        "verified",
+        "not-applicable"
+      ]
+    }
+  }
+}

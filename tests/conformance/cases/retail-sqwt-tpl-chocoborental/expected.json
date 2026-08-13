@@ -1,0 +1,68 @@
+{
+  "container": {
+    "blockCount": 37,
+    "decodedLength": 300,
+    "decodedSha256": "de8142d0d02bbd247859895990840b53ec843422d286d88e54b6c7ab07581c89",
+    "enciphered": {
+      "length": 296,
+      "offset": 8
+    },
+    "header": {
+      "length": 8,
+      "offset": 0
+    },
+    "keyName": "ChocoboRentalTimerWidget.tpl",
+    "kind": "sqwt",
+    "plaintextTail": {
+      "length": 4,
+      "offset": 304
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 1,
+        "name": "ClipToBounds"
+      },
+      {
+        "count": 1,
+        "name": "TargetType"
+      },
+      {
+        "count": 1,
+        "name": "x:Key"
+      },
+      {
+        "count": 1,
+        "name": "xmlns"
+      },
+      {
+        "count": 1,
+        "name": "xmlns:x"
+      }
+    ],
+    "byteOrderMark": false,
+    "comments": 0,
+    "elementCounts": [
+      {
+        "count": 1,
+        "name": "ContentPresenter"
+      },
+      {
+        "count": 1,
+        "name": "ControlTemplate"
+      },
+      {
+        "count": 1,
+        "name": "ResourceDictionary"
+      }
+    ],
+    "root": "ResourceDictionary"
+  },
+  "format": "sqwt",
+  "input": {
+    "length": 308
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

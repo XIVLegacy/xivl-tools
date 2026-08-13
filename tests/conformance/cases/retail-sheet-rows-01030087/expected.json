@@ -1,0 +1,104 @@
+{
+  "columns": [
+    {
+      "type": "u16",
+      "width": 2
+    }
+  ],
+  "format": "ssd-sheet",
+  "input": {
+    "length": 10
+  },
+  "operation": "inspect",
+  "rowCount": 5,
+  "rows": [
+    {
+      "index": 0,
+      "span": {
+        "length": 2,
+        "offset": 0
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 2,
+            "offset": 0
+          },
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "span": {
+        "length": 2,
+        "offset": 2
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 2,
+            "offset": 2
+          },
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "span": {
+        "length": 2,
+        "offset": 4
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 2,
+            "offset": 4
+          },
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "span": {
+        "length": 2,
+        "offset": 6
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 2,
+            "offset": 6
+          },
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "span": {
+        "length": 2,
+        "offset": 8
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 2,
+            "offset": 8
+          },
+          "type": "u16"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 1,
+  "tokenInventory": [],
+  "view": "rows"
+}

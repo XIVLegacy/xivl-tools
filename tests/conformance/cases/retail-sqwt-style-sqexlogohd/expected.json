@@ -1,0 +1,76 @@
+{
+  "container": {
+    "blockCount": 69,
+    "decodedLength": 555,
+    "decodedSha256": "b213a26b6e875db51be4938d2ef0bb701116a9d79469cc7840962e48f02267f6",
+    "enciphered": {
+      "length": 552,
+      "offset": 8
+    },
+    "header": {
+      "length": 8,
+      "offset": 0
+    },
+    "keyName": "SqexLogoPhaseHd.style",
+    "kind": "sqwt",
+    "plaintextTail": {
+      "length": 3,
+      "offset": 560
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 6,
+        "name": "Condition"
+      },
+      {
+        "count": 2,
+        "name": "Name"
+      },
+      {
+        "count": 6,
+        "name": "Skin"
+      },
+      {
+        "count": 1,
+        "name": "Source"
+      },
+      {
+        "count": 1,
+        "name": "Type"
+      }
+    ],
+    "byteOrderMark": false,
+    "comments": 0,
+    "elementCounts": [
+      {
+        "count": 1,
+        "name": "Parts"
+      },
+      {
+        "count": 6,
+        "name": "Property"
+      },
+      {
+        "count": 1,
+        "name": "SqwtStyle"
+      },
+      {
+        "count": 1,
+        "name": "StyleResources"
+      },
+      {
+        "count": 1,
+        "name": "Widget"
+      }
+    ],
+    "root": "StyleResources"
+  },
+  "format": "sqwt",
+  "input": {
+    "length": 563
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

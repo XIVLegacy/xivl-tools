@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "header-too-small",
+    "errorOffset": 14,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/res/header-too-small.bin"
+  },
+  "formatId": "res",
+  "id": "res-header-too-small",
+  "notes": "A RES container whose header is too small to hold the extended fields.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

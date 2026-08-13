@@ -1,0 +1,88 @@
+{
+  "container": {
+    "blockCount": 41,
+    "decodedLength": 333,
+    "decodedSha256": "823d3648a221704eb95ebc19c021eab2129a4128e6d9712e295625c00a120e29",
+    "enciphered": {
+      "length": 328,
+      "offset": 8
+    },
+    "header": {
+      "length": 8,
+      "offset": 0
+    },
+    "keyName": "LoadingPhase.form",
+    "kind": "sqwt",
+    "plaintextTail": {
+      "length": 5,
+      "offset": 336
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 1,
+        "name": "DragMode"
+      },
+      {
+        "count": 1,
+        "name": "Height"
+      },
+      {
+        "count": 1,
+        "name": "IsModal"
+      },
+      {
+        "count": 2,
+        "name": "Name"
+      },
+      {
+        "count": 1,
+        "name": "SqwtStyle"
+      },
+      {
+        "count": 1,
+        "name": "SqwtStyleFile"
+      },
+      {
+        "count": 1,
+        "name": "Text"
+      },
+      {
+        "count": 1,
+        "name": "Title"
+      },
+      {
+        "count": 1,
+        "name": "Width"
+      },
+      {
+        "count": 1,
+        "name": "xmlns"
+      },
+      {
+        "count": 1,
+        "name": "xmlns:x"
+      }
+    ],
+    "byteOrderMark": false,
+    "comments": 0,
+    "elementCounts": [
+      {
+        "count": 1,
+        "name": "TextBlock"
+      },
+      {
+        "count": 1,
+        "name": "Window"
+      }
+    ],
+    "root": "Window"
+  },
+  "format": "sqwt",
+  "input": {
+    "length": 341
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

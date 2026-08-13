@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/residue-0.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-residue-0",
+  "notes": "Encoded length 0 modulo 4. The final byte is covered by a word pass and takes no correction.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

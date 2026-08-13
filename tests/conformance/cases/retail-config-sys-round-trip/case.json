@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "config-sys"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-config-sys",
+    "kind": "private"
+  },
+  "formatId": "config-sys",
+  "id": "retail-config-sys-round-trip",
+  "notes": "The write half: the model is encoded back and the bytes must reproduce the input exactly. That is what a write status of supported claims.",
+  "operation": "validate",
+  "schemaVersion": 1
+}

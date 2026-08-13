@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sqwt/window.bin"
+  },
+  "formatId": "sqwt",
+  "id": "sqwt-window",
+  "notes": "Recognized without --as: the eight-byte signature is the whole test, and the key is the fixture's own base name.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

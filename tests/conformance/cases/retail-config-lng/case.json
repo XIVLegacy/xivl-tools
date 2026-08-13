@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "config-lng"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-config-lng",
+    "kind": "private"
+  },
+  "formatId": "config-lng",
+  "id": "retail-config-lng",
+  "notes": "Retail parity for the language file: two words, no stamp.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

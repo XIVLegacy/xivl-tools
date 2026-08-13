@@ -1,0 +1,39 @@
+{
+  "anomalies": [],
+  "format": "enable-file",
+  "input": {
+    "length": 24
+  },
+  "operation": "inspect",
+  "ranges": [
+    {
+      "count": 7,
+      "endRow": 10007,
+      "firstRow": 10000,
+      "span": {
+        "length": 8,
+        "offset": 0
+      }
+    },
+    {
+      "count": 39,
+      "endRow": 11039,
+      "firstRow": 11000,
+      "span": {
+        "length": 8,
+        "offset": 8
+      }
+    },
+    {
+      "count": 2,
+      "endRow": 12002,
+      "firstRow": 12000,
+      "span": {
+        "length": 8,
+        "offset": 16
+      }
+    }
+  ],
+  "rowCount": 48,
+  "schemaVersion": 1
+}

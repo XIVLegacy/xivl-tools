@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "config-lng"
+  ],
+  "expect": {
+    "errorKind": "trailing-partial-record",
+    "errorOffset": 4,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/config/lng-partial-word.bin"
+  },
+  "formatId": "config-lng",
+  "id": "config-lng-partial-word",
+  "notes": "The same leftover run in a file with no stamp, so the failure is the grid's and not the stamp's.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

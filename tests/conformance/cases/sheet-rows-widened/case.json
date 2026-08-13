@@ -1,0 +1,21 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data",
+    "--columns",
+    "str,s8,s16,u16,u32"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/rows-widened.bin"
+  },
+  "formatId": "ssd-sheet",
+  "id": "sheet-rows-widened",
+  "notes": "The five further column types the scrambled documents declare, at the widths the install-wide row pass established.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

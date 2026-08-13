@@ -1,0 +1,72 @@
+{
+  "container": {
+    "blockCount": 26,
+    "decodedLength": 212,
+    "decodedSha256": "2c23ea841c2534dd3f144e62b106b928832a1744a5d36a3d27198976b77d6e5a",
+    "enciphered": {
+      "length": 208,
+      "offset": 8
+    },
+    "header": {
+      "length": 8,
+      "offset": 0
+    },
+    "keyName": "ESRB.skin",
+    "kind": "sqwt",
+    "plaintextTail": {
+      "length": 4,
+      "offset": 216
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 1,
+        "name": "Cells"
+      },
+      {
+        "count": 1,
+        "name": "DrawMode"
+      },
+      {
+        "count": 1,
+        "name": "Name"
+      },
+      {
+        "count": 1,
+        "name": "Rectangle"
+      },
+      {
+        "count": 1,
+        "name": "Source"
+      }
+    ],
+    "byteOrderMark": false,
+    "comments": 0,
+    "elementCounts": [
+      {
+        "count": 1,
+        "name": "Cell"
+      },
+      {
+        "count": 1,
+        "name": "CellSkin"
+      },
+      {
+        "count": 1,
+        "name": "CellSkins"
+      },
+      {
+        "count": 1,
+        "name": "SkinResources"
+      }
+    ],
+    "root": "SkinResources"
+  },
+  "format": "sqwt",
+  "input": {
+    "length": 220
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

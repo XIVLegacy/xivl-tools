@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "invalid-attribute-value",
+    "errorOffset": 82,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/ssd/bad-infofile.bin"
+  },
+  "formatId": "ssd-master",
+  "id": "ssd-bad-infofile",
+  "notes": "An infofile attribute that is not a decimal resource id.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

@@ -1,0 +1,148 @@
+{
+  "format": "ssd-sheet",
+  "input": {
+    "length": 631
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "scrambledCount": 1,
+  "stringCount": 1,
+  "strings": [
+    {
+      "declaredLength": 629,
+      "decodedLength": 627,
+      "kind": "sheet-string",
+      "scrambled": true,
+      "segments": [
+        {
+          "characters": 5,
+          "kind": "text",
+          "span": {
+            "length": 5,
+            "offset": 3
+          }
+        },
+        {
+          "code": 16,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 8
+          }
+        },
+        {
+          "characters": 6,
+          "kind": "text",
+          "span": {
+            "length": 6,
+            "offset": 12
+          }
+        },
+        {
+          "code": 19,
+          "kind": "token",
+          "lengthBytes": "06",
+          "lengthEncoding": "direct",
+          "payloadLength": 5,
+          "payloadSha256": "33b722f4c562f591724c5fb15c19e8128968bf88fd540dd055d68e6a1c7e2e36",
+          "span": {
+            "length": 9,
+            "offset": 18
+          }
+        },
+        {
+          "code": 9,
+          "kind": "token",
+          "lengthBytes": "f007",
+          "lengthEncoding": "byte",
+          "payloadLength": 7,
+          "payloadSha256": "239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5",
+          "span": {
+            "length": 12,
+            "offset": 27
+          }
+        },
+        {
+          "code": 40,
+          "kind": "token",
+          "lengthBytes": "06",
+          "lengthEncoding": "direct",
+          "payloadLength": 5,
+          "payloadSha256": "bf8ac831299b7c8a6a528d49eafa6054a8ffc224ac1d65138b9af8a8d2822510",
+          "span": {
+            "length": 9,
+            "offset": 39
+          }
+        },
+        {
+          "code": 26,
+          "kind": "token",
+          "lengthBytes": "f2012c",
+          "lengthEncoding": "word",
+          "payloadLength": 300,
+          "payloadSha256": "24204112947ea9e0c506ed31518ab0624cd4df95230e3eda9cfd4d366b71e409",
+          "span": {
+            "length": 306,
+            "offset": 48
+          }
+        },
+        {
+          "code": 44,
+          "kind": "token",
+          "lengthBytes": "f101",
+          "lengthEncoding": "byte-scaled",
+          "payloadLength": 256,
+          "payloadSha256": "7276f97614b152b8cf55d0181b33a80251a7cdae67f216b3a2c4db13ed3dabbb",
+          "span": {
+            "length": 261,
+            "offset": 354
+          }
+        },
+        {
+          "characters": 9,
+          "kind": "text",
+          "span": {
+            "length": 15,
+            "offset": 615
+          }
+        }
+      ],
+      "sha256": "a45c6af7f479887af78bab8d5a9dd12d89b743e695cb96cd74c7d24decfcca38",
+      "span": {
+        "length": 631,
+        "offset": 0
+      }
+    }
+  ],
+  "tokenInventory": [
+    {
+      "code": 9,
+      "count": 1
+    },
+    {
+      "code": 16,
+      "count": 1
+    },
+    {
+      "code": 19,
+      "count": 1
+    },
+    {
+      "code": 26,
+      "count": 1
+    },
+    {
+      "code": 40,
+      "count": 1
+    },
+    {
+      "code": 44,
+      "count": 1
+    }
+  ],
+  "view": "strings"
+}

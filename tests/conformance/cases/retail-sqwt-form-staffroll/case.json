@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-sqwt-form-staffroll",
+    "kind": "private"
+  },
+  "formatId": "sqwt",
+  "id": "retail-sqwt-form-staffroll",
+  "notes": "Retail parity for the container, recorded by span, block count, digest, and name census rather than by content. A namespace-prefixed attribute name, which the reader carries as an ordinary name because it resolves no namespace.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

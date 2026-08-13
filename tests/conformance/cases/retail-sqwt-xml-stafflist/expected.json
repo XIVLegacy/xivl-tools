@@ -1,0 +1,72 @@
+{
+  "container": {
+    "blockCount": 9224,
+    "decodedLength": 73796,
+    "decodedSha256": "82bdddf5996258fd7b1ca415e6669b1b89c51d175ec69399c1c97226353daf4c",
+    "enciphered": {
+      "length": 73792,
+      "offset": 8
+    },
+    "header": {
+      "length": 8,
+      "offset": 0
+    },
+    "keyName": "stafflist.xml",
+    "kind": "sqwt",
+    "plaintextTail": {
+      "length": 4,
+      "offset": 73800
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 2,
+        "name": "height"
+      },
+      {
+        "count": 2,
+        "name": "icon"
+      },
+      {
+        "count": 74,
+        "name": "name"
+      },
+      {
+        "count": 661,
+        "name": "name1"
+      },
+      {
+        "count": 661,
+        "name": "name2"
+      },
+      {
+        "count": 1652,
+        "name": "template"
+      },
+      {
+        "count": 2,
+        "name": "width"
+      }
+    ],
+    "byteOrderMark": false,
+    "comments": 0,
+    "elementCounts": [
+      {
+        "count": 1652,
+        "name": "data"
+      },
+      {
+        "count": 1,
+        "name": "root"
+      }
+    ],
+    "root": "root"
+  },
+  "format": "sqwt",
+  "input": {
+    "length": 73804
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

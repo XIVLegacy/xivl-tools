@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "enable-file"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/enable-anomalies.bin"
+  },
+  "formatId": "enable-file",
+  "id": "enable-anomalies",
+  "notes": "A range naming no rows and two that start inside their predecessor. All three are reported as anomalies and none of them stops the parse.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

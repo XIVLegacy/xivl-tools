@@ -1,0 +1,36 @@
+{
+  "anomalies": [],
+  "dataLength": 111,
+  "format": "ssd-sheet",
+  "input": {
+    "length": 20
+  },
+  "operation": "inspect",
+  "rowCount": 3,
+  "rows": [
+    {
+      "index": 0,
+      "span": {
+        "length": 37,
+        "offset": 0
+      }
+    },
+    {
+      "index": 1,
+      "span": {
+        "length": 37,
+        "offset": 37
+      }
+    },
+    {
+      "index": 4,
+      "span": {
+        "length": 37,
+        "offset": 74
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "slotCount": 5,
+  "view": "row-offsets"
+}

@@ -1,0 +1,38 @@
+{
+  "anomalies": [
+    {
+      "detail": "slot 1 ends at 20, before the previous slot ended at 40",
+      "kind": "row-offset-out-of-order",
+      "span": {
+        "length": 4,
+        "offset": 4
+      }
+    }
+  ],
+  "dataLength": 60,
+  "format": "ssd-sheet",
+  "input": {
+    "length": 12
+  },
+  "operation": "inspect",
+  "rowCount": 2,
+  "rows": [
+    {
+      "index": 0,
+      "span": {
+        "length": 40,
+        "offset": 0
+      }
+    },
+    {
+      "index": 2,
+      "span": {
+        "length": 20,
+        "offset": 40
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "slotCount": 3,
+  "view": "row-offsets"
+}

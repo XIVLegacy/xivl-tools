@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-sqwt-xml-stafflist",
+    "kind": "private"
+  },
+  "formatId": "sqwt",
+  "id": "retail-sqwt-xml-stafflist",
+  "notes": "Retail parity for the container, recorded by span, block count, digest, and name census rather than by content. The one .xml container, and the one document whose ampersands are bare rather than entity references. A strict XML parser refuses it and the client does not.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

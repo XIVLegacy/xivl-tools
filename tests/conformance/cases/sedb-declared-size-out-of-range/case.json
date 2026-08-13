@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "declared-size-out-of-range",
+    "errorOffset": 16,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sedb/declared-size-out-of-range.bin"
+  },
+  "formatId": "sedb",
+  "id": "sedb-declared-size-out-of-range",
+  "notes": "The advisory size field at 0x10 points past the end of the input.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sqwt/byte-order-mark.bin"
+  },
+  "formatId": "sqwt",
+  "id": "sqwt-byte-order-mark",
+  "notes": "A decoded document opening on a byte order mark, which 11 retail containers do and the other 1144 do not.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

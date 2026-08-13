@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "errorKind": "invalid-utf8",
+    "errorOffset": 62,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/bad-utf8.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-bad-utf8",
+  "notes": "A decode that opens correctly and then runs into a truncated multi-byte sequence.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sedb/plain-container.bin"
+  },
+  "formatId": "sedb",
+  "id": "sedb-plain-container",
+  "notes": "A well-formed non-composite container whose totalSize covers the whole file.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

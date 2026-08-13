@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-sqwt-style-sqexlogohd",
+    "kind": "private"
+  },
+  "formatId": "sqwt",
+  "id": "retail-sqwt-style-sqexlogohd",
+  "notes": "Retail parity for the container, recorded by span, block count, digest, and name census rather than by content. A StyleResources document, one of the 20 .style containers.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}
