@@ -1,0 +1,64 @@
+{
+  "anomalies": [
+    {
+      "detail": "the range at row 20 names no rows",
+      "kind": "empty-enable-range",
+      "span": {
+        "length": 8,
+        "offset": 0
+      }
+    },
+    {
+      "detail": "the range at row 10 starts before the previous range ends at 20",
+      "kind": "enable-range-out-of-order",
+      "span": {
+        "length": 8,
+        "offset": 8
+      }
+    },
+    {
+      "detail": "the range at row 12 starts before the previous range ends at 15",
+      "kind": "enable-range-out-of-order",
+      "span": {
+        "length": 8,
+        "offset": 16
+      }
+    }
+  ],
+  "format": "enable-file",
+  "input": {
+    "length": 24
+  },
+  "operation": "inspect",
+  "ranges": [
+    {
+      "count": 0,
+      "endRow": 20,
+      "firstRow": 20,
+      "span": {
+        "length": 8,
+        "offset": 0
+      }
+    },
+    {
+      "count": 5,
+      "endRow": 15,
+      "firstRow": 10,
+      "span": {
+        "length": 8,
+        "offset": 8
+      }
+    },
+    {
+      "count": 5,
+      "endRow": 17,
+      "firstRow": 12,
+      "span": {
+        "length": 8,
+        "offset": 16
+      }
+    }
+  ],
+  "rowCount": 10,
+  "schemaVersion": 1
+}

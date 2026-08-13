@@ -1,0 +1,21 @@
+{
+  "checks": [
+    {
+      "name": "parse",
+      "status": "pass"
+    },
+    {
+      "encodedLength": 72,
+      "encodedSha256": "6fe963434e01d61413d22394c8d0102be9598193e7d1cde2ee64d7da14458261",
+      "name": "round-trip",
+      "status": "pass"
+    }
+  ],
+  "format": "config-pad",
+  "input": {
+    "length": 72
+  },
+  "operation": "validate",
+  "schemaVersion": 1,
+  "sha256": "6fe963434e01d61413d22394c8d0102be9598193e7d1cde2ee64d7da14458261"
+}

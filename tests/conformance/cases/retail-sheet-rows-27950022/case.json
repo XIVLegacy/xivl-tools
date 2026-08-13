@@ -1,0 +1,21 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data",
+    "--columns",
+    "u8,u8,u8"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-sheet-rows-27950022",
+    "kind": "private"
+  },
+  "formatId": "ssd-sheet",
+  "id": "retail-sheet-rows-27950022",
+  "notes": "A fixed-width sheet: 77 rows of three u8 columns, with no string column anywhere.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

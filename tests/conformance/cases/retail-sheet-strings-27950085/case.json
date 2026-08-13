@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-sheet-strings-27950085",
+    "kind": "private"
+  },
+  "formatId": "ssd-sheet",
+  "id": "retail-sheet-strings-27950085",
+  "notes": "A single-column string sheet: four rows, obfuscated bodies, control tokens.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

@@ -1,0 +1,70 @@
+{
+  "format": "res",
+  "input": {
+    "length": 106
+  },
+  "operation": "inspect",
+  "root": {
+    "anomalies": [
+      {
+        "detail": "subresource 0 declares 48 byte(s) ending at 128, clamped to the 106 byte input",
+        "kind": "subresource-extent-clamped",
+        "span": {
+          "length": 26,
+          "offset": 80
+        }
+      }
+    ],
+    "declaredSize": 106,
+    "entries": [
+      {
+        "entryCount": 1,
+        "kind": "subresource-directory",
+        "sha256": "e07f0197ce744a507f18a51f00a0bb2b16cc08fc2829a24747c220e4d29cef8c",
+        "span": {
+          "length": 16,
+          "offset": 64
+        }
+      },
+      {
+        "declaredKind": 4,
+        "declaredOffset": 0,
+        "declaredSize": 48,
+        "index": 0,
+        "kind": "subresource",
+        "sha256": "24ef525255905d30e851690b13872929369470cfaa2ea2ccd7dd3d7e8ccaead5",
+        "span": {
+          "length": 26,
+          "offset": 80
+        }
+      }
+    ],
+    "flags": 0,
+    "headerSize": 64,
+    "headerUnknown": [
+      {
+        "kind": "unknown-gap",
+        "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+        "span": {
+          "length": 28,
+          "offset": 20
+        }
+      }
+    ],
+    "kind": "sedb-container",
+    "res": {
+      "subresourceCount": 1,
+      "typeName": "brt\\x00",
+      "unknownB": 80
+    },
+    "span": {
+      "length": 106,
+      "offset": 0
+    },
+    "subtype": "RES ",
+    "totalSize": 106,
+    "unknownA": 4000
+  },
+  "schemaVersion": 1,
+  "trailing": []
+}

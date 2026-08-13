@@ -1,0 +1,209 @@
+//! `xivl`: the command line over the format libraries.
+//!
+//! File inspection and game-install sheet extraction.
+//! The option exists because two of these formats have no signature: an
+//! enable file and a row-offset array are bare arrays of 32-bit values, so
+//! nothing in the bytes distinguishes them and a sniffing parser would be
+//! guessing. Formats that do carry a signature are recognized.
+//!
+//! Every input path is supplied by the caller. There is no default
+//! location, no client-install search, and no workspace-relative fallback.
+
+use std::io::{Read, Write};
+use std::process::ExitCode;
+
+use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_bytes_as, InspectAs};
+
+mod extract;
+
+const USAGE: &str = "\
+xivl - Final Fantasy XIV 1.23b client file tools
+
+usage:
+  xivl inspect <file> [--as <format>] [--columns <list>]
+  xivl validate <file> [--as <format>] [--columns <list>]
+  xivl extract <game-directory> --output <directory>
+  xivl --help
+  xivl --version
+
+inspect prints the normalized structural report for one file. With no
+--as it recognizes SEDB containers, SSD documents, SQEX containers, and
+scrambled documents, the last by decoding them rather than by one
+trailer byte.
+
+validate reads the input the same way and reports the checks that
+reading passed. For a format this tool can also write, that includes a
+round trip: the model is written back and the bytes must reproduce the
+input exactly.
+
+extract discovers SSD sheet definitions under a 1.23b game directory,
+reads their data, enable, and row-offset resources, and writes one
+lossless CSV view per definition document.
+
+  --as sedb | ssd | scrambled-xml | sqwt | enable-file | row-offsets
+     | sheet-data | config-sys | config-pad | config-lng | config-rgn
+      Read the input as this format. Needed for enable-file and
+      row-offsets, which are unsigned 32-bit arrays with no signature,
+      and for the four configuration files, which carry no signature
+      either.
+      --as ssd decodes a scrambled document first and then reads it with
+      the same reader a plaintext one gets; --as scrambled-xml reports
+      the container and a census of the document's shape instead.
+      --as sqwt decodes a SQEX container, whose key is the file's own
+      base name: renaming such a file makes it unreadable.
+  --columns <type,...>
+      Column types of a sheet-data file, from its schema document, for
+      example 'str,s32,bool'. Without it the data is read as a stream of
+      string values, which is how an all-string sheet is stored.
+
+The report never carries payload bytes, sheet-row text, or a configuration
+file's values. The SSD document view preserves sheet names and attribute
+values. Use --as scrambled-xml for a redacted census of document shape.
+
+exit status: 0 success, 1 usage or input/output failure, 2 parse failure
+";
+
+/// Exit code for a parse failure, distinct from a usage or I/O failure so
+/// a caller can tell a malformed file from a mistyped command.
+const EXIT_PARSE_FAILURE: u8 = 2;
+
+/// Bounds allocation before parsing a caller-supplied path.
+const MAX_INPUT_BYTES: u64 = 256 * 1024 * 1024;
+
+fn main() -> ExitCode {
+    let arguments: Vec<String> = std::env::args().skip(1).collect();
+    match run(&arguments) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(failure) => {
+            let mut stderr = std::io::stderr();
+            let _ = writeln!(stderr, "xivl: {}", failure.message);
+            ExitCode::from(failure.code)
+        }
+    }
+}
+
+struct Failure {
+    message: String,
+    code: u8,
+}
+
+impl Failure {
+    fn usage(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            code: 1,
+        }
+    }
+
+    fn parse(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            code: EXIT_PARSE_FAILURE,
+        }
+    }
+}
+
+fn run(arguments: &[String]) -> Result<(), Failure> {
+    let first = arguments.first().map(String::as_str);
+    match first {
+        None | Some("--help") | Some("-h") | Some("help") => {
+            print!("{USAGE}");
+            Ok(())
+        }
+        Some("--version") => {
+            println!("xivl {}", env!("CARGO_PKG_VERSION"));
+            Ok(())
+        }
+        Some("inspect") => read(&arguments[1..], Operation::Inspect),
+        Some("validate") => read(&arguments[1..], Operation::Validate),
+        Some("extract") => {
+            let summary = extract::run(&arguments[1..])?;
+            println!(
+                "wrote {} CSV files from {} sheet documents and {} rows; {} missing trailing values; {} absent blocks; {} conflicting values",
+                summary.files,
+                summary.documents,
+                summary.rows,
+                summary.missing_trailing_values,
+                summary.absent_blocks,
+                summary.conflicting_values
+            );
+            Ok(())
+        }
+        Some(other) => Err(Failure::usage(format!(
+            "unknown command '{other}'; run 'xivl --help'"
+        ))),
+    }
+}
+
+#[derive(Clone, Copy)]
+enum Operation {
+    Inspect,
+    Validate,
+}
+
+impl Operation {
+    fn name(self) -> &'static str {
+        match self {
+            Operation::Inspect => "inspect",
+            Operation::Validate => "validate",
+        }
+    }
+}
+
+fn read(arguments: &[String], operation: Operation) -> Result<(), Failure> {
+    let Some((path, rest)) = arguments.split_first() else {
+        return Err(Failure::usage(format!(
+            "usage: xivl {} <file> [--as <format>] [--columns <list>]",
+            operation.name()
+        )));
+    };
+    let how = InspectAs::from_arguments(rest).map_err(Failure::usage)?;
+    let data = read_capped(path)?;
+    // The SQEX container's key is the file's own base name, so the reading
+    // needs it. Taking it from the path the caller typed is the whole of
+    // the derivation. Nothing here searches for or resolves a path.
+    let name = base_name(path);
+    let produced = match operation {
+        Operation::Inspect => inspect_named_bytes_as(&data, name, &how),
+        Operation::Validate => validate_named_bytes_as(&data, name, &how),
+    };
+    let document = produced.map_err(|error| Failure {
+        message: format!("{path}: {error}"),
+        code: EXIT_PARSE_FAILURE,
+    })?;
+    let text = to_canonical_json(&document);
+    std::io::stdout()
+        .write_all(text.as_bytes())
+        .map_err(|error| Failure::usage(format!("cannot write output: {error}")))
+}
+
+fn read_capped(path: &str) -> Result<Vec<u8>, Failure> {
+    // The caller supplied the path, so echoing it back leaks nothing they
+    // do not already know. It never reaches the JSON document.
+    let file = std::fs::File::open(path).map_err(|error| read_failure(path, &error.to_string()))?;
+    let mut data = Vec::new();
+    file.take(MAX_INPUT_BYTES + 1)
+        .read_to_end(&mut data)
+        .map_err(|error| read_failure(path, &error.to_string()))?;
+    if data.len() as u64 > MAX_INPUT_BYTES {
+        return Err(read_failure(
+            path,
+            &format!("input is larger than the {MAX_INPUT_BYTES}-byte limit"),
+        ));
+    }
+    Ok(data)
+}
+
+fn read_failure(path: &str, reason: &str) -> Failure {
+    Failure::usage(format!("cannot read '{path}': {reason}"))
+}
+
+/// The part of a path after the last separator. Both separators are cut,
+/// so a Windows path typed on any platform gives the same name and a
+/// fixture reads the same everywhere.
+fn base_name(path: &str) -> &str {
+    match path.rfind(['/', '\\']) {
+        Some(index) => &path[index + 1..],
+        None => path,
+    }
+}

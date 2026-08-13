@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "bad-magic",
+    "errorOffset": 0,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sedb/bad-magic.bin"
+  },
+  "formatId": "sedb",
+  "id": "sedb-bad-magic",
+  "notes": "The leading four bytes are not a SEDB signature.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

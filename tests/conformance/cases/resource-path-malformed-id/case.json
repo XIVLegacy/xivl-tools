@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "invalid-resource-id",
+    "errorOffset": 42,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/resource-path/malformed-id.txt"
+  },
+  "formatId": "resource-path",
+  "id": "resource-path-malformed-id",
+  "notes": "An identifier one digit short of eight.",
+  "operation": "resource-path",
+  "schemaVersion": 1
+}

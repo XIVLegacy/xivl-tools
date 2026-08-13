@@ -1,0 +1,52 @@
+{
+  "container": {
+    "decodedLength": 186,
+    "decodedSha256": "141b5f71f7186653b4a4a8e9dc14a0d9182fff1469cab41f8708b17a64358271",
+    "encoded": {
+      "length": 186,
+      "offset": 0
+    },
+    "finalByteCorrected": false,
+    "keyA": 1302,
+    "keyB": 53992,
+    "kind": "scrambled-xml",
+    "trailer": {
+      "length": 1,
+      "offset": 186
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 2,
+        "name": "infofile"
+      },
+      {
+        "count": 2,
+        "name": "name"
+      },
+      {
+        "count": 1,
+        "name": "version"
+      }
+    ],
+    "byteOrderMark": true,
+    "elementCounts": [
+      {
+        "count": 2,
+        "name": "sheet"
+      },
+      {
+        "count": 1,
+        "name": "ssd"
+      }
+    ],
+    "root": "ssd"
+  },
+  "format": "scrambled-xml",
+  "input": {
+    "length": 187
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

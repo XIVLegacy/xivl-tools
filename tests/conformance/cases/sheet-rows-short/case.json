@@ -1,0 +1,22 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data",
+    "--columns",
+    "str,s32,bool,float,u8"
+  ],
+  "expect": {
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 59,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/rows-short.bin"
+  },
+  "formatId": "ssd-sheet",
+  "id": "sheet-rows-short",
+  "notes": "A final row cut short, which fails rather than being silently dropped.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

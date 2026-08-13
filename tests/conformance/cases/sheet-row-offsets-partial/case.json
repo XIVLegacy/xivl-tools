@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "row-offsets"
+  ],
+  "expect": {
+    "errorKind": "trailing-partial-record",
+    "errorOffset": 4,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/row-offsets-partial.bin"
+  },
+  "formatId": "ssd-sheet",
+  "id": "sheet-row-offsets-partial",
+  "notes": "A row-offset array ending in three loose bytes.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

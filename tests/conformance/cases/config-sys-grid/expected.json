@@ -1,0 +1,71 @@
+{
+  "body": null,
+  "format": "config-sys",
+  "grid": {
+    "nonZeroWordOffsets": [
+      4,
+      12,
+      16,
+      20,
+      24,
+      28,
+      32,
+      36,
+      40,
+      48,
+      52,
+      56,
+      60,
+      64,
+      68,
+      72,
+      80,
+      88
+    ],
+    "span": {
+      "length": 92,
+      "offset": 4
+    },
+    "wordCount": 23,
+    "zeroWordCount": 5
+  },
+  "input": {
+    "length": 96
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "sha256": "0fec665f4bcea6f4353c35682f8673b7a1730170198a69d879b755f03fc320c7",
+  "stamp": {
+    "span": {
+      "length": 4,
+      "offset": 0
+    },
+    "value": 539363329
+  },
+  "textRuns": [
+    {
+      "encoding": "utf16le",
+      "span": {
+        "length": 28,
+        "offset": 16
+      },
+      "units": 14
+    },
+    {
+      "encoding": "utf16le",
+      "span": {
+        "length": 28,
+        "offset": 48
+      },
+      "units": 14
+    },
+    {
+      "encoding": "ascii",
+      "span": {
+        "length": 4,
+        "offset": 80
+      },
+      "units": 4
+    }
+  ]
+}

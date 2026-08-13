@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "invalid-utf8",
+    "errorOffset": 79,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/ssd/not-utf8.bin"
+  },
+  "formatId": "ssd-master",
+  "id": "ssd-not-utf8",
+  "notes": "A truncated multi-byte sequence inside an attribute value.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

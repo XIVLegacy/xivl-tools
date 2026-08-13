@@ -1,0 +1,86 @@
+{
+  "container": null,
+  "document": {
+    "byteOrderMark": true,
+    "declaration": {
+      "encoding": "utf-8",
+      "span": {
+        "length": 38,
+        "offset": 3
+      },
+      "version": "1.0"
+    },
+    "sheets": [
+      {
+        "attributes": [
+          {
+            "name": "name",
+            "span": {
+              "length": 22,
+              "offset": 73
+            },
+            "value": "synthetic/first"
+          },
+          {
+            "name": "infofile",
+            "span": {
+              "length": 20,
+              "offset": 96
+            },
+            "value": "664076291"
+          }
+        ],
+        "infofile": {
+          "hex": "0x27950003",
+          "id": 664076291,
+          "path": "data/27/95/00/03.DAT"
+        },
+        "kind": "reference",
+        "name": "synthetic/first",
+        "span": {
+          "length": 53,
+          "offset": 66
+        }
+      },
+      {
+        "attributes": [
+          {
+            "name": "name",
+            "span": {
+              "length": 23,
+              "offset": 130
+            },
+            "value": "synthetic/second"
+          },
+          {
+            "name": "infofile",
+            "span": {
+              "length": 19,
+              "offset": 154
+            },
+            "value": "45613057"
+          }
+        ],
+        "infofile": {
+          "hex": "0x02B80001",
+          "id": 45613057,
+          "path": "data/02/B8/00/01.DAT"
+        },
+        "kind": "reference",
+        "name": "synthetic/second",
+        "span": {
+          "length": 53,
+          "offset": 123
+        }
+      }
+    ],
+    "version": "0.1"
+  },
+  "format": "ssd-master",
+  "input": {
+    "length": 186
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "spanBase": "input"
+}

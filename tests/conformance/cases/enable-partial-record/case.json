@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "enable-file"
+  ],
+  "expect": {
+    "errorKind": "trailing-partial-record",
+    "errorOffset": 8,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/enable-partial-record.bin"
+  },
+  "formatId": "enable-file",
+  "id": "enable-partial-record",
+  "notes": "One whole record and half of another.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

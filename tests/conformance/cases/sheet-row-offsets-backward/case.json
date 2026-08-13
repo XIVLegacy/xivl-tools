@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "row-offsets"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/row-offsets-backward.bin"
+  },
+  "formatId": "ssd-sheet",
+  "id": "sheet-row-offsets-backward",
+  "notes": "An entry that goes backwards, which cannot be an end offset. The entry survives verbatim and the slot is reported empty.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

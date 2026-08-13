@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sedb/declared-size-below-header.bin"
+  },
+  "formatId": "sedb",
+  "id": "sedb-declared-size-below-header",
+  "notes": "The shape of the 145 retail mtb resources: the 0x10 field reads zero, below the container's own header. Not malformed. The parser falls back to the header extent, records a declared-size-below-header anomaly, and reports the remainder as trailing bytes.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

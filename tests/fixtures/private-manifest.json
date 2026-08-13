@@ -1,0 +1,342 @@
+{
+  "clientVersion": "1.23b",
+  "entries": [
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "config-lng"
+      ],
+      "id": "retail-config-lng",
+      "notes": "The language file: two words and no stamp.",
+      "root": "user-config",
+      "sha256": "01acecb507abfe1a354aa8064f4af5d3f1acd019e37db3c11c97523b71c76e9d",
+      "size": 8,
+      "sourcePath": "config.lng"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "config-pad"
+      ],
+      "id": "retail-config-pad",
+      "notes": "The pad file: the same stamped-grid shape as config.sys, holding input-device identifiers and a button mapping.",
+      "root": "user-config",
+      "sha256": "f50ab6800173db28526d58bd1732f8f7ac07ba997b295f6a2df1829194de8d0f",
+      "size": 328,
+      "sourcePath": "config.pad"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "config-rgn"
+      ],
+      "id": "retail-config-rgn",
+      "notes": "The region file: five bytes that are not a word grid.",
+      "root": "user-config",
+      "sha256": "8855508aade16ec573d21e6a485dfd0a7624085c1a14b5ecdd6485de0c6839a4",
+      "size": 5,
+      "sourcePath": "config.rgn"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "config-sys"
+      ],
+      "id": "retail-config-sys",
+      "notes": "The system file: a stamp, 170 words of which this install has written 50, and two fixed-width UTF-16LE text spans. It is the owner's own settings, so the expected outputs record its shape and never a value.",
+      "root": "user-config",
+      "sha256": "62324ead6cb01e4e1af92b5e4c7e3c581045a89b6ac02f32bdc45372bd788eb9",
+      "size": 684,
+      "sourcePath": "config.sys"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "enable-file"
+      ],
+      "id": "retail-enable-2795001f",
+      "notes": "An enable file of eight row ranges over a 10011-slot block.",
+      "sha256": "d06abae9fda0308414d92e8161065a7dd10effbc344c60bc15fd29fe4f151834",
+      "size": 64,
+      "sourcePath": "data/27/95/00/1F.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "sedb"
+      ],
+      "id": "retail-leaf-8998000b",
+      "notes": "leaf, the other family whose 0x10 field is a sub-file extent.",
+      "sha256": "0fbea063471264cce31a32482f04de4bcedc699f289a614883b82ee9dafc30d9",
+      "size": 809,
+      "sourcePath": "data/89/98/00/0B.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "sedb"
+      ],
+      "id": "retail-mtb-899e0002",
+      "notes": "mtb, 145 resources whose 0x10 field reads zero, below the container's own header.",
+      "sha256": "56a70be3fdbb9382fadb19ded46d48694e10c343588c09f6b754aaa995a1909e",
+      "size": 513,
+      "sourcePath": "data/89/9E/00/02.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "sedb"
+      ],
+      "id": "retail-phb-7eb50010",
+      "notes": "PHB, 5203 resources whose 0x10 field equals headerSize, so the whole payload is reported as trailing bytes.",
+      "sha256": "e62b997c8d0a0822402848ad7c2a045d31b630813cade05d32f0d127fbe1b291",
+      "size": 1232,
+      "sourcePath": "data/7E/B5/00/10.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "res"
+      ],
+      "id": "retail-res-89eb0000",
+      "notes": "A RES composite: subresource directory, nested SEDB children, and the trailing-region overlap and alignment slack that every RES resource carries.",
+      "sha256": "3218cfb49da670397d1e40664fc130c02712a64b989cbfecb1f4f25da6814592",
+      "size": 7711,
+      "sourcePath": "data/89/EB/00/00.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "ssd-sheet"
+      ],
+      "id": "retail-row-offsets-27950020",
+      "notes": "A 10011-slot row-offset array in which seven slots carry data.",
+      "sha256": "a82b5ebc5600dc99e7f883630689839eeff0e284ff4705a542421fc18540236b",
+      "size": 40044,
+      "sourcePath": "data/27/95/00/20.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "scrambled-xml"
+      ],
+      "id": "retail-scrambled-master-03a70000",
+      "notes": "A scrambled master, and the one encoded length 1 modulo 4 among the small documents: its final byte takes the correction.",
+      "sha256": "6861b8c1b455fab0b6eafb3f74ea2aa2432cc67ef55e473a5a7b17d4c0461d99",
+      "size": 218,
+      "sourcePath": "data/03/A7/00/00.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "scrambled-xml"
+      ],
+      "id": "retail-scrambled-schema-010300f5",
+      "notes": "A scrambled schema, encoded length 2 modulo 4.",
+      "sha256": "1d191ac9383d29a243eac8236a1ffb8cbd7b2769bd2321ddceebeb09b1c0c232",
+      "size": 379,
+      "sourcePath": "data/01/03/00/F5.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "scrambled-xml"
+      ],
+      "id": "retail-scrambled-schema-0103018d",
+      "notes": "A scrambled schema, encoded length 3 modulo 4, the residue 632 of the 799 documents have.",
+      "sha256": "9dacd6dc8b4b8b5966d4aa83b673653cf375c7f5128514701d57264cd4e74703",
+      "size": 388,
+      "sourcePath": "data/01/03/01/8D.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "scrambled-xml"
+      ],
+      "id": "retail-scrambled-schema-0103050d",
+      "notes": "A scrambled schema, encoded length 0 modulo 4.",
+      "sha256": "b28b9133eb9217e712b158a7ec403e561f8db2bf1a3b3e04a6239b9d8a783e4b",
+      "size": 389,
+      "sourcePath": "data/01/03/05/0D.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "ssd-sheet"
+      ],
+      "id": "retail-sheet-rows-01030087",
+      "notes": "A single u16 column, five rows.",
+      "sha256": "fa5b037cefb570dba2fe0c5841651b37ced5574ac8748445fb16ec6861366ea8",
+      "size": 10,
+      "sourcePath": "data/01/03/00/87.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "ssd-sheet"
+      ],
+      "id": "retail-sheet-rows-0103048b",
+      "notes": "Rows of s32, u8, float, s16, and s8 columns, from a schema only the scrambled documents carry.",
+      "sha256": "3718a923db7717c594381282c07bad601fef49c050e200d725d21179e4378dfd",
+      "size": 26,
+      "sourcePath": "data/01/03/04/8B.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "ssd-sheet"
+      ],
+      "id": "retail-sheet-rows-03a20d45",
+      "notes": "Rows of two u32 columns and a string column.",
+      "sha256": "2ae26c532db5349e49c5487aa807539b0df2e4936125d35d90f75584d8a37f17",
+      "size": 914,
+      "sourcePath": "data/03/A2/0D/45.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "ssd-sheet"
+      ],
+      "id": "retail-sheet-rows-03a70820",
+      "notes": "One row of 92 f16 columns, 16 bool columns, and 3 s32 columns, which is what fixes the f16 width at two bytes.",
+      "sha256": "5618aa41cee634c02763557ecac21e1e05ff395b63cbc719c614ae7a7a286f10",
+      "size": 212,
+      "sourcePath": "data/03/A7/08/20.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "ssd-sheet"
+      ],
+      "id": "retail-sheet-rows-27950022",
+      "notes": "A fixed-width sheet: 77 rows of three u8 columns and no string column.",
+      "sha256": "2939bfbe6b4181fa64eff84a014ccee86fbf6d2472e39711b7732d9b0729fbad",
+      "size": 231,
+      "sourcePath": "data/27/95/00/22.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "ssd-sheet",
+        "rich-string"
+      ],
+      "id": "retail-sheet-strings-27950085",
+      "notes": "A single-column string sheet: four rows, obfuscated bodies, and fourteen control tokens across two codes.",
+      "sha256": "f2f28302c90f779730e09d96bd75b59fc2f9a8006e5291f082a5ba01958e9fb8",
+      "size": 574,
+      "sourcePath": "data/27/95/00/85.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "sqwt"
+      ],
+      "id": "retail-sqwt-form-actionequipdetail",
+      "notes": "Ampersand runs in the decoded document, which the widget profile carries verbatim and the SSD profile refuses.",
+      "sha256": "e1b4ebb41f26b179f1a9b7b3d0a375b58116628632388bfc77fde0814e18bd5d",
+      "size": 3408,
+      "sourcePath": "client/sqwt/widget/ActionEquipDetailWidget.form"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "sqwt"
+      ],
+      "id": "retail-sqwt-form-loadingphase",
+      "notes": "The largest container family: a Window document in a .form, with a plaintext tail shorter than a block.",
+      "sha256": "3f4505cf4c56a9d506a811c24496842b7d26094cfe1ee2266b7ee0ce230bc5c6",
+      "size": 341,
+      "sourcePath": "client/sqwt/system/bootup/LoadingPhase.form"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "sqwt"
+      ],
+      "id": "retail-sqwt-form-staffroll",
+      "notes": "A namespace-prefixed attribute name, which the reader carries as an ordinary name because it resolves no namespace.",
+      "sha256": "c8526b43b08595f9eed3e98c69c3d784b634eb871109c01695f64e170039fc78",
+      "size": 972,
+      "sourcePath": "client/sqwt/system/common/Staffroll.form"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "sqwt"
+      ],
+      "id": "retail-sqwt-skin-esrb",
+      "notes": "A SkinResources document, one of the 20 .skin containers.",
+      "sha256": "95f73c789839bf8ec857376a5ca20581793da85d96faeb3669306503de3057be",
+      "size": 220,
+      "sourcePath": "client/sqwt/system/common/ESRB.skin"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "sqwt"
+      ],
+      "id": "retail-sqwt-sml-configkeychat",
+      "notes": "Three properties in one file: a body that divides evenly by the block size so there is no plaintext tail, a decoded document opening on a byte order mark, and seven comments.",
+      "sha256": "76e17af5df2cccf2705646c98d0bd6a1fe018d4dc88b7543d2a9218a68c31820",
+      "size": 2176,
+      "sourcePath": "client/sqwt/common/configkeyChat.sml"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "sqwt"
+      ],
+      "id": "retail-sqwt-style-sqexlogohd",
+      "notes": "A StyleResources document, one of the 20 .style containers.",
+      "sha256": "1b251e1b53bd1d7a4be3033ce6343eee43364e71229ec89d9dd90629f8e2bda6",
+      "size": 563,
+      "sourcePath": "client/sqwt/system/common/SqexLogoPhaseHd.style"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "sqwt"
+      ],
+      "id": "retail-sqwt-tpl-chocoborental",
+      "notes": "The second family: a ResourceDictionary document in a .tpl.",
+      "sha256": "ff1ba2dc50d69ebffd851d1c7f4257cdb411543c2fff50aed6867ebbe24a1988",
+      "size": 308,
+      "sourcePath": "client/sqwt/widget/ChocoboRentalTimerWidget.tpl"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "sqwt"
+      ],
+      "id": "retail-sqwt-xml-stafflist",
+      "notes": "The one .xml container, and the one document whose ampersands are bare rather than entity references. A strict XML parser refuses it and the client does not.",
+      "sha256": "71f01760a54e14efc1756ae77ee0315bc7320bcdf9ea9b84a838fc7962e16567",
+      "size": 73804,
+      "sourcePath": "client/sqwt/system/common/stafflist.xml"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "sedb"
+      ],
+      "id": "retail-sscf-39940006",
+      "notes": "SSCF, the install's largest family at 77694 resources. The 0x10 field equals the file size.",
+      "sha256": "17677038ecfe00722702be3a159ae08c40c348b29e8e6032700c107d72a328fb",
+      "size": 700,
+      "sourcePath": "data/39/94/00/06.DAT"
+    },
+    {
+      "addedOn": "2026-08-01",
+      "formatIds": [
+        "sedb"
+      ],
+      "id": "retail-vins-5d200006",
+      "notes": "vins, one of the 98 resources whose 0x10 field is a genuine sub-file extent, leaving real trailing content.",
+      "sha256": "56c9056d1e15006280a1fa5934bb8f25a82a583cea1c3366dc6bbb8883d2326b",
+      "size": 1120,
+      "sourcePath": "data/5D/20/00/06.DAT"
+    }
+  ],
+  "rootEnvironmentVariable": "XIVL_TOOLS_FIXTURE_ROOT",
+  "schemaVersion": 1
+}

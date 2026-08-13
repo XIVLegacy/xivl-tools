@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "unexpected-element",
+    "errorOffset": 43,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/ssd/wrong-root.bin"
+  },
+  "formatId": "ssd-master",
+  "id": "ssd-wrong-root",
+  "notes": "A well-formed document whose root is not ssd.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

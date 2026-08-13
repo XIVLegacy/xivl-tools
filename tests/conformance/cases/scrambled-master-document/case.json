@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "ssd"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/master.bin"
+  },
+  "formatId": "ssd-master",
+  "id": "scrambled-master-document",
+  "notes": "A scrambled master. The decode hands plain bytes to the same reader a plaintext document gets, so the two cannot drift.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

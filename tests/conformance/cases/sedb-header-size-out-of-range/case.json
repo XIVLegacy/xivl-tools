@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "header-size-out-of-range",
+    "errorOffset": 14,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sedb/header-size-out-of-range.bin"
+  },
+  "formatId": "sedb",
+  "id": "sedb-header-size-out-of-range",
+  "notes": "A declared header size past the declared container size.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "enable-file"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/enable-ranges.bin"
+  },
+  "formatId": "enable-file",
+  "id": "enable-ranges",
+  "notes": "Three ascending row ranges of first identifier and run length.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

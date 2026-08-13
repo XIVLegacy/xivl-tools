@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/resource-path/ids.txt"
+  },
+  "formatId": "resource-path",
+  "id": "resource-path-ids",
+  "notes": "Both text forms, both hexadecimal cases, and both ends of the 32-bit identifier space.",
+  "operation": "resource-path",
+  "schemaVersion": 1
+}

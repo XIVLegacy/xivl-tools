@@ -1,0 +1,10 @@
+# Resource identifiers for the resource-path conformance case.
+# Both text forms, both cases, and both ends of the 32-bit space.
+
+0x00000000
+0xFFFFFFFF
+0x29D90001
+89940554
+0x7eb50002
+0x000000FF
+0xFF000000

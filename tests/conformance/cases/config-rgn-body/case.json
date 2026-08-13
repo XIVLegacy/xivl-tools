@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "config-rgn"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/config/rgn-body.bin"
+  },
+  "formatId": "config-rgn",
+  "id": "config-rgn-body",
+  "notes": "The region file is not a word grid. Its bytes are carried whole and reported as one span with a digest, which is the entire read claim.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

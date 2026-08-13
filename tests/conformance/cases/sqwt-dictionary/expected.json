@@ -1,0 +1,56 @@
+{
+  "container": {
+    "blockCount": 24,
+    "decodedLength": 193,
+    "decodedSha256": "5520d27455bdd752650480e62288ad174ade24d75784271c106aeabc332d40f3",
+    "enciphered": {
+      "length": 192,
+      "offset": 8
+    },
+    "header": {
+      "length": 8,
+      "offset": 0
+    },
+    "keyName": "dictionary.bin",
+    "kind": "sqwt",
+    "plaintextTail": {
+      "length": 1,
+      "offset": 200
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 1,
+        "name": "Key"
+      },
+      {
+        "count": 1,
+        "name": "Label"
+      },
+      {
+        "count": 1,
+        "name": "Version"
+      }
+    ],
+    "byteOrderMark": false,
+    "comments": 1,
+    "elementCounts": [
+      {
+        "count": 1,
+        "name": "SyntheticDictionary"
+      },
+      {
+        "count": 1,
+        "name": "SyntheticEntry"
+      }
+    ],
+    "root": "SyntheticDictionary"
+  },
+  "format": "sqwt",
+  "input": {
+    "length": 201
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

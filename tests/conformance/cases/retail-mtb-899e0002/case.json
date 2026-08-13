@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-mtb-899e0002",
+    "kind": "private"
+  },
+  "formatId": "sedb",
+  "id": "retail-mtb-899e0002",
+  "notes": "mtb, 145 resources whose 0x10 field reads zero, below the container's own header. Retail 1.23b, game.ver 2012.09.19.0001. The expected output carries spans, counts, and digests only; no payload bytes.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

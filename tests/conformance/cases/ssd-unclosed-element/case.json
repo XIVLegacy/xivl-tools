@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "malformed-xml",
+    "errorOffset": 97,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/ssd/unclosed-element.bin"
+  },
+  "formatId": "ssd-master",
+  "id": "ssd-unclosed-element",
+  "notes": "An element that never closes.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

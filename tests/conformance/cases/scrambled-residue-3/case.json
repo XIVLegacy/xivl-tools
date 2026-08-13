@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/residue-3.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-residue-3",
+  "notes": "Encoded length 3 modulo 4, the residue 632 of the install's 799 documents have.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

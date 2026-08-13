@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "config-sys"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/config/sys-grid.bin"
+  },
+  "formatId": "config-sys",
+  "id": "config-sys-grid",
+  "notes": "The system file's shape: a stamp, a word grid, two fixed-width UTF-16LE text spans, and a four-byte tag. The report carries no word value and no run content.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

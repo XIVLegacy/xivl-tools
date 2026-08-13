@@ -1,0 +1,84 @@
+{
+  "anomalies": [],
+  "format": "enable-file",
+  "input": {
+    "length": 64
+  },
+  "operation": "inspect",
+  "ranges": [
+    {
+      "count": 7,
+      "endRow": 10007,
+      "firstRow": 10000,
+      "span": {
+        "length": 8,
+        "offset": 0
+      }
+    },
+    {
+      "count": 39,
+      "endRow": 11039,
+      "firstRow": 11000,
+      "span": {
+        "length": 8,
+        "offset": 8
+      }
+    },
+    {
+      "count": 2,
+      "endRow": 12002,
+      "firstRow": 12000,
+      "span": {
+        "length": 8,
+        "offset": 16
+      }
+    },
+    {
+      "count": 11,
+      "endRow": 13011,
+      "firstRow": 13000,
+      "span": {
+        "length": 8,
+        "offset": 24
+      }
+    },
+    {
+      "count": 2,
+      "endRow": 13102,
+      "firstRow": 13100,
+      "span": {
+        "length": 8,
+        "offset": 32
+      }
+    },
+    {
+      "count": 2,
+      "endRow": 14002,
+      "firstRow": 14000,
+      "span": {
+        "length": 8,
+        "offset": 40
+      }
+    },
+    {
+      "count": 3,
+      "endRow": 15003,
+      "firstRow": 15000,
+      "span": {
+        "length": 8,
+        "offset": 48
+      }
+    },
+    {
+      "count": 11,
+      "endRow": 20011,
+      "firstRow": 20000,
+      "span": {
+        "length": 8,
+        "offset": 56
+      }
+    }
+  ],
+  "rowCount": 77,
+  "schemaVersion": 1
+}

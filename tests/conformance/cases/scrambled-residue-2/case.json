@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/residue-2.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-residue-2",
+  "notes": "Encoded length 2 modulo 4.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

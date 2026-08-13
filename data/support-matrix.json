@@ -1,0 +1,381 @@
+{
+  "schemaVersion": 1,
+  "target": {
+    "title": "Final Fantasy XIV 1.23b",
+    "version": "1.23b",
+    "frozen": true,
+    "dataReference": "static-sheet extraction 2012.09.19.0001",
+    "notes": "The target is frozen. No other 1.x version is a support target, and version is metadata, never a tooling branch key."
+  },
+  "platforms": [
+    {
+      "id": "windows-x86-64",
+      "os": "windows",
+      "arch": "x86_64",
+      "tier": "supported"
+    },
+    {
+      "id": "linux-x86-64",
+      "os": "linux",
+      "arch": "x86_64",
+      "tier": "supported"
+    },
+    {
+      "id": "macos-aarch64",
+      "os": "macos",
+      "arch": "aarch64",
+      "tier": "supported"
+    },
+    {
+      "id": "macos-x86-64",
+      "os": "macos",
+      "arch": "x86_64",
+      "tier": "best-effort",
+      "notes": "Built and tested only while a hosted runner for this architecture exists."
+    }
+  ],
+  "formats": [
+    {
+      "id": "resource-path",
+      "name": "Resource ID to DAT path mapping",
+      "category": "resource",
+      "phase": 1,
+      "read": "supported",
+      "write": "none",
+      "export": "not-applicable",
+      "notes": "The id to data/AA/BB/CC/DD.DAT mapping is total over the 32-bit space, both directions, with public cases for the mapping and for malformed identifiers. Confirmed against retail 1.23b: all 140180 install resources match the convention. Stays supported rather than verified because the operation takes an identifier listing, so no retail file is a fixture for it. Evidence: docs/formats/sedb-res.md."
+    },
+    {
+      "id": "sedb",
+      "name": "SEDB container",
+      "category": "resource",
+      "phase": 1,
+      "read": "partial",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "json",
+        "binary"
+      ],
+      "notes": "Header and bounded enumeration only. The 0x10 field is advisory, not a container extent: across the install it equals the file size for 92303 of 97749 SEDB resources, headerSize for the 5203 PHB, zero for the 145 mtb, and a sub-file extent for 98 vins and leaf. Payload interpretation, unknownA, and flags are unresolved and reported rather than guessed; non-SEDB resources such as GTEX and PWIB-wrapped textures are not read at all. Extraction and manifesting are not supported. Gaps: docs/formats/sedb-res.md."
+    },
+    {
+      "id": "res",
+      "name": "RES container",
+      "category": "resource",
+      "phase": 1,
+      "read": "partial",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "json",
+        "binary"
+      ],
+      "notes": "Extended header, subresource directory, nested containers, unknown gaps, and clamped over-long extents. Directory offsets are confirmed against retail 1.23b: subresources land on SEDB signatures at the headerSize + 16 * count payload base. Directory kind values and unknownB are unresolved, and the overlapping trailing region every RES carries is reported rather than resolved. Gaps: docs/formats/sedb-res.md."
+    },
+    {
+      "id": "sqwt",
+      "name": "SQEX container",
+      "category": "resource",
+      "phase": 1,
+      "read": "verified",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "binary"
+      ],
+      "notes": "The container the client's UI resources are stored in: an eight-byte signature, then a body whose whole 64-bit blocks are enciphered under a key that is the file's own base name, with a final run shorter than a block left in the clear. The cipher is the published Blowfish algorithm with its block halves read as little-endian words, which is the part established against retail data rather than taken from the specification. Read completely: all 1155 SQEX containers in the install decipher to UTF-8 widget documents, re-enciphering reproduces every input byte, and the reading reports the container plus a census of the document's shape rather than its content. Public cases cover both tail cases, a byte order mark, the two constructs the widget profile adds, and seven malformed inputs; eight private cases cover all six suffixes against retail 1.23b. Not claimed: the widget markup's meaning, entity expansion, writing, and the GTEX and SPKL files stored beside these containers. Evidence: docs/formats/sqex.md."
+    },
+    {
+      "id": "scrambled-xml",
+      "name": "Scrambled XML document",
+      "category": "text",
+      "phase": 1,
+      "read": "verified",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "xml"
+      ],
+      "notes": "An XML document behind a one-byte trailer, a partial byte reversal, and a two-key word cipher. Recognition is the decode itself, not the trailer byte: two resources in the install end in it and are not documents. The first word key is derived from the encoded length and the second is recovered from the document's own known opening, so nothing is stored and nothing is guessed. Read completely: all 799 scrambled resources in the install decode to well-formed UTF-8 XML, and a decoded document is handed to the same reader a plaintext one gets. Public cases cover both document kinds, all four encoded-length residues, and five malformed inputs; private cases cover all four residues against retail 1.23b, recorded by span, key, digest, and name census rather than by content. Evidence: docs/formats/ssd-sheet.md."
+    },
+    {
+      "id": "ssd-master",
+      "name": "SSD master schema",
+      "category": "sheet",
+      "phase": 1,
+      "read": "supported",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "json"
+      ],
+      "notes": "The master document is a <ssd> root whose sheets are references: a name and the decimal resource id of the schema document that defines the sheet. Read completely, with every attribute preserved verbatim, and resolved to a DAT path through the resource-path mapping. Public cases cover the document and six malformed inputs. Stays supported rather than verified because a faithful report of a schema document is the document, so a committed expected output for a retail one would publish client data; retail parity is established instead by the non-gating census in tools/research/. Evidence: docs/formats/ssd-sheet.md."
+    },
+    {
+      "id": "ssd-sheet",
+      "name": "SSD sheet info and data",
+      "category": "sheet",
+      "phase": 1,
+      "read": "partial",
+      "write": "planned",
+      "export": "partial",
+      "exportViews": [
+        "json",
+        "csv"
+      ],
+      "notes": "Read covers the schema document, enable-driven row offsets, all ten retail column types, IEEE-754 binary16, rich strings, and the Chinese xtx/quest trailing-column omission. The game-directory CLI discovered and exported 803 definition documents from retail 1.23b without a master list or third-party binary. Public CSV cases cover binary16 and exact rich-token preservation, moving export from planned to partial. It remains partial because public conformance does not yet cover whole-document resource linking, absent block triples, trailing omissions, duplicate logical cells, and their malformed forms. Retail output matched the reference corpus's 803 names, header shapes, and row counts. Direct cataloging confirmed that all 585 resources of 195 absent Chinese block triples are unshipped, and the comparison corpus leaves their unique columns empty. The export also retains 639 explicit missing markers and reports 57 conflicting duplicates. Write-back still needs round-trip fixtures. Evidence: docs/formats/ssd-sheet.md."
+    },
+    {
+      "id": "enable-file",
+      "name": "Sparse enable-file row ranges",
+      "category": "sheet",
+      "phase": 1,
+      "read": "verified",
+      "write": "none",
+      "export": "not-applicable",
+      "notes": "Pairs of first row identifier and run length, read completely, with an empty or out-of-order range reported as an anomaly rather than rejected and a trailing partial record failing cleanly. Retail 1.23b parity: across all 37 blocks the ranges name exactly the row slots whose offset entry carries a span, 533 ranges over 7866 rows. Evidence: docs/formats/ssd-sheet.md."
+    },
+    {
+      "id": "rich-string",
+      "name": "Rich strings and control codes",
+      "category": "text",
+      "phase": 1,
+      "read": "partial",
+      "write": "none",
+      "export": "partial",
+      "exportViews": [
+        "json",
+        "text"
+      ],
+      "notes": "Lossless token intermediate representation preserving raw control tokens: a decoded string becomes text runs and tokens, a token keeps its code and payload bytes verbatim, and re-encoding reproduces the input byte for byte. All 26 retail codes are named and their recursive expression payloads parse; an independent pass consumed all 223513 retail token payloads without error. The public CSV case preserves exact token bytes in named hexadecimal markers, moving text export from planned to partial. Read and export remain partial until public conformance covers the full 26-code vocabulary, expression forms, and malformed-expression space. The 0xF1 payload-length escape is still evidenced by one retail occurrence. Evidence: docs/formats/ssd-sheet.md."
+    },
+    {
+      "id": "config-sys",
+      "name": "config.sys",
+      "category": "config",
+      "phase": 1,
+      "read": "partial",
+      "write": "supported",
+      "export": "not-applicable",
+      "notes": "The client's system settings, in the user directory rather than the install: a compiled-in stamp word, then a grid of little-endian 32-bit words holding two fixed-width UTF-16LE text spans. The one retail sample is 684 bytes, 170 words past the stamp, 50 of them written. Read to structure only: there is exactly one sample of each configuration file, so no field's meaning is claimed. A word is carried with its offset and value and a printable run is counted rather than named; the report carries the shape and never a value, because these files are the owner's own settings rather than client assets. Write is a byte-exact round trip: parsing a file and writing the model back reproduces the input byte for byte, proved by validate cases over the public fixtures and the retail files. Not claimed: what any field means, and that the client accepts a file this tool wrote after a value was changed - nothing here has been through the game. Evidence: docs/formats/configuration.md."
+    },
+    {
+      "id": "config-pad",
+      "name": "config.pad",
+      "category": "config",
+      "phase": 1,
+      "read": "partial",
+      "write": "supported",
+      "export": "not-applicable",
+      "notes": "The client's input-device settings, the same stamped word-grid shape as config.sys, holding device identifiers and a button mapping. The one retail sample is 328 bytes, 81 words past the stamp, 14 of them written. Read to structure only: there is exactly one sample of each configuration file, so no field's meaning is claimed. A word is carried with its offset and value and a printable run is counted rather than named; the report carries the shape and never a value, because these files are the owner's own settings rather than client assets. Write is a byte-exact round trip: parsing a file and writing the model back reproduces the input byte for byte, proved by validate cases over the public fixtures and the retail files. Not claimed: what any field means, and that the client accepts a file this tool wrote after a value was changed - nothing here has been through the game. Evidence: docs/formats/configuration.md."
+    },
+    {
+      "id": "config-lng",
+      "name": "config.lng",
+      "category": "config",
+      "phase": 1,
+      "read": "partial",
+      "write": "supported",
+      "export": "not-applicable",
+      "notes": "The client's language setting: a word grid with no stamp. The one retail sample is 8 bytes, two words. Read to structure only: there is exactly one sample of each configuration file, so no field's meaning is claimed. A word is carried with its offset and value and a printable run is counted rather than named; the report carries the shape and never a value, because these files are the owner's own settings rather than client assets. Write is a byte-exact round trip: parsing a file and writing the model back reproduces the input byte for byte, proved by validate cases over the public fixtures and the retail files. Not claimed: what any field means, and that the client accepts a file this tool wrote after a value was changed - nothing here has been through the game. Evidence: docs/formats/configuration.md."
+    },
+    {
+      "id": "config-rgn",
+      "name": "config.rgn",
+      "category": "config",
+      "phase": 1,
+      "read": "partial",
+      "write": "supported",
+      "export": "not-applicable",
+      "notes": "The client's region setting, and the thinnest row in the matrix: the one retail sample is five bytes, all zero, and is not a word grid at all. The read carries the body whole as one span with a digest and interprets nothing, which is the entire claim; there is no malformed input for it, because every byte string is a valid body. Read to structure only: there is exactly one sample of each configuration file, so no field's meaning is claimed. A word is carried with its offset and value and a printable run is counted rather than named; the report carries the shape and never a value, because these files are the owner's own settings rather than client assets. Write is a byte-exact round trip: parsing a file and writing the model back reproduces the input byte for byte, proved by validate cases over the public fixtures and the retail files. Not claimed: what any field means, and that the client accepts a file this tool wrote after a value was changed - nothing here has been through the game. Evidence: docs/formats/configuration.md."
+    },
+    {
+      "id": "staticactor-san",
+      "name": "staticactor.san",
+      "category": "world",
+      "phase": 1,
+      "read": "planned",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "json"
+      ]
+    },
+    {
+      "id": "region",
+      "name": "Region definition",
+      "category": "world",
+      "phase": 1,
+      "read": "planned",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "json"
+      ]
+    },
+    {
+      "id": "lpb",
+      "name": "LPB compiled script container",
+      "category": "script",
+      "phase": 1,
+      "read": "planned",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "json",
+        "lua"
+      ]
+    },
+    {
+      "id": "lua-path",
+      "name": "Lua path encoding",
+      "category": "script",
+      "phase": 1,
+      "read": "planned",
+      "write": "planned",
+      "export": "not-applicable",
+      "notes": "Encode and decode are the same primitive pair, so write support arrives with read."
+    },
+    {
+      "id": "client-lua",
+      "name": "Client Lua script payload",
+      "category": "script",
+      "phase": 1,
+      "read": "planned",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "lua"
+      ]
+    },
+    {
+      "id": "gtex",
+      "name": "GTEX texture",
+      "category": "graphics",
+      "phase": 4,
+      "read": "planned",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "dds",
+        "png",
+        "json"
+      ]
+    },
+    {
+      "id": "fdt",
+      "name": "FDT font",
+      "category": "graphics",
+      "phase": 4,
+      "read": "planned",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "json"
+      ],
+      "notes": "Metadata export first; glyph rasterization is a later call."
+    },
+    {
+      "id": "wrb-model",
+      "name": "WRB model and mesh",
+      "category": "graphics",
+      "phase": 4,
+      "read": "planned",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "gltf",
+        "json"
+      ]
+    },
+    {
+      "id": "skeleton",
+      "name": "Skeleton and skin",
+      "category": "graphics",
+      "phase": 4,
+      "read": "planned",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "gltf",
+        "json"
+      ]
+    },
+    {
+      "id": "animation",
+      "name": "Animation",
+      "category": "graphics",
+      "phase": 4,
+      "read": "planned",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "gltf",
+        "json"
+      ]
+    },
+    {
+      "id": "material",
+      "name": "Material definition",
+      "category": "graphics",
+      "phase": 4,
+      "read": "planned",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "json"
+      ]
+    },
+    {
+      "id": "shader",
+      "name": "Shader program and bytecode",
+      "category": "graphics",
+      "phase": 4,
+      "read": "planned",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "json",
+        "binary"
+      ]
+    },
+    {
+      "id": "map-layout",
+      "name": "Map layout scene graph",
+      "category": "world",
+      "phase": 4,
+      "read": "planned",
+      "write": "none",
+      "export": "planned",
+      "exportViews": [
+        "gltf",
+        "json"
+      ],
+      "notes": "Layout reading also exists in bahamut-navmesh for its own geometry needs; the repositories do not share code or data."
+    },
+    {
+      "id": "zipatch-legacy",
+      "name": "Legacy ZiPatch archive",
+      "category": "patch",
+      "phase": 5,
+      "read": "planned",
+      "write": "planned",
+      "export": "planned",
+      "exportViews": [
+        "binary",
+        "json"
+      ],
+      "notes": "FHDR, APLY, ADIR, DLED, and ETRY chunks. Modern SqPack-era chunk support is not 1.x support."
+    },
+    {
+      "id": "vercheck-manifest",
+      "name": "Vercheck and patch-chain manifest",
+      "category": "patch",
+      "phase": 5,
+      "read": "planned",
+      "write": "planned",
+      "export": "not-applicable"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "config-sys"
+  ],
+  "expect": {
+    "errorKind": "trailing-partial-record",
+    "errorOffset": 8,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/config/sys-partial-word.bin"
+  },
+  "formatId": "config-sys",
+  "id": "config-sys-partial-word",
+  "notes": "A grid ending in a run shorter than a word. Nothing states a length and nothing terminates the grid, so the leftover is unaccountable rather than ignorable.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

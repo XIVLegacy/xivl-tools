@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data"
+  ],
+  "expect": {
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 2,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/string-truncated.bin"
+  },
+  "formatId": "ssd-sheet",
+  "id": "sheet-string-truncated",
+  "notes": "A length prefix that runs past the end of the input.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

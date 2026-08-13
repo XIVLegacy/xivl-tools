@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-sqwt-sml-configkeychat",
+    "kind": "private"
+  },
+  "formatId": "sqwt",
+  "id": "retail-sqwt-sml-configkeychat",
+  "notes": "Retail parity for the container, recorded by span, block count, digest, and name census rather than by content. Three properties in one file: a body that divides evenly by the block size so there is no plaintext tail, a decoded document opening on a byte order mark, and seven comments.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

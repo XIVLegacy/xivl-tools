@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "errorKind": "missing-scramble-trailer",
+    "errorOffset": 185,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/no-trailer.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-no-trailer",
+  "notes": "The trailer byte removed. Without it the client's own reader hands the file on untouched, so decoding it anyway would be an invention.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

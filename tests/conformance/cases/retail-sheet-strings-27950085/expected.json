@@ -1,0 +1,387 @@
+{
+  "format": "ssd-sheet",
+  "input": {
+    "length": 574
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "scrambledCount": 4,
+  "stringCount": 4,
+  "strings": [
+    {
+      "declaredLength": 28,
+      "decodedLength": 26,
+      "kind": "sheet-string",
+      "scrambled": true,
+      "segments": [
+        {
+          "characters": 26,
+          "kind": "text",
+          "span": {
+            "length": 26,
+            "offset": 3
+          }
+        }
+      ],
+      "sha256": "3eec18169d289b618ae28ae2dfba2f97b031e3b115e1b7d8fe23274cfaefc4db",
+      "span": {
+        "length": 30,
+        "offset": 0
+      }
+    },
+    {
+      "declaredLength": 161,
+      "decodedLength": 159,
+      "kind": "sheet-string",
+      "scrambled": true,
+      "segments": [
+        {
+          "characters": 44,
+          "kind": "text",
+          "span": {
+            "length": 44,
+            "offset": 33
+          }
+        },
+        {
+          "code": 16,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 77
+          }
+        },
+        {
+          "characters": 106,
+          "kind": "text",
+          "span": {
+            "length": 111,
+            "offset": 81
+          }
+        }
+      ],
+      "sha256": "e5eb09b3031b24b22676735baacd2a9171e20283a37070089a1615e3c30da2ae",
+      "span": {
+        "length": 163,
+        "offset": 30
+      }
+    },
+    {
+      "declaredLength": 212,
+      "decodedLength": 210,
+      "kind": "sheet-string",
+      "scrambled": true,
+      "segments": [
+        {
+          "characters": 42,
+          "kind": "text",
+          "span": {
+            "length": 43,
+            "offset": 196
+          }
+        },
+        {
+          "code": 22,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 239
+          }
+        },
+        {
+          "characters": 3,
+          "kind": "text",
+          "span": {
+            "length": 4,
+            "offset": 243
+          }
+        },
+        {
+          "code": 22,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 247
+          }
+        },
+        {
+          "characters": 3,
+          "kind": "text",
+          "span": {
+            "length": 3,
+            "offset": 251
+          }
+        },
+        {
+          "code": 22,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 254
+          }
+        },
+        {
+          "characters": 3,
+          "kind": "text",
+          "span": {
+            "length": 3,
+            "offset": 258
+          }
+        },
+        {
+          "code": 22,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 261
+          }
+        },
+        {
+          "characters": 3,
+          "kind": "text",
+          "span": {
+            "length": 3,
+            "offset": 265
+          }
+        },
+        {
+          "code": 16,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 268
+          }
+        },
+        {
+          "characters": 129,
+          "kind": "text",
+          "span": {
+            "length": 134,
+            "offset": 272
+          }
+        }
+      ],
+      "sha256": "c3c332b17c05dae86b206e1d5e50c6da0c344a5080a1e03f87b6fdfacf7256bb",
+      "span": {
+        "length": 214,
+        "offset": 193
+      }
+    },
+    {
+      "declaredLength": 165,
+      "decodedLength": 163,
+      "kind": "sheet-string",
+      "scrambled": true,
+      "segments": [
+        {
+          "characters": 39,
+          "kind": "text",
+          "span": {
+            "length": 39,
+            "offset": 410
+          }
+        },
+        {
+          "code": 22,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 449
+          }
+        },
+        {
+          "characters": 2,
+          "kind": "text",
+          "span": {
+            "length": 2,
+            "offset": 453
+          }
+        },
+        {
+          "code": 22,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 455
+          }
+        },
+        {
+          "characters": 2,
+          "kind": "text",
+          "span": {
+            "length": 2,
+            "offset": 459
+          }
+        },
+        {
+          "code": 22,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 461
+          }
+        },
+        {
+          "characters": 2,
+          "kind": "text",
+          "span": {
+            "length": 2,
+            "offset": 465
+          }
+        },
+        {
+          "code": 22,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 467
+          }
+        },
+        {
+          "characters": 5,
+          "kind": "text",
+          "span": {
+            "length": 5,
+            "offset": 471
+          }
+        },
+        {
+          "code": 16,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 476
+          }
+        },
+        {
+          "characters": 14,
+          "kind": "text",
+          "span": {
+            "length": 14,
+            "offset": 480
+          }
+        },
+        {
+          "code": 22,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 494
+          }
+        },
+        {
+          "characters": 3,
+          "kind": "text",
+          "span": {
+            "length": 3,
+            "offset": 498
+          }
+        },
+        {
+          "code": 22,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 501
+          }
+        },
+        {
+          "characters": 2,
+          "kind": "text",
+          "span": {
+            "length": 2,
+            "offset": 505
+          }
+        },
+        {
+          "code": 22,
+          "kind": "token",
+          "lengthBytes": "01",
+          "lengthEncoding": "direct",
+          "payloadLength": 0,
+          "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "span": {
+            "length": 4,
+            "offset": 507
+          }
+        },
+        {
+          "characters": 62,
+          "kind": "text",
+          "span": {
+            "length": 62,
+            "offset": 511
+          }
+        }
+      ],
+      "sha256": "da89d2ee4a24ad2374b697758368888663746b1262e08f8c2f2635f063d7cfa9",
+      "span": {
+        "length": 167,
+        "offset": 407
+      }
+    }
+  ],
+  "tokenInventory": [
+    {
+      "code": 16,
+      "count": 3
+    },
+    {
+      "code": 22,
+      "count": 11
+    }
+  ],
+  "view": "strings"
+}

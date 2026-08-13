@@ -1,0 +1,1084 @@
+{
+  "columns": [
+    {
+      "type": "u32",
+      "width": 4
+    },
+    {
+      "type": "u32",
+      "width": 4
+    },
+    {
+      "type": "str",
+      "width": null
+    }
+  ],
+  "format": "ssd-sheet",
+  "input": {
+    "length": 914
+  },
+  "operation": "inspect",
+  "rowCount": 22,
+  "rows": [
+    {
+      "index": 0,
+      "span": {
+        "length": 23,
+        "offset": 0
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 0
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 4
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 13,
+          "decodedLength": 12,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 4,
+              "kind": "text",
+              "span": {
+                "length": 12,
+                "offset": 10
+              }
+            }
+          ],
+          "sha256": "f73f6b71ae8f76e5c8864d328acb4a10efad68b2f99c5e9fed09d3cb08ab887d",
+          "span": {
+            "length": 15,
+            "offset": 8
+          }
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "span": {
+        "length": 38,
+        "offset": 23
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 23
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 27
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 28,
+          "decodedLength": 27,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 9,
+              "kind": "text",
+              "span": {
+                "length": 27,
+                "offset": 33
+              }
+            }
+          ],
+          "sha256": "15576e49507b6b415a4e38f1ab670b80cdc3e86a8f39e5b97bda10e8b3e94bfb",
+          "span": {
+            "length": 30,
+            "offset": 31
+          }
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "span": {
+        "length": 41,
+        "offset": 61
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 61
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 65
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 31,
+          "decodedLength": 30,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 10,
+              "kind": "text",
+              "span": {
+                "length": 30,
+                "offset": 71
+              }
+            }
+          ],
+          "sha256": "d2d589ee7ffda897bdd27635a9000082ab09d4ed6619d5dd26455fe9973a0f44",
+          "span": {
+            "length": 33,
+            "offset": 69
+          }
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "span": {
+        "length": 38,
+        "offset": 102
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 102
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 106
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 28,
+          "decodedLength": 27,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 9,
+              "kind": "text",
+              "span": {
+                "length": 27,
+                "offset": 112
+              }
+            }
+          ],
+          "sha256": "a11259fd9f17469b86a00f93b955369896f5b7fd861f66cbd4d4c528ea5a47c8",
+          "span": {
+            "length": 30,
+            "offset": 110
+          }
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "span": {
+        "length": 29,
+        "offset": 140
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 140
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 144
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 19,
+          "decodedLength": 18,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 6,
+              "kind": "text",
+              "span": {
+                "length": 18,
+                "offset": 150
+              }
+            }
+          ],
+          "sha256": "ecf98875764fd08f5f0b117c2877ef767a9dfae62aeb640852c898eee0d88ffc",
+          "span": {
+            "length": 21,
+            "offset": 148
+          }
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "span": {
+        "length": 50,
+        "offset": 169
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 169
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 173
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 40,
+          "decodedLength": 39,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 13,
+              "kind": "text",
+              "span": {
+                "length": 39,
+                "offset": 179
+              }
+            }
+          ],
+          "sha256": "f072971458afea55b44f1930352f9ad538bb21620b4672641185aefab8552a3c",
+          "span": {
+            "length": 42,
+            "offset": 177
+          }
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "span": {
+        "length": 53,
+        "offset": 219
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 219
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 223
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 43,
+          "decodedLength": 42,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 14,
+              "kind": "text",
+              "span": {
+                "length": 42,
+                "offset": 229
+              }
+            }
+          ],
+          "sha256": "1a034e011cb9fa141ccc7679f3966bff666547b2c9ecdf2f43a5b90a711e6ebc",
+          "span": {
+            "length": 45,
+            "offset": 227
+          }
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "span": {
+        "length": 72,
+        "offset": 272
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 272
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 276
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 62,
+          "decodedLength": 61,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 6,
+              "kind": "text",
+              "span": {
+                "length": 18,
+                "offset": 282
+              }
+            },
+            {
+              "code": 16,
+              "kind": "token",
+              "lengthBytes": "01",
+              "lengthEncoding": "direct",
+              "payloadLength": 0,
+              "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "span": {
+                "length": 4,
+                "offset": 300
+              }
+            },
+            {
+              "characters": 13,
+              "kind": "text",
+              "span": {
+                "length": 39,
+                "offset": 304
+              }
+            }
+          ],
+          "sha256": "9fa3e02b6c70f0992574fdb8c3bf078e4d5cee67a7329e407479be8c052f7a70",
+          "span": {
+            "length": 64,
+            "offset": 280
+          }
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "span": {
+        "length": 29,
+        "offset": 344
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 344
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 348
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 19,
+          "decodedLength": 18,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 6,
+              "kind": "text",
+              "span": {
+                "length": 18,
+                "offset": 354
+              }
+            }
+          ],
+          "sha256": "5fb7ae2d067ccc6368b8da8119b78b47a4a0ddda2777a1d9de61011d2e919d7a",
+          "span": {
+            "length": 21,
+            "offset": 352
+          }
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "span": {
+        "length": 47,
+        "offset": 373
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 373
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 377
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 37,
+          "decodedLength": 36,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 12,
+              "kind": "text",
+              "span": {
+                "length": 36,
+                "offset": 383
+              }
+            }
+          ],
+          "sha256": "f41c53d0a2660d409b5656a6f99361054796fffe04e0d37a621fa18587f8747b",
+          "span": {
+            "length": 39,
+            "offset": 381
+          }
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "span": {
+        "length": 41,
+        "offset": 420
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 420
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 424
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 31,
+          "decodedLength": 30,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 10,
+              "kind": "text",
+              "span": {
+                "length": 30,
+                "offset": 430
+              }
+            }
+          ],
+          "sha256": "5e1572b04f01288ba14410e47491bb93509e786e7f4c5567c37b168951dc4f29",
+          "span": {
+            "length": 33,
+            "offset": 428
+          }
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "span": {
+        "length": 90,
+        "offset": 461
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 461
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 465
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 80,
+          "decodedLength": 79,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 10,
+              "kind": "text",
+              "span": {
+                "length": 30,
+                "offset": 471
+              }
+            },
+            {
+              "code": 16,
+              "kind": "token",
+              "lengthBytes": "01",
+              "lengthEncoding": "direct",
+              "payloadLength": 0,
+              "payloadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "span": {
+                "length": 4,
+                "offset": 501
+              }
+            },
+            {
+              "characters": 15,
+              "kind": "text",
+              "span": {
+                "length": 45,
+                "offset": 505
+              }
+            }
+          ],
+          "sha256": "b39a57eda7a8139d94d3fe5f197b0c3e31b7ceef0884aef184b16b5d07de172d",
+          "span": {
+            "length": 82,
+            "offset": 469
+          }
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "span": {
+        "length": 44,
+        "offset": 551
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 551
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 555
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 34,
+          "decodedLength": 33,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 11,
+              "kind": "text",
+              "span": {
+                "length": 33,
+                "offset": 561
+              }
+            }
+          ],
+          "sha256": "abf1149d4822d7c3df521e1a404df628503b964fd5e354d4fbc0014347be21b5",
+          "span": {
+            "length": 36,
+            "offset": 559
+          }
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "span": {
+        "length": 32,
+        "offset": 595
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 595
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 599
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 22,
+          "decodedLength": 21,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 7,
+              "kind": "text",
+              "span": {
+                "length": 21,
+                "offset": 605
+              }
+            }
+          ],
+          "sha256": "f082ea4408d7954dca070fcf40c9c0d25cd83a4de3042f648572319890dff29b",
+          "span": {
+            "length": 24,
+            "offset": 603
+          }
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "span": {
+        "length": 41,
+        "offset": 627
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 627
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 631
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 31,
+          "decodedLength": 30,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 10,
+              "kind": "text",
+              "span": {
+                "length": 30,
+                "offset": 637
+              }
+            }
+          ],
+          "sha256": "4ca731518c9c9929d68a8136fd2c1e36e18cdf1737fc0edeccd33ede50550343",
+          "span": {
+            "length": 33,
+            "offset": 635
+          }
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "span": {
+        "length": 44,
+        "offset": 668
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 668
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 672
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 34,
+          "decodedLength": 33,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 11,
+              "kind": "text",
+              "span": {
+                "length": 33,
+                "offset": 678
+              }
+            }
+          ],
+          "sha256": "d8f93dd413aa16323360f6ed07f7239dbd34b5b78aac5e93ea32e5202807e86d",
+          "span": {
+            "length": 36,
+            "offset": 676
+          }
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "span": {
+        "length": 38,
+        "offset": 712
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 712
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 716
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 28,
+          "decodedLength": 27,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 9,
+              "kind": "text",
+              "span": {
+                "length": 27,
+                "offset": 722
+              }
+            }
+          ],
+          "sha256": "9c570fc74a8be13b2575930dd1d7862f5732c7b34a086bcebb77aaddedb194ac",
+          "span": {
+            "length": 30,
+            "offset": 720
+          }
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "span": {
+        "length": 20,
+        "offset": 750
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 750
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 754
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 10,
+          "decodedLength": 9,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 3,
+              "kind": "text",
+              "span": {
+                "length": 9,
+                "offset": 760
+              }
+            }
+          ],
+          "sha256": "0f2bae9aab875d86750d6430b3931504cf6b9eaf3d54ec356cda3f5424f2df04",
+          "span": {
+            "length": 12,
+            "offset": 758
+          }
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "span": {
+        "length": 32,
+        "offset": 770
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 770
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 774
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 22,
+          "decodedLength": 21,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 7,
+              "kind": "text",
+              "span": {
+                "length": 21,
+                "offset": 780
+              }
+            }
+          ],
+          "sha256": "7c1c2a0ab392c083ddbc93efcd2b0cb62297ed5969fc5fca6ab310509b9dcc57",
+          "span": {
+            "length": 24,
+            "offset": 778
+          }
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "span": {
+        "length": 38,
+        "offset": 802
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 802
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 806
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 28,
+          "decodedLength": 27,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 9,
+              "kind": "text",
+              "span": {
+                "length": 27,
+                "offset": 812
+              }
+            }
+          ],
+          "sha256": "69a1067ed57de69d0284e18f830ceccbcf8610d31fab7e730065a72b7764b50d",
+          "span": {
+            "length": 30,
+            "offset": 810
+          }
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "span": {
+        "length": 27,
+        "offset": 840
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 840
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 844
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 17,
+          "decodedLength": 16,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 6,
+              "kind": "text",
+              "span": {
+                "length": 16,
+                "offset": 850
+              }
+            }
+          ],
+          "sha256": "735834f4f38aebb4b5f8c571eb4f69faa508de5808b814c5c9216e38aa2f2799",
+          "span": {
+            "length": 19,
+            "offset": 848
+          }
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "span": {
+        "length": 47,
+        "offset": 867
+      },
+      "values": [
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 867
+          },
+          "type": "u32"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 871
+          },
+          "type": "u32"
+        },
+        {
+          "declaredLength": 37,
+          "decodedLength": 36,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 12,
+              "kind": "text",
+              "span": {
+                "length": 36,
+                "offset": 877
+              }
+            }
+          ],
+          "sha256": "06a68dfb114dbb80083de697517c463cdd934c0d165fd007f039b485acce98cb",
+          "span": {
+            "length": 39,
+            "offset": 875
+          }
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 1,
+  "tokenInventory": [
+    {
+      "code": 16,
+      "count": 2
+    }
+  ],
+  "view": "rows"
+}

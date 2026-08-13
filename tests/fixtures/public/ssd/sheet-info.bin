@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ssd version="0.1">
+  <sheet name="synthetic/first" mode="client" column_max="5" column_count="5" cache="-1" type="none" lang="ja" infofile="">
+    <type>
+      <param>str</param>
+      <param>s32</param>
+      <param>bool</param>
+      <param>float</param>
+      <param>u8</param>
+    </type>
+    <index>
+      <param>0</param>
+      <param>3</param>
+    </index>
+    <block count="2">
+      <file begin="10000" count="7" offset="664076320" enable="664076319">664076318</file>
+      <file begin="30000" count="10" offset="664076393" enable="664076392">664076391</file>
+    </block>
+  </sheet>
+  <sheet name="synthetic/second" mode="client" column_max="1" column_count="1" cache="0" type="all" infofile="">
+    <type><param>str</param></type>
+    <index><param>0</param></index>
+    <block count="1">
+      <file begin="0" count="3" offset="45613059" enable="45613058">45613057</file>
+    </block>
+  </sheet>
+</ssd>

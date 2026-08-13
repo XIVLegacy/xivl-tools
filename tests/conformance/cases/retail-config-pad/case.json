@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "config-pad"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-config-pad",
+    "kind": "private"
+  },
+  "formatId": "config-pad",
+  "id": "retail-config-pad",
+  "notes": "Retail parity for the pad file. Its identifiers stay out of the expected output; what is recorded is where they sit.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sqwt/dictionary.bin"
+  },
+  "formatId": "sqwt",
+  "id": "sqwt-dictionary",
+  "notes": "The two constructs the widget profile adds to the SSD subset: a comment, counted rather than kept, and ampersand runs in text and in an attribute value, carried verbatim rather than expanded.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

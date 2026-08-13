@@ -1,0 +1,19 @@
+{
+  "body": {
+    "sha256": "74f81fe167d99b4cb41d6d0ccda82278caee9f3e2f25d5e5a3936ff3dcec60d0",
+    "span": {
+      "length": 5,
+      "offset": 0
+    }
+  },
+  "format": "config-rgn",
+  "grid": null,
+  "input": {
+    "length": 5
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "sha256": "74f81fe167d99b4cb41d6d0ccda82278caee9f3e2f25d5e5a3936ff3dcec60d0",
+  "stamp": null,
+  "textRuns": []
+}

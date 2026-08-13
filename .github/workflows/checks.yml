@@ -1,0 +1,80 @@
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  boundary:
+    name: Boundary Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check whitespace
+        run: git diff --check
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Run boundary gate
+        env:
+          XIVL_TOOLS_PRIVATE_FIXTURES_ABSENT: "1"
+        run: python tools/validate_repo.py
+
+  contract:
+    name: Contract Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check whitespace
+        run: git diff --check
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install Python dependencies
+        run: python -m pip install -r tools/requirements.txt
+      - name: Run contract checks
+        run: python tools/check_contract.py
+      - name: Check public fixtures
+        run: python tools/make_public_fixtures.py --check
+
+  rust:
+    name: ${{ format('Rust Checks ({0})', matrix.os) }}
+    needs: [boundary, contract]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check whitespace
+        run: git diff --check
+      - name: Install Rust toolchain
+        run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - name: Set default Rust toolchain
+        run: rustup default stable
+      - name: Check Rust formatting
+        run: cargo fmt --all --check
+      - name: Run Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Build Rust workspace
+        run: cargo build --workspace --locked
+      - name: Test Rust workspace
+        run: cargo test --workspace --locked
+      - name: Run public conformance
+        run: cargo run --locked -p xivl-conformance --bin conformance -- run

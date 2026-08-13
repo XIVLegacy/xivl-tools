@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "errorKind": "malformed-xml",
+    "errorOffset": 91,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/malformed-xml.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-malformed-xml",
+  "notes": "A decode that opens correctly and is not well formed.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

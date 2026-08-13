@@ -1,0 +1,23 @@
+{
+  "body": null,
+  "format": "config-lng",
+  "grid": {
+    "nonZeroWordOffsets": [
+      4
+    ],
+    "span": {
+      "length": 8,
+      "offset": 0
+    },
+    "wordCount": 2,
+    "zeroWordCount": 1
+  },
+  "input": {
+    "length": 8
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "sha256": "01acecb507abfe1a354aa8064f4af5d3f1acd019e37db3c11c97523b71c76e9d",
+  "stamp": null,
+  "textRuns": []
+}

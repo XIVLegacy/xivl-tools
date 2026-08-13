@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/res/clamped-extent.bin"
+  },
+  "formatId": "res",
+  "id": "res-clamped-extent",
+  "notes": "A subresource whose declared extent runs past the end of the file, the alignment slack the evidence document records. The parser clamps and reports it.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

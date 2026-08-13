@@ -1,0 +1,159 @@
+{
+  "columns": [
+    {
+      "type": "str",
+      "width": null
+    },
+    {
+      "type": "s8",
+      "width": 1
+    },
+    {
+      "type": "s16",
+      "width": 2
+    },
+    {
+      "type": "u16",
+      "width": 2
+    },
+    {
+      "type": "u32",
+      "width": 4
+    }
+  ],
+  "format": "ssd-sheet",
+  "input": {
+    "length": 54
+  },
+  "operation": "inspect",
+  "rowCount": 2,
+  "rows": [
+    {
+      "index": 0,
+      "span": {
+        "length": 27,
+        "offset": 0
+      },
+      "values": [
+        {
+          "declaredLength": 16,
+          "decodedLength": 15,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 15,
+              "kind": "text",
+              "span": {
+                "length": 15,
+                "offset": 2
+              }
+            }
+          ],
+          "sha256": "6a162d62f500b5c5dd11ced329460ee19928e662e0a0e89d35c107ed7305bdee",
+          "span": {
+            "length": 18,
+            "offset": 0
+          }
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 1,
+            "offset": 18
+          },
+          "type": "s8"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 2,
+            "offset": 19
+          },
+          "type": "s16"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 2,
+            "offset": 21
+          },
+          "type": "u16"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 23
+          },
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "span": {
+        "length": 27,
+        "offset": 27
+      },
+      "values": [
+        {
+          "declaredLength": 16,
+          "decodedLength": 15,
+          "kind": "sheet-string",
+          "scrambled": false,
+          "segments": [
+            {
+              "characters": 9,
+              "kind": "text",
+              "span": {
+                "length": 15,
+                "offset": 29
+              }
+            }
+          ],
+          "sha256": "4fee5e944f5a79cac33b2d13e6abf05e474b5ad48d016f670155df662b42bdfb",
+          "span": {
+            "length": 18,
+            "offset": 27
+          }
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 1,
+            "offset": 45
+          },
+          "type": "s8"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 2,
+            "offset": 46
+          },
+          "type": "s16"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 2,
+            "offset": 48
+          },
+          "type": "u16"
+        },
+        {
+          "kind": "column",
+          "span": {
+            "length": 4,
+            "offset": 50
+          },
+          "type": "u32"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 1,
+  "tokenInventory": [],
+  "view": "rows"
+}

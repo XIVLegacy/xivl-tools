@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "config-lng"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/config/lng-words.bin"
+  },
+  "formatId": "config-lng",
+  "id": "config-lng-words",
+  "notes": "Two words and no stamp, which is the whole of the language file.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

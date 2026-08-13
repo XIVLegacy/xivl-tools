@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "errorKind": "bad-magic",
+    "errorOffset": 0,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/not-a-document.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-not-a-document",
+  "notes": "A file that ends in the trailer and is not a document. Two such resources exist in the install, which is why recognition is the whole decode rather than one byte.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

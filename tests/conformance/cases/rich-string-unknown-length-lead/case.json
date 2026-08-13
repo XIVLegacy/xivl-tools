@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data"
+  ],
+  "expect": {
+    "errorKind": "malformed-rich-string-token",
+    "errorOffset": 10,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/rich-unknown-length-lead.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-unknown-length-lead",
+  "notes": "A length lead byte in the escape range that this project has not established. Refused rather than guessed.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

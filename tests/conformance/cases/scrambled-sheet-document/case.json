@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "ssd"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/sheet-info.bin"
+  },
+  "formatId": "ssd-sheet",
+  "id": "scrambled-sheet-document",
+  "notes": "A scrambled schema declaring all ten column types the 1.23b documents use, read through the plaintext document model.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

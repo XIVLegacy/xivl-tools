@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 5,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/short-body.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-short-body",
+  "notes": "A trailer with too few bytes ahead of it to carry the second word key.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "config-sys"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-config-sys",
+    "kind": "private"
+  },
+  "formatId": "config-sys",
+  "id": "retail-config-sys",
+  "notes": "Retail parity for the system file. The expected output is the stamp, the grid's extent and how much of it this install has written, and where the printable runs sit; no word value and no run content, because these are the owner's own settings.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

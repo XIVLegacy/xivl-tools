@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sedb/trailing-bytes.bin"
+  },
+  "formatId": "sedb",
+  "id": "sedb-trailing-bytes",
+  "notes": "Eight bytes follow the container. They must appear as trailing entries, never be dropped.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

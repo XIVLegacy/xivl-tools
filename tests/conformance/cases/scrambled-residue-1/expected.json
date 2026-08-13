@@ -1,0 +1,40 @@
+{
+  "container": {
+    "decodedLength": 73,
+    "decodedSha256": "6f03cf611e9e026a6e88d3406c8b9e20a129b595393ccfb6312572408546cd87",
+    "encoded": {
+      "length": 73,
+      "offset": 0
+    },
+    "finalByteCorrected": true,
+    "keyA": 511,
+    "keyB": 53992,
+    "kind": "scrambled-xml",
+    "trailer": {
+      "length": 1,
+      "offset": 73
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 1,
+        "name": "version"
+      }
+    ],
+    "byteOrderMark": true,
+    "elementCounts": [
+      {
+        "count": 1,
+        "name": "ssd"
+      }
+    ],
+    "root": "ssd"
+  },
+  "format": "scrambled-xml",
+  "input": {
+    "length": 74
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

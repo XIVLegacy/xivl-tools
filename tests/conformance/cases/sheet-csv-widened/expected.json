@@ -1,0 +1,17 @@
+{
+  "columns": [
+    "str",
+    "s8",
+    "s16",
+    "f16",
+    "u32"
+  ],
+  "csv": " ,0,1,2,3,4\n ,str,s8,s16,f16,u32\n0,widened row one,-8,-300,1,4000000000\n1,row \u00e9 \u4e2d \ud840\udc0b,127,32767,nan:0xFFFF,0\n",
+  "format": "ssd-sheet",
+  "input": {
+    "length": 54
+  },
+  "operation": "extract",
+  "rowCount": 2,
+  "schemaVersion": 1
+}

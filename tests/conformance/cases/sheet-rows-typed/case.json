@@ -1,0 +1,21 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data",
+    "--columns",
+    "str,s32,bool,float,u8"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/rows-typed.bin"
+  },
+  "formatId": "ssd-sheet",
+  "id": "sheet-rows-typed",
+  "notes": "Typed rows. A string column is self-delimiting and the rest are fixed width, so the column list alone fixes where a row ends.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

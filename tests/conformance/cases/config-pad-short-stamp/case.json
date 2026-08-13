@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "config-pad"
+  ],
+  "expect": {
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 2,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/config/pad-short-stamp.bin"
+  },
+  "formatId": "config-pad",
+  "id": "config-pad-short-stamp",
+  "notes": "Less than the leading stamp the pad file opens with.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

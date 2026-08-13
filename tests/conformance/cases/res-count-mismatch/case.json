@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "subresource-count-mismatch",
+    "errorOffset": 56,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/res/count-mismatch.bin"
+  },
+  "formatId": "res",
+  "id": "res-count-mismatch",
+  "notes": "The two subresource counts in the RES extended header disagree.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

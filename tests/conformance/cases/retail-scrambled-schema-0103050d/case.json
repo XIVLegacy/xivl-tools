@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-scrambled-schema-0103050d",
+    "kind": "private"
+  },
+  "formatId": "scrambled-xml",
+  "id": "retail-scrambled-schema-0103050d",
+  "notes": "Retail parity for encoded length 0 modulo 4.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

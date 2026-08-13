@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sqwt/aligned.bin"
+  },
+  "formatId": "sqwt",
+  "id": "sqwt-aligned",
+  "notes": "A body that divides evenly by the block size, so there is no plaintext tail. 155 retail containers take this shape.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 12,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sedb/truncated-header.bin"
+  },
+  "formatId": "sedb",
+  "id": "sedb-truncated-header",
+  "notes": "The input ends inside the fixed header.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

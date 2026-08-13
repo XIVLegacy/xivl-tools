@@ -1,0 +1,104 @@
+{
+  "container": {
+    "decodedLength": 378,
+    "decodedSha256": "5e96b9c674a1b87f240edf904197f6a1c967ed490618ac3174561844592fc24d",
+    "encoded": {
+      "length": 378,
+      "offset": 0
+    },
+    "finalByteCorrected": false,
+    "keyA": 2646,
+    "keyB": 64874,
+    "kind": "scrambled-xml",
+    "trailer": {
+      "length": 1,
+      "offset": 378
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 1,
+        "name": "begin"
+      },
+      {
+        "count": 1,
+        "name": "cache"
+      },
+      {
+        "count": 1,
+        "name": "column_count"
+      },
+      {
+        "count": 1,
+        "name": "column_max"
+      },
+      {
+        "count": 2,
+        "name": "count"
+      },
+      {
+        "count": 1,
+        "name": "enable"
+      },
+      {
+        "count": 1,
+        "name": "mode"
+      },
+      {
+        "count": 1,
+        "name": "name"
+      },
+      {
+        "count": 1,
+        "name": "offset"
+      },
+      {
+        "count": 1,
+        "name": "type"
+      },
+      {
+        "count": 1,
+        "name": "version"
+      }
+    ],
+    "byteOrderMark": true,
+    "elementCounts": [
+      {
+        "count": 1,
+        "name": "block"
+      },
+      {
+        "count": 1,
+        "name": "file"
+      },
+      {
+        "count": 1,
+        "name": "index"
+      },
+      {
+        "count": 2,
+        "name": "param"
+      },
+      {
+        "count": 1,
+        "name": "sheet"
+      },
+      {
+        "count": 1,
+        "name": "ssd"
+      },
+      {
+        "count": 1,
+        "name": "type"
+      }
+    ],
+    "root": "ssd"
+  },
+  "format": "scrambled-xml",
+  "input": {
+    "length": 379
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

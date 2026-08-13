@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/ssd/master.bin"
+  },
+  "formatId": "ssd-master",
+  "id": "ssd-master-document",
+  "notes": "A master document: every sheet is a reference carrying the decimal resource id of the document that defines it.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

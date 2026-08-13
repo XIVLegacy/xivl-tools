@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-sqwt-form-actionequipdetail",
+    "kind": "private"
+  },
+  "formatId": "sqwt",
+  "id": "retail-sqwt-form-actionequipdetail",
+  "notes": "Retail parity for the container, recorded by span, block count, digest, and name census rather than by content. Ampersand runs in the decoded document, which the widget profile carries verbatim and the SSD profile refuses.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

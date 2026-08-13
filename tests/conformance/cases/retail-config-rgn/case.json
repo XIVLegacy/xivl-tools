@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "config-rgn"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-config-rgn",
+    "kind": "private"
+  },
+  "formatId": "config-rgn",
+  "id": "retail-config-rgn",
+  "notes": "Retail parity for the region file: five bytes, carried whole.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

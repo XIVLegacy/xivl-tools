@@ -1,0 +1,21 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data",
+    "--columns",
+    "f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,bool,bool,bool,bool,bool,bool,bool,bool,bool,bool,bool,bool,bool,bool,bool,bool,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,f16,s32,s32,s32"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-sheet-rows-03a70820",
+    "kind": "private"
+  },
+  "formatId": "ssd-sheet",
+  "id": "retail-sheet-rows-03a70820",
+  "notes": "Retail parity for the f16 width: 212 bytes tile as exactly one row only if f16 is two bytes.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

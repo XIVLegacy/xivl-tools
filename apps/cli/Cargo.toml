@@ -1,0 +1,18 @@
+[package]
+name = "xivl-cli"
+description = "The xivl command line over the 1.23b format libraries."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "xivl"
+path = "src/main.rs"
+
+[dependencies]
+xivl-formats.workspace = true
+
+[lints]
+workspace = true

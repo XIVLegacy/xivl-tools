@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "row-offsets"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/row-offsets.bin"
+  },
+  "formatId": "ssd-sheet",
+  "id": "sheet-row-offsets",
+  "notes": "A row-offset array where entry i is the end offset of row i, so a repeated value is an empty slot.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

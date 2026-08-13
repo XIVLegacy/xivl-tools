@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/rich-tokens.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-tokens",
+  "notes": "Every control-token length encoding, a payload carrying its own 0x02 to 0x03 frame, and codes this project reports without interpreting.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

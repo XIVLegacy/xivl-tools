@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/ssd/sheet-info.bin"
+  },
+  "formatId": "ssd-sheet",
+  "id": "ssd-sheet-document",
+  "notes": "A schema document: two sheets, one language tagged, covering every column type the 1.23b documents declare.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

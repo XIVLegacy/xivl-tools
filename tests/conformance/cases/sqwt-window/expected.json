@@ -1,0 +1,64 @@
+{
+  "container": {
+    "blockCount": 30,
+    "decodedLength": 243,
+    "decodedSha256": "4d6c2d0b6cda94c34626e4c106a9a6ecd7c90064bacbe82dde54d0820798f2bd",
+    "enciphered": {
+      "length": 240,
+      "offset": 8
+    },
+    "header": {
+      "length": 8,
+      "offset": 0
+    },
+    "keyName": "window.bin",
+    "kind": "sqwt",
+    "plaintextTail": {
+      "length": 3,
+      "offset": 248
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 1,
+        "name": "IsVisible"
+      },
+      {
+        "count": 1,
+        "name": "Margin"
+      },
+      {
+        "count": 4,
+        "name": "Name"
+      },
+      {
+        "count": 1,
+        "name": "Width"
+      }
+    ],
+    "byteOrderMark": false,
+    "comments": 0,
+    "elementCounts": [
+      {
+        "count": 2,
+        "name": "SyntheticLabel"
+      },
+      {
+        "count": 1,
+        "name": "SyntheticPanel"
+      },
+      {
+        "count": 1,
+        "name": "SyntheticWindow"
+      }
+    ],
+    "root": "SyntheticWindow"
+  },
+  "format": "sqwt",
+  "input": {
+    "length": 251
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

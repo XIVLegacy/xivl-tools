@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/rich-tokens.bin"
+  },
+  "formatId": "ssd-sheet",
+  "id": "sheet-csv-rich",
+  "notes": "A public CSV export view that keeps literal text readable and every rich-string token byte in a reversible hexadecimal form.",
+  "operation": "extract",
+  "schemaVersion": 1
+}

@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "config-lng"
+  ],
+  "expect": {
+    "errorKind": "trailing-partial-record",
+    "errorOffset": 4,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/config/rgn-body.bin"
+  },
+  "formatId": "config-lng",
+  "id": "config-rgn-as-lng",
+  "notes": "The region file read as a word grid. The four readings are not interchangeable, and reading one file as another fails rather than producing a plausible answer.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

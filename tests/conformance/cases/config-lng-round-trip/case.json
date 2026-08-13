@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "config-lng"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/config/lng-words.bin"
+  },
+  "formatId": "config-lng",
+  "id": "config-lng-round-trip",
+  "notes": "The write half: the model is encoded back and the bytes must reproduce the input exactly. That is what a write status of supported claims.",
+  "operation": "validate",
+  "schemaVersion": 1
+}

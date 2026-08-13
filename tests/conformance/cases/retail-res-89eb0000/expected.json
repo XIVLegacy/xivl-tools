@@ -1,0 +1,244 @@
+{
+  "format": "res",
+  "input": {
+    "length": 7711
+  },
+  "operation": "inspect",
+  "root": {
+    "anomalies": [
+      {
+        "detail": "subresource 4 declares 224 byte(s) ending at 7760, clamped to the 7711 byte input",
+        "kind": "subresource-extent-clamped",
+        "span": {
+          "length": 175,
+          "offset": 7536
+        }
+      },
+      {
+        "detail": "subresource extent starting at 7536 overlaps the preceding entry ending at 7672",
+        "kind": "subresource-overlap",
+        "span": {
+          "length": 136,
+          "offset": 7536
+        }
+      }
+    ],
+    "declaredSize": 7711,
+    "entries": [
+      {
+        "entryCount": 5,
+        "kind": "subresource-directory",
+        "sha256": "bf34a1c8b165ee660be8870710d6ea3e51f5a72823b049fdc3659b9ae998f7a6",
+        "span": {
+          "length": 80,
+          "offset": 64
+        }
+      },
+      {
+        "child": {
+          "anomalies": [],
+          "declaredSize": 5850,
+          "entries": [
+            {
+              "kind": "payload",
+              "sha256": "9739dbda69f9db689b17b7f129581f7bebc5b374c4bd2a7d5af81e291178abfe",
+              "span": {
+                "length": 5802,
+                "offset": 192
+              }
+            }
+          ],
+          "flags": 512,
+          "headerSize": 48,
+          "headerUnknown": [
+            {
+              "kind": "unknown-gap",
+              "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+              "span": {
+                "length": 28,
+                "offset": 164
+              }
+            }
+          ],
+          "kind": "sedb-container",
+          "span": {
+            "length": 5850,
+            "offset": 144
+          },
+          "subtype": "shd\\x00",
+          "totalSize": 5850,
+          "unknownA": 29
+        },
+        "declaredKind": 2,
+        "declaredOffset": 0,
+        "declaredSize": 5850,
+        "index": 0,
+        "kind": "subresource",
+        "sha256": "8f0e2779ed7f28586659fae054f2b8a10e52e33ebb1bb7d38e20431257cc5e77",
+        "span": {
+          "length": 5850,
+          "offset": 144
+        }
+      },
+      {
+        "kind": "unknown-gap",
+        "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+        "span": {
+          "length": 2,
+          "offset": 5994
+        }
+      },
+      {
+        "child": {
+          "anomalies": [],
+          "declaredSize": 1216,
+          "entries": [
+            {
+              "kind": "payload",
+              "sha256": "607466ba370124f97681bf8c8ef81944b10ef0f6f7b9b912e1a080bdeb4010a7",
+              "span": {
+                "length": 1168,
+                "offset": 6044
+              }
+            }
+          ],
+          "flags": 512,
+          "headerSize": 48,
+          "headerUnknown": [
+            {
+              "kind": "unknown-gap",
+              "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+              "span": {
+                "length": 28,
+                "offset": 6016
+              }
+            }
+          ],
+          "kind": "sedb-container",
+          "span": {
+            "length": 1216,
+            "offset": 5996
+          },
+          "subtype": "wrb\\x00",
+          "totalSize": 1216,
+          "unknownA": 23
+        },
+        "declaredKind": 2,
+        "declaredOffset": 5852,
+        "declaredSize": 1216,
+        "index": 1,
+        "kind": "subresource",
+        "sha256": "4ceabedeba38473a35aadde58e4ff92f1d1c6bee0dc5c206f04db50a963b4234",
+        "span": {
+          "length": 1216,
+          "offset": 5996
+        }
+      },
+      {
+        "kind": "unknown-gap",
+        "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+        "span": {
+          "length": 4,
+          "offset": 7212
+        }
+      },
+      {
+        "child": {
+          "anomalies": [],
+          "declaredSize": 292,
+          "entries": [
+            {
+              "kind": "payload",
+              "sha256": "10c69ae9856693304df8daaeca46de49c3a38b74cc358fd7507891603f495ca5",
+              "span": {
+                "length": 244,
+                "offset": 7264
+              }
+            }
+          ],
+          "flags": 1024,
+          "headerSize": 48,
+          "headerUnknown": [
+            {
+              "kind": "unknown-gap",
+              "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+              "span": {
+                "length": 28,
+                "offset": 7236
+              }
+            }
+          ],
+          "kind": "sedb-container",
+          "span": {
+            "length": 292,
+            "offset": 7216
+          },
+          "subtype": "SKL ",
+          "totalSize": 292,
+          "unknownA": 7000
+        },
+        "declaredKind": 4,
+        "declaredOffset": 7072,
+        "declaredSize": 292,
+        "index": 2,
+        "kind": "subresource",
+        "sha256": "8b78f57df7e695d3784730e0e4e002f0ae206d34fb09d24aaf3adbfb2c9c3f11",
+        "span": {
+          "length": 292,
+          "offset": 7216
+        }
+      },
+      {
+        "declaredKind": 0,
+        "declaredOffset": 7364,
+        "declaredSize": 164,
+        "index": 3,
+        "kind": "subresource",
+        "sha256": "ad01274536a325f77de2a45559f369268e86d80a522d6674d0d5e0e444fd7977",
+        "span": {
+          "length": 164,
+          "offset": 7508
+        }
+      },
+      {
+        "declaredKind": 0,
+        "declaredOffset": 7392,
+        "declaredSize": 224,
+        "index": 4,
+        "kind": "subresource",
+        "sha256": "5ba433b318e60e045dfdcf182218edb1131e8a00d03a4bf6d4ae7e05393e2b87",
+        "span": {
+          "length": 39,
+          "offset": 7672
+        }
+      }
+    ],
+    "flags": 1024,
+    "headerSize": 64,
+    "headerUnknown": [
+      {
+        "kind": "unknown-gap",
+        "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+        "span": {
+          "length": 28,
+          "offset": 20
+        }
+      }
+    ],
+    "kind": "sedb-container",
+    "res": {
+      "subresourceCount": 5,
+      "typeName": "brt\\x00",
+      "unknownB": 7472
+    },
+    "span": {
+      "length": 7711,
+      "offset": 0
+    },
+    "subtype": "RES ",
+    "totalSize": 7711,
+    "unknownA": 4000
+  },
+  "schemaVersion": 1,
+  "trailing": []
+}

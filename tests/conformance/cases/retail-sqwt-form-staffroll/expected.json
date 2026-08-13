@@ -1,0 +1,132 @@
+{
+  "container": {
+    "blockCount": 120,
+    "decodedLength": 964,
+    "decodedSha256": "47cd8fdfcfb02517dd06d02d0a95208d98c0f399a8f790e4e101b515465238bb",
+    "enciphered": {
+      "length": 960,
+      "offset": 8
+    },
+    "header": {
+      "length": 8,
+      "offset": 0
+    },
+    "keyName": "Staffroll.form",
+    "kind": "sqwt",
+    "plaintextTail": {
+      "length": 4,
+      "offset": 968
+    }
+  },
+  "document": {
+    "attributeCounts": [
+      {
+        "count": 1,
+        "name": "Background"
+      },
+      {
+        "count": 2,
+        "name": "DragMode"
+      },
+      {
+        "count": 1,
+        "name": "FontEdge"
+      },
+      {
+        "count": 1,
+        "name": "FontEdgeColor"
+      },
+      {
+        "count": 1,
+        "name": "IntData.Value0"
+      },
+      {
+        "count": 1,
+        "name": "ItemTemplateSelector"
+      },
+      {
+        "count": 1,
+        "name": "ItemsSource"
+      },
+      {
+        "count": 1,
+        "name": "Margin"
+      },
+      {
+        "count": 2,
+        "name": "Name"
+      },
+      {
+        "count": 1,
+        "name": "ResizeMode"
+      },
+      {
+        "count": 2,
+        "name": "Source"
+      },
+      {
+        "count": 1,
+        "name": "SqwtLayoutScale"
+      },
+      {
+        "count": 1,
+        "name": "SqwtStartupHorizontalAlignment"
+      },
+      {
+        "count": 1,
+        "name": "Style"
+      },
+      {
+        "count": 1,
+        "name": "VerticalScrollBarVisibility"
+      },
+      {
+        "count": 1,
+        "name": "Width"
+      },
+      {
+        "count": 1,
+        "name": "XPath"
+      },
+      {
+        "count": 1,
+        "name": "x:Key"
+      }
+    ],
+    "byteOrderMark": false,
+    "comments": 0,
+    "elementCounts": [
+      {
+        "count": 1,
+        "name": "ListBox"
+      },
+      {
+        "count": 2,
+        "name": "ResourceDictionary"
+      },
+      {
+        "count": 1,
+        "name": "ResourceDictionary.MergedDictionaries"
+      },
+      {
+        "count": 1,
+        "name": "SqwtXmlDataMaker"
+      },
+      {
+        "count": 1,
+        "name": "Window"
+      },
+      {
+        "count": 1,
+        "name": "Window.Resources"
+      }
+    ],
+    "root": "Window"
+  },
+  "format": "sqwt",
+  "input": {
+    "length": 972
+  },
+  "operation": "inspect",
+  "schemaVersion": 1
+}

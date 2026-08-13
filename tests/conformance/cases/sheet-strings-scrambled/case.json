@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sheet-data"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sheet/strings-scrambled.bin"
+  },
+  "formatId": "ssd-sheet",
+  "id": "sheet-strings-scrambled",
+  "notes": "A stream of obfuscated string values, which is how an all-string sheet is stored.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

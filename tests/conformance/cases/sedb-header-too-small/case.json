@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "header-too-small",
+    "errorOffset": 14,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sedb/header-too-small.bin"
+  },
+  "formatId": "sedb",
+  "id": "sedb-header-too-small",
+  "notes": "A declared header size below the fixed fields it must contain.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}
