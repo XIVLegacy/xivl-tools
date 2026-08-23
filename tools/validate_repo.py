@@ -3,9 +3,7 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
-import os
 import re
 import subprocess
 import sys
@@ -15,8 +13,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PRIVATE_MANIFEST = ROOT / "tests" / "fixtures" / "private-manifest.json"
 PRIVATE_TREE = ROOT / "tests" / "fixtures" / "private"
-FIXTURES_ABSENT = os.environ.get("XIVL_TOOLS_PRIVATE_FIXTURES_ABSENT") == "1"
-
 PERMITTED_TOP_LEVEL_GROUPS = {
     "root",
     ".github",
@@ -157,11 +153,11 @@ def check_json(paths: list[str], errors: list[str]) -> int:
     return count
 
 
-def check_private_fixtures(errors: list[str]) -> int:
+def check_private_manifest(errors: list[str]) -> int:
     manifest = json.loads(PRIVATE_MANIFEST.read_text(encoding="utf-8"))
     entries = manifest.get("entries", [])
-    expected: dict[str, dict] = {}
     ids: set[str] = set()
+    paths: set[str] = set()
     for entry in entries:
         fixture_id = entry.get("id")
         root_id = entry.get("root", "client-install")
@@ -171,51 +167,15 @@ def check_private_fixtures(errors: list[str]) -> int:
         if fixture_id in ids:
             errors.append(f"private fixture manifest duplicate id: {fixture_id}")
         ids.add(fixture_id)
-        relative = Path(root_id, *source_path.split("/"))
-        key = relative.as_posix()
-        if key in expected:
+        key = Path(root_id, *source_path.split("/")).as_posix()
+        if key in paths:
             errors.append(f"private fixture manifest duplicate path: {key}")
-        expected[key] = entry
-
-    if FIXTURES_ABSENT:
-        if PRIVATE_TREE.exists():
-            errors.append(
-                "private fixture absence declaration: found tests/fixtures/private/ "
-                "while XIVL_TOOLS_PRIVATE_FIXTURES_ABSENT=1"
-            )
-        return len(expected)
-
-    if not PRIVATE_TREE.is_dir():
+        paths.add(key)
+    if PRIVATE_TREE.exists():
         errors.append(
-            "private fixture tree missing; supply tests/fixtures/private/<root-id>/ "
-            "or set XIVL_TOOLS_PRIVATE_FIXTURES_ABSENT=1 for a public-tree-only gate"
+            "retired in-tree private fixture mirror exists: tests/fixtures/private/"
         )
-        return len(expected)
-
-    actual = {
-        path.relative_to(PRIVATE_TREE).as_posix(): path
-        for path in PRIVATE_TREE.rglob("*")
-        if path.is_file()
-    }
-    for relative in sorted(set(expected) - set(actual)):
-        errors.append(f"private fixture missing: tests/fixtures/private/{relative}")
-    for relative in sorted(set(actual) - set(expected)):
-        errors.append(f"private fixture absent from manifest: tests/fixtures/private/{relative}")
-    for relative in sorted(set(expected) & set(actual)):
-        entry = expected[relative]
-        data = actual[relative].read_bytes()
-        if len(data) != entry.get("size"):
-            errors.append(
-                f"private fixture size mismatch: tests/fixtures/private/{relative}: "
-                f"expected {entry.get('size')}, got {len(data)}"
-            )
-        digest = hashlib.sha256(data).hexdigest()
-        if digest != entry.get("sha256"):
-            errors.append(
-                f"private fixture SHA-256 mismatch: tests/fixtures/private/{relative}: "
-                f"expected {entry.get('sha256')}, got {digest}"
-            )
-    return len(expected)
+    return len(entries)
 
 
 def main() -> int:
@@ -224,7 +184,7 @@ def main() -> int:
         paths = tracked_paths()
         check_boundary(paths, errors)
         json_count = check_json(paths, errors)
-        fixture_count = check_private_fixtures(errors)
+        fixture_count = check_private_manifest(errors)
     except (OSError, subprocess.SubprocessError, UnicodeError, json.JSONDecodeError) as exc:
         print(f"repository boundary FAILED: {exc}", file=sys.stderr)
         return 1
@@ -235,10 +195,9 @@ def main() -> int:
             print(f"  - {error}", file=sys.stderr)
         return 1
 
-    fixture_mode = "manifest-only" if FIXTURES_ABSENT else "byte-verified"
     print(
-        f"repository boundary OK ({len(paths)} tracked files, {json_count} JSON files, "
-        f"{fixture_count} private fixture identities {fixture_mode})."
+        f"repository boundary OK ({len(paths)} tracked files, "
+        f"{json_count} JSON files, {fixture_count} private fixture identities)."
     )
     return 0
 

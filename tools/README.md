@@ -6,10 +6,10 @@ fixtures, freeze private fixture snapshots, and perform non-gating research.
 ## Routine maintenance
 
 - `validate_repo.py` - the public repository boundary gate. It pins the tracked
-  tree and `.gitignore`, rejects ignored or private material in the index, and
-  verifies the private fixture manifest against local bytes. A public checkout
-  must explicitly set `XIVL_TOOLS_PRIVATE_FIXTURES_ABSENT=1`; without that
-  declaration, a missing ignored fixture tree is an error.
+  tree and `.gitignore` and rejects ignored or private material in the index.
+  It also rejects the retired in-tree private mirror. Private bytes are
+  validated only from explicit external roots by the conformance runner and
+  snapshot tool.
 - `check_contract.py` - the contract gate. Must pass before every commit.
 - `make_public_fixtures.py` - generator for every byte under
   `tests/fixtures/public/`. `--check` regenerates in memory and fails if a
@@ -21,6 +21,24 @@ fixtures, freeze private fixture snapshots, and perform non-gating research.
   client rewrites them. Non-gating, every path explicit, no defaults.
 
 `requirements.txt` records the Python dependencies for the gate.
+
+## Shared retail workflow actions
+
+The composite actions under `.github/actions/` serve only the six approved
+manual retail-evidence workflows. Consumers pin a full `xivl-tools` commit and
+keep their asset declaration, claim verifier, environment, and token locally.
+
+- `fetch-retail-input` fixes the input store and validates commit reachability,
+  the complete tree response, blob metadata, Git identity, decoded size, and
+  SHA-256 before writing the requested file.
+- `setup-retail-toolchain` installs the fixed Temurin JDK and optional Ghidra
+  release after verifying both download hashes.
+- `finalize-retail-attestation` removes runner scratch before accepting exactly
+  one regular sanitized-attestation file. Each consumer still validates its
+  own schema before upload.
+
+`test_retail_actions.py` is the credential-free mutation suite for these
+shared boundaries. `xivl-tools` never receives a retail-input credential.
 
 ## Shared library
 

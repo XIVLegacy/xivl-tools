@@ -1,0 +1,48 @@
+name: Fetch retail input
+description: Fetch and validate one approved blob from the fixed retail-input store.
+
+inputs:
+  token:
+    description: Contents-read token for the retail-input store.
+    required: true
+  commit:
+    description: Full approved retail-input commit SHA.
+    required: true
+  path:
+    description: Repository-relative blob path at the approved commit.
+    required: true
+  size:
+    description: Expected decoded size in bytes.
+    required: true
+  sha256:
+    description: Expected decoded SHA-256.
+    required: true
+  output-path:
+    description: Absolute destination for the validated bytes.
+    required: true
+  parent-trees:
+    description: JSON array of parent tree paths that must be present.
+    required: false
+    default: "[]"
+
+runs:
+  using: composite
+  steps:
+    - name: Fetch and validate retail input
+      shell: bash
+      env:
+        RETAIL_INPUTS_TOKEN: ${{ inputs.token }}
+        RETAIL_COMMIT: ${{ inputs.commit }}
+        RETAIL_PATH: ${{ inputs.path }}
+        RETAIL_SIZE: ${{ inputs.size }}
+        RETAIL_SHA256: ${{ inputs.sha256 }}
+        RETAIL_OUTPUT_PATH: ${{ inputs.output-path }}
+        RETAIL_PARENT_TREES: ${{ inputs.parent-trees }}
+      run: >-
+        python "${GITHUB_ACTION_PATH}/fetch.py"
+        --commit "${RETAIL_COMMIT}"
+        --path "${RETAIL_PATH}"
+        --size "${RETAIL_SIZE}"
+        --sha256 "${RETAIL_SHA256}"
+        --output "${RETAIL_OUTPUT_PATH}"
+        --parent-trees "${RETAIL_PARENT_TREES}"

@@ -129,9 +129,10 @@ private fixture is a claim nobody else can check.
 
 The boundary check (`tools/validate_repo.py`) pins the tracked tree and raw
 `.gitignore`, rejects every ignored content category, scans tracked content for
-PE files, maintainer paths, and private references, and verifies that the
-private fixture manifest agrees with the ignored local tree. Public CI declares
-that tree absent explicitly; absence never passes silently.
+PE files, maintainer paths, and private references, validates the tracked
+fixture declarations, and rejects any retired in-tree private fixture mirror.
+Actual fixture bytes are checked only from explicit external roots by private
+conformance or the snapshot tool.
 
 The contract check (`tools/check_contract.py`) checks:
 

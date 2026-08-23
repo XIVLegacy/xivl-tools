@@ -13,16 +13,11 @@ dependency.
 
 ## Private fixture validation
 
-Public CI declares `XIVL_TOOLS_PRIVATE_FIXTURES_ABSENT=1`. An owner with the
-ignored fixture tree restored must leave that variable unset and run:
-
-```powershell
-Remove-Item Env:XIVL_TOOLS_PRIVATE_FIXTURES_ABSENT -ErrorAction SilentlyContinue
-python tools/validate_repo.py
-```
-
-Exit 0 proves `tests/fixtures/private/<root-id>/<sourcePath>` contains exactly
-the manifest entries with the declared sizes and hashes.
+`validate_repo.py` checks only the tracked public boundary. Private bytes stay
+in their owner roots outside this checkout; there is no ignored in-tree mirror.
+Use the private-conformance command below to validate the manifest identities
+against those explicit roots. The canonical root-resolution rules are in
+[conformance tests](../conformance-tests.md#fixture-roots).
 
 ## Private conformance
 
@@ -33,7 +28,8 @@ cargo run --locked -p xivl-conformance --bin conformance -- run --fixture-root c
 ```
 
 Exit 0 means every selected private case ran without a missing-root skip and
-matched its normalized expectation. It does not prove live client acceptance.
+matched its declared size, SHA-256, and normalized expectation. It does not
+prove live client acceptance.
 
 ## Fixture reproduction
 

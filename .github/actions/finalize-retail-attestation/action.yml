@@ -1,0 +1,23 @@
+name: Finalize retail attestation
+description: Remove restricted scratch and validate the retained artifact envelope.
+
+inputs:
+  scratch-root:
+    description: Absolute restricted scratch root to remove.
+    required: true
+  staging-root:
+    description: Absolute staging directory containing the sanitized attestation.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Remove scratch and validate retained envelope
+      shell: bash
+      env:
+        RETAIL_SCRATCH_ROOT: ${{ inputs.scratch-root }}
+        RETAIL_STAGING_ROOT: ${{ inputs.staging-root }}
+      run: >-
+        python "${GITHUB_ACTION_PATH}/finalize.py"
+        --scratch-root "${RETAIL_SCRATCH_ROOT}"
+        --staging-root "${RETAIL_STAGING_ROOT}"
