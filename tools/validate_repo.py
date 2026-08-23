@@ -49,7 +49,13 @@ def tracked_paths() -> list[str]:
         check=True,
         capture_output=True,
     )
-    return sorted(path for path in result.stdout.decode("utf-8").split("\0") if path)
+    # Validate the worktree contents, so an intentional tracked-file removal
+    # can be checked before the change is staged.
+    return sorted(
+        path
+        for path in result.stdout.decode("utf-8").split("\0")
+        if path and (ROOT / path).is_file()
+    )
 
 
 def forbidden_category(path: str) -> str | None:

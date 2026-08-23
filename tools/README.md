@@ -48,10 +48,6 @@ These commands require `--client-root`:
 - `research/census_config.py` - census the configuration files. It requires
   `--config-root`; optional `--client-root` enables the executable stamp pass.
 
-`oracles/` is created only when a tracked oracle record names an in-house
-adapter that converts external output into this project's normalized JSON. A
-checkout with no oracle records needs no adapter directory.
-
 The [checks workflow](../.github/workflows/checks.yml) is the authoritative
 list of CI-covered checks. The
 [verification guide](../docs/ai_agents/verification.md) owns the owner-only

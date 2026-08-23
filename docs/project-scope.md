@@ -7,8 +7,7 @@ defines the status vocabulary and promotion rules.
 ## In scope
 
 - reusable libraries for client file and container formats;
-- the `xivl` command line for inspection, validation, extraction, conversion,
-  and comparison as those operations land;
+- the `xivl` command line for inspection, validation, and extraction;
 - lossless export views and structural reports that do not publish private
   client data;
 - legacy patch parsing, verification, creation, and a self-hosted service
@@ -32,7 +31,7 @@ apps/conformance/  conformance runner
 data/              machine-readable support matrix
 docs/              public contracts and evidence
 schemas/           JSON Schemas for contract data
-tests/             conformance cases, oracles, and fixtures
+tests/             conformance cases and fixtures
 tools/             contract checks and maintenance scripts
 .github/           cross-platform contract and Rust CI
 ```

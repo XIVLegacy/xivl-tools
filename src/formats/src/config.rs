@@ -172,7 +172,9 @@ impl ConfigFile {
         if !self.kind.is_word_grid() {
             return self.body.clone();
         }
-        let mut out = Vec::with_capacity(self.encoded_length());
+        let mut out = Vec::with_capacity(
+            self.words.len() * WORD_SIZE + if self.stamp.is_some() { WORD_SIZE } else { 0 },
+        );
         if let Some(stamp) = self.stamp {
             out.extend_from_slice(&stamp.value.to_le_bytes());
         }
@@ -180,13 +182,6 @@ impl ConfigFile {
             out.extend_from_slice(&word.to_le_bytes());
         }
         out
-    }
-
-    fn encoded_length(&self) -> usize {
-        if !self.kind.is_word_grid() {
-            return self.body.len();
-        }
-        self.words.len() * WORD_SIZE + if self.stamp.is_some() { WORD_SIZE } else { 0 }
     }
 }
 

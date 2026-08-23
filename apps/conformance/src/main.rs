@@ -5,7 +5,7 @@
 //! ```text
 //! conformance run [--case <id>]... [--format <id>]...
 //!                 [--fixture-root <dir>] [--require-private]
-//!                 [--oracle <id>=<root>]... [--update-expected]
+//!                 [--update-expected]
 //! ```
 //!
 //! `--repo-root` is the one addition: it names the checkout to run against
@@ -23,12 +23,12 @@ conformance - run the xivl-tools conformance cases
 
 usage:
   conformance run [--case <id>]... [--format <id>]...
-                  [--fixture-root [<root-id>=]<dir>]... [--require-private]
-                  [--oracle <id>=<root>]... [--update-expected]
-                  [--repo-root <dir>]
+                   [--fixture-root [<root-id>=]<dir>]... [--require-private]
+                   [--update-expected]
+                   [--repo-root <dir>]
 
-Default run: every case, public fixtures only, oracles skipped. Private
-cases without a fixture root are reported as skipped with their reason.
+Default run: every case, public fixtures only. Private cases without a
+fixture root are reported as skipped with their reason.
 
 A private fixture names the root it lives under, defaulting to
 'client-install'. The bare --fixture-root <dir> form sets that one; the
@@ -86,16 +86,11 @@ fn run(arguments: &[String]) -> Result<bool, String> {
             }
         }
     }
-    for skip in &report.oracle_skips {
-        println!("SKIP oracle {skip}");
-    }
-
     println!(
-        "conformance: {} passed, {} failed, {} skipped, {} oracle comparison(s) skipped",
+        "conformance: {} passed, {} failed, {} skipped",
         report.passed(),
         report.failed(),
-        report.skipped(),
-        report.oracle_skips.len()
+        report.skipped()
     );
     Ok(report.is_success())
 }
@@ -110,7 +105,6 @@ fn parse_options(arguments: &[String]) -> Result<Options, String> {
     let mut options = Options {
         repo_root: std::env::current_dir().map_err(|error| error.to_string())?,
         fixture_roots,
-        oracles: BTreeMap::new(),
         ..Options::default()
     };
 
@@ -146,14 +140,6 @@ fn parse_options(arguments: &[String]) -> Result<Options, String> {
             }
             "--repo-root" => {
                 options.repo_root = PathBuf::from(value()?);
-                index += 2;
-            }
-            "--oracle" => {
-                let pair = value()?;
-                let (id, root) = pair
-                    .split_once('=')
-                    .ok_or_else(|| format!("--oracle wants <id>=<root>, got '{pair}'"))?;
-                options.oracles.insert(id.to_string(), PathBuf::from(root));
                 index += 2;
             }
             "--require-private" => {

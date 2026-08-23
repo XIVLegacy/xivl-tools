@@ -7,10 +7,8 @@ enforces its mechanical rules.
 ## Public code
 
 - Every authored source file is in-house work under GNU AGPL v3 or later.
-- External projects are comparison oracles, behavior targets, and lead
-  material. Their code is not copied, machine-translated, or vendored.
-  An enabled comparison's oracle record carries its invocation contract and
-  license identifier.
+- External projects may be behavior targets and lead material. Their code is
+  not copied, machine-translated, or vendored.
 - A published byte layout or field name from an external project is a lead
   until it is independently established against retail 1.23b data. Only
   then may it become a claim in the support matrix.
@@ -29,7 +27,6 @@ Committable:
 - contract data under `data/` with a JSON Schema in `schemas/`;
 - authored synthetic fixtures under `tests/fixtures/public/`;
 - conformance case manifests and expected normalized outputs;
-- oracle records, which describe an external tool but contain none of it;
 - format evidence documents carrying retail citations.
 
 A synthetic fixture is bytes written by this project to exercise a parser,

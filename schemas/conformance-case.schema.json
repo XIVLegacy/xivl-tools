@@ -10,7 +10,7 @@
     "id": { "$ref": "#/$defs/id" },
     "formatId": { "$ref": "#/$defs/id" },
     "operation": {
-      "enum": ["inspect", "validate", "extract", "convert", "diff", "resource-path"]
+      "enum": ["inspect", "validate", "extract", "resource-path"]
     },
     "fixture": {
       "oneOf": [
@@ -23,11 +23,6 @@
             "path": {
               "type": "string",
               "pattern": "^tests/fixtures/public/[A-Za-z0-9._/-]+$"
-            },
-            "secondPath": {
-              "type": "string",
-              "pattern": "^tests/fixtures/public/[A-Za-z0-9._/-]+$",
-              "description": "Right-hand input for a diff case."
             }
           }
         },
@@ -37,8 +32,7 @@
           "required": ["kind", "fixtureId"],
           "properties": {
             "kind": { "const": "private" },
-            "fixtureId": { "$ref": "#/$defs/id" },
-            "secondFixtureId": { "$ref": "#/$defs/id" }
+            "fixtureId": { "$ref": "#/$defs/id" }
           }
         }
       ]
@@ -80,38 +74,6 @@
           "then": { "required": ["errorKind"] }
         }
       ]
-    },
-    "normalization": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "ignorePointers": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "type": "string", "pattern": "^/" },
-          "description": "JSON Pointers dropped from both sides before comparison. Each one needs a reason in notes."
-        }
-      }
-    },
-    "oracles": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["oracleId", "comparison"],
-        "properties": {
-          "oracleId": { "$ref": "#/$defs/id" },
-          "comparison": { "enum": ["equal", "subset", "documented-divergence"] },
-          "note": { "type": "string", "minLength": 1 }
-        },
-        "allOf": [
-          {
-            "if": { "properties": { "comparison": { "const": "documented-divergence" } } },
-            "then": { "required": ["note"] }
-          }
-        ]
-      }
     },
     "notes": { "type": "string", "minLength": 1 }
   },

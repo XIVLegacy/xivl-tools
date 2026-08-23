@@ -8,7 +8,7 @@ XIVLegacy Tools.
 | [Project scope](project-scope.md) | Frozen target, owned work, exclusions, and workspace layout |
 | [Source and data policy](source-and-data-policy.md) | Public code, synthetic fixtures, private retail data, and user-written data |
 | [Support matrix](support-matrix.md) | The frozen target, status vocabulary, and promotion rules |
-| [Conformance tests](conformance-tests.md) | Case manifests, normalized output, fixture roots, and oracle records |
+| [Conformance tests](conformance-tests.md) | Case manifests, normalized output, fixture roots |
 | [CLI](cli.md) | User-facing inspect and validate commands, selectors, reports, and exit statuses |
 | [Format evidence](format-evidence.md) | Byte-layout evidence and its retail citations |
 | [AI-assisted contributions](ai_agents/README.md) | Tracked contribution and documentation policy |

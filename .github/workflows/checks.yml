@@ -21,8 +21,41 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - name: Check whitespace
-        run: git diff --check
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          case "${EVENT_NAME}" in
+            pull_request)
+              test -n "${EVENT_BASE_SHA}"
+              test -n "${EVENT_HEAD_SHA}"
+              git diff --check "${EVENT_BASE_SHA}...${EVENT_HEAD_SHA}"
+              ;;
+            push)
+              test -n "${EVENT_SHA}"
+              if test -z "${EVENT_BEFORE}" || test "${EVENT_BEFORE}" = "0000000000000000000000000000000000000000"; then
+                git diff-tree --check --root -m -r "${EVENT_SHA}"
+              else
+                git diff --check "${EVENT_BEFORE}" "${EVENT_SHA}"
+              fi
+              ;;
+            workflow_dispatch)
+              test -n "${EVENT_SHA}"
+              git diff-tree --check --root -m -r "${EVENT_SHA}"
+              ;;
+            *)
+              echo "unsupported event for revision-range check: ${EVENT_NAME}" >&2
+              exit 1
+              ;;
+          esac
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -38,8 +71,41 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - name: Check whitespace
-        run: git diff --check
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          case "${EVENT_NAME}" in
+            pull_request)
+              test -n "${EVENT_BASE_SHA}"
+              test -n "${EVENT_HEAD_SHA}"
+              git diff --check "${EVENT_BASE_SHA}...${EVENT_HEAD_SHA}"
+              ;;
+            push)
+              test -n "${EVENT_SHA}"
+              if test -z "${EVENT_BEFORE}" || test "${EVENT_BEFORE}" = "0000000000000000000000000000000000000000"; then
+                git diff-tree --check --root -m -r "${EVENT_SHA}"
+              else
+                git diff --check "${EVENT_BEFORE}" "${EVENT_SHA}"
+              fi
+              ;;
+            workflow_dispatch)
+              test -n "${EVENT_SHA}"
+              git diff-tree --check --root -m -r "${EVENT_SHA}"
+              ;;
+            *)
+              echo "unsupported event for revision-range check: ${EVENT_NAME}" >&2
+              exit 1
+              ;;
+          esac
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -62,8 +128,41 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - name: Check whitespace
-        run: git diff --check
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          case "${EVENT_NAME}" in
+            pull_request)
+              test -n "${EVENT_BASE_SHA}"
+              test -n "${EVENT_HEAD_SHA}"
+              git diff --check "${EVENT_BASE_SHA}...${EVENT_HEAD_SHA}"
+              ;;
+            push)
+              test -n "${EVENT_SHA}"
+              if test -z "${EVENT_BEFORE}" || test "${EVENT_BEFORE}" = "0000000000000000000000000000000000000000"; then
+                git diff-tree --check --root -m -r "${EVENT_SHA}"
+              else
+                git diff --check "${EVENT_BEFORE}" "${EVENT_SHA}"
+              fi
+              ;;
+            workflow_dispatch)
+              test -n "${EVENT_SHA}"
+              git diff-tree --check --root -m -r "${EVENT_SHA}"
+              ;;
+            *)
+              echo "unsupported event for revision-range check: ${EVENT_NAME}" >&2
+              exit 1
+              ;;
+          esac
       - name: Install Rust toolchain
         run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
       - name: Set default Rust toolchain
