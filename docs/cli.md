@@ -14,6 +14,8 @@ Run the binary from this checkout with Cargo:
 ```text
 cargo run --locked -p xivl-cli -- inspect tests/fixtures/public/sedb/plain-container.bin
 cargo run --locked -p xivl-cli -- validate tests/fixtures/public/config/lng-words.bin --as config-lng
+cargo run --locked -p xivl-cli -- lua-path Quest/Scenario/Man0g0.lua
+cargo run --locked -p xivl-cli -- extract-lpb tests/fixtures/public/lpb/raw.bin --output chunk.luac
 cargo run --locked -p xivl-cli -- extract "C:\path\to\FINAL FANTASY XIV" --output csv
 ```
 
@@ -32,6 +34,15 @@ remain reversible as named hexadecimal markers.
 The output directory must be absent or empty so an older export cannot leave
 stale CSV files behind.
 
+`lua-path` applies the client's reversible transform to one ASCII resource
+path. It lowercases letters, substitutes letters and digits, and leaves ASCII
+punctuation and separators unchanged. A non-ASCII path fails instead of using
+locale-dependent case rules.
+
+`extract-lpb` accepts either evidenced LPB wrapper, verifies that the decoded
+payload starts with a Lua 5.1 chunk signature, and writes those compiled bytes
+without interpreting them. It refuses to replace an existing output file.
+
 ## Select a reader
 
 Without `--as`, the tool recognizes SEDB containers, SSD documents, SQEX
@@ -47,6 +58,7 @@ specific view is required:
 | `ssd` | Read a plaintext or scrambled SSD document through the document reader. |
 | `scrambled-xml` | Report the scrambled container and a census of document shape without reading document content. |
 | `sqwt` | Read a SQEX container using the input file's base name as its key. |
+| `lpb` | Read an LPB wrapper and report preserved header spans and the decoded payload digest. |
 | `enable-file` | Read the headerless enable-record array. |
 | `row-offsets` | Read the headerless row-offset array. |
 | `sheet-data` | Read sheet rows; add `--columns` for typed rows. |

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "lpb-raw",
+  "formatId": "lpb",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/raw.bin"
+  },
+  "arguments": ["--as", "lpb"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Raw wrapper extraction retains the uninterpreted four-byte header field."
+}

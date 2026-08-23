@@ -211,6 +211,17 @@ def enable_records(pairs: list[tuple[int, int]]) -> bytes:
 def build_fixtures() -> dict[str, bytes]:
     fixtures: dict[str, bytes] = {}
 
+    # Authored Lua path and LPB samples contain no retail names or bytecode.
+    fixtures["lua-path/example.txt"] = b"Quest/Scenario/Man0g0.lua"
+    fixtures["lua-path/non-ascii.bin"] = b"ab\xc3\xa9.lua"
+
+    lua_chunk = b"\x1bLuaQ" + pattern(19, 0x31)
+    fixtures["lpb/raw.bin"] = b"rlu\x0bABCD" + lua_chunk
+    xor_header = b"rle\x0cWXYZ" + struct.pack("<I", 7) + b"!"
+    fixtures["lpb/xor.bin"] = xor_header + bytes(byte ^ 0x73 for byte in lua_chunk)
+    fixtures["lpb/truncated.bin"] = b"rle\x0cshort"
+    fixtures["lpb/bad-chunk.bin"] = b"rlu\x0bABCDxxxxx"
+
     # -- sedb ------------------------------------------------------------
     # A well-formed non-composite container: 0x30 header, 0x20 payload, and
     # a totalSize that covers the whole file as a top-level container does.

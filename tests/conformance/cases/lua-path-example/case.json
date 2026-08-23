@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "lua-path-example",
+  "formatId": "lua-path",
+  "operation": "lua-path",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lua-path/example.txt"
+  },
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Mixed case, directories, letters, digits, punctuation, and the involutive transform."
+}

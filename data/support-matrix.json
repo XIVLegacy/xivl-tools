@@ -219,21 +219,22 @@
       "name": "LPB compiled script container",
       "category": "script",
       "phase": 1,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
-      "export": "planned",
+      "export": "partial",
       "exportViews": [
         "json",
-        "lua"
-      ]
+        "binary"
+      ],
+      "notes": "Reads and extracts the raw and XOR-0x73 wrappers while preserving unknown header bytes. Lua bytecode semantics and the advisory size field remain uninterpreted."
     },
     {
       "id": "lua-path",
       "name": "Lua path encoding",
       "category": "script",
       "phase": 1,
-      "read": "planned",
-      "write": "planned",
+      "read": "supported",
+      "write": "supported",
       "export": "not-applicable",
       "notes": "Encode and decode are the same primitive pair, so write support arrives with read."
     },

@@ -12,6 +12,7 @@
 use std::io::{Read, Write};
 use std::process::ExitCode;
 
+use xivl_formats::{extract_lpb, lua_path_document};
 use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_bytes_as, InspectAs};
 
 mod extract;
@@ -22,6 +23,8 @@ xivl - Final Fantasy XIV 1.23b client file tools
 usage:
   xivl inspect <file> [--as <format>] [--columns <list>]
   xivl validate <file> [--as <format>] [--columns <list>]
+  xivl lua-path <path>
+  xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
   xivl --help
   xivl --version
@@ -40,7 +43,11 @@ extract discovers SSD sheet definitions under a 1.23b game directory,
 reads their data, enable, and row-offset resources, and writes one
 lossless CSV view per definition document.
 
-  --as sedb | ssd | scrambled-xml | sqwt | enable-file | row-offsets
+lua-path applies the reversible ASCII resource-path transform. extract-lpb
+removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
+5.1 chunk without interpreting it. The output path must not already exist.
+
+  --as sedb | ssd | scrambled-xml | sqwt | lpb | enable-file | row-offsets
      | sheet-data | config-sys | config-pad | config-lng | config-rgn
       Read the input as this format. Needed for enable-file and
       row-offsets, which are unsigned 32-bit arrays with no signature,
@@ -116,6 +123,8 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         }
         Some("inspect") => read(&arguments[1..], Operation::Inspect),
         Some("validate") => read(&arguments[1..], Operation::Validate),
+        Some("lua-path") => lua_path(&arguments[1..]),
+        Some("extract-lpb") => extract_lpb_command(&arguments[1..]),
         Some("extract") => {
             let summary = extract::run(&arguments[1..])?;
             println!(
@@ -133,6 +142,44 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
             "unknown command '{other}'; run 'xivl --help'"
         ))),
     }
+}
+
+fn lua_path(arguments: &[String]) -> Result<(), Failure> {
+    let [path] = arguments else {
+        return Err(Failure::usage("usage: xivl lua-path <path>"));
+    };
+    let document = lua_path_document(path).map_err(|error| Failure::parse(error.to_string()))?;
+    std::io::stdout()
+        .write_all(to_canonical_json(&document).as_bytes())
+        .map_err(|error| Failure::usage(format!("cannot write output: {error}")))
+}
+
+fn extract_lpb_command(arguments: &[String]) -> Result<(), Failure> {
+    let [input, flag, output] = arguments else {
+        return Err(Failure::usage(
+            "usage: xivl extract-lpb <file> --output <file>",
+        ));
+    };
+    if flag != "--output" {
+        return Err(Failure::usage(
+            "usage: xivl extract-lpb <file> --output <file>",
+        ));
+    }
+    let data = read_capped(input)?;
+    let file = extract_lpb(&data).map_err(|error| Failure {
+        message: format!("{input}: {error}"),
+        code: EXIT_PARSE_FAILURE,
+    })?;
+    let mut destination = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(output)
+        .map_err(|error| Failure::usage(format!("cannot create '{output}': {error}")))?;
+    destination
+        .write_all(&file.decoded)
+        .map_err(|error| Failure::usage(format!("cannot write '{output}': {error}")))?;
+    println!("wrote {} bytes to {}", file.decoded.len(), output);
+    Ok(())
 }
 
 #[derive(Clone, Copy)]

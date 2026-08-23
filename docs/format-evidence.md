@@ -1249,6 +1249,46 @@ and nothing above it:
   back exactly as a caller set it, because this project does not know
   which values it would reject.
 
+## Promoted evidence: Lua paths and LPB wrappers
+
+Promoted references:
+
+```text
+xivl-decomp:docs/script/lpb-format.md, sha256 38cf3bbc0b27681a7eb89f10f88968ea8ae10695fe41bfb044c0f8b96d9e344e
+xivl-decomp:tools/decode_lpb.py, sha256 74994d6714a5acd161d241a40db8b3907b88871129e29ac9aed821191dd5020a
+```
+
+Lua resource paths use a character-wise involution after ASCII case folding:
+`a` through `j` pair with `9` through `0`, `k` through `z` pair so their
+letter positions sum to 37, digits `0` through `9` pair with `j` through `a`,
+and other ASCII bytes pass through. The client corpus paths are ASCII, so the
+public API rejects non-ASCII input rather than extending the evidence with a
+locale or Unicode case rule. Unit coverage exhausts all 128 ASCII bytes and
+public conformance covers a mixed path plus the rejected non-ASCII boundary.
+
+LPB has two evidenced wrappers around compiled Lua 5.1 chunks:
+
+```text
+rlu 0B: 8-byte header, then an unmodified chunk beginning 1B 4C 75 61 51
+rle 0C: 16-byte header; bytes 13 onward XOR 73 decode to that same signature
+```
+
+For `rlu`, bytes 4 through 7 are preserved as uninterpreted header bytes. For
+`rle`, bytes 4 through 7 and byte 12 are preserved the same way; bytes 8
+through 11 are reported as a little-endian advisory size but are not enforced,
+because the evidence records both offsets from decoded size and one outlier.
+Bytes 13 through 15 are the encoded prefix of the Lua signature and bytes 16
+onward are the remaining encoded payload. Inspection reports every span and a
+digest for uninterpreted bytes, and extraction returns the complete decoded
+chunk. Public cases cover both wrappers, a truncated header, and a payload
+whose decoded signature is not Lua 5.1.
+
+The LPB statuses remain `partial`: this slice does not parse, decompile, or
+export Lua source, assign meaning to the advisory size or unknown header bytes,
+or claim that no additional wrapper variant exists. The binary export is the
+compiled chunk only; retaining the parsed `LpbFile` alongside it is what keeps
+the original wrapper's unknown bytes available to callers.
+
 ## Open questions
 
 - what any field of the configuration files means; a differential experiment

@@ -17,6 +17,8 @@ pub mod csv;
 pub mod digest;
 pub mod error;
 pub mod inspect;
+pub mod lpb;
+pub mod lua_path;
 pub mod normalize;
 pub mod reader;
 pub mod resource;
@@ -35,6 +37,8 @@ pub use error::{ErrorKind, FormatError, Result};
 pub use inspect::{
     inspect_bytes, inspect_bytes_as, inspect_named_bytes_as, validate_named_bytes_as, InspectAs,
 };
+pub use lpb::{extract as extract_lpb, LpbFile, LpbVariant, PreservedBytes};
+pub use lua_path::transform as transform_lua_path;
 pub use normalize::to_canonical_json;
 pub use reader::{Reader, Span};
 pub use resource::{parse_dat_path, parse_resource_id, ResourceId};
@@ -75,6 +79,18 @@ pub fn resource_path_listing(text: &str) -> Result<serde_json::Value> {
         "format": "resource-path",
         "input": { "length": text.len() as u64 },
         "entries": entries,
+    }))
+}
+
+/// Normalized document for one Lua path transform.
+pub fn lua_path_document(text: &str) -> Result<serde_json::Value> {
+    let transformed = transform_lua_path(text)?;
+    Ok(serde_json::json!({
+        "schemaVersion": inspect::DOCUMENT_SCHEMA_VERSION,
+        "operation": "lua-path",
+        "format": "lua-path",
+        "input": { "length": text.len() as u64, "path": text },
+        "transformed": transformed,
     }))
 }
 

@@ -14,6 +14,7 @@ use serde_json::{json, Map, Value};
 use crate::config::{self, ConfigFile, ConfigKind};
 use crate::digest::sha256_hex;
 use crate::error::Result;
+use crate::lpb;
 use crate::reader::Span;
 use crate::richstring::{payload_hex, RichString, Segment};
 use crate::scrambled;
@@ -44,6 +45,8 @@ pub enum InspectAs {
     ScrambledXml,
     /// The SQEX container, whose key is the file's own name.
     Sqwt,
+    /// An LPB wrapper around compiled Lua 5.1 bytecode.
+    Lpb,
     EnableFile,
     RowOffsets,
     /// A sheet data file. With no columns it is read as a stream of string
@@ -57,11 +60,12 @@ pub enum InspectAs {
 
 impl InspectAs {
     /// Names accepted by the `--as` option.
-    pub const NAMES: [&'static str; 11] = [
+    pub const NAMES: [&'static str; 12] = [
         "sedb",
         "ssd",
         "scrambled-xml",
         "sqwt",
+        "lpb",
         "enable-file",
         "row-offsets",
         "sheet-data",
@@ -103,6 +107,7 @@ impl InspectAs {
             Some("ssd") => Self::Ssd,
             Some("scrambled-xml") => Self::ScrambledXml,
             Some("sqwt") => Self::Sqwt,
+            Some("lpb") => Self::Lpb,
             Some("enable-file") => Self::EnableFile,
             Some("row-offsets") => Self::RowOffsets,
             Some("sheet-data") => Self::SheetData(columns.clone().unwrap_or_default()),
@@ -165,6 +170,7 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
         InspectAs::Ssd => inspect_ssd(data),
         InspectAs::ScrambledXml => inspect_scrambled(data),
         InspectAs::Sqwt => inspect_sqwt(data, name),
+        InspectAs::Lpb => inspect_lpb(data),
         InspectAs::EnableFile => inspect_enable_file(data),
         InspectAs::RowOffsets => inspect_row_offsets(data),
         InspectAs::SheetData(columns) => inspect_sheet_data(data, columns),
@@ -436,6 +442,38 @@ fn inspect_sqwt(data: &[u8], name: &str) -> Result<Value> {
             "attributeCounts": counts_to_json(&attributes),
         }),
     );
+    Ok(Value::Object(object))
+}
+
+fn inspect_lpb(data: &[u8]) -> Result<Value> {
+    let file = lpb::extract(data)?;
+    let mut object = envelope("lpb", data);
+    object.insert("variant".into(), json!(file.variant.name()));
+    object.insert("header".into(), file.header.to_json());
+    object.insert(
+        "unknownHeader".into(),
+        Value::Array(
+            file.unknown_header
+                .iter()
+                .map(|field| {
+                    json!({
+                        "span": field.span.to_json(),
+                        "sha256": sha256_hex(&field.bytes),
+                    })
+                })
+                .collect(),
+        ),
+    );
+    object.insert("advisorySize".into(), json!(file.advisory_size));
+    object.insert(
+        "encodedPrefix".into(),
+        file.encoded_prefix
+            .map(Span::to_json)
+            .unwrap_or(Value::Null),
+    );
+    object.insert("encodedPayload".into(), file.encoded_payload.to_json());
+    object.insert("decodedLength".into(), json!(file.decoded.len() as u64));
+    object.insert("decodedSha256".into(), json!(sha256_hex(&file.decoded)));
     Ok(Value::Object(object))
 }
 

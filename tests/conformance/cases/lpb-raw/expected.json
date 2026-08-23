@@ -1,0 +1,30 @@
+{
+  "advisorySize": null,
+  "decodedLength": 24,
+  "decodedSha256": "858edfc6960d83c4a398308ab828bc1114ba3fc3527983471911ba066826c74e",
+  "encodedPayload": {
+    "length": 24,
+    "offset": 8
+  },
+  "encodedPrefix": null,
+  "format": "lpb",
+  "header": {
+    "length": 8,
+    "offset": 0
+  },
+  "input": {
+    "length": 32
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "unknownHeader": [
+    {
+      "sha256": "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677",
+      "span": {
+        "length": 4,
+        "offset": 4
+      }
+    }
+  ],
+  "variant": "raw"
+}

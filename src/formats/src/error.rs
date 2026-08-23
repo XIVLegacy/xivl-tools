@@ -35,6 +35,10 @@ pub enum ErrorKind {
     InvalidResourcePath,
     /// Bytes that must be text are not valid UTF-8.
     InvalidUtf8,
+    /// A Lua resource path contains a byte outside the ASCII path domain.
+    InvalidLuaPath,
+    /// An LPB wrapper does not decode to a Lua 5.1 chunk signature.
+    InvalidLuaChunk,
     /// An XML document does not parse: an unclosed tag, a mismatched end
     /// tag, an unquoted attribute, or trailing content after the root.
     MalformedXml,
@@ -79,6 +83,8 @@ impl ErrorKind {
             ErrorKind::InvalidResourceId => "invalid-resource-id",
             ErrorKind::InvalidResourcePath => "invalid-resource-path",
             ErrorKind::InvalidUtf8 => "invalid-utf8",
+            ErrorKind::InvalidLuaPath => "invalid-lua-path",
+            ErrorKind::InvalidLuaChunk => "invalid-lua-chunk",
             ErrorKind::MalformedXml => "malformed-xml",
             ErrorKind::UnsupportedXmlConstruct => "unsupported-xml-construct",
             ErrorKind::UnexpectedElement => "unexpected-element",

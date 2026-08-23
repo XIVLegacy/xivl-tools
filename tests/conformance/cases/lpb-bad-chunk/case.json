@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "lpb-bad-chunk",
+  "formatId": "lpb",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/bad-chunk.bin"
+  },
+  "arguments": ["--as", "lpb"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-lua-chunk",
+    "errorOffset": 8
+  },
+  "notes": "A complete wrapper whose payload is not Lua 5.1 is rejected."
+}
