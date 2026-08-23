@@ -15,6 +15,7 @@ use crate::config::{self, ConfigFile, ConfigKind};
 use crate::digest::sha256_hex;
 use crate::error::Result;
 use crate::lpb;
+use crate::lua51::{self, Lua51Prototype, LuaConstant, LuaString};
 use crate::reader::Span;
 use crate::richstring::{payload_hex, RichString, Segment};
 use crate::scrambled;
@@ -47,6 +48,8 @@ pub enum InspectAs {
     Sqwt,
     /// An LPB wrapper around compiled Lua 5.1 bytecode.
     Lpb,
+    /// An LPB wrapper plus bounded structure from its Lua 5.1 payload.
+    LpbBytecode,
     EnableFile,
     RowOffsets,
     /// A sheet data file. With no columns it is read as a stream of string
@@ -60,12 +63,13 @@ pub enum InspectAs {
 
 impl InspectAs {
     /// Names accepted by the `--as` option.
-    pub const NAMES: [&'static str; 12] = [
+    pub const NAMES: [&'static str; 13] = [
         "sedb",
         "ssd",
         "scrambled-xml",
         "sqwt",
         "lpb",
+        "lpb-bytecode",
         "enable-file",
         "row-offsets",
         "sheet-data",
@@ -108,6 +112,7 @@ impl InspectAs {
             Some("scrambled-xml") => Self::ScrambledXml,
             Some("sqwt") => Self::Sqwt,
             Some("lpb") => Self::Lpb,
+            Some("lpb-bytecode") => Self::LpbBytecode,
             Some("enable-file") => Self::EnableFile,
             Some("row-offsets") => Self::RowOffsets,
             Some("sheet-data") => Self::SheetData(columns.clone().unwrap_or_default()),
@@ -171,6 +176,7 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
         InspectAs::ScrambledXml => inspect_scrambled(data),
         InspectAs::Sqwt => inspect_sqwt(data, name),
         InspectAs::Lpb => inspect_lpb(data),
+        InspectAs::LpbBytecode => inspect_lpb_bytecode(data),
         InspectAs::EnableFile => inspect_enable_file(data),
         InspectAs::RowOffsets => inspect_row_offsets(data),
         InspectAs::SheetData(columns) => inspect_sheet_data(data, columns),
@@ -475,6 +481,104 @@ fn inspect_lpb(data: &[u8]) -> Result<Value> {
     object.insert("decodedLength".into(), json!(file.decoded.len() as u64));
     object.insert("decodedSha256".into(), json!(sha256_hex(&file.decoded)));
     Ok(Value::Object(object))
+}
+
+fn inspect_lpb_bytecode(data: &[u8]) -> Result<Value> {
+    let file = lpb::extract(data)?;
+    let chunk = lua51::parse(&file.decoded)?;
+    let mut object = envelope("client-lua", data);
+    object.insert(
+        "spanBase".into(),
+        json!({ "wrapper": "input", "bytecode": "decoded" }),
+    );
+    object.insert(
+        "wrapper".into(),
+        json!({
+            "variant": file.variant.name(),
+            "header": file.header.to_json(),
+            "unknownHeader": Value::Array(file.unknown_header.iter().map(|field| json!({
+                "span": field.span.to_json(),
+                "sha256": sha256_hex(&field.bytes),
+            })).collect()),
+            "advisorySize": file.advisory_size,
+            "encodedPrefix": file.encoded_prefix.map(Span::to_json),
+            "encodedPayload": file.encoded_payload.to_json(),
+            "decodedLength": file.decoded.len() as u64,
+            "decodedSha256": sha256_hex(&file.decoded),
+        }),
+    );
+    object.insert(
+        "bytecode".into(),
+        json!({
+            "header": {
+                "span": chunk.header.span.to_json(),
+                "version": chunk.header.version,
+                "format": chunk.header.format,
+                "endianness": if chunk.header.little_endian { "little" } else { "big" },
+                "intSize": chunk.header.int_size,
+                "sizeTSize": chunk.header.size_t_size,
+                "instructionSize": chunk.header.instruction_size,
+                "numberSize": chunk.header.number_size,
+                "integralNumbers": chunk.header.integral_numbers,
+            },
+            "root": lua_prototype_to_json(&chunk.root, &file.decoded),
+        }),
+    );
+    Ok(Value::Object(object))
+}
+
+fn lua_prototype_to_json(prototype: &Lua51Prototype, decoded: &[u8]) -> Value {
+    json!({
+        "span": prototype.span.to_json(),
+        "source": prototype.source.as_ref().map(lua_string_to_json),
+        "lineDefined": prototype.line_defined,
+        "lastLineDefined": prototype.last_line_defined,
+        "upvalueCount": prototype.upvalue_count,
+        "parameterCount": prototype.parameter_count,
+        "varargFlags": prototype.vararg_flags,
+        "maxStackSize": prototype.max_stack_size,
+        "instructions": {
+            "span": prototype.instructions.to_json(),
+            "count": prototype.instruction_count,
+            "sha256": span_sha256(decoded, prototype.instructions),
+        },
+        "constants": Value::Array(prototype.constants.iter().map(|constant| {
+            let mut value = json!({
+                "type": constant.kind_name(),
+                "span": constant.span().to_json(),
+                "sha256": span_sha256(decoded, constant.span()),
+            });
+            if let LuaConstant::String { value: string, .. } = constant {
+                value["length"] = json!(string.bytes.len() as u64);
+            }
+            value
+        }).collect()),
+        "nested": Value::Array(prototype.nested.iter().map(|child| {
+            lua_prototype_to_json(child, decoded)
+        }).collect()),
+        "debug": {
+            "lineInfo": {
+                "span": prototype.line_info.to_json(),
+                "count": prototype.line_info_count,
+            },
+            "localCount": prototype.local_count,
+            "upvalueNameCount": prototype.upvalue_name_count,
+        },
+    })
+}
+
+fn lua_string_to_json(value: &LuaString) -> Value {
+    json!({
+        "span": value.span.to_json(),
+        "length": value.bytes.len() as u64,
+        "sha256": sha256_hex(&value.bytes),
+    })
+}
+
+fn span_sha256(data: &[u8], span: Span) -> String {
+    let start = span.offset as usize;
+    let end = start + span.length as usize;
+    sha256_hex(&data[start..end])
 }
 
 fn census<'a>(
@@ -858,6 +962,10 @@ mod tests {
         assert_eq!(
             InspectAs::from_arguments(&arguments(&["--as", "enable-file"])).unwrap(),
             InspectAs::EnableFile
+        );
+        assert_eq!(
+            InspectAs::from_arguments(&arguments(&["--as", "lpb-bytecode"])).unwrap(),
+            InspectAs::LpbBytecode
         );
         assert_eq!(
             InspectAs::from_arguments(&arguments(&["--as", "sheet-data", "--columns", "str,u8"]))

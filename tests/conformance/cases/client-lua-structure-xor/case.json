@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "client-lua-structure-xor",
+  "formatId": "client-lua",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/bytecode-xor.bin"
+  },
+  "arguments": ["--as", "lpb-bytecode"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "The same authored chunk behind the XOR-0x73 wrapper preserves that wrapper's distinct boundaries."
+}

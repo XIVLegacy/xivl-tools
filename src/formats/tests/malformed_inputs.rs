@@ -37,7 +37,12 @@ fn binary_fixtures() -> Vec<(String, Vec<u8>)> {
 }
 
 fn document_fixtures() -> Vec<(String, Vec<u8>)> {
-    fixtures_under(&["ssd", "sheet", "scrambled", "sqwt", "config"])
+    let mut fixtures = fixtures_under(&["ssd", "sheet", "scrambled", "sqwt", "config", "lpb"]);
+    // The 128-level nesting bomb has its own exact limit assertion. Mutating
+    // each of its thousands of bytes would multiply the cross-reader sweep
+    // without adding a distinct boundary.
+    fixtures.retain(|(name, _)| !name.ends_with("bytecode-nesting-bomb.bin"));
+    fixtures
 }
 
 /// The part of a fixture path after the last separator. It is the key of
@@ -139,6 +144,8 @@ fn read_every_way(data: &[u8], name: &str) {
         InspectAs::SheetData(Vec::new()),
         InspectAs::ScrambledXml,
         InspectAs::Sqwt,
+        InspectAs::Lpb,
+        InspectAs::LpbBytecode,
         InspectAs::SheetData(vec![
             ColumnType::Text,
             ColumnType::Signed32,

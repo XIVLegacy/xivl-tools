@@ -1,0 +1,172 @@
+{
+  "bytecode": {
+    "header": {
+      "endianness": "little",
+      "format": 0,
+      "instructionSize": 4,
+      "intSize": 4,
+      "integralNumbers": false,
+      "numberSize": 8,
+      "sizeTSize": 4,
+      "span": {
+        "length": 12,
+        "offset": 0
+      },
+      "version": 81
+    },
+    "root": {
+      "constants": [
+        {
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "span": {
+            "length": 1,
+            "offset": 59
+          },
+          "type": "nil"
+        },
+        {
+          "sha256": "9dcf97a184f32623d11a73124ceb99a5709b083721e878a16d78f596718ba7b2",
+          "span": {
+            "length": 2,
+            "offset": 60
+          },
+          "type": "boolean"
+        },
+        {
+          "sha256": "d405a5caee3c2e7985d95c84835afbeb020e68fd7efe6ebbbd6550f95ce35fe0",
+          "span": {
+            "length": 9,
+            "offset": 62
+          },
+          "type": "number"
+        },
+        {
+          "length": 5,
+          "sha256": "4be4423a2789158f2c8ee754f8d4f447cd47bdb97d7ebdc4b115e3f279c7d9a5",
+          "span": {
+            "length": 11,
+            "offset": 71
+          },
+          "type": "string"
+        }
+      ],
+      "debug": {
+        "lineInfo": {
+          "count": 2,
+          "span": {
+            "length": 8,
+            "offset": 149
+          }
+        },
+        "localCount": 1,
+        "upvalueNameCount": 1
+      },
+      "instructions": {
+        "count": 2,
+        "sha256": "c0990b29b9833918857fc910d294d0c2354ed04b3b28a51f70c9550e554f7ead",
+        "span": {
+          "length": 8,
+          "offset": 47
+        }
+      },
+      "lastLineDefined": 12,
+      "lineDefined": 0,
+      "maxStackSize": 4,
+      "nested": [
+        {
+          "constants": [
+            {
+              "length": 5,
+              "sha256": "d7b8a8c7fedaba5caa84764c2fdcaaeae249abc4e31f3dd55fdbb3ab002c00ae",
+              "span": {
+                "length": 11,
+                "offset": 114
+              },
+              "type": "string"
+            }
+          ],
+          "debug": {
+            "lineInfo": {
+              "count": 1,
+              "span": {
+                "length": 4,
+                "offset": 133
+              }
+            },
+            "localCount": 0,
+            "upvalueNameCount": 0
+          },
+          "instructions": {
+            "count": 1,
+            "sha256": "4f5e1d312b4d1bb8ccaf069c18cddeca414ae78160fb3c793ffc730eef4e4f17",
+            "span": {
+              "length": 4,
+              "offset": 106
+            }
+          },
+          "lastLineDefined": 6,
+          "lineDefined": 4,
+          "maxStackSize": 2,
+          "nested": [],
+          "parameterCount": 1,
+          "source": null,
+          "span": {
+            "length": 59,
+            "offset": 86
+          },
+          "upvalueCount": 0,
+          "varargFlags": 0
+        }
+      ],
+      "parameterCount": 2,
+      "source": {
+        "length": 14,
+        "sha256": "e13c9d5751326a77bc069deac3c8aa70e51baae2d20cac6bd96fadd55cc9b95c",
+        "span": {
+          "length": 15,
+          "offset": 16
+        }
+      },
+      "span": {
+        "length": 187,
+        "offset": 12
+      },
+      "upvalueCount": 1,
+      "varargFlags": 2
+    }
+  },
+  "format": "client-lua",
+  "input": {
+    "length": 207
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "spanBase": {
+    "bytecode": "decoded",
+    "wrapper": "input"
+  },
+  "wrapper": {
+    "advisorySize": null,
+    "decodedLength": 199,
+    "decodedSha256": "fe9aed66f81b637bb819f1fcf0961c30274ebd2ba4ba09206fd2924dc5979681",
+    "encodedPayload": {
+      "length": 199,
+      "offset": 8
+    },
+    "encodedPrefix": null,
+    "header": {
+      "length": 8,
+      "offset": 0
+    },
+    "unknownHeader": [
+      {
+        "sha256": "0a745114a8b42069f53c7927ec8c3ef4175fe6c9f08a6709661729bcc58da9b5",
+        "span": {
+          "length": 4,
+          "offset": 4
+        }
+      }
+    ],
+    "variant": "raw"
+  }
+}

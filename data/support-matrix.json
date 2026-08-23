@@ -226,7 +226,7 @@
         "json",
         "binary"
       ],
-      "notes": "Reads and extracts the raw and XOR-0x73 wrappers while preserving unknown header bytes. Lua bytecode semantics and the advisory size field remain uninterpreted."
+      "notes": "Reads and extracts the raw and XOR-0x73 wrappers while preserving unknown header bytes. An explicit lpb-bytecode view structurally inspects an evidenced Lua 5.1 payload without changing wrapper boundaries. Unknown wrapper fields, the advisory size, unsupported wrapper variants, and LPB writing remain unresolved."
     },
     {
       "id": "lua-path",
@@ -243,12 +243,13 @@
       "name": "Client Lua script payload",
       "category": "script",
       "phase": 1,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
       "export": "planned",
       "exportViews": [
         "lua"
-      ]
+      ],
+      "notes": "Structurally reads the evidenced official Lua 5.1 little-endian representation with 32-bit int, size_t, and instruction plus 64-bit floating number. Reports headers, prototype trees, constant types and digests, instruction spans, and debug-table counts under fixed resource limits. Instructions are not decoded, code validity is not checked, string contents are not reported, and source recovery or decompilation is not supported."
     },
     {
       "id": "gtex",

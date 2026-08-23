@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "client-lua-table-bomb",
+  "formatId": "client-lua",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/bytecode-table-bomb.bin"
+  },
+  "arguments": ["--as", "lpb-bytecode"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "resource-limit-exceeded",
+    "errorOffset": 28
+  },
+  "notes": "An instruction count beyond the aggregate table budget fails before multiplication or allocation."
+}

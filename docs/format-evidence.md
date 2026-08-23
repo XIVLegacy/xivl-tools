@@ -1255,6 +1255,7 @@ Promoted references:
 
 ```text
 xivl-decomp:docs/script/lpb-format.md, sha256 38cf3bbc0b27681a7eb89f10f88968ea8ae10695fe41bfb044c0f8b96d9e344e
+xivl-decomp:docs/script/lua-bytecode-format.md, sha256 346b62a5b6c1732e3693b88c71c9383f02b0e700c5b6978800fd8987183ceb56
 xivl-decomp:tools/decode_lpb.py, sha256 74994d6714a5acd161d241a40db8b3907b88871129e29ac9aed821191dd5020a
 ```
 
@@ -1283,11 +1284,53 @@ digest for uninterpreted bytes, and extraction returns the complete decoded
 chunk. Public cases cover both wrappers, a truncated header, and a payload
 whose decoded signature is not Lua 5.1.
 
-The LPB statuses remain `partial`: this slice does not parse, decompile, or
-export Lua source, assign meaning to the advisory size or unknown header bytes,
-or claim that no additional wrapper variant exists. The binary export is the
-compiled chunk only; retaining the parsed `LpbFile` alongside it is what keeps
-the original wrapper's unknown bytes available to callers.
+The LPB statuses remain `partial`: the wrapper reader does not assign meaning
+to the advisory size or unknown header bytes, claim that no additional wrapper
+variant exists, or write LPB. The binary export is the compiled chunk only;
+retaining the parsed `LpbFile` alongside it is what keeps the original
+wrapper's unknown bytes available to callers.
+
+### The bounded Lua 5.1 structure view
+
+The decoded target header is exactly the 12-byte official Lua 5.1 header
+recorded above: format 0, little-endian, 4-byte `int`, 4-byte `size_t`, 4-byte
+instruction, 8-byte floating `lua_Number`. This agrees with the official Lua
+5.1.5 loader's header construction and load order in
+[lundump.c](https://www.lua.org/source/5.1/lundump.c.html) and the fixed header
+constants in [lundump.h](https://www.lua.org/source/5.1/lundump.h.html). Another
+width, byte order, number representation, version, or format is refused as
+`unsupported-lua-header`; it is not interpreted using the host platform.
+
+After the header, the official loader reads one root function prototype. Each
+prototype holds an optional `size_t`-prefixed, zero-terminated source string;
+two line integers; four shape bytes; an instruction vector; constants; nested
+prototypes; and the line, local, and upvalue-name debug tables. The constant
+tags accepted by the official loader are nil (0), boolean (1), number (3), and
+string (4). The public model retains exact string and number bytes, while the
+normalized report publishes only type, span, length where applicable, and
+digest. Instruction words likewise remain an opaque span and digest.
+
+The reader consumes the complete root prototype and rejects trailing bytes.
+Every signed Lua `int` count must be nonnegative. Before allocation it enforces
+these platform-independent budgets:
+
+- at most 128 nested prototype levels and 10000 total prototypes;
+- at most 1000000 aggregate instruction, constant, prototype, and debug-table
+  entries;
+- at most 16 MiB for one string and for all string bodies together.
+
+Generated public conformance covers a structurally valid chunk with all four
+constant tags, debug tables, and a nested function. Malformed cases cover an
+unsupported endian marker, a string allocation bomb, a table-count bomb, a
+nesting bomb, and trailing bytes. The repository-wide truncation and mutation
+tests exercise the ordinary generated LPB fixtures through both wrapper and
+bytecode readings; the nesting bomb has its own exact limit assertion.
+
+The `client-lua` read status is therefore `partial`, not `supported`: opcode
+decoding and validation, control-flow or VM-semantic checks, source recovery,
+decompilation, other serialized representations, and retail fixture parity are
+not claimed. Lua source export stays `planned`. LPB remains `partial` for the
+wrapper limitations already listed, and neither row gains write support.
 
 ## Open questions
 

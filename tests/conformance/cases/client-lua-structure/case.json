@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "client-lua-structure",
+  "formatId": "client-lua",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/bytecode.bin"
+  },
+  "arguments": ["--as", "lpb-bytecode"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Authored Lua 5.1 structure with four constant kinds, debug tables, and one nested prototype."
+}

@@ -161,6 +161,13 @@ impl<'a> Reader<'a> {
         Ok(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
     }
 
+    pub fn u64_le(&mut self) -> Result<u64> {
+        let bytes = self.take(8)?;
+        Ok(u64::from_le_bytes([
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+        ]))
+    }
+
     /// A four-byte tag, rendered with non-printable bytes escaped so it is
     /// always safe to put in ASCII JSON.
     pub fn tag4(&mut self) -> Result<String> {
@@ -211,7 +218,7 @@ mod tests {
 
     #[test]
     fn reads_both_byte_orders() {
-        let data = [0x01u8, 0x02, 0x03, 0x04];
+        let data = [0x01u8, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
         let mut reader = Reader::new(&data);
         assert_eq!(reader.u32_le().unwrap(), 0x0403_0201);
         reader.seek(0).unwrap();
@@ -219,6 +226,8 @@ mod tests {
         reader.seek(0).unwrap();
         assert_eq!(reader.u16_le().unwrap(), 0x0201);
         assert_eq!(reader.u16_be().unwrap(), 0x0304);
+        reader.seek(0).unwrap();
+        assert_eq!(reader.u64_le().unwrap(), 0x0807_0605_0403_0201);
     }
 
     #[test]

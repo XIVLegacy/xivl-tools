@@ -59,6 +59,7 @@ specific view is required:
 | `scrambled-xml` | Report the scrambled container and a census of document shape without reading document content. |
 | `sqwt` | Read a SQEX container using the input file's base name as its key. |
 | `lpb` | Read an LPB wrapper and report preserved header spans and the decoded payload digest. |
+| `lpb-bytecode` | Keep the LPB wrapper report and structurally inspect its evidenced Lua 5.1 payload. |
 | `enable-file` | Read the headerless enable-record array. |
 | `row-offsets` | Read the headerless row-offset array. |
 | `sheet-data` | Read sheet rows; add `--columns` for typed rows. |
@@ -73,12 +74,24 @@ under, so renaming a container before reading it produces a parse failure.
 Both `/` and `\` are treated as path separators when that base name is taken,
 so the same fixture argument behaves consistently across platforms.
 
+`lpb-bytecode` is explicit because wrapper inspection and compiled-chunk
+inspection are separate claims. The bytecode view reports the fixed header,
+function prototypes, constant types and encoded digests, instruction spans,
+nested functions, and debug-table counts. It does not decode instructions,
+print string constants, validate VM semantics, or recover source. Bytecode
+spans are relative to the decoded chunk; wrapper spans remain relative to the
+input file. The parser refuses unsupported target headers, more than 128 nested
+prototype levels, more than 10000 prototypes, more than 1000000 aggregate
+table entries, more than 16 MiB of aggregate string storage, and any bytes
+after the root prototype.
+
 Examples using the authored public fixtures:
 
 ```text
 cargo run --locked -p xivl-cli -- inspect tests/fixtures/public/sheet/row-offsets.bin --as row-offsets
 cargo run --locked -p xivl-cli -- inspect tests/fixtures/public/sheet/rows-typed.bin --as sheet-data --columns str,s32,bool,float,u8
 cargo run --locked -p xivl-cli -- inspect tests/fixtures/public/sqwt/window.bin --as sqwt
+cargo run --locked -p xivl-cli -- inspect tests/fixtures/public/lpb/bytecode.bin --as lpb-bytecode
 ```
 
 ## Reports and failures

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "client-lua-nesting-bomb",
+  "formatId": "client-lua",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/bytecode-nesting-bomb.bin"
+  },
+  "arguments": ["--as", "lpb-bytecode"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "resource-limit-exceeded"
+  },
+  "notes": "A nested prototype chain stops at the fixed depth limit."
+}

@@ -208,10 +208,55 @@ def enable_records(pairs: list[tuple[int, int]]) -> bytes:
     return b"".join(struct.pack("<II", first, count) for first, count in pairs)
 
 
+LUA51_HEADER = b"\x1bLuaQ\x00\x01\x04\x04\x04\x08\x00"
+
+
+def lua_string(value: bytes | None) -> bytes:
+    if value is None:
+        return struct.pack("<I", 0)
+    return struct.pack("<I", len(value) + 1) + value + b"\x00"
+
+
+def lua_proto(
+    *,
+    source: bytes | None = None,
+    lines: tuple[int, int] = (0, 0),
+    shape: tuple[int, int, int, int] = (0, 0, 0, 2),
+    instructions: tuple[int, ...] = (),
+    constants: tuple[bytes, ...] = (),
+    nested: tuple[bytes, ...] = (),
+    line_info: tuple[int, ...] = (),
+    locals_: tuple[tuple[bytes, int, int], ...] = (),
+    upvalues: tuple[bytes, ...] = (),
+) -> bytes:
+    data = bytearray(lua_string(source))
+    data.extend(struct.pack("<II4B", *lines, *shape))
+    data.extend(struct.pack("<I", len(instructions)))
+    for instruction in instructions:
+        data.extend(struct.pack("<I", instruction))
+    data.extend(struct.pack("<I", len(constants)))
+    for constant in constants:
+        data.extend(constant)
+    data.extend(struct.pack("<I", len(nested)))
+    for child in nested:
+        data.extend(child)
+    data.extend(struct.pack("<I", len(line_info)))
+    for line in line_info:
+        data.extend(struct.pack("<I", line))
+    data.extend(struct.pack("<I", len(locals_)))
+    for name, start_pc, end_pc in locals_:
+        data.extend(lua_string(name))
+        data.extend(struct.pack("<II", start_pc, end_pc))
+    data.extend(struct.pack("<I", len(upvalues)))
+    for name in upvalues:
+        data.extend(lua_string(name))
+    return bytes(data)
+
+
 def build_fixtures() -> dict[str, bytes]:
     fixtures: dict[str, bytes] = {}
 
-    # Authored Lua path and LPB samples contain no retail names or bytecode.
+    # Authored Lua path and LPB samples contain no retail names or bytes.
     fixtures["lua-path/example.txt"] = b"Quest/Scenario/Man0g0.lua"
     fixtures["lua-path/non-ascii.bin"] = b"ab\xc3\xa9.lua"
 
@@ -221,6 +266,53 @@ def build_fixtures() -> dict[str, bytes]:
     fixtures["lpb/xor.bin"] = xor_header + bytes(byte ^ 0x73 for byte in lua_chunk)
     fixtures["lpb/truncated.bin"] = b"rle\x0cshort"
     fixtures["lpb/bad-chunk.bin"] = b"rlu\x0bABCDxxxxx"
+
+    child = lua_proto(
+        lines=(4, 6),
+        shape=(0, 1, 0, 2),
+        instructions=(30,),
+        constants=(b"\x04" + lua_string(b"child"),),
+        line_info=(5,),
+    )
+    main = lua_proto(
+        source=b"@synthetic.lua",
+        lines=(0, 12),
+        shape=(1, 2, 2, 4),
+        instructions=(1, 30),
+        constants=(
+            b"\x00",
+            b"\x01\x01",
+            b"\x03" + struct.pack("<d", 1.5),
+            b"\x04" + lua_string(b"hello"),
+        ),
+        nested=(child,),
+        line_info=(1, 2),
+        locals_=((b"value", 0, 2),),
+        upvalues=(b"environment",),
+    )
+    bytecode = LUA51_HEADER + main
+    fixtures["lpb/bytecode.bin"] = b"rlu\x0bBCOD" + bytecode
+    fixtures["lpb/bytecode-xor.bin"] = (
+        b"rle\x0cBCOD" + struct.pack("<I", len(bytecode)) + b"?"
+        + bytes(byte ^ 0x73 for byte in bytecode)
+    )
+    fixtures["lpb/bytecode-trailing.bin"] = b"rlu\x0bBCOD" + bytecode + b"!"
+    unsupported = bytearray(bytecode)
+    unsupported[6] = 2
+    fixtures["lpb/bytecode-unsupported-header.bin"] = b"rlu\x0bBCOD" + unsupported
+    fixtures["lpb/bytecode-string-bomb.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + struct.pack("<I", 16 * 1024 * 1024 + 1)
+    )
+    fixtures["lpb/bytecode-table-bomb.bin"] = (
+        b"rlu\x0bBCOD"
+        + LUA51_HEADER
+        + lua_string(None)
+        + struct.pack("<II4BI", 0, 0, 0, 0, 0, 2, 1_000_001)
+    )
+    deepest = lua_proto()
+    for _ in range(128):
+        deepest = lua_proto(nested=(deepest,))
+    fixtures["lpb/bytecode-nesting-bomb.bin"] = b"rlu\x0bBCOD" + LUA51_HEADER + deepest
 
     # -- sedb ------------------------------------------------------------
     # A well-formed non-composite container: 0x30 header, 0x20 payload, and
