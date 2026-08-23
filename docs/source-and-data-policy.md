@@ -7,10 +7,8 @@ enforces its mechanical rules.
 ## Public code
 
 - Every authored source file is in-house work under GNU AGPL v3 or later.
-- External projects are comparison oracles, behavior targets, and lead
-  material. Their code is not copied, machine-translated, or vendored.
-  An enabled comparison's oracle record carries its invocation contract and
-  license identifier.
+- External projects may be behavior targets and lead material. Their code is
+  not copied, machine-translated, or vendored.
 - A published byte layout or field name from an external project is a lead
   until it is independently established against retail 1.23b data. Only
   then may it become a claim in the support matrix.
@@ -29,7 +27,6 @@ Committable:
 - contract data under `data/` with a JSON Schema in `schemas/`;
 - authored synthetic fixtures under `tests/fixtures/public/`;
 - conformance case manifests and expected normalized outputs;
-- oracle records, which describe an external tool but contain none of it;
 - format evidence documents carrying retail citations.
 
 A synthetic fixture is bytes written by this project to exercise a parser,
@@ -132,9 +129,10 @@ private fixture is a claim nobody else can check.
 
 The boundary check (`tools/validate_repo.py`) pins the tracked tree and raw
 `.gitignore`, rejects every ignored content category, scans tracked content for
-PE files, maintainer paths, and private references, and verifies that the
-private fixture manifest agrees with the ignored local tree. Public CI declares
-that tree absent explicitly; absence never passes silently.
+PE files, maintainer paths, and private references, validates the tracked
+fixture declarations, and rejects any retired in-tree private fixture mirror.
+Actual fixture bytes are checked only from explicit external roots by private
+conformance or the snapshot tool.
 
 The contract check (`tools/check_contract.py`) checks:
 

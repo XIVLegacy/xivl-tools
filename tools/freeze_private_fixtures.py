@@ -86,6 +86,30 @@ def verify(entry: dict, path: pathlib.Path) -> str | None:
     return None
 
 
+def require_external(path: pathlib.Path, label: str) -> None:
+    repository = REPO_ROOT.resolve()
+    resolved = path.resolve()
+    if resolved == repository or repository in resolved.parents:
+        raise SystemExit("freeze: {0} must be outside this checkout".format(label))
+
+
+def fixture_path(root: pathlib.Path, source_path: str) -> pathlib.Path:
+    relative = pathlib.PurePosixPath(source_path)
+    if (
+        not source_path
+        or source_path.startswith("/")
+        or "\\" in source_path
+        or relative.as_posix() != source_path
+        or any(part in {"", ".", ".."} for part in relative.parts)
+    ):
+        raise SystemExit("freeze: non-canonical fixture path: {0}".format(source_path))
+    resolved_root = root.resolve()
+    resolved = (resolved_root / pathlib.Path(*relative.parts)).resolve(strict=False)
+    if resolved_root not in resolved.parents:
+        raise SystemExit("freeze: fixture path escapes its root: {0}".format(source_path))
+    return resolved
+
+
 def freeze(root_id: str, source: pathlib.Path, destination: pathlib.Path) -> int:
     entries = entries_for(root_id)
     print(
@@ -95,13 +119,13 @@ def freeze(root_id: str, source: pathlib.Path, destination: pathlib.Path) -> int
     )
     stale = 0
     for entry in entries:
-        origin = source / entry["sourcePath"]
+        origin = fixture_path(source, entry["sourcePath"])
         reason = verify(entry, origin)
         if reason is not None:
             report(entry, "SKIPPED", reason)
             stale += 1
             continue
-        target = destination / entry["sourcePath"]
+        target = fixture_path(destination, entry["sourcePath"])
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(origin, target)
         reason = verify(entry, target)
@@ -131,7 +155,7 @@ def check(root_id: str, snapshot: pathlib.Path) -> int:
     )
     bad = 0
     for entry in entries:
-        reason = verify(entry, snapshot / entry["sourcePath"])
+        reason = verify(entry, fixture_path(snapshot, entry["sourcePath"]))
         if reason is None:
             report(entry, "ok")
         else:
@@ -174,11 +198,14 @@ def main() -> int:
     if args.snapshot is not None:
         if args.source is not None or args.destination is not None:
             raise SystemExit("freeze: --check takes neither --from nor --into")
+        require_external(args.snapshot, "snapshot")
         return check(args.root, args.snapshot)
     if args.source is None or args.destination is None:
         raise SystemExit("freeze: freezing needs both --from and --into")
     if not args.source.is_dir():
         raise SystemExit("freeze: {0} is not a directory".format(args.source))
+    require_external(args.source, "source")
+    require_external(args.destination, "destination")
     return freeze(args.root, args.source, args.destination)
 
 

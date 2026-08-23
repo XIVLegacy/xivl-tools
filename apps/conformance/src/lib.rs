@@ -27,6 +27,7 @@ use xivl_formats::{
 pub const MAX_INPUT_BYTES: u64 = 256 * 1024 * 1024;
 
 pub const CASE_DIR: &str = "tests/conformance/cases";
+/// Retained for source compatibility with early runner integrations.
 pub const ORACLE_DIR: &str = "tests/conformance/oracles";
 pub const PRIVATE_MANIFEST: &str = "tests/fixtures/private-manifest.json";
 pub const FIXTURE_ROOT_VARIABLE: &str = "XIVL_TOOLS_FIXTURE_ROOT";
@@ -61,6 +62,8 @@ pub struct Options {
     /// sets [`DEFAULT_FIXTURE_ROOT`].
     pub fixture_roots: BTreeMap<String, PathBuf>,
     pub require_private: bool,
+    /// Retained for source compatibility; the case schema has no oracle
+    /// records and the runner does not invoke external implementations.
     pub oracles: BTreeMap<String, PathBuf>,
     pub update_expected: bool,
 }
@@ -83,8 +86,8 @@ pub struct CaseResult {
 #[derive(Debug, Clone, Default)]
 pub struct Report {
     pub results: Vec<CaseResult>,
-    /// Oracle comparisons that did not run, with the reason each was left
-    /// out. An oracle never gates a run.
+    /// Retained for source compatibility; it is always empty because oracle
+    /// cases are not part of the conformance schema.
     pub oracle_skips: Vec<String>,
 }
 
@@ -137,23 +140,6 @@ pub fn run(options: &Options) -> std::io::Result<Report> {
         }
         if !options.formats.is_empty() && !options.formats.contains(&format_id) {
             continue;
-        }
-
-        for oracle in case
-            .get("oracles")
-            .and_then(Value::as_array)
-            .unwrap_or(&Vec::new())
-        {
-            let oracle_id = string_field(oracle, "oracleId");
-            if !options.oracles.contains_key(&oracle_id) {
-                report.oracle_skips.push(format!(
-                    "{id}: oracle '{oracle_id}' not supplied; pass --oracle {oracle_id}=<root>"
-                ));
-            } else {
-                report.oracle_skips.push(format!(
-                    "{id}: oracle '{oracle_id}' supplied but oracle invocation is not implemented yet"
-                ));
-            }
         }
 
         let directory = case_path
@@ -221,7 +207,7 @@ fn run_case(
     let expect = case.get("expect").cloned().unwrap_or(Value::Null);
     let expected_outcome = string_field(&expect, "outcome");
     match (expected_outcome.as_str(), produced) {
-        ("ok", Ok(document)) => compare_expected(options, case, directory, &expect, document),
+        ("ok", Ok(document)) => compare_expected(options, directory, &expect, document),
         ("ok", Err(error)) => Outcome::Failed(format!("expected success, got {error}")),
         ("parse-error", Ok(_)) => Outcome::Failed(format!(
             "expected error kind '{}', the input parsed cleanly",
@@ -234,7 +220,6 @@ fn run_case(
 
 fn compare_expected(
     options: &Options,
-    case: &Value,
     directory: &Path,
     expect: &Value,
     document: Value,
@@ -258,18 +243,10 @@ fn compare_expected(
         Err(error) => return Outcome::Failed(format!("cannot read '{name}': {error}")),
     };
 
-    let ignored = ignored_pointers(case);
-    let mut produced = document;
-    let mut expected = expected;
-    for pointer in &ignored {
-        remove_pointer(&mut produced, pointer);
-        remove_pointer(&mut expected, pointer);
-    }
-
-    if produced == expected {
+    if document == expected {
         return Outcome::Passed;
     }
-    Outcome::Failed(first_difference(&expected, &produced))
+    Outcome::Failed(first_difference(&expected, &document))
 }
 
 fn compare_error(expect: &Value, error: &FormatError) -> Outcome {
@@ -478,44 +455,6 @@ fn case_arguments(case: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn ignored_pointers(case: &Value) -> Vec<String> {
-    case.get("normalization")
-        .and_then(|value| value.get("ignorePointers"))
-        .and_then(Value::as_array)
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(Value::as_str)
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-/// Drop a JSON Pointer from a document, if it is there.
-fn remove_pointer(value: &mut Value, pointer: &str) {
-    let Some((parent_pointer, key)) = pointer.rsplit_once('/') else {
-        return;
-    };
-    let key = key.replace("~1", "/").replace("~0", "~");
-    let Some(parent) = value.pointer_mut(parent_pointer) else {
-        return;
-    };
-    match parent {
-        Value::Object(map) => {
-            map.remove(&key);
-        }
-        Value::Array(items) => {
-            if let Ok(index) = key.parse::<usize>() {
-                if index < items.len() {
-                    items.remove(index);
-                }
-            }
-        }
-        _ => {}
-    }
-}
-
 /// The first place two documents differ, as a JSON Pointer, so a failure
 /// says where rather than dumping both documents.
 fn first_difference(expected: &Value, produced: &Value) -> String {
@@ -659,12 +598,7 @@ mod tests {
     }
 
     #[test]
-    fn pointer_removal_and_diffing_work_on_both_shapes() {
-        let mut value = serde_json::json!({ "a": { "b": 1, "c": 2 }, "d": [1, 2, 3] });
-        remove_pointer(&mut value, "/a/b");
-        remove_pointer(&mut value, "/d/1");
-        assert_eq!(value, serde_json::json!({ "a": { "c": 2 }, "d": [1, 3] }));
-
+    fn nested_differences_report_their_json_pointer() {
         let left = serde_json::json!({ "a": { "b": 1 } });
         let right = serde_json::json!({ "a": { "b": 2 } });
         assert_eq!(first_difference(&left, &right), "/a/b: expected 1, got 2");
@@ -682,7 +616,7 @@ mod tests {
             ..Options::default()
         };
         let case = serde_json::json!({
-            "operation": "convert",
+            "operation": "unknown",
             "fixture": {
                 "kind": "public",
                 "path": "tests/fixtures/public/sedb/bad-magic.bin"
@@ -691,7 +625,7 @@ mod tests {
         });
         let outcome = run_case(&options, &case, &repo_root, &BTreeMap::new());
         match outcome {
-            Outcome::Failed(reason) => assert!(reason.contains("convert"), "{reason}"),
+            Outcome::Failed(reason) => assert!(reason.contains("unknown"), "{reason}"),
             other => panic!("an unimplemented operation must fail, got {other:?}"),
         }
     }

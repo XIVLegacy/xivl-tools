@@ -1,0 +1,69 @@
+name: Set up retail analysis toolchain
+description: Install the pinned JDK and optional Ghidra analysis toolchain.
+
+inputs:
+  scratch-root:
+    description: Absolute restricted scratch root for toolchain files.
+    required: true
+  include-ghidra:
+    description: Install the pinned Ghidra release in addition to the JDK.
+    required: true
+
+outputs:
+  analyze-headless:
+    description: Absolute analyzeHeadless path, empty when Ghidra is disabled.
+    value: ${{ steps.install.outputs.analyze-headless }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install pinned toolchain
+      id: install
+      shell: bash
+      env:
+        RETAIL_SCRATCH_ROOT: ${{ inputs.scratch-root }}
+        RETAIL_INCLUDE_GHIDRA: ${{ inputs.include-ghidra }}
+      run: |
+        set -euo pipefail
+        umask 077
+        scratch_root="$(python "${GITHUB_ACTION_PATH}/validate_root.py")"
+        toolchain="${scratch_root}/toolchain"
+        mkdir -p "${toolchain}/jdk"
+
+        jdk_archive="${toolchain}/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz"
+        curl --silent --show-error --fail --location --max-time 600 \
+          --max-filesize 250000000 \
+          --output "${jdk_archive}" \
+          "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz"
+        echo "ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94  ${jdk_archive}" | \
+          sha256sum --check --status
+        tar -xzf "${jdk_archive}" -C "${toolchain}/jdk"
+        java_path="$(find "${toolchain}/jdk" -type f -path '*/bin/java' -print -quit)"
+        test -x "${java_path}"
+        java_home="$(dirname "$(dirname "${java_path}")")"
+        echo "JAVA_HOME=${java_home}" >> "${GITHUB_ENV}"
+        echo "${java_home}/bin" >> "${GITHUB_PATH}"
+
+        analyze_headless=""
+        case "${RETAIL_INCLUDE_GHIDRA}" in
+          true)
+            mkdir -p "${toolchain}/ghidra"
+            ghidra_archive="${toolchain}/ghidra_12.1.3_PUBLIC_20260817.zip"
+            curl --silent --show-error --fail --location --max-time 600 \
+              --max-filesize 600000000 \
+              --output "${ghidra_archive}" \
+              "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.3_build/ghidra_12.1.3_PUBLIC_20260817.zip"
+            echo "93a5d11a9ad510622acaaf908c556a7b9b764d338e78a7567f3689bf5081fd54  ${ghidra_archive}" | \
+              sha256sum --check --status
+            unzip -q "${ghidra_archive}" -d "${toolchain}/ghidra"
+            analyze_headless="${toolchain}/ghidra/ghidra_12.1.3_PUBLIC/support/analyzeHeadless"
+            test -x "${analyze_headless}"
+            ;;
+          false)
+            ;;
+          *)
+            echo "include-ghidra must be true or false" >&2
+            exit 1
+            ;;
+        esac
+        echo "analyze-headless=${analyze_headless}" >> "${GITHUB_OUTPUT}"

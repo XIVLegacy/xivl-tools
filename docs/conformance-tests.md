@@ -1,8 +1,7 @@
 # Conformance tests
 
-The interface lets this project's output be compared against other
-implementations and against retail 1.23b data without copying anyone's code
-or publishing anyone's client files.
+The interface compares this project's output against authored expectations and
+retail 1.23b data without publishing anyone's client files.
 
 ## Pieces
 
@@ -10,8 +9,6 @@ or publishing anyone's client files.
 |---|---|---|
 | Case manifest | `tests/conformance/cases/<id>/case.json` | `schemas/conformance-case.schema.json` |
 | Expected output | next to its `case.json` | normalized JSON, see below |
-| Oracle record | `tests/conformance/oracles/<id>.json` | `schemas/oracle.schema.json` |
-| Oracle adapter | `tools/oracles/<name>` when named by a record | in-house script |
 | Public fixture | `tests/fixtures/public/` | authored synthetic bytes |
 | Private fixture identity | `tests/fixtures/private-manifest.json` | `schemas/private-fixture-manifest.schema.json` |
 
@@ -35,12 +32,6 @@ formatting:
   Losing an unknown span silently is a conformance failure, not a
   formatting difference.
 
-`normalization.ignorePointers` drops named JSON Pointers from both sides
-before comparison. It exists for genuinely environment-dependent values;
-each pointer needs a reason in the case `notes`. Ignoring a pointer to make
-a mismatch go away is the failure mode this field invites, so a reviewer
-treats a new pointer as a defect claim until the reason convinces.
-
 ## Operations
 
 `inspect` reports what an input holds. `validate` reads it the same way and
@@ -51,10 +42,8 @@ their results, and a writer that stopped round-tripping fails it rather
 than quietly passing an `inspect` case that never wrote anything.
 
 `extract` exercises the lossless CSV view for a public `sheet-data` fixture
-using the same `--as` and `--columns` arguments as the CLI reader. `convert`
-and `diff` remain unimplemented and fail rather than skip. Private fixtures
-whose root was not supplied are skipped with a reason. Oracle cases also use
-the skip channel because oracle invocation is not implemented yet.
+using the same `--as` and `--columns` arguments as the CLI reader. Private
+fixtures whose root was not supplied are skipped with a reason.
 
 ## Case outcomes
 
@@ -134,36 +123,6 @@ offsets, structural summaries, and unknown-span inventories. It never
 records recoverable payload bytes. A private case whose expected output
 would let a reader reconstruct client data does not land.
 
-## Oracles
-
-An oracle record describes an external implementation the owner already has on
-disk. The record says how to run it and normalize its output. It contains none
-of that project's code. Invocation is not implemented yet, so every oracle
-case is currently reported as skipped even when `--oracle` supplies a root.
-
-The planned invocation contract is:
-
-- the runner invokes the external tool through an argument vector with
-  `{root}`, `{input}`, and `{output}` placeholders. No shell.
-- `{root}` comes from an explicit owner-supplied option. There is no
-  default path and no workspace-layout guess.
-- the output adapter is in-house code under `tools/oracles/` that converts
-  the external output into the normalized form above.
-- the adapter directory is not scaffolded. It exists only when at least one
-  tracked oracle record names an adapter.
-- oracle runs are opt-in and never gate CI. An absent oracle is a skip with
-  a reason.
-- a disagreement is evidence to investigate, not an automatic defect on
-  either side. Retail behavior decides. A disagreement that resolves in the
-  external tool's favor will be recorded as `documented-divergence` with a note
-  and, where it changes what this project claims, a support-matrix
-  demotion.
-- an oracle's license governs its code, not its output. Its oracle record
-  carries the license identifier for owner compliance and grants nothing.
-
-Oracle records name the external implementations the owner has chosen for
-comparison and carry the license identifier beside the invocation contract.
-
 ## Running
 
 The runner contract is:
@@ -171,11 +130,11 @@ The runner contract is:
 ```text
 conformance run [--case <id>]... [--format <id>]...
                 [--fixture-root [<root-id>=]<dir>]... [--require-private]
-                [--oracle <id>=<root>]... [--update-expected]
+                [--update-expected]
                 [--repo-root <dir>]
 ```
 
-- default run: every case, public fixtures only, oracles skipped;
+- default run: every case, public fixtures only;
 - `--repo-root` names the checkout to run against and defaults to the working
   directory; the runner does not search parent or sibling directories;
 - `--update-expected` rewrites expected outputs and is never used in CI;
@@ -201,10 +160,7 @@ not established facts.
   "expect": {
     "outcome": "ok",
     "output": "expected.json"
-  },
-  "oracles": [
-    { "oracleId": "example-oracle", "comparison": "equal" }
-  ]
+  }
 }
 ```
 

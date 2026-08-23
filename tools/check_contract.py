@@ -23,7 +23,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SUPPORT_MATRIX = "data/support-matrix.json"
 PRIVATE_FIXTURE_MANIFEST = "tests/fixtures/private-manifest.json"
 CASE_DIR = "tests/conformance/cases"
-ORACLE_DIR = "tests/conformance/oracles"
 DOCS_INDEX = "docs/README.md"
 
 SCHEMAS = {
@@ -83,7 +82,9 @@ def tracked_files() -> list[str]:
     )
     if result.returncode != 0:
         raise SystemExit("gate: git ls-files failed: {0}".format(result.stderr.strip()))
-    return [line for line in result.stdout.splitlines() if line]
+    # Validate the worktree contents, so an intentional tracked-file removal
+    # can be checked before the change is staged.
+    return [line for line in result.stdout.splitlines() if line and (REPO_ROOT / line).is_file()]
 
 
 def load_json(relative: str) -> object:
@@ -225,11 +226,6 @@ def check_schemas(files: list[str]) -> list[Failure]:
             continue
         failures.extend(validate_against(relative, "schemas/conformance-case.schema.json"))
 
-    for relative in sorted(name for name in tracked if name.startswith(ORACLE_DIR + "/")):
-        if not relative.endswith(".json"):
-            continue
-        failures.extend(validate_against(relative, "schemas/oracle.schema.json"))
-
     return failures
 
 
@@ -247,11 +243,6 @@ def check_case_integrity(files: list[str], matrix: dict) -> list[Failure]:
     format_ids = {entry["id"] for entry in matrix["formats"]}
     fixture_ids = {
         entry["id"] for entry in load_json(PRIVATE_FIXTURE_MANIFEST)["entries"]
-    }
-    oracle_ids = {
-        Path(name).stem
-        for name in tracked
-        if name.startswith(ORACLE_DIR + "/") and name.endswith(".json")
     }
     seen_ids = set()
 
@@ -278,24 +269,22 @@ def check_case_integrity(files: list[str], matrix: dict) -> list[Failure]:
 
         fixture = case.get("fixture", {})
         if fixture.get("kind") == "public":
-            for key in ("path", "secondPath"):
-                value = fixture.get(key)
-                if value and value not in tracked:
-                    failures.append(
-                        Failure("case", "{0}: fixture '{1}' is not tracked".format(relative, value))
-                    )
+            value = fixture.get("path")
+            if value and value not in tracked:
+                failures.append(
+                    Failure("case", "{0}: fixture '{1}' is not tracked".format(relative, value))
+                )
         elif fixture.get("kind") == "private":
-            for key in ("fixtureId", "secondFixtureId"):
-                value = fixture.get(key)
-                if value and value not in fixture_ids:
-                    failures.append(
-                        Failure(
-                            "case",
-                            "{0}: private fixture '{1}' is not in the manifest".format(
-                                relative, value
-                            ),
-                        )
+            value = fixture.get("fixtureId")
+            if value and value not in fixture_ids:
+                failures.append(
+                    Failure(
+                        "case",
+                        "{0}: private fixture '{1}' is not in the manifest".format(
+                            relative, value
+                        ),
                     )
+                )
 
         expected = case.get("expect", {}).get("output")
         if expected:
@@ -303,17 +292,6 @@ def check_case_integrity(files: list[str], matrix: dict) -> list[Failure]:
             if output_relative not in tracked:
                 failures.append(
                     Failure("case", "{0}: expected output '{1}' is not tracked".format(relative, expected))
-                )
-
-        for oracle in case.get("oracles", []):
-            if oracle["oracleId"] not in oracle_ids:
-                failures.append(
-                    Failure(
-                        "case",
-                        "{0}: oracle '{1}' has no record in {2}".format(
-                            relative, oracle["oracleId"], ORACLE_DIR
-                        ),
-                    )
                 )
 
     return failures
