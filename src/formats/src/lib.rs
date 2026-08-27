@@ -29,6 +29,7 @@ pub mod sedb;
 pub mod sheet;
 pub mod sqwt;
 pub mod ssd;
+pub mod staticactor;
 pub mod xml;
 
 pub use anomaly::Anomaly;

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "staticactor-trailing-partial-record",
+  "formatId": "staticactor-san",
+  "operation": "inspect",
+  "fixture": { "kind": "public", "path": "tests/fixtures/public/staticactor/trailing-partial-record.bin" },
+  "arguments": ["--as", "staticactor-san"],
+  "expect": { "outcome": "parse-error", "errorKind": "trailing-partial-record", "errorOffset": 32 },
+  "notes": "Two bytes remain after the declared complete record."
+}

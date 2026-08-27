@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use serde_json::{json, Map, Value};
 
 use crate::config::{self, ConfigFile, ConfigKind};
-use crate::digest::sha256_hex;
+use crate::digest::{sha256_hex, sha256_xor_hex};
 use crate::error::Result;
 use crate::lpb;
 use crate::lua51::{
@@ -25,6 +25,7 @@ use crate::sedb::{self, Container, Entry, EntryBody};
 use crate::sheet::{self, ColumnType, ColumnValue, EnableFile, Row, RowOffsets, SheetString};
 use crate::sqwt;
 use crate::ssd::{self, SheetBody, SsdDocument};
+use crate::staticactor;
 use crate::xml;
 
 /// Version of the inspect document shape.
@@ -52,6 +53,8 @@ pub enum InspectAs {
     Lpb,
     /// An LPB wrapper plus bounded structure from its Lua 5.1 payload.
     LpbBytecode,
+    /// The XOR-0x73 static-actor SAN record table.
+    StaticActorSan,
     EnableFile,
     RowOffsets,
     /// A sheet data file. With no columns it is read as a stream of string
@@ -65,13 +68,14 @@ pub enum InspectAs {
 
 impl InspectAs {
     /// Names accepted by the `--as` option.
-    pub const NAMES: [&'static str; 13] = [
+    pub const NAMES: [&'static str; 14] = [
         "sedb",
         "ssd",
         "scrambled-xml",
         "sqwt",
         "lpb",
         "lpb-bytecode",
+        "staticactor-san",
         "enable-file",
         "row-offsets",
         "sheet-data",
@@ -115,6 +119,7 @@ impl InspectAs {
             Some("sqwt") => Self::Sqwt,
             Some("lpb") => Self::Lpb,
             Some("lpb-bytecode") => Self::LpbBytecode,
+            Some("staticactor-san") => Self::StaticActorSan,
             Some("enable-file") => Self::EnableFile,
             Some("row-offsets") => Self::RowOffsets,
             Some("sheet-data") => Self::SheetData(columns.clone().unwrap_or_default()),
@@ -157,7 +162,9 @@ pub fn inspect_bytes_as(data: &[u8], how: &InspectAs) -> Result<Value> {
 pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Result<Value> {
     match how {
         InspectAs::Auto => {
-            if ssd::has_document_signature(data) {
+            if staticactor::has_signature(data) {
+                inspect_staticactor(data)
+            } else if ssd::has_document_signature(data) {
                 inspect_ssd(data)
             } else if sqwt::has_signature(data) {
                 inspect_sqwt(data, name)
@@ -179,6 +186,7 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
         InspectAs::Sqwt => inspect_sqwt(data, name),
         InspectAs::Lpb => inspect_lpb(data),
         InspectAs::LpbBytecode => inspect_lpb_bytecode(data),
+        InspectAs::StaticActorSan => inspect_staticactor(data),
         InspectAs::EnableFile => inspect_enable_file(data),
         InspectAs::RowOffsets => inspect_row_offsets(data),
         InspectAs::SheetData(columns) => inspect_sheet_data(data, columns),
@@ -483,6 +491,84 @@ fn inspect_lpb(data: &[u8]) -> Result<Value> {
     object.insert("decodedLength".into(), json!(file.decoded.len() as u64));
     object.insert("decodedSha256".into(), json!(sha256_hex(&file.decoded)));
     Ok(Value::Object(object))
+}
+
+fn inspect_staticactor(data: &[u8]) -> Result<Value> {
+    let file = staticactor::parse(data)?;
+    let mut object = envelope("staticactor-san", data);
+    object.insert("header".into(), file.header.to_json());
+    object.insert(
+        "unknownHeader".into(),
+        json!({
+            "span": file.unknown_header.to_json(),
+            "encodedSha256": sha256_hex(span_bytes(data, file.unknown_header)),
+            "decodedSha256": sha256_xor_hex(
+                span_bytes(data, file.unknown_header),
+                staticactor::XOR_KEY,
+            ),
+        }),
+    );
+    object.insert(
+        "encoding".into(),
+        json!({
+            "kind": "xor",
+            "key": staticactor::XOR_KEY,
+            "span": {
+                "offset": 4,
+                "length": (data.len() - 4) as u64,
+            },
+        }),
+    );
+    object.insert(
+        "recordCount".into(),
+        json!({
+            "span": file.count_span.to_json(),
+            "byteOrder": "big",
+            "value": file.declared_count,
+        }),
+    );
+    object.insert("encodedBody".into(), file.encoded_body.to_json());
+    object.insert(
+        "records".into(),
+        Value::Array(
+            file.records
+                .iter()
+                .map(|record| {
+                    let encoded = span_bytes(data, record.string_span);
+                    let decoded_ascii = encoded
+                        .iter()
+                        .all(|byte| (byte ^ staticactor::XOR_KEY).is_ascii());
+                    let decoded_starts_with_slash = encoded
+                        .first()
+                        .is_some_and(|byte| byte ^ staticactor::XOR_KEY == b'/');
+                    json!({
+                        "index": record.index,
+                        "span": record.span.to_json(),
+                        "field0": {
+                            "span": record.value_span.to_json(),
+                            "byteOrder": "big",
+                            "value": record.value_be,
+                            "meaning": "unknown",
+                        },
+                        "string": {
+                            "encodedSpan": record.string_span.to_json(),
+                            "terminatorSpan": record.terminator_span.to_json(),
+                            "decodedLength": record.string_span.length,
+                            "decodedSha256": sha256_xor_hex(encoded, staticactor::XOR_KEY),
+                            "decodedAscii": decoded_ascii,
+                            "decodedStartsWithSlash": decoded_starts_with_slash,
+                            "meaning": "unknown",
+                        },
+                    })
+                })
+                .collect(),
+        ),
+    );
+    Ok(Value::Object(object))
+}
+
+fn span_bytes(data: &[u8], span: Span) -> &[u8] {
+    &data[span.offset as usize..span.end() as usize]
 }
 
 fn inspect_lpb_bytecode(data: &[u8]) -> Result<Value> {
@@ -1022,6 +1108,10 @@ mod tests {
             InspectAs::LpbBytecode
         );
         assert_eq!(
+            InspectAs::from_arguments(&arguments(&["--as", "staticactor-san"])).unwrap(),
+            InspectAs::StaticActorSan
+        );
+        assert_eq!(
             InspectAs::from_arguments(&arguments(&["--as", "sheet-data", "--columns", "str,u8"]))
                 .unwrap(),
             InspectAs::SheetData(vec![ColumnType::Text, ColumnType::Unsigned8])
@@ -1042,6 +1132,10 @@ mod tests {
     fn auto_recognizes_a_document_and_a_container() {
         let document = inspect_bytes(b"\xEF\xBB\xBF<ssd version=\"0.1\"></ssd>").unwrap();
         assert_eq!(document["format"], "ssd-master");
+        let mut san = b"sane".to_vec();
+        san.extend([0u8; 9].map(|byte| byte ^ staticactor::XOR_KEY));
+        let document = inspect_bytes(&san).unwrap();
+        assert_eq!(document["format"], "staticactor-san");
         let error = inspect_bytes(b"not a container at all").unwrap_err();
         assert_eq!(error.kind(), crate::error::ErrorKind::BadMagic);
     }

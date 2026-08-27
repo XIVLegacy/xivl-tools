@@ -37,7 +37,15 @@ fn binary_fixtures() -> Vec<(String, Vec<u8>)> {
 }
 
 fn document_fixtures() -> Vec<(String, Vec<u8>)> {
-    let mut fixtures = fixtures_under(&["ssd", "sheet", "scrambled", "sqwt", "config", "lpb"]);
+    let mut fixtures = fixtures_under(&[
+        "ssd",
+        "sheet",
+        "scrambled",
+        "sqwt",
+        "config",
+        "lpb",
+        "staticactor",
+    ]);
     // The 128-level nesting bomb has its own exact limit assertion. Mutating
     // each of its thousands of bytes would multiply the cross-reader sweep
     // without adding a distinct boundary.
@@ -146,6 +154,7 @@ fn read_every_way(data: &[u8], name: &str) {
         InspectAs::Sqwt,
         InspectAs::Lpb,
         InspectAs::LpbBytecode,
+        InspectAs::StaticActorSan,
         InspectAs::SheetData(vec![
             ColumnType::Text,
             ColumnType::Signed32,

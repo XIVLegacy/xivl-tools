@@ -97,6 +97,23 @@ def utf16_field(text: str, width: int) -> bytes:
     return encoded.ljust(width, b"\x00")
 
 
+def staticactor_san(
+    records: list[tuple[int, bytes]],
+    *,
+    declared_count: int | None = None,
+) -> bytes:
+    """An authored SAN record table using the retail framing only."""
+    if declared_count is None:
+        declared_count = len(records)
+    decoded = bytearray(b"SYNTH")
+    decoded.extend(struct.pack(">I", declared_count))
+    for value, string in records:
+        decoded.extend(struct.pack(">I", value))
+        decoded.extend(string)
+        decoded.append(0)
+    return b"sane" + bytes(byte ^ 0x73 for byte in decoded)
+
+
 def xml_document(body: str, declaration: bool = True, bom: bool = True) -> bytes:
     """An SSD document in the shape the client writes: BOM, declaration,
     CRLF line endings."""
@@ -279,6 +296,32 @@ def build_fixtures() -> dict[str, bytes]:
     fixtures["lpb/xor.bin"] = xor_header + bytes(byte ^ 0x73 for byte in lua_chunk)
     fixtures["lpb/truncated.bin"] = b"rle\x0cshort"
     fixtures["lpb/bad-chunk.bin"] = b"rlu\x0bABCDxxxxx"
+
+    # -- the static-actor SAN table --------------------------------------
+    # Only the framing is promoted: the authored strings resemble paths so
+    # the positive case exercises the retail byte class without assigning a
+    # meaning to either record member.
+    staticactor = staticactor_san(
+        [(7, b"/Synthetic/One"), (0x10203040, b"/Synthetic/Two")]
+    )
+    fixtures["staticactor/records.bin"] = staticactor
+    fixtures["staticactor/bad-magic.bin"] = b"x" + staticactor[1:]
+    fixtures["staticactor/truncated-header.bin"] = staticactor[:12]
+    fixtures["staticactor/count-bomb.bin"] = staticactor_san(
+        [], declared_count=100_001
+    )
+    fixtures["staticactor/missing-record.bin"] = staticactor_san(
+        [], declared_count=1
+    )
+    fixtures["staticactor/unterminated-record.bin"] = (
+        staticactor_san([], declared_count=1)
+        + bytes(byte ^ 0x73 for byte in struct.pack(">I", 9) + b"unfinished")
+    )
+    one_record = staticactor_san([(7, b"/Synthetic/One")])
+    fixtures["staticactor/trailing-partial-record.bin"] = one_record + b"\x01\x02"
+    fixtures["staticactor/trailing-record.bin"] = staticactor_san(
+        [(7, b"/Synthetic/One"), (9, b"/Synthetic/Extra")], declared_count=1
+    )
 
     child = lua_proto(
         lines=(4, 6),

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "staticactor-count-bomb",
+  "formatId": "staticactor-san",
+  "operation": "inspect",
+  "fixture": { "kind": "public", "path": "tests/fixtures/public/staticactor/count-bomb.bin" },
+  "arguments": ["--as", "staticactor-san"],
+  "expect": { "outcome": "parse-error", "errorKind": "resource-limit-exceeded", "errorOffset": 9 },
+  "notes": "A declared count above the fixed record budget is refused before allocation."
+}

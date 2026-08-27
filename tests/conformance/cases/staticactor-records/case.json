@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "staticactor-records",
+  "formatId": "staticactor-san",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/staticactor/records.bin"
+  },
+  "arguments": ["--as", "staticactor-san"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Authored header and two records exercise the evidenced framing without assigning meanings to either record member."
+}

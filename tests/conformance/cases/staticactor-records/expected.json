@@ -1,0 +1,104 @@
+{
+  "encodedBody": {
+    "length": 38,
+    "offset": 13
+  },
+  "encoding": {
+    "key": 115,
+    "kind": "xor",
+    "span": {
+      "length": 47,
+      "offset": 4
+    }
+  },
+  "format": "staticactor-san",
+  "header": {
+    "length": 13,
+    "offset": 0
+  },
+  "input": {
+    "length": 51
+  },
+  "operation": "inspect",
+  "recordCount": {
+    "byteOrder": "big",
+    "span": {
+      "length": 4,
+      "offset": 9
+    },
+    "value": 2
+  },
+  "records": [
+    {
+      "field0": {
+        "byteOrder": "big",
+        "meaning": "unknown",
+        "span": {
+          "length": 4,
+          "offset": 13
+        },
+        "value": 7
+      },
+      "index": 0,
+      "span": {
+        "length": 19,
+        "offset": 13
+      },
+      "string": {
+        "decodedAscii": true,
+        "decodedLength": 14,
+        "decodedSha256": "791a06dc39a9d68c5178f840e2fff949e33532e9702028c1906477ddfe3139b3",
+        "decodedStartsWithSlash": true,
+        "encodedSpan": {
+          "length": 14,
+          "offset": 17
+        },
+        "meaning": "unknown",
+        "terminatorSpan": {
+          "length": 1,
+          "offset": 31
+        }
+      }
+    },
+    {
+      "field0": {
+        "byteOrder": "big",
+        "meaning": "unknown",
+        "span": {
+          "length": 4,
+          "offset": 32
+        },
+        "value": 270544960
+      },
+      "index": 1,
+      "span": {
+        "length": 19,
+        "offset": 32
+      },
+      "string": {
+        "decodedAscii": true,
+        "decodedLength": 14,
+        "decodedSha256": "b485999623c4b0872596e6bde40b97f95dad60060eb1d09517d6009bea1364c1",
+        "decodedStartsWithSlash": true,
+        "encodedSpan": {
+          "length": 14,
+          "offset": 36
+        },
+        "meaning": "unknown",
+        "terminatorSpan": {
+          "length": 1,
+          "offset": 50
+        }
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "unknownHeader": {
+    "decodedSha256": "188889c978c8a536e54c50e0c5e04aa460c5f2135705ed08c6a96f9354375bf0",
+    "encodedSha256": "1080258c4537703c862f7b4b7caf196b20e1532d085e50e4c38e4861acd79fbc",
+    "span": {
+      "length": 5,
+      "offset": 4
+    }
+  }
+}
