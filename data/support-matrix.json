@@ -243,13 +243,13 @@
       "name": "Client Lua script payload",
       "category": "script",
       "phase": 1,
-      "read": "partial",
+      "read": "supported",
       "write": "none",
       "export": "planned",
       "exportViews": [
         "lua"
       ],
-      "notes": "Structurally reads the evidenced official Lua 5.1 little-endian representation with 32-bit int, size_t, and instruction plus 64-bit floating number. Reports headers, prototype trees, constant types and digests, and validated official opcode, mode, operand, instruction-span, and debug-table structure under fixed resource limits. It does not validate VM semantics or referenced table entries, build control flow, expose string contents, recover source, execute code, or decompile."
+      "notes": "Structurally reads the evidenced official Lua 5.1 little-endian representation with 32-bit int, size_t, and instruction plus 64-bit floating number. Validates prototype-local constant, upvalue, nested-prototype, direct-register, jump, SETLIST-extra-word, and CLOSURE-binding structure under fixed resource limits. It does not build control flow, analyze reachability or liveness, simulate the stack, expose string contents, recover source, execute code, or decompile."
     },
     {
       "id": "gtex",

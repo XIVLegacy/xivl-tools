@@ -11,6 +11,7 @@ XIVLegacy Tools.
 | [Conformance tests](conformance-tests.md) | Case manifests, normalized output, fixture roots |
 | [CLI](cli.md) | User-facing inspect and validate commands, selectors, reports, and exit statuses |
 | [Format evidence](format-evidence.md) | Byte-layout evidence and its retail citations |
+| [Lua 5.1 retail census](lua51-retail-census.md) | Aggregate full-corpus instruction and structural validation |
 | [AI-assisted contributions](ai_agents/README.md) | Tracked contribution and documentation policy |
 | [Comments and prose](ai_agents/comments-and-prose.md) | Comment and public-prose keep rules |
 | [Evidence and claims](ai_agents/evidence-and-claims.md) | Evidence boundaries, claims, citations, and path defaults |

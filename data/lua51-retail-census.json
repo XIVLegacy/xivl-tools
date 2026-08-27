@@ -1,0 +1,127 @@
+{
+  "accounting": {
+    "acceptedScripts": 2671,
+    "decodedPayloadBytes": 5509805,
+    "exactHeaders": 2671,
+    "manifestOwnedScripts": 2671,
+    "parserFailures": {}
+  },
+  "debugTables": {
+    "lineInfo": {
+      "empty": 16821,
+      "matchesInstructionWords": 0,
+      "other": 0
+    },
+    "locals": {
+      "empty": 16821,
+      "present": 0
+    },
+    "upvalueNames": {
+      "empty": 16821,
+      "matchesDeclaredUpvalues": 0,
+      "partial": 0
+    }
+  },
+  "instructions": {
+    "closureBindings": {
+      "getupval": 0,
+      "move": 11,
+      "total": 11
+    },
+    "decodedOpcodeWords": 535323,
+    "modes": {
+      "iABC": 332171,
+      "iABx": 156211,
+      "iAsBx": 46941
+    },
+    "opcodes": {
+      "ADD": 1623,
+      "CALL": 80303,
+      "CLOSE": 1,
+      "CLOSURE": 14150,
+      "CONCAT": 2054,
+      "DIV": 142,
+      "EQ": 21922,
+      "FORLOOP": 1049,
+      "FORPREP": 1049,
+      "GETGLOBAL": 29508,
+      "GETTABLE": 18865,
+      "GETUPVAL": 12,
+      "JMP": 44843,
+      "LE": 1256,
+      "LEN": 325,
+      "LOADBOOL": 10903,
+      "LOADK": 112546,
+      "LOADNIL": 2780,
+      "LT": 1728,
+      "MOD": 28,
+      "MOVE": 59938,
+      "MUL": 351,
+      "NEWTABLE": 3131,
+      "NOT": 15,
+      "POW": 4,
+      "RETURN": 27158,
+      "SELF": 73236,
+      "SETGLOBAL": 7,
+      "SETLIST": 2917,
+      "SETTABLE": 18792,
+      "SETUPVAL": 0,
+      "SUB": 1165,
+      "TAILCALL": 987,
+      "TEST": 1866,
+      "TESTSET": 51,
+      "TFORLOOP": 5,
+      "UNM": 3,
+      "VARARG": 610
+    },
+    "perScript": {
+      "maximum": 22617,
+      "minimum": 1
+    },
+    "rkOperands": {
+      "constant": 136385,
+      "register": 49738
+    },
+    "setlistExtraWords": 0,
+    "words": 535323
+  },
+  "prototypes": {
+    "byDepth": {
+      "0": 2671,
+      "1": 14143,
+      "2": 7
+    },
+    "maximumDepth": 2,
+    "nested": 14150,
+    "perScript": {
+      "maximum": 569,
+      "minimum": 1
+    },
+    "total": 16821
+  },
+  "provenance": {
+    "corpus": {
+      "manifest": "manifests/scripts.json",
+      "manifestSha256": "86798306F71336EE494F12D395DB3B8EA571A21224FBD99E2EF87ECD18C61300",
+      "registry": "lua/registry.json",
+      "registrySha256": "957060C79FCCE34F90B1840251C889EF8EE354F8380000518B1FEB96F65DD78F",
+      "scriptCount": 2671,
+      "sidecarCount": 2671,
+      "sidecarInventorySha256": "8C566F3E6376F0D8259202F03B3C34F9CF1F8B50E806710225B815D9F07E6EC2"
+    },
+    "coverageManifestSha256": "33DFFF57BB2419C4B4778F73DB367726DABFA6532C73DF03A687CF31F5F50E31",
+    "decoderSourceSha256": "33C7196788E6D899A83E2E61A24A35F7CFEEACE93FB6C4AFF2C74D522C01E36C",
+    "inventorySha256": "C0BC21DE2626F619AD278C4E043F537A2B6C1CF3263D3110323CC31054B97CF2",
+    "lpbSourceSha256": "96639A41C4226DD41E8DD4F19E757947685BED9CDB07D6AF63B3D240CD08278A",
+    "scriptsCommit": "c9d0c376bafd43449468c22c910faffaf184cdb2"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "extraction": "2012.09.19.0001",
+    "gameVersion": "1.23b"
+  },
+  "wrappers": {
+    "raw": 1,
+    "xor-73": 2670
+  }
+}

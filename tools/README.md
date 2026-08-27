@@ -61,6 +61,14 @@ These commands require `--client-root`:
   sheet stack, and rich strings in one resource-tree walk.
 - `research/census_sqwt.py` - census SQEX widget containers.
 
+### Lua script root
+
+- `cargo run --locked -p xivl-formats --example lua51_census -- ...` - validate
+  and census the complete manifest-owned LPB corpus. It requires explicit
+  client-script and coverage-manifest paths plus the full owner commit, verifies
+  every retained LPB and decoded-payload hash, and prints aggregate JSON only.
+  `--check data/lua51-retail-census.json` requires exact retained parity.
+
 ### Configuration root
 
 - `research/census_config.py` - census the configuration files. It requires

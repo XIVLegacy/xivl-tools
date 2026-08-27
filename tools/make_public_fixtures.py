@@ -282,9 +282,9 @@ def build_fixtures() -> dict[str, bytes]:
 
     child = lua_proto(
         lines=(4, 6),
-        shape=(0, 1, 0, 2),
+        shape=(1, 1, 0, 2),
         instructions=(
-            lua_instruction_asbx(22, 0, -2),  # JMP: iAsBx
+            lua_instruction_asbx(22, 0, -1),  # JMP: iAsBx to this instruction
             lua_instruction_abc(30, 0, 1, 0),  # RETURN: iABC
         ),
         constants=(b"\x04" + lua_string(b"child"),),
@@ -297,11 +297,14 @@ def build_fixtures() -> dict[str, bytes]:
         instructions=(
             lua_instruction_abc(0, 1, 2, 0),  # MOVE: iABC register and unused
             lua_instruction_abx(1, 0, 0),  # LOADK: iABx constant reference
-            # ADD: RK constant 200 is deliberately outside this table. The
-            # structural report must retain the reference without inventing
-            # a value or treating it as a register.
-            lua_instruction_abc(12, 2, 0x100 | 200, 1),
-            lua_instruction_asbx(22, 0, -2),  # JMP: iAsBx and excess-K bias
+            # ADD: the RK form keeps constant and register references distinct
+            # without resolving either reference to a value.
+            lua_instruction_abc(12, 2, 0x100 | 3, 1),
+            lua_instruction_abx(36, 0, 0),  # CLOSURE: nested prototype 0
+            lua_instruction_abc(4, 0, 0, 0),  # CLOSURE binding: parent upvalue 0
+            lua_instruction_abc(34, 0, 0, 0),  # SETLIST: C is the following word
+            1,  # SETLIST extra word, not an opcode
+            lua_instruction_asbx(22, 0, -1),  # JMP: iAsBx and excess-K bias
             lua_instruction_abc(30, 0, 1, 0),  # RETURN: iABC
         ),
         constants=(
@@ -311,8 +314,8 @@ def build_fixtures() -> dict[str, bytes]:
             b"\x04" + lua_string(b"hello"),
         ),
         nested=(child,),
-        line_info=(1, 2, 3, 4, 5),
-        locals_=((b"value", 0, 5),),
+        line_info=(1, 2, 3, 4, 4, 5, 5, 6, 7),
+        locals_=((b"value", 0, 9),),
         upvalues=(b"environment",),
     )
     bytecode = LUA51_HEADER + main
@@ -328,6 +331,78 @@ def build_fixtures() -> dict[str, bytes]:
     invalid_opcode = lua_proto(instructions=(38,))
     fixtures["lpb/bytecode-invalid-opcode.bin"] = (
         b"rlu\x0bBCOD" + LUA51_HEADER + invalid_opcode
+    )
+    invalid_constant = lua_proto(
+        instructions=(
+            lua_instruction_abx(1, 0, 1),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+        constants=(b"\x00",),
+    )
+    fixtures["lpb/bytecode-invalid-constant.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_constant
+    )
+    invalid_upvalue = lua_proto(
+        instructions=(
+            lua_instruction_abc(4, 0, 0, 0),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+    )
+    fixtures["lpb/bytecode-invalid-upvalue.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_upvalue
+    )
+    invalid_nested = lua_proto(
+        instructions=(
+            lua_instruction_abx(36, 0, 0),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+    )
+    fixtures["lpb/bytecode-invalid-nested.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_nested
+    )
+    invalid_register = lua_proto(
+        instructions=(
+            lua_instruction_abc(0, 2, 0, 0),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+    )
+    fixtures["lpb/bytecode-invalid-register.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_register
+    )
+    invalid_jump = lua_proto(
+        instructions=(
+            lua_instruction_asbx(22, 0, -2),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+    )
+    fixtures["lpb/bytecode-invalid-jump.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_jump
+    )
+    binding_child = lua_proto(
+        shape=(1, 0, 0, 2),
+        instructions=(lua_instruction_abc(30, 0, 1, 0),),
+    )
+    invalid_binding = lua_proto(
+        shape=(1, 0, 0, 2),
+        instructions=(
+            lua_instruction_abx(36, 0, 0),
+            lua_instruction_abx(1, 0, 0),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+        constants=(b"\x00",),
+        nested=(binding_child,),
+    )
+    fixtures["lpb/bytecode-invalid-closure-binding.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_binding
+    )
+    invalid_setlist = lua_proto(
+        instructions=(
+            lua_instruction_abc(34, 0, 0, 0),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+    )
+    fixtures["lpb/bytecode-invalid-setlist.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_setlist
     )
     truncated_instruction = (
         LUA51_HEADER

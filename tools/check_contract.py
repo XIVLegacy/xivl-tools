@@ -28,6 +28,7 @@ DOCS_INDEX = "docs/README.md"
 SCHEMAS = {
     SUPPORT_MATRIX: "schemas/support-matrix.schema.json",
     PRIVATE_FIXTURE_MANIFEST: "schemas/private-fixture-manifest.schema.json",
+    "data/lua51-retail-census.json": "schemas/lua51-retail-census.schema.json",
 }
 
 # Paths whose contents must never be tracked. The policy is the rule. This

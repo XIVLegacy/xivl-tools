@@ -546,6 +546,12 @@ fn lua_prototype_to_json(prototype: &Lua51Prototype, decoded: &[u8]) -> Value {
             "items": Value::Array(prototype.decoded_instructions.iter().map(
                 lua_instruction_to_json
             ).collect()),
+            "setlistExtraWords": Value::Array(prototype.setlist_extra_words.iter().map(|word| json!({
+                "index": word.index,
+                "offset": word.span.offset,
+                "span": word.span.to_json(),
+                "rawWord": word.raw_word,
+            })).collect()),
         },
         "constants": Value::Array(prototype.constants.iter().map(|constant| {
             let mut value = json!({

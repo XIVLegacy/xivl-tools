@@ -1324,8 +1324,21 @@ name, encoding mode, and mode-appropriate operands. The official B and C
 argument modes distinguish unused values, plain values, registers, and RK
 fields. In an RK field, raw values with bit 8 set are constant references and
 the low 8 bits are their index; other values are register references. The
-model retains that structure even when the referenced constant table entry is
-absent. It never manufactures a constant value or publishes string contents.
+model retains that structure and checks the index against the containing
+prototype without resolving it to a value. It never manufactures a constant
+value or publishes string contents.
+
+The prototype-local validator follows the unconditional structural subset of
+the official Lua 5.1.5 checker in
+[ldebug.c](https://www.lua.org/source/5.1/ldebug.c.html) and the operand use in
+[lvm.c](https://www.lua.org/source/5.1/lvm.c.html). It checks constant,
+upvalue, and nested-prototype indices; direct and derived register bounds;
+global-name string constants; jump destinations; prototype shape and final
+`RETURN`; and the official debug-table cardinalities. A `SETLIST` with C=0
+consumes the following raw word as data, so that word is preserved separately
+and cannot be a jump destination. A `CLOSURE` must be followed by the nested
+prototype's declared number of `MOVE` or `GETUPVAL` binding words, whose source
+indices are checked in the parent prototype.
 
 The reader consumes the complete root prototype and rejects trailing bytes.
 Every signed Lua `int` count must be nonnegative. Before allocation it enforces
@@ -1338,24 +1351,29 @@ these platform-independent budgets:
 
 Generated public conformance covers all three instruction encodings, RK
 register and constant forms, all four constant tags, debug tables, a nested
-function, and the same decoded chunk behind raw and XOR-0x73 wrappers. The RK
-constant case deliberately names an unavailable table index so the normalized
-contract proves that no value is invented. Malformed cases cover an invalid
-opcode, a truncated instruction word, an unsupported endian marker, a string
-allocation bomb, a table-count bomb, a nesting bomb, and trailing bytes. Unit
-contracts pin the complete opcode-name order, every opcode's encoding mode,
-the bit allocation, RK split, and sBx bias. The repository-wide deterministic
-truncation and byte-mutation sweeps exercise the generated LPB fixtures through
-both wrapper and bytecode readings; the nesting bomb has its own exact limit
-assertion.
+function, CLOSURE bindings, a SETLIST extra word, and the same decoded chunk
+behind raw and XOR-0x73 wrappers. Malformed cases independently cover invalid
+constant, upvalue, nested-prototype, direct-register, jump, CLOSURE-binding,
+SETLIST, and opcode structure, plus truncation, unsupported headers, resource
+limits, and trailing bytes. Unit contracts pin the complete opcode-name order,
+every opcode's encoding mode, the bit allocation, RK split, and sBx bias. The
+repository-wide deterministic truncation and byte-mutation sweeps exercise the
+generated LPB fixtures through both wrapper and bytecode readings; the nesting
+bomb has its own exact limit assertion.
 
-The `client-lua` read status remains `partial`, not `supported`. This slice does
-not validate referenced constants, prototypes, registers, jump destinations,
-or stack behavior; build a control-flow graph; analyze reachability; simulate
-the stack; execute the VM; recover source; emit pseudocode; or decompile. Other
-serialized representations and retail fixture parity are also not claimed.
-Lua source export stays `planned`. LPB remains `partial` for the wrapper
-limitations already listed, and neither row gains write support.
+The complete retail result and reproduction command live in the
+[Lua 5.1 retail census](lua51-retail-census.md). All 2,671 manifest-owned
+scripts passed the fixed header, existing raw/XOR-0x73 wrappers, parser limits,
+and prototype-local validation. This promotes `client-lua` read to `supported`.
+It is not `verified`: the support contract reserves that status for a private
+conformance case, while this aggregate research census is explicitly
+non-gating. Lua source export stays `planned`. LPB remains `partial` for the
+wrapper limitations already listed and neither row gains write support.
+
+The bounded negative remains deliberate. The reader does not construct a CFG,
+pair compiler-emitted branches, analyze reachability or register liveness,
+simulate the stack, execute VM behavior, recover source, emit pseudocode, or
+decompile. It does not reject a script for a speculative execution invariant.
 
 ## Open questions
 

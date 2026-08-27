@@ -13,7 +13,7 @@ pub const MAX_PROTOTYPES: u64 = 10_000;
 pub const MAX_TABLE_ENTRIES: u64 = 1_000_000;
 pub const MAX_STRING_BYTES: u64 = 16 * 1024 * 1024;
 
-const EXPECTED_HEADER: &[u8; 12] = b"\x1bLuaQ\x00\x01\x04\x04\x04\x08\x00";
+pub const EXPECTED_HEADER: &[u8; 12] = b"\x1bLuaQ\x00\x01\x04\x04\x04\x08\x00";
 
 const SIZE_OP: u32 = 6;
 const SIZE_A: u32 = 8;
@@ -30,6 +30,10 @@ const MASK_C: u32 = (1 << SIZE_C) - 1;
 const MASK_BX: u32 = (1 << (SIZE_B + SIZE_C)) - 1;
 const MAXARG_SBX: i32 = (MASK_BX >> 1) as i32;
 const BIT_RK: u32 = 1 << (SIZE_B - 1);
+const MAX_STACK_SIZE: u32 = 250;
+const VARARG_HASARG: u8 = 1;
+const VARARG_ISVARARG: u8 = 2;
+const VARARG_NEEDSARG: u8 = 4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lua51InstructionMode {
@@ -80,7 +84,7 @@ macro_rules! opcode {
 // Semantic authority: https://www.lua.org/source/5.1/lopcodes.c.html,
 // "ORDER OP". Argument modes are retained because an iABC B or C field is
 // not always the same kind of operand.
-const OPCODES: [Lua51Opcode; 38] = [
+pub const OPCODES: [Lua51Opcode; 38] = [
     opcode!(0, "MOVE", Abc, Register, Unused),
     opcode!(1, "LOADK", Abx, ConstantOrRegister, Unused),
     opcode!(2, "LOADBOOL", Abc, Value, Value),
@@ -153,6 +157,13 @@ pub struct Lua51Instruction {
     pub raw_word: u32,
     pub opcode: Lua51Opcode,
     pub operands: Lua51Operands,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Lua51ExtraWord {
+    pub span: Span,
+    pub index: u32,
+    pub raw_word: u32,
 }
 
 impl Lua51Instruction {
@@ -292,6 +303,7 @@ pub struct Lua51Prototype {
     pub instructions: Span,
     pub instruction_count: u32,
     pub decoded_instructions: Vec<Lua51Instruction>,
+    pub setlist_extra_words: Vec<Lua51ExtraWord>,
     pub constants: Vec<LuaConstant>,
     pub nested: Vec<Lua51Prototype>,
     pub line_info: Span,
@@ -326,6 +338,300 @@ pub fn parse(data: &[u8]) -> Result<Lua51Chunk> {
         ));
     }
     Ok(Lua51Chunk { header, root })
+}
+
+fn validate_prototype(prototype: &Lua51Prototype) -> Result<()> {
+    let code_end = prototype.instructions.end();
+    let fail_at =
+        |offset, detail| FormatError::new(ErrorKind::MalformedLuaBytecode, offset, detail);
+    if u32::from(prototype.max_stack_size) > MAX_STACK_SIZE {
+        return Err(fail_at(
+            prototype.instructions.offset,
+            format!(
+                "maxStackSize {} exceeds the official Lua 5.1 limit {MAX_STACK_SIZE}",
+                prototype.max_stack_size
+            ),
+        ));
+    }
+    let implicit_arg = u16::from(prototype.vararg_flags & VARARG_HASARG != 0);
+    if u16::from(prototype.parameter_count) + implicit_arg > u16::from(prototype.max_stack_size) {
+        return Err(fail_at(
+            prototype.instructions.offset,
+            "parameters and the implicit vararg table exceed maxStackSize".to_string(),
+        ));
+    }
+    if prototype.vararg_flags & VARARG_NEEDSARG != 0 && prototype.vararg_flags & VARARG_HASARG == 0
+    {
+        return Err(fail_at(
+            prototype.instructions.offset,
+            "VARARG_NEEDSARG is set without VARARG_HASARG".to_string(),
+        ));
+    }
+    if prototype.upvalue_name_count > u32::from(prototype.upvalue_count) {
+        return Err(fail_at(
+            prototype.line_info.end(),
+            "debug upvalue-name count exceeds the declared upvalue count".to_string(),
+        ));
+    }
+    if prototype.line_info_count != 0 && prototype.line_info_count != prototype.instruction_count {
+        return Err(fail_at(
+            prototype.line_info.offset,
+            "line-info count is neither zero nor the instruction-word count".to_string(),
+        ));
+    }
+    let Some(last) = prototype.decoded_instructions.last() else {
+        return Err(fail_at(
+            prototype.instructions.offset,
+            "a prototype has no final RETURN instruction".to_string(),
+        ));
+    };
+    if last.index + 1 != prototype.instruction_count || last.opcode.number != 30 {
+        return Err(fail_at(
+            code_end.saturating_sub(4),
+            "a prototype does not end with RETURN".to_string(),
+        ));
+    }
+
+    for instruction in &prototype.decoded_instructions {
+        let (a, b, c) = instruction_fields(*instruction);
+        check_register(prototype, instruction, a, "A")?;
+        check_operand(prototype, instruction, b, "B")?;
+        check_operand(prototype, instruction, c, "C")?;
+
+        match instruction.opcode.number {
+            4 | 8 => {
+                let index = operand_value(b).expect("GETUPVAL and SETUPVAL use a value B");
+                if index >= u32::from(prototype.upvalue_count) {
+                    return Err(instruction_error(
+                        instruction,
+                        format!("upvalue index {index} is out of range"),
+                    ));
+                }
+            }
+            5 | 7 => {
+                let index = operand_constant(b).expect("global opcodes use constant Bx");
+                if !matches!(
+                    prototype.constants[index as usize],
+                    LuaConstant::String { .. }
+                ) {
+                    return Err(instruction_error(
+                        instruction,
+                        "a global-name constant is not a string",
+                    ));
+                }
+            }
+            11 => check_register(prototype, instruction, a + 1, "A+1")?,
+            21 => {
+                let low = operand_register(b).expect("CONCAT uses register B");
+                let high = operand_register(c).expect("CONCAT uses register C");
+                if low >= high {
+                    return Err(instruction_error(
+                        instruction,
+                        "CONCAT does not name at least two ordered registers",
+                    ));
+                }
+            }
+            22 | 31 | 32 => {
+                let sbx = match instruction.operands {
+                    Lua51Operands::Asbx { sbx, .. } => sbx,
+                    _ => unreachable!("jump opcodes use iAsBx"),
+                };
+                let destination = i64::from(instruction.index) + 1 + i64::from(sbx);
+                if destination < 0
+                    || destination >= i64::from(prototype.instruction_count)
+                    || is_extra_word(prototype, destination.max(0) as u32)
+                {
+                    return Err(instruction_error(
+                        instruction,
+                        format!("jump destination {destination} is not an instruction word"),
+                    ));
+                }
+                if matches!(instruction.opcode.number, 31 | 32) {
+                    check_register(prototype, instruction, a + 3, "A+3")?;
+                }
+            }
+            28 | 29 => {
+                let arguments = operand_value(b).expect("call opcodes use value B");
+                let results = operand_value(c).expect("call opcodes use value C");
+                if arguments != 0 {
+                    check_register(prototype, instruction, a + arguments - 1, "A+B-1")?;
+                }
+                if results > 1 {
+                    check_register(prototype, instruction, a + results - 2, "A+C-2")?;
+                }
+            }
+            30 => {
+                let returns = operand_value(b).expect("RETURN uses value B");
+                if returns > 1 {
+                    check_register(prototype, instruction, a + returns - 2, "A+B-2")?;
+                }
+            }
+            33 => {
+                let results = operand_value(c).expect("TFORLOOP uses value C");
+                if results == 0 {
+                    return Err(instruction_error(
+                        instruction,
+                        "TFORLOOP has no result register",
+                    ));
+                }
+                check_register(prototype, instruction, a + 2 + results, "A+2+C")?;
+            }
+            34 => {
+                let values = operand_value(b).expect("SETLIST uses value B");
+                if values != 0 {
+                    check_register(prototype, instruction, a + values, "A+B")?;
+                }
+            }
+            36 => validate_closure_bindings(prototype, instruction, b)?,
+            37 => {
+                if prototype.vararg_flags & VARARG_ISVARARG == 0
+                    || prototype.vararg_flags & VARARG_NEEDSARG != 0
+                {
+                    return Err(instruction_error(
+                        instruction,
+                        "VARARG is used by a prototype whose flags do not permit it",
+                    ));
+                }
+                let results = operand_value(b).expect("VARARG uses value B");
+                if results > 1 {
+                    check_register(prototype, instruction, a + results - 2, "A+B-2")?;
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+fn validate_closure_bindings(
+    prototype: &Lua51Prototype,
+    instruction: &Lua51Instruction,
+    operand: Option<Lua51Operand>,
+) -> Result<()> {
+    let nested_index = operand_value(operand).expect("CLOSURE uses a value Bx");
+    let Some(child) = prototype.nested.get(nested_index as usize) else {
+        return Err(instruction_error(
+            instruction,
+            format!("nested-prototype index {nested_index} is out of range"),
+        ));
+    };
+    for binding in 1..=u32::from(child.upvalue_count) {
+        let index = instruction.index + binding;
+        let Some(value) = decoded_at(prototype, index) else {
+            return Err(instruction_error(
+                instruction,
+                "CLOSURE does not have all declared upvalue-binding instructions",
+            ));
+        };
+        if !matches!(value.opcode.number, 0 | 4) {
+            return Err(instruction_error(
+                value,
+                "a CLOSURE upvalue binding is neither MOVE nor GETUPVAL",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn instruction_fields(
+    instruction: Lua51Instruction,
+) -> (u32, Option<Lua51Operand>, Option<Lua51Operand>) {
+    match instruction.operands {
+        Lua51Operands::Abc { a, b, c } => (a, Some(b), Some(c)),
+        Lua51Operands::Abx { a, bx } => (a, Some(bx), None),
+        Lua51Operands::Asbx { a, .. } => (a, None, None),
+    }
+}
+
+fn check_operand(
+    prototype: &Lua51Prototype,
+    instruction: &Lua51Instruction,
+    operand: Option<Lua51Operand>,
+    name: &str,
+) -> Result<()> {
+    match operand {
+        Some(Lua51Operand::Unused { raw: 0 }) | None => Ok(()),
+        Some(Lua51Operand::Unused { raw }) => Err(instruction_error(
+            instruction,
+            format!("unused operand {name} is {raw}, not zero"),
+        )),
+        Some(Lua51Operand::Register { index, .. }) => {
+            check_register(prototype, instruction, index, name)
+        }
+        Some(Lua51Operand::Constant { index, .. }) => {
+            if index < prototype.constants.len() as u32 {
+                Ok(())
+            } else {
+                Err(instruction_error(
+                    instruction,
+                    format!("constant index {index} in operand {name} is out of range"),
+                ))
+            }
+        }
+        Some(Lua51Operand::Value { .. }) => Ok(()),
+    }
+}
+
+fn check_register(
+    prototype: &Lua51Prototype,
+    instruction: &Lua51Instruction,
+    index: u32,
+    name: &str,
+) -> Result<()> {
+    if index < u32::from(prototype.max_stack_size) {
+        Ok(())
+    } else {
+        Err(instruction_error(
+            instruction,
+            format!(
+                "register {name}={index} is outside maxStackSize {}",
+                prototype.max_stack_size
+            ),
+        ))
+    }
+}
+
+fn decoded_at(prototype: &Lua51Prototype, index: u32) -> Option<&Lua51Instruction> {
+    prototype
+        .decoded_instructions
+        .iter()
+        .find(|instruction| instruction.index == index)
+}
+
+fn is_extra_word(prototype: &Lua51Prototype, index: u32) -> bool {
+    prototype
+        .setlist_extra_words
+        .iter()
+        .any(|word| word.index == index)
+}
+
+fn operand_value(operand: Option<Lua51Operand>) -> Option<u32> {
+    match operand {
+        Some(Lua51Operand::Value { value }) => Some(value),
+        _ => None,
+    }
+}
+
+fn operand_register(operand: Option<Lua51Operand>) -> Option<u32> {
+    match operand {
+        Some(Lua51Operand::Register { index, .. }) => Some(index),
+        _ => None,
+    }
+}
+
+fn operand_constant(operand: Option<Lua51Operand>) -> Option<u32> {
+    match operand {
+        Some(Lua51Operand::Constant { index, .. }) => Some(index),
+        _ => None,
+    }
+}
+
+fn instruction_error(instruction: &Lua51Instruction, detail: impl Into<String>) -> FormatError {
+    FormatError::new(
+        ErrorKind::MalformedLuaBytecode,
+        instruction.span.offset,
+        detail,
+    )
 }
 
 struct Parser<'a> {
@@ -381,7 +687,8 @@ impl Parser<'_> {
         let max_stack_size = self.reader.u8()?;
 
         let instruction_count = self.count("instruction")?;
-        let (instructions, decoded_instructions) = self.instructions(instruction_count)?;
+        let (instructions, decoded_instructions, setlist_extra_words) =
+            self.instructions(instruction_count)?;
 
         let constant_count = self.count("constant")?;
         let mut constants = Vec::new();
@@ -408,7 +715,7 @@ impl Parser<'_> {
             self.string()?;
         }
 
-        Ok(Lua51Prototype {
+        let prototype = Lua51Prototype {
             span: Span::new(start, self.reader.offset() - start),
             source,
             line_defined,
@@ -420,13 +727,16 @@ impl Parser<'_> {
             instructions,
             instruction_count,
             decoded_instructions,
+            setlist_extra_words,
             constants,
             nested,
             line_info,
             line_info_count,
             local_count,
             upvalue_name_count,
-        })
+        };
+        validate_prototype(&prototype)?;
+        Ok(prototype)
     }
 
     fn constant(&mut self) -> Result<LuaConstant> {
@@ -552,7 +862,10 @@ impl Parser<'_> {
         Ok(Span::new(start, length as u64))
     }
 
-    fn instructions(&mut self, count: u32) -> Result<(Span, Vec<Lua51Instruction>)> {
+    fn instructions(
+        &mut self,
+        count: u32,
+    ) -> Result<(Span, Vec<Lua51Instruction>, Vec<Lua51ExtraWord>)> {
         let start = self.reader.offset();
         let capacity = usize::try_from(count)
             .map_err(|_| self.limit("instruction count does not fit this platform".to_string()))?;
@@ -574,17 +887,44 @@ impl Parser<'_> {
             ));
         }
         let bytes = self.reader.take(length)?;
+        let words: Vec<u32> = bytes
+            .chunks_exact(4)
+            .map(|word| u32::from_le_bytes([word[0], word[1], word[2], word[3]]))
+            .collect();
         let mut decoded = Vec::with_capacity(capacity);
-        for (index, word) in bytes.chunks_exact(4).enumerate() {
+        let mut extra_words = Vec::new();
+        let mut index = 0usize;
+        while index < words.len() {
             let offset = start + (index as u64 * 4);
-            let raw_word = u32::from_le_bytes([word[0], word[1], word[2], word[3]]);
-            decoded.push(Lua51Instruction::decode(
-                Span::new(offset, 4),
-                index as u32,
-                raw_word,
-            )?);
+            let instruction =
+                Lua51Instruction::decode(Span::new(offset, 4), index as u32, words[index])?;
+            let has_setlist_extra = instruction.opcode.number == 34
+                && matches!(
+                    instruction.operands,
+                    Lua51Operands::Abc {
+                        c: Lua51Operand::Value { value: 0 },
+                        ..
+                    }
+                );
+            decoded.push(instruction);
+            if has_setlist_extra {
+                index += 1;
+                let Some(&raw_word) = words.get(index) else {
+                    return Err(FormatError::new(
+                        ErrorKind::MalformedLuaBytecode,
+                        offset,
+                        "SETLIST with C=0 has no following extra word",
+                    ));
+                };
+                extra_words.push(Lua51ExtraWord {
+                    span: Span::new(start + (index as u64 * 4), 4),
+                    index: index as u32,
+                    raw_word,
+                });
+            }
+            index += 1;
         }
-        Ok((Span::new(start, length as u64), decoded))
+        Ok((Span::new(start, length as u64), decoded, extra_words))
     }
 
     fn limit(&self, detail: String) -> FormatError {
@@ -621,11 +961,13 @@ mod tests {
     fn reads_constants_and_nested_prototypes() {
         let chunk = parse(&fixture("valid")).unwrap();
         assert_eq!(chunk.header.version, 0x51);
-        assert_eq!(chunk.root.instruction_count, 5);
+        assert_eq!(chunk.root.instruction_count, 9);
         assert_eq!(chunk.root.constants.len(), 4);
         assert_eq!(chunk.root.nested.len(), 1);
         assert_eq!(chunk.root.nested[0].constants.len(), 1);
-        assert_eq!(chunk.root.decoded_instructions.len(), 5);
+        assert_eq!(chunk.root.decoded_instructions.len(), 8);
+        assert_eq!(chunk.root.setlist_extra_words.len(), 1);
+        assert_eq!(chunk.root.setlist_extra_words[0].index, 6);
         assert_eq!(chunk.root.nested[0].decoded_instructions.len(), 2);
         assert_eq!(chunk.root.local_count, 1);
         assert_eq!(chunk.root.upvalue_name_count, 1);

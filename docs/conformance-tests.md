@@ -38,7 +38,9 @@ digest. Each item adds its decoded-chunk offset and span, zero-based index, raw
 Only `A`, `B`, and `C`; `A` and `Bx`; or `A` and `sBx` appear according to the
 mode. B and C objects carry a stable `kind`; RK register and constant objects
 also retain their raw field, decoded index, and `rk: true`. A constant reference
-is not resolved to constant-table content in normalized output.
+is not resolved to constant-table content in normalized output. A raw word
+following `SETLIST C=0` appears in `setlistExtraWords`, not in the decoded
+instruction items, because the official VM consumes it as data rather than an opcode.
 
 ## Operations
 

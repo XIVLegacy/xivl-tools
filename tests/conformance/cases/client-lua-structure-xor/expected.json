@@ -20,7 +20,7 @@
           "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
           "span": {
             "length": 1,
-            "offset": 71
+            "offset": 87
           },
           "type": "nil"
         },
@@ -28,7 +28,7 @@
           "sha256": "9dcf97a184f32623d11a73124ceb99a5709b083721e878a16d78f596718ba7b2",
           "span": {
             "length": 2,
-            "offset": 72
+            "offset": 88
           },
           "type": "boolean"
         },
@@ -36,7 +36,7 @@
           "sha256": "d405a5caee3c2e7985d95c84835afbeb020e68fd7efe6ebbbd6550f95ce35fe0",
           "span": {
             "length": 9,
-            "offset": 74
+            "offset": 90
           },
           "type": "number"
         },
@@ -45,24 +45,24 @@
           "sha256": "4be4423a2789158f2c8ee754f8d4f447cd47bdb97d7ebdc4b115e3f279c7d9a5",
           "span": {
             "length": 11,
-            "offset": 83
+            "offset": 99
           },
           "type": "string"
         }
       ],
       "debug": {
         "lineInfo": {
-          "count": 5,
+          "count": 9,
           "span": {
-            "length": 20,
-            "offset": 169
+            "length": 36,
+            "offset": 185
           }
         },
         "localCount": 1,
         "upvalueNameCount": 1
       },
       "instructions": {
-        "count": 5,
+        "count": 9,
         "items": [
           {
             "index": 0,
@@ -125,9 +125,9 @@
             "operands": {
               "A": 2,
               "B": {
-                "index": 200,
+                "index": 3,
                 "kind": "constant",
-                "raw": 456,
+                "raw": 259,
                 "rk": true
               },
               "C": {
@@ -137,7 +137,7 @@
                 "rk": true
               }
             },
-            "rawWord": 3825221772,
+            "rawWord": 2172665996,
             "span": {
               "length": 4,
               "offset": 55
@@ -145,17 +145,20 @@
           },
           {
             "index": 3,
-            "mode": "iAsBx",
+            "mode": "iABx",
             "offset": 59,
             "opcode": {
-              "name": "JMP",
-              "number": 22
+              "name": "CLOSURE",
+              "number": 36
             },
             "operands": {
               "A": 0,
-              "sBx": -2
+              "Bx": {
+                "kind": "value",
+                "value": 0
+              }
             },
-            "rawWord": 2147434518,
+            "rawWord": 36,
             "span": {
               "length": 4,
               "offset": 59
@@ -165,6 +168,74 @@
             "index": 4,
             "mode": "iABC",
             "offset": 63,
+            "opcode": {
+              "name": "GETUPVAL",
+              "number": 4
+            },
+            "operands": {
+              "A": 0,
+              "B": {
+                "kind": "value",
+                "value": 0
+              },
+              "C": {
+                "kind": "unused",
+                "raw": 0
+              }
+            },
+            "rawWord": 4,
+            "span": {
+              "length": 4,
+              "offset": 63
+            }
+          },
+          {
+            "index": 5,
+            "mode": "iABC",
+            "offset": 67,
+            "opcode": {
+              "name": "SETLIST",
+              "number": 34
+            },
+            "operands": {
+              "A": 0,
+              "B": {
+                "kind": "value",
+                "value": 0
+              },
+              "C": {
+                "kind": "value",
+                "value": 0
+              }
+            },
+            "rawWord": 34,
+            "span": {
+              "length": 4,
+              "offset": 67
+            }
+          },
+          {
+            "index": 7,
+            "mode": "iAsBx",
+            "offset": 75,
+            "opcode": {
+              "name": "JMP",
+              "number": 22
+            },
+            "operands": {
+              "A": 0,
+              "sBx": -1
+            },
+            "rawWord": 2147450902,
+            "span": {
+              "length": 4,
+              "offset": 75
+            }
+          },
+          {
+            "index": 8,
+            "mode": "iABC",
+            "offset": 79,
             "opcode": {
               "name": "RETURN",
               "number": 30
@@ -183,13 +254,24 @@
             "rawWord": 8388638,
             "span": {
               "length": 4,
-              "offset": 63
+              "offset": 79
             }
           }
         ],
-        "sha256": "2376a31d6d11c7c5ac2cc717a1edb68cdd565de5796f57794759f0e75aaf5eed",
+        "setlistExtraWords": [
+          {
+            "index": 6,
+            "offset": 71,
+            "rawWord": 1,
+            "span": {
+              "length": 4,
+              "offset": 71
+            }
+          }
+        ],
+        "sha256": "e095670eeb356c06ce15ff56990c6c10ca233a8686fc0fd6a2e7200365beacab",
         "span": {
-          "length": 20,
+          "length": 36,
           "offset": 47
         }
       },
@@ -204,7 +286,7 @@
               "sha256": "d7b8a8c7fedaba5caa84764c2fdcaaeae249abc4e31f3dd55fdbb3ab002c00ae",
               "span": {
                 "length": 11,
-                "offset": 130
+                "offset": 146
               },
               "type": "string"
             }
@@ -214,7 +296,7 @@
               "count": 2,
               "span": {
                 "length": 8,
-                "offset": 149
+                "offset": 165
               }
             },
             "localCount": 0,
@@ -226,25 +308,25 @@
               {
                 "index": 0,
                 "mode": "iAsBx",
-                "offset": 118,
+                "offset": 134,
                 "opcode": {
                   "name": "JMP",
                   "number": 22
                 },
                 "operands": {
                   "A": 0,
-                  "sBx": -2
+                  "sBx": -1
                 },
-                "rawWord": 2147434518,
+                "rawWord": 2147450902,
                 "span": {
                   "length": 4,
-                  "offset": 118
+                  "offset": 134
                 }
               },
               {
                 "index": 1,
                 "mode": "iABC",
-                "offset": 122,
+                "offset": 138,
                 "opcode": {
                   "name": "RETURN",
                   "number": 30
@@ -263,14 +345,15 @@
                 "rawWord": 8388638,
                 "span": {
                   "length": 4,
-                  "offset": 122
+                  "offset": 138
                 }
               }
             ],
-            "sha256": "1a556fe66f02c7466185aa3506ffa1d318b0c7fe2fa8f630c0c4b309e2302266",
+            "setlistExtraWords": [],
+            "sha256": "edb8191dde85ab3a651f95fe958a70c0b353431fe230ea7fd6d11362acb6d433",
             "span": {
               "length": 8,
-              "offset": 118
+              "offset": 134
             }
           },
           "lastLineDefined": 6,
@@ -281,9 +364,9 @@
           "source": null,
           "span": {
             "length": 67,
-            "offset": 98
+            "offset": 114
           },
-          "upvalueCount": 0,
+          "upvalueCount": 1,
           "varargFlags": 0
         }
       ],
@@ -297,7 +380,7 @@
         }
       },
       "span": {
-        "length": 219,
+        "length": 251,
         "offset": 12
       },
       "upvalueCount": 1,
@@ -306,7 +389,7 @@
   },
   "format": "client-lua",
   "input": {
-    "length": 244
+    "length": 276
   },
   "operation": "inspect",
   "schemaVersion": 1,
@@ -315,11 +398,11 @@
     "wrapper": "input"
   },
   "wrapper": {
-    "advisorySize": 231,
-    "decodedLength": 231,
-    "decodedSha256": "5af4725458e478950bd95680ab7f5983f573768ad925644988ac914afb8b1a7a",
+    "advisorySize": 263,
+    "decodedLength": 263,
+    "decodedSha256": "fb5d87813b7322b6b43962e010d3b86f8662af3abd8474820eb13f82374f3386",
     "encodedPayload": {
-      "length": 228,
+      "length": 260,
       "offset": 16
     },
     "encodedPrefix": {

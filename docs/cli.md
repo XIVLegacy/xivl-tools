@@ -84,16 +84,18 @@ a register, or an RK register/constant reference. Constant references report
 only their encoded index; the report does not invent or expose a referenced
 constant value.
 
-The reader validates the opcode range and selects operands from the official
-mode table. It does not validate referenced constants, prototypes, registers,
-jump destinations, stack behavior, control flow, reachability, or other VM
-semantics. It does not execute code, recover source, print string constants,
-produce pseudocode, or decompile. Bytecode spans and instruction offsets are
-relative to the decoded chunk; wrapper spans remain relative to the input file.
-The parser refuses unsupported target headers, more than 128 nested prototype
-levels, more than 10000 prototypes, more than 1000000 aggregate table entries,
-more than 16 MiB of aggregate string storage, and any bytes after the root
-prototype.
+The reader validates prototype-local references and register spans that the
+official Lua 5.1 instruction semantics make unconditional. That includes
+constant, upvalue, and nested-prototype indices; direct registers against
+`maxStackSize`; jump bounds; and the raw extra word after `SETLIST C=0` plus
+the binding words after `CLOSURE`. A SETLIST extra word is preserved separately and is not decoded as an opcode. It does not build control flow, analyze
+reachability or register liveness, simulate the stack, enforce compiler-only
+branch pairing, or execute VM behavior. It also does not recover source, print
+string constants, produce pseudocode, or decompile. Bytecode spans and
+instruction offsets are relative to the decoded chunk; wrapper spans remain
+relative to the input file. The parser refuses unsupported target headers,
+more than 128 nested prototype levels, more than 10000 prototypes, more than
+1000000 aggregate table entries, more than 16 MiB of aggregate string storage, and any bytes after the root prototype.
 
 Examples using the authored public fixtures:
 

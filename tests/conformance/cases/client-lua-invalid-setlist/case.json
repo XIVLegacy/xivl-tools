@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "client-lua-invalid-setlist",
+  "formatId": "client-lua",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/bytecode-invalid-setlist.bin"
+  },
+  "arguments": ["--as", "lpb-bytecode"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "malformed-lua-bytecode"
+  },
+  "notes": "An authored invalid SETLIST extra-word relationship is rejected by prototype-local Lua 5.1 structural validation."
+}
