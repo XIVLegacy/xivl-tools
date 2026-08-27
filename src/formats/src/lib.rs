@@ -39,7 +39,10 @@ pub use inspect::{
     inspect_bytes, inspect_bytes_as, inspect_named_bytes_as, validate_named_bytes_as, InspectAs,
 };
 pub use lpb::{extract as extract_lpb, LpbFile, LpbVariant, PreservedBytes};
-pub use lua51::{parse as parse_lua51, Lua51Chunk, Lua51Header, Lua51Prototype, LuaConstant};
+pub use lua51::{
+    parse as parse_lua51, Lua51ArgumentMode, Lua51Chunk, Lua51Header, Lua51Instruction,
+    Lua51InstructionMode, Lua51Opcode, Lua51Operand, Lua51Operands, Lua51Prototype, LuaConstant,
+};
 pub use lua_path::transform as transform_lua_path;
 pub use normalize::to_canonical_json;
 pub use reader::{Reader, Span};

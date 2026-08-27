@@ -9,5 +9,5 @@
   },
   "arguments": ["--as", "lpb-bytecode"],
   "expect": { "outcome": "ok", "output": "expected.json" },
-  "notes": "The same authored chunk behind the XOR-0x73 wrapper preserves that wrapper's distinct boundaries."
+  "notes": "The same authored instruction and prototype structure behind the XOR-0x73 wrapper preserves that wrapper's distinct boundaries."
 }

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "client-lua-invalid-opcode",
+  "formatId": "client-lua",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/bytecode-invalid-opcode.bin"
+  },
+  "arguments": ["--as", "lpb-bytecode"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "malformed-lua-bytecode",
+    "errorOffset": 32
+  },
+  "notes": "Opcode 38 is outside the official Lua 5.1 table and fails at its decoded instruction offset."
+}

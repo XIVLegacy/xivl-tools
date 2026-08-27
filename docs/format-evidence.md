@@ -1308,7 +1308,24 @@ prototypes; and the line, local, and upvalue-name debug tables. The constant
 tags accepted by the official loader are nil (0), boolean (1), number (3), and
 string (4). The public model retains exact string and number bytes, while the
 normalized report publishes only type, span, length where applicable, and
-digest. Instruction words likewise remain an opaque span and digest.
+digest.
+
+The instruction layout and opcode metadata follow the official Lua 5.1.5
+[lopcodes.h](https://www.lua.org/source/5.1/lopcodes.h.html) and
+[lopcodes.c](https://www.lua.org/source/5.1/lopcodes.c.html). A 32-bit word has
+the 6-bit opcode at bit 0, 8-bit A at bit 6, 9-bit C at bit 14, and 9-bit B at
+bit 23. Bx is the combined 18 bits at bit 14. sBx subtracts the official
+131071 excess-K bias from Bx. Opcodes 0 through 37 are the official `MOVE`
+through `VARARG` table; another 6-bit value is malformed bytecode.
+
+Each decoded instruction retains its exact four-byte span and raw word, its
+zero-based index and decoded-chunk offset, and the official opcode number,
+name, encoding mode, and mode-appropriate operands. The official B and C
+argument modes distinguish unused values, plain values, registers, and RK
+fields. In an RK field, raw values with bit 8 set are constant references and
+the low 8 bits are their index; other values are register references. The
+model retains that structure even when the referenced constant table entry is
+absent. It never manufactures a constant value or publishes string contents.
 
 The reader consumes the complete root prototype and rejects trailing bytes.
 Every signed Lua `int` count must be nonnegative. Before allocation it enforces
@@ -1319,18 +1336,26 @@ these platform-independent budgets:
   entries;
 - at most 16 MiB for one string and for all string bodies together.
 
-Generated public conformance covers a structurally valid chunk with all four
-constant tags, debug tables, and a nested function. Malformed cases cover an
-unsupported endian marker, a string allocation bomb, a table-count bomb, a
-nesting bomb, and trailing bytes. The repository-wide truncation and mutation
-tests exercise the ordinary generated LPB fixtures through both wrapper and
-bytecode readings; the nesting bomb has its own exact limit assertion.
+Generated public conformance covers all three instruction encodings, RK
+register and constant forms, all four constant tags, debug tables, a nested
+function, and the same decoded chunk behind raw and XOR-0x73 wrappers. The RK
+constant case deliberately names an unavailable table index so the normalized
+contract proves that no value is invented. Malformed cases cover an invalid
+opcode, a truncated instruction word, an unsupported endian marker, a string
+allocation bomb, a table-count bomb, a nesting bomb, and trailing bytes. Unit
+contracts pin the complete opcode-name order, every opcode's encoding mode,
+the bit allocation, RK split, and sBx bias. The repository-wide deterministic
+truncation and byte-mutation sweeps exercise the generated LPB fixtures through
+both wrapper and bytecode readings; the nesting bomb has its own exact limit
+assertion.
 
-The `client-lua` read status is therefore `partial`, not `supported`: opcode
-decoding and validation, control-flow or VM-semantic checks, source recovery,
-decompilation, other serialized representations, and retail fixture parity are
-not claimed. Lua source export stays `planned`. LPB remains `partial` for the
-wrapper limitations already listed, and neither row gains write support.
+The `client-lua` read status remains `partial`, not `supported`. This slice does
+not validate referenced constants, prototypes, registers, jump destinations,
+or stack behavior; build a control-flow graph; analyze reachability; simulate
+the stack; execute the VM; recover source; emit pseudocode; or decompile. Other
+serialized representations and retail fixture parity are also not claimed.
+Lua source export stays `planned`. LPB remains `partial` for the wrapper
+limitations already listed, and neither row gains write support.
 
 ## Open questions
 

@@ -209,6 +209,19 @@ def enable_records(pairs: list[tuple[int, int]]) -> bytes:
 
 
 LUA51_HEADER = b"\x1bLuaQ\x00\x01\x04\x04\x04\x08\x00"
+LUA51_MAXARG_SBX = (1 << 17) - 1
+
+
+def lua_instruction_abc(opcode: int, a: int, b: int, c: int) -> int:
+    return opcode | (a << 6) | (c << 14) | (b << 23)
+
+
+def lua_instruction_abx(opcode: int, a: int, bx: int) -> int:
+    return opcode | (a << 6) | (bx << 14)
+
+
+def lua_instruction_asbx(opcode: int, a: int, sbx: int) -> int:
+    return lua_instruction_abx(opcode, a, sbx + LUA51_MAXARG_SBX)
 
 
 def lua_string(value: bytes | None) -> bytes:
@@ -270,15 +283,27 @@ def build_fixtures() -> dict[str, bytes]:
     child = lua_proto(
         lines=(4, 6),
         shape=(0, 1, 0, 2),
-        instructions=(30,),
+        instructions=(
+            lua_instruction_asbx(22, 0, -2),  # JMP: iAsBx
+            lua_instruction_abc(30, 0, 1, 0),  # RETURN: iABC
+        ),
         constants=(b"\x04" + lua_string(b"child"),),
-        line_info=(5,),
+        line_info=(5, 6),
     )
     main = lua_proto(
         source=b"@synthetic.lua",
         lines=(0, 12),
         shape=(1, 2, 2, 4),
-        instructions=(1, 30),
+        instructions=(
+            lua_instruction_abc(0, 1, 2, 0),  # MOVE: iABC register and unused
+            lua_instruction_abx(1, 0, 0),  # LOADK: iABx constant reference
+            # ADD: RK constant 200 is deliberately outside this table. The
+            # structural report must retain the reference without inventing
+            # a value or treating it as a register.
+            lua_instruction_abc(12, 2, 0x100 | 200, 1),
+            lua_instruction_asbx(22, 0, -2),  # JMP: iAsBx and excess-K bias
+            lua_instruction_abc(30, 0, 1, 0),  # RETURN: iABC
+        ),
         constants=(
             b"\x00",
             b"\x01\x01",
@@ -286,8 +311,8 @@ def build_fixtures() -> dict[str, bytes]:
             b"\x04" + lua_string(b"hello"),
         ),
         nested=(child,),
-        line_info=(1, 2),
-        locals_=((b"value", 0, 2),),
+        line_info=(1, 2, 3, 4, 5),
+        locals_=((b"value", 0, 5),),
         upvalues=(b"environment",),
     )
     bytecode = LUA51_HEADER + main
@@ -300,6 +325,20 @@ def build_fixtures() -> dict[str, bytes]:
     unsupported = bytearray(bytecode)
     unsupported[6] = 2
     fixtures["lpb/bytecode-unsupported-header.bin"] = b"rlu\x0bBCOD" + unsupported
+    invalid_opcode = lua_proto(instructions=(38,))
+    fixtures["lpb/bytecode-invalid-opcode.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_opcode
+    )
+    truncated_instruction = (
+        LUA51_HEADER
+        + lua_string(None)
+        + struct.pack("<II4BI", 0, 0, 0, 0, 0, 2, 2)
+        + struct.pack("<I", lua_instruction_abx(1, 0, 0))
+        + b"\x01\x00\x00"
+    )
+    fixtures["lpb/bytecode-instruction-truncated.bin"] = (
+        b"rlu\x0bBCOD" + truncated_instruction
+    )
     fixtures["lpb/bytecode-string-bomb.bin"] = (
         b"rlu\x0bBCOD" + LUA51_HEADER + struct.pack("<I", 16 * 1024 * 1024 + 1)
     )

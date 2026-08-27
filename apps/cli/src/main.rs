@@ -60,7 +60,8 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
       --as sqwt decodes a SQEX container, whose key is the file's own
       base name: renaming such a file makes it unreadable.
       --as lpb-bytecode retains the LPB wrapper report and adds bounded
-      Lua 5.1 header, prototype, constant, and nesting structure.
+      Lua 5.1 header, prototype, constant, nesting, and validated opcode
+      and operand structure. It does not decompile or execute code.
   --columns <type,...>
       Column types of a sheet-data file, from its schema document, for
       example 'str,s32,bool'. Without it the data is read as a stream of

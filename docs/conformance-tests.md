@@ -32,6 +32,14 @@ formatting:
   Losing an unknown span silently is a conformance failure, not a
   formatting difference.
 
+The `client-lua` instruction list keeps the aggregate code span, count, and
+digest. Each item adds its decoded-chunk offset and span, zero-based index, raw
+32-bit word, opcode number and name, encoding mode, and an `operands` object.
+Only `A`, `B`, and `C`; `A` and `Bx`; or `A` and `sBx` appear according to the
+mode. B and C objects carry a stable `kind`; RK register and constant objects
+also retain their raw field, decoded index, and `rk: true`. A constant reference
+is not resolved to constant-table content in normalized output.
+
 ## Operations
 
 `inspect` reports what an input holds. `validate` reads it the same way and

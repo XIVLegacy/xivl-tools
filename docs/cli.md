@@ -76,14 +76,24 @@ so the same fixture argument behaves consistently across platforms.
 
 `lpb-bytecode` is explicit because wrapper inspection and compiled-chunk
 inspection are separate claims. The bytecode view reports the fixed header,
-function prototypes, constant types and encoded digests, instruction spans,
-nested functions, and debug-table counts. It does not decode instructions,
-print string constants, validate VM semantics, or recover source. Bytecode
-spans are relative to the decoded chunk; wrapper spans remain relative to the
-input file. The parser refuses unsupported target headers, more than 128 nested
-prototype levels, more than 10000 prototypes, more than 1000000 aggregate
-table entries, more than 16 MiB of aggregate string storage, and any bytes
-after the root prototype.
+function prototypes, constant types and encoded digests, nested functions,
+debug-table counts, and each instruction's decoded-chunk offset, index, raw
+word, official opcode number and name, encoding mode, and mode-appropriate
+operands. An `iABC` B or C operand is structurally marked as unused, a value,
+a register, or an RK register/constant reference. Constant references report
+only their encoded index; the report does not invent or expose a referenced
+constant value.
+
+The reader validates the opcode range and selects operands from the official
+mode table. It does not validate referenced constants, prototypes, registers,
+jump destinations, stack behavior, control flow, reachability, or other VM
+semantics. It does not execute code, recover source, print string constants,
+produce pseudocode, or decompile. Bytecode spans and instruction offsets are
+relative to the decoded chunk; wrapper spans remain relative to the input file.
+The parser refuses unsupported target headers, more than 128 nested prototype
+levels, more than 10000 prototypes, more than 1000000 aggregate table entries,
+more than 16 MiB of aggregate string storage, and any bytes after the root
+prototype.
 
 Examples using the authored public fixtures:
 

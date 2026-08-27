@@ -15,7 +15,9 @@ use crate::config::{self, ConfigFile, ConfigKind};
 use crate::digest::sha256_hex;
 use crate::error::Result;
 use crate::lpb;
-use crate::lua51::{self, Lua51Prototype, LuaConstant, LuaString};
+use crate::lua51::{
+    self, Lua51Instruction, Lua51Operand, Lua51Operands, Lua51Prototype, LuaConstant, LuaString,
+};
 use crate::reader::Span;
 use crate::richstring::{payload_hex, RichString, Segment};
 use crate::scrambled;
@@ -541,6 +543,9 @@ fn lua_prototype_to_json(prototype: &Lua51Prototype, decoded: &[u8]) -> Value {
             "span": prototype.instructions.to_json(),
             "count": prototype.instruction_count,
             "sha256": span_sha256(decoded, prototype.instructions),
+            "items": Value::Array(prototype.decoded_instructions.iter().map(
+                lua_instruction_to_json
+            ).collect()),
         },
         "constants": Value::Array(prototype.constants.iter().map(|constant| {
             let mut value = json!({
@@ -565,6 +570,49 @@ fn lua_prototype_to_json(prototype: &Lua51Prototype, decoded: &[u8]) -> Value {
             "upvalueNameCount": prototype.upvalue_name_count,
         },
     })
+}
+
+fn lua_instruction_to_json(instruction: &Lua51Instruction) -> Value {
+    let operands = match instruction.operands {
+        Lua51Operands::Abc { a, b, c } => json!({
+            "A": a,
+            "B": lua_operand_to_json(b),
+            "C": lua_operand_to_json(c),
+        }),
+        Lua51Operands::Abx { a, bx } => json!({
+            "A": a,
+            "Bx": lua_operand_to_json(bx),
+        }),
+        Lua51Operands::Asbx { a, sbx } => json!({
+            "A": a,
+            "sBx": sbx,
+        }),
+    };
+    json!({
+        "index": instruction.index,
+        "offset": instruction.span.offset,
+        "span": instruction.span.to_json(),
+        "rawWord": instruction.raw_word,
+        "opcode": {
+            "number": instruction.opcode.number,
+            "name": instruction.opcode.name,
+        },
+        "mode": instruction.opcode.mode.name(),
+        "operands": operands,
+    })
+}
+
+fn lua_operand_to_json(operand: Lua51Operand) -> Value {
+    match operand {
+        Lua51Operand::Unused { raw } => json!({ "kind": "unused", "raw": raw }),
+        Lua51Operand::Value { value } => json!({ "kind": "value", "value": value }),
+        Lua51Operand::Register { index, raw, rk } => {
+            json!({ "kind": "register", "index": index, "raw": raw, "rk": rk })
+        }
+        Lua51Operand::Constant { index, raw, rk } => {
+            json!({ "kind": "constant", "index": index, "raw": raw, "rk": rk })
+        }
+    }
 }
 
 fn lua_string_to_json(value: &LuaString) -> Value {

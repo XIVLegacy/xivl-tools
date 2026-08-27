@@ -9,5 +9,5 @@
   },
   "arguments": ["--as", "lpb-bytecode"],
   "expect": { "outcome": "ok", "output": "expected.json" },
-  "notes": "Authored Lua 5.1 structure with four constant kinds, debug tables, and one nested prototype."
+  "notes": "Authored Lua 5.1 structure with all instruction modes, an unresolved RK constant reference, four constant kinds, debug tables, and one nested prototype."
 }
