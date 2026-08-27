@@ -10,7 +10,7 @@
     "id": { "$ref": "#/$defs/id" },
     "formatId": { "$ref": "#/$defs/id" },
     "operation": {
-      "enum": ["inspect", "validate", "extract", "resource-path"]
+      "enum": ["inspect", "validate", "extract", "resource-path", "lua-path"]
     },
     "fixture": {
       "oneOf": [

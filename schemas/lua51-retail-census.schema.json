@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xivlegacy.org/schemas/lua51-retail-census.schema.json",
+  "title": "Sanitized Lua 5.1 retail census",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "target", "provenance", "accounting", "wrappers", "prototypes", "instructions", "debugTables"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gameVersion", "extraction"],
+      "properties": {
+        "gameVersion": {"const": "1.23b"},
+        "extraction": {"const": "2012.09.19.0001"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scriptsCommit", "coverageManifestSha256", "inventorySha256", "decoderSourceSha256", "lpbSourceSha256", "corpus"],
+      "properties": {
+        "scriptsCommit": {"$ref": "#/$defs/gitCommit"},
+        "coverageManifestSha256": {"$ref": "#/$defs/sha256"},
+        "inventorySha256": {"$ref": "#/$defs/sha256"},
+        "decoderSourceSha256": {"$ref": "#/$defs/sha256"},
+        "lpbSourceSha256": {"$ref": "#/$defs/sha256"},
+        "corpus": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["manifest", "manifestSha256", "registry", "registrySha256", "scriptCount", "sidecarCount", "sidecarInventorySha256"],
+          "properties": {
+            "manifest": {"const": "manifests/scripts.json"},
+            "manifestSha256": {"$ref": "#/$defs/sha256"},
+            "registry": {"const": "lua/registry.json"},
+            "registrySha256": {"$ref": "#/$defs/sha256"},
+            "scriptCount": {"$ref": "#/$defs/count"},
+            "sidecarCount": {"$ref": "#/$defs/count"},
+            "sidecarInventorySha256": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      }
+    },
+    "accounting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifestOwnedScripts", "acceptedScripts", "exactHeaders", "decodedPayloadBytes", "parserFailures"],
+      "properties": {
+        "manifestOwnedScripts": {"$ref": "#/$defs/count"},
+        "acceptedScripts": {"$ref": "#/$defs/count"},
+        "exactHeaders": {"$ref": "#/$defs/count"},
+        "decodedPayloadBytes": {"$ref": "#/$defs/count"},
+        "parserFailures": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/count"}
+        }
+      }
+    },
+    "wrappers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw", "xor-73"],
+      "properties": {
+        "raw": {"$ref": "#/$defs/count"},
+        "xor-73": {"$ref": "#/$defs/count"}
+      }
+    },
+    "prototypes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "nested", "maximumDepth", "byDepth", "perScript"],
+      "properties": {
+        "total": {"$ref": "#/$defs/count"},
+        "nested": {"$ref": "#/$defs/count"},
+        "maximumDepth": {"$ref": "#/$defs/count"},
+        "byDepth": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count"}},
+        "perScript": {"$ref": "#/$defs/range"}
+      }
+    },
+    "instructions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["words", "decodedOpcodeWords", "setlistExtraWords", "perScript", "modes", "opcodes", "rkOperands", "closureBindings"],
+      "properties": {
+        "words": {"$ref": "#/$defs/count"},
+        "decodedOpcodeWords": {"$ref": "#/$defs/count"},
+        "setlistExtraWords": {"$ref": "#/$defs/count"},
+        "perScript": {"$ref": "#/$defs/range"},
+        "modes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["iABC", "iABx", "iAsBx"],
+          "properties": {
+            "iABC": {"$ref": "#/$defs/count"},
+            "iABx": {"$ref": "#/$defs/count"},
+            "iAsBx": {"$ref": "#/$defs/count"}
+          }
+        },
+        "opcodes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["MOVE", "LOADK", "LOADBOOL", "LOADNIL", "GETUPVAL", "GETGLOBAL", "GETTABLE", "SETGLOBAL", "SETUPVAL", "SETTABLE", "NEWTABLE", "SELF", "ADD", "SUB", "MUL", "DIV", "MOD", "POW", "UNM", "NOT", "LEN", "CONCAT", "JMP", "EQ", "LT", "LE", "TEST", "TESTSET", "CALL", "TAILCALL", "RETURN", "FORLOOP", "FORPREP", "TFORLOOP", "SETLIST", "CLOSE", "CLOSURE", "VARARG"],
+          "properties": {
+            "MOVE": {"$ref": "#/$defs/count"}, "LOADK": {"$ref": "#/$defs/count"}, "LOADBOOL": {"$ref": "#/$defs/count"}, "LOADNIL": {"$ref": "#/$defs/count"}, "GETUPVAL": {"$ref": "#/$defs/count"}, "GETGLOBAL": {"$ref": "#/$defs/count"}, "GETTABLE": {"$ref": "#/$defs/count"}, "SETGLOBAL": {"$ref": "#/$defs/count"}, "SETUPVAL": {"$ref": "#/$defs/count"}, "SETTABLE": {"$ref": "#/$defs/count"}, "NEWTABLE": {"$ref": "#/$defs/count"}, "SELF": {"$ref": "#/$defs/count"}, "ADD": {"$ref": "#/$defs/count"}, "SUB": {"$ref": "#/$defs/count"}, "MUL": {"$ref": "#/$defs/count"}, "DIV": {"$ref": "#/$defs/count"}, "MOD": {"$ref": "#/$defs/count"}, "POW": {"$ref": "#/$defs/count"}, "UNM": {"$ref": "#/$defs/count"}, "NOT": {"$ref": "#/$defs/count"}, "LEN": {"$ref": "#/$defs/count"}, "CONCAT": {"$ref": "#/$defs/count"}, "JMP": {"$ref": "#/$defs/count"}, "EQ": {"$ref": "#/$defs/count"}, "LT": {"$ref": "#/$defs/count"}, "LE": {"$ref": "#/$defs/count"}, "TEST": {"$ref": "#/$defs/count"}, "TESTSET": {"$ref": "#/$defs/count"}, "CALL": {"$ref": "#/$defs/count"}, "TAILCALL": {"$ref": "#/$defs/count"}, "RETURN": {"$ref": "#/$defs/count"}, "FORLOOP": {"$ref": "#/$defs/count"}, "FORPREP": {"$ref": "#/$defs/count"}, "TFORLOOP": {"$ref": "#/$defs/count"}, "SETLIST": {"$ref": "#/$defs/count"}, "CLOSE": {"$ref": "#/$defs/count"}, "CLOSURE": {"$ref": "#/$defs/count"}, "VARARG": {"$ref": "#/$defs/count"}
+          }
+        },
+        "rkOperands": {"$ref": "#/$defs/registerConstantCounts"},
+        "closureBindings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["total", "move", "getupval"],
+          "properties": {
+            "total": {"$ref": "#/$defs/count"},
+            "move": {"$ref": "#/$defs/count"},
+            "getupval": {"$ref": "#/$defs/count"}
+          }
+        }
+      }
+    },
+    "debugTables": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lineInfo", "locals", "upvalueNames"],
+      "properties": {
+        "lineInfo": {"$ref": "#/$defs/lineInfoCounts"},
+        "locals": {"$ref": "#/$defs/presenceCounts"},
+        "upvalueNames": {"$ref": "#/$defs/upvalueNameCounts"}
+      }
+    }
+  },
+  "$defs": {
+    "count": {"type": "integer", "minimum": 0},
+    "sha256": {"type": "string", "pattern": "^[0-9A-F]{64}$"},
+    "gitCommit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum", "maximum"],
+      "properties": {"minimum": {"$ref": "#/$defs/count"}, "maximum": {"$ref": "#/$defs/count"}}
+    },
+    "registerConstantCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["register", "constant"],
+      "properties": {"register": {"$ref": "#/$defs/count"}, "constant": {"$ref": "#/$defs/count"}}
+    },
+    "lineInfoCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["empty", "matchesInstructionWords", "other"],
+      "properties": {"empty": {"$ref": "#/$defs/count"}, "matchesInstructionWords": {"$ref": "#/$defs/count"}, "other": {"$ref": "#/$defs/count"}}
+    },
+    "presenceCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["empty", "present"],
+      "properties": {"empty": {"$ref": "#/$defs/count"}, "present": {"$ref": "#/$defs/count"}}
+    },
+    "upvalueNameCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["empty", "matchesDeclaredUpvalues", "partial"],
+      "properties": {"empty": {"$ref": "#/$defs/count"}, "matchesDeclaredUpvalues": {"$ref": "#/$defs/count"}, "partial": {"$ref": "#/$defs/count"}}
+    }
+  }
+}

@@ -12,8 +12,12 @@ use std::collections::BTreeMap;
 use serde_json::{json, Map, Value};
 
 use crate::config::{self, ConfigFile, ConfigKind};
-use crate::digest::sha256_hex;
+use crate::digest::{sha256_hex, sha256_xor_hex};
 use crate::error::Result;
+use crate::lpb;
+use crate::lua51::{
+    self, Lua51Instruction, Lua51Operand, Lua51Operands, Lua51Prototype, LuaConstant, LuaString,
+};
 use crate::reader::Span;
 use crate::richstring::{payload_hex, RichString, Segment};
 use crate::scrambled;
@@ -21,6 +25,7 @@ use crate::sedb::{self, Container, Entry, EntryBody};
 use crate::sheet::{self, ColumnType, ColumnValue, EnableFile, Row, RowOffsets, SheetString};
 use crate::sqwt;
 use crate::ssd::{self, SheetBody, SsdDocument};
+use crate::staticactor;
 use crate::xml;
 
 /// Version of the inspect document shape.
@@ -44,6 +49,12 @@ pub enum InspectAs {
     ScrambledXml,
     /// The SQEX container, whose key is the file's own name.
     Sqwt,
+    /// An LPB wrapper around compiled Lua 5.1 bytecode.
+    Lpb,
+    /// An LPB wrapper plus bounded structure from its Lua 5.1 payload.
+    LpbBytecode,
+    /// The XOR-0x73 static-actor SAN record table.
+    StaticActorSan,
     EnableFile,
     RowOffsets,
     /// A sheet data file. With no columns it is read as a stream of string
@@ -57,11 +68,14 @@ pub enum InspectAs {
 
 impl InspectAs {
     /// Names accepted by the `--as` option.
-    pub const NAMES: [&'static str; 11] = [
+    pub const NAMES: [&'static str; 14] = [
         "sedb",
         "ssd",
         "scrambled-xml",
         "sqwt",
+        "lpb",
+        "lpb-bytecode",
+        "staticactor-san",
         "enable-file",
         "row-offsets",
         "sheet-data",
@@ -103,6 +117,9 @@ impl InspectAs {
             Some("ssd") => Self::Ssd,
             Some("scrambled-xml") => Self::ScrambledXml,
             Some("sqwt") => Self::Sqwt,
+            Some("lpb") => Self::Lpb,
+            Some("lpb-bytecode") => Self::LpbBytecode,
+            Some("staticactor-san") => Self::StaticActorSan,
             Some("enable-file") => Self::EnableFile,
             Some("row-offsets") => Self::RowOffsets,
             Some("sheet-data") => Self::SheetData(columns.clone().unwrap_or_default()),
@@ -145,7 +162,9 @@ pub fn inspect_bytes_as(data: &[u8], how: &InspectAs) -> Result<Value> {
 pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Result<Value> {
     match how {
         InspectAs::Auto => {
-            if ssd::has_document_signature(data) {
+            if staticactor::has_signature(data) {
+                inspect_staticactor(data)
+            } else if ssd::has_document_signature(data) {
                 inspect_ssd(data)
             } else if sqwt::has_signature(data) {
                 inspect_sqwt(data, name)
@@ -165,6 +184,9 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
         InspectAs::Ssd => inspect_ssd(data),
         InspectAs::ScrambledXml => inspect_scrambled(data),
         InspectAs::Sqwt => inspect_sqwt(data, name),
+        InspectAs::Lpb => inspect_lpb(data),
+        InspectAs::LpbBytecode => inspect_lpb_bytecode(data),
+        InspectAs::StaticActorSan => inspect_staticactor(data),
         InspectAs::EnableFile => inspect_enable_file(data),
         InspectAs::RowOffsets => inspect_row_offsets(data),
         InspectAs::SheetData(columns) => inspect_sheet_data(data, columns),
@@ -437,6 +459,266 @@ fn inspect_sqwt(data: &[u8], name: &str) -> Result<Value> {
         }),
     );
     Ok(Value::Object(object))
+}
+
+fn inspect_lpb(data: &[u8]) -> Result<Value> {
+    let file = lpb::extract(data)?;
+    let mut object = envelope("lpb", data);
+    object.insert("variant".into(), json!(file.variant.name()));
+    object.insert("header".into(), file.header.to_json());
+    object.insert(
+        "unknownHeader".into(),
+        Value::Array(
+            file.unknown_header
+                .iter()
+                .map(|field| {
+                    json!({
+                        "span": field.span.to_json(),
+                        "sha256": sha256_hex(&field.bytes),
+                    })
+                })
+                .collect(),
+        ),
+    );
+    object.insert("advisorySize".into(), json!(file.advisory_size));
+    object.insert(
+        "encodedPrefix".into(),
+        file.encoded_prefix
+            .map(Span::to_json)
+            .unwrap_or(Value::Null),
+    );
+    object.insert("encodedPayload".into(), file.encoded_payload.to_json());
+    object.insert("decodedLength".into(), json!(file.decoded.len() as u64));
+    object.insert("decodedSha256".into(), json!(sha256_hex(&file.decoded)));
+    Ok(Value::Object(object))
+}
+
+fn inspect_staticactor(data: &[u8]) -> Result<Value> {
+    let file = staticactor::parse(data)?;
+    let mut object = envelope("staticactor-san", data);
+    object.insert("header".into(), file.header.to_json());
+    object.insert(
+        "unknownHeader".into(),
+        json!({
+            "span": file.unknown_header.to_json(),
+            "encodedSha256": sha256_hex(span_bytes(data, file.unknown_header)),
+            "decodedSha256": sha256_xor_hex(
+                span_bytes(data, file.unknown_header),
+                staticactor::XOR_KEY,
+            ),
+        }),
+    );
+    object.insert(
+        "encoding".into(),
+        json!({
+            "kind": "xor",
+            "key": staticactor::XOR_KEY,
+            "span": {
+                "offset": 4,
+                "length": (data.len() - 4) as u64,
+            },
+        }),
+    );
+    object.insert(
+        "recordCount".into(),
+        json!({
+            "span": file.count_span.to_json(),
+            "byteOrder": "big",
+            "value": file.declared_count,
+        }),
+    );
+    object.insert("encodedBody".into(), file.encoded_body.to_json());
+    object.insert(
+        "records".into(),
+        Value::Array(
+            file.records
+                .iter()
+                .map(|record| {
+                    let encoded = span_bytes(data, record.string_span);
+                    let decoded_ascii = encoded
+                        .iter()
+                        .all(|byte| (byte ^ staticactor::XOR_KEY).is_ascii());
+                    let decoded_starts_with_slash = encoded
+                        .first()
+                        .is_some_and(|byte| byte ^ staticactor::XOR_KEY == b'/');
+                    json!({
+                        "index": record.index,
+                        "span": record.span.to_json(),
+                        "field0": {
+                            "span": record.value_span.to_json(),
+                            "byteOrder": "big",
+                            "value": record.value_be,
+                            "meaning": "unknown",
+                        },
+                        "string": {
+                            "encodedSpan": record.string_span.to_json(),
+                            "terminatorSpan": record.terminator_span.to_json(),
+                            "decodedLength": record.string_span.length,
+                            "decodedSha256": sha256_xor_hex(encoded, staticactor::XOR_KEY),
+                            "decodedAscii": decoded_ascii,
+                            "decodedStartsWithSlash": decoded_starts_with_slash,
+                            "meaning": "unknown",
+                        },
+                    })
+                })
+                .collect(),
+        ),
+    );
+    Ok(Value::Object(object))
+}
+
+fn span_bytes(data: &[u8], span: Span) -> &[u8] {
+    &data[span.offset as usize..span.end() as usize]
+}
+
+fn inspect_lpb_bytecode(data: &[u8]) -> Result<Value> {
+    let file = lpb::extract(data)?;
+    let chunk = lua51::parse(&file.decoded)?;
+    let mut object = envelope("client-lua", data);
+    object.insert(
+        "spanBase".into(),
+        json!({ "wrapper": "input", "bytecode": "decoded" }),
+    );
+    object.insert(
+        "wrapper".into(),
+        json!({
+            "variant": file.variant.name(),
+            "header": file.header.to_json(),
+            "unknownHeader": Value::Array(file.unknown_header.iter().map(|field| json!({
+                "span": field.span.to_json(),
+                "sha256": sha256_hex(&field.bytes),
+            })).collect()),
+            "advisorySize": file.advisory_size,
+            "encodedPrefix": file.encoded_prefix.map(Span::to_json),
+            "encodedPayload": file.encoded_payload.to_json(),
+            "decodedLength": file.decoded.len() as u64,
+            "decodedSha256": sha256_hex(&file.decoded),
+        }),
+    );
+    object.insert(
+        "bytecode".into(),
+        json!({
+            "header": {
+                "span": chunk.header.span.to_json(),
+                "version": chunk.header.version,
+                "format": chunk.header.format,
+                "endianness": if chunk.header.little_endian { "little" } else { "big" },
+                "intSize": chunk.header.int_size,
+                "sizeTSize": chunk.header.size_t_size,
+                "instructionSize": chunk.header.instruction_size,
+                "numberSize": chunk.header.number_size,
+                "integralNumbers": chunk.header.integral_numbers,
+            },
+            "root": lua_prototype_to_json(&chunk.root, &file.decoded),
+        }),
+    );
+    Ok(Value::Object(object))
+}
+
+fn lua_prototype_to_json(prototype: &Lua51Prototype, decoded: &[u8]) -> Value {
+    json!({
+        "span": prototype.span.to_json(),
+        "source": prototype.source.as_ref().map(lua_string_to_json),
+        "lineDefined": prototype.line_defined,
+        "lastLineDefined": prototype.last_line_defined,
+        "upvalueCount": prototype.upvalue_count,
+        "parameterCount": prototype.parameter_count,
+        "varargFlags": prototype.vararg_flags,
+        "maxStackSize": prototype.max_stack_size,
+        "instructions": {
+            "span": prototype.instructions.to_json(),
+            "count": prototype.instruction_count,
+            "sha256": span_sha256(decoded, prototype.instructions),
+            "items": Value::Array(prototype.decoded_instructions.iter().map(
+                lua_instruction_to_json
+            ).collect()),
+            "setlistExtraWords": Value::Array(prototype.setlist_extra_words.iter().map(|word| json!({
+                "index": word.index,
+                "offset": word.span.offset,
+                "span": word.span.to_json(),
+                "rawWord": word.raw_word,
+            })).collect()),
+        },
+        "constants": Value::Array(prototype.constants.iter().map(|constant| {
+            let mut value = json!({
+                "type": constant.kind_name(),
+                "span": constant.span().to_json(),
+                "sha256": span_sha256(decoded, constant.span()),
+            });
+            if let LuaConstant::String { value: string, .. } = constant {
+                value["length"] = json!(string.bytes.len() as u64);
+            }
+            value
+        }).collect()),
+        "nested": Value::Array(prototype.nested.iter().map(|child| {
+            lua_prototype_to_json(child, decoded)
+        }).collect()),
+        "debug": {
+            "lineInfo": {
+                "span": prototype.line_info.to_json(),
+                "count": prototype.line_info_count,
+            },
+            "localCount": prototype.local_count,
+            "upvalueNameCount": prototype.upvalue_name_count,
+        },
+    })
+}
+
+fn lua_instruction_to_json(instruction: &Lua51Instruction) -> Value {
+    let operands = match instruction.operands {
+        Lua51Operands::Abc { a, b, c } => json!({
+            "A": a,
+            "B": lua_operand_to_json(b),
+            "C": lua_operand_to_json(c),
+        }),
+        Lua51Operands::Abx { a, bx } => json!({
+            "A": a,
+            "Bx": lua_operand_to_json(bx),
+        }),
+        Lua51Operands::Asbx { a, sbx } => json!({
+            "A": a,
+            "sBx": sbx,
+        }),
+    };
+    json!({
+        "index": instruction.index,
+        "offset": instruction.span.offset,
+        "span": instruction.span.to_json(),
+        "rawWord": instruction.raw_word,
+        "opcode": {
+            "number": instruction.opcode.number,
+            "name": instruction.opcode.name,
+        },
+        "mode": instruction.opcode.mode.name(),
+        "operands": operands,
+    })
+}
+
+fn lua_operand_to_json(operand: Lua51Operand) -> Value {
+    match operand {
+        Lua51Operand::Unused { raw } => json!({ "kind": "unused", "raw": raw }),
+        Lua51Operand::Value { value } => json!({ "kind": "value", "value": value }),
+        Lua51Operand::Register { index, raw, rk } => {
+            json!({ "kind": "register", "index": index, "raw": raw, "rk": rk })
+        }
+        Lua51Operand::Constant { index, raw, rk } => {
+            json!({ "kind": "constant", "index": index, "raw": raw, "rk": rk })
+        }
+    }
+}
+
+fn lua_string_to_json(value: &LuaString) -> Value {
+    json!({
+        "span": value.span.to_json(),
+        "length": value.bytes.len() as u64,
+        "sha256": sha256_hex(&value.bytes),
+    })
+}
+
+fn span_sha256(data: &[u8], span: Span) -> String {
+    let start = span.offset as usize;
+    let end = start + span.length as usize;
+    sha256_hex(&data[start..end])
 }
 
 fn census<'a>(
@@ -822,6 +1104,14 @@ mod tests {
             InspectAs::EnableFile
         );
         assert_eq!(
+            InspectAs::from_arguments(&arguments(&["--as", "lpb-bytecode"])).unwrap(),
+            InspectAs::LpbBytecode
+        );
+        assert_eq!(
+            InspectAs::from_arguments(&arguments(&["--as", "staticactor-san"])).unwrap(),
+            InspectAs::StaticActorSan
+        );
+        assert_eq!(
             InspectAs::from_arguments(&arguments(&["--as", "sheet-data", "--columns", "str,u8"]))
                 .unwrap(),
             InspectAs::SheetData(vec![ColumnType::Text, ColumnType::Unsigned8])
@@ -842,6 +1132,10 @@ mod tests {
     fn auto_recognizes_a_document_and_a_container() {
         let document = inspect_bytes(b"\xEF\xBB\xBF<ssd version=\"0.1\"></ssd>").unwrap();
         assert_eq!(document["format"], "ssd-master");
+        let mut san = b"sane".to_vec();
+        san.extend([0u8; 9].map(|byte| byte ^ staticactor::XOR_KEY));
+        let document = inspect_bytes(&san).unwrap();
+        assert_eq!(document["format"], "staticactor-san");
         let error = inspect_bytes(b"not a container at all").unwrap_err();
         assert_eq!(error.kind(), crate::error::ErrorKind::BadMagic);
     }

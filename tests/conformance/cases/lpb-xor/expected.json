@@ -1,0 +1,40 @@
+{
+  "advisorySize": 7,
+  "decodedLength": 24,
+  "decodedSha256": "858edfc6960d83c4a398308ab828bc1114ba3fc3527983471911ba066826c74e",
+  "encodedPayload": {
+    "length": 21,
+    "offset": 16
+  },
+  "encodedPrefix": {
+    "length": 3,
+    "offset": 13
+  },
+  "format": "lpb",
+  "header": {
+    "length": 16,
+    "offset": 0
+  },
+  "input": {
+    "length": 37
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "unknownHeader": [
+    {
+      "sha256": "21e32f5321cad49ab4cf78ba5ed231e0f36d0c78d34108fda1be939f33fba149",
+      "span": {
+        "length": 4,
+        "offset": 4
+      }
+    },
+    {
+      "sha256": "bb7208bc9b5d7c04f1236a82a0093a5e33f40423d5ba8d4266f7092c3ba43b62",
+      "span": {
+        "length": 1,
+        "offset": 12
+      }
+    }
+  ],
+  "variant": "xor-73"
+}

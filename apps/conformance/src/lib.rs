@@ -19,8 +19,8 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use xivl_formats::{
-    inspect_named_bytes_as, resource_path_listing, to_canonical_json, validate_named_bytes_as,
-    FormatError, InspectAs,
+    inspect_named_bytes_as, lua_path_document, resource_path_listing, to_canonical_json,
+    validate_named_bytes_as, ErrorKind, FormatError, InspectAs,
 };
 
 /// Bounds allocation before parsing any fixture path.
@@ -194,6 +194,14 @@ fn run_case(
             Err(error) => {
                 return Outcome::Failed(format!("resource-path fixture is not UTF-8: {error}"))
             }
+        },
+        "lua-path" => match std::str::from_utf8(&input) {
+            Ok(text) => lua_path_document(text),
+            Err(error) => Err(FormatError::new(
+                ErrorKind::InvalidUtf8,
+                error.valid_up_to() as u64,
+                "Lua path fixture is not UTF-8",
+            )),
         },
         other => {
             return Outcome::Failed(format!(

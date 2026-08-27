@@ -1,0 +1,10 @@
+{
+  "format": "lua-path",
+  "input": {
+    "length": 25,
+    "path": "Quest/Scenario/Man0g0.lua"
+  },
+  "operation": "lua-path",
+  "schemaVersion": 1,
+  "transformed": "tp5rq/r75w9s1v/x9wj3j.yp9"
+}

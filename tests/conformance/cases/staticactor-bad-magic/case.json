@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "staticactor-bad-magic",
+  "formatId": "staticactor-san",
+  "operation": "inspect",
+  "fixture": { "kind": "public", "path": "tests/fixtures/public/staticactor/bad-magic.bin" },
+  "arguments": ["--as", "staticactor-san"],
+  "expect": { "outcome": "parse-error", "errorKind": "bad-magic", "errorOffset": 0 },
+  "notes": "A near-match to the four-byte signature is refused."
+}

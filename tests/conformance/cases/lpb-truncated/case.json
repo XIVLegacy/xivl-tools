@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "lpb-truncated",
+  "formatId": "lpb",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/truncated.bin"
+  },
+  "arguments": ["--as", "lpb"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 4
+  },
+  "notes": "A committed wrapper signature with a short header fails at the bounded header read."
+}

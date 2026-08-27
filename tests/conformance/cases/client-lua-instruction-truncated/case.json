@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "client-lua-instruction-truncated",
+  "formatId": "client-lua",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/bytecode-instruction-truncated.bin"
+  },
+  "arguments": ["--as", "lpb-bytecode"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 36
+  },
+  "notes": "A second declared instruction word with only three available bytes fails at its decoded instruction offset."
+}

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "lua-path-non-ascii",
+  "formatId": "lua-path",
+  "operation": "lua-path",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lua-path/non-ascii.bin"
+  },
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-lua-path",
+    "errorOffset": 2
+  },
+  "notes": "The locale-independent client path domain is ASCII."
+}

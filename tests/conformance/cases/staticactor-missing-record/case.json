@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "staticactor-missing-record",
+  "formatId": "staticactor-san",
+  "operation": "inspect",
+  "fixture": { "kind": "public", "path": "tests/fixtures/public/staticactor/missing-record.bin" },
+  "arguments": ["--as", "staticactor-san"],
+  "expect": { "outcome": "parse-error", "errorKind": "trailing-partial-record", "errorOffset": 13 },
+  "notes": "The header declares one record but the body is empty."
+}

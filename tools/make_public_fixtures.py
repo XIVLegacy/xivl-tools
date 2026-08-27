@@ -97,6 +97,23 @@ def utf16_field(text: str, width: int) -> bytes:
     return encoded.ljust(width, b"\x00")
 
 
+def staticactor_san(
+    records: list[tuple[int, bytes]],
+    *,
+    declared_count: int | None = None,
+) -> bytes:
+    """An authored SAN record table using the retail framing only."""
+    if declared_count is None:
+        declared_count = len(records)
+    decoded = bytearray(b"SYNTH")
+    decoded.extend(struct.pack(">I", declared_count))
+    for value, string in records:
+        decoded.extend(struct.pack(">I", value))
+        decoded.extend(string)
+        decoded.append(0)
+    return b"sane" + bytes(byte ^ 0x73 for byte in decoded)
+
+
 def xml_document(body: str, declaration: bool = True, bom: bool = True) -> bytes:
     """An SSD document in the shape the client writes: BOM, declaration,
     CRLF line endings."""
@@ -208,8 +225,251 @@ def enable_records(pairs: list[tuple[int, int]]) -> bytes:
     return b"".join(struct.pack("<II", first, count) for first, count in pairs)
 
 
+LUA51_HEADER = b"\x1bLuaQ\x00\x01\x04\x04\x04\x08\x00"
+LUA51_MAXARG_SBX = (1 << 17) - 1
+
+
+def lua_instruction_abc(opcode: int, a: int, b: int, c: int) -> int:
+    return opcode | (a << 6) | (c << 14) | (b << 23)
+
+
+def lua_instruction_abx(opcode: int, a: int, bx: int) -> int:
+    return opcode | (a << 6) | (bx << 14)
+
+
+def lua_instruction_asbx(opcode: int, a: int, sbx: int) -> int:
+    return lua_instruction_abx(opcode, a, sbx + LUA51_MAXARG_SBX)
+
+
+def lua_string(value: bytes | None) -> bytes:
+    if value is None:
+        return struct.pack("<I", 0)
+    return struct.pack("<I", len(value) + 1) + value + b"\x00"
+
+
+def lua_proto(
+    *,
+    source: bytes | None = None,
+    lines: tuple[int, int] = (0, 0),
+    shape: tuple[int, int, int, int] = (0, 0, 0, 2),
+    instructions: tuple[int, ...] = (),
+    constants: tuple[bytes, ...] = (),
+    nested: tuple[bytes, ...] = (),
+    line_info: tuple[int, ...] = (),
+    locals_: tuple[tuple[bytes, int, int], ...] = (),
+    upvalues: tuple[bytes, ...] = (),
+) -> bytes:
+    data = bytearray(lua_string(source))
+    data.extend(struct.pack("<II4B", *lines, *shape))
+    data.extend(struct.pack("<I", len(instructions)))
+    for instruction in instructions:
+        data.extend(struct.pack("<I", instruction))
+    data.extend(struct.pack("<I", len(constants)))
+    for constant in constants:
+        data.extend(constant)
+    data.extend(struct.pack("<I", len(nested)))
+    for child in nested:
+        data.extend(child)
+    data.extend(struct.pack("<I", len(line_info)))
+    for line in line_info:
+        data.extend(struct.pack("<I", line))
+    data.extend(struct.pack("<I", len(locals_)))
+    for name, start_pc, end_pc in locals_:
+        data.extend(lua_string(name))
+        data.extend(struct.pack("<II", start_pc, end_pc))
+    data.extend(struct.pack("<I", len(upvalues)))
+    for name in upvalues:
+        data.extend(lua_string(name))
+    return bytes(data)
+
+
 def build_fixtures() -> dict[str, bytes]:
     fixtures: dict[str, bytes] = {}
+
+    # Authored Lua path and LPB samples contain no retail names or bytes.
+    fixtures["lua-path/example.txt"] = b"Quest/Scenario/Man0g0.lua"
+    fixtures["lua-path/non-ascii.bin"] = b"ab\xc3\xa9.lua"
+
+    lua_chunk = b"\x1bLuaQ" + pattern(19, 0x31)
+    fixtures["lpb/raw.bin"] = b"rlu\x0bABCD" + lua_chunk
+    xor_header = b"rle\x0cWXYZ" + struct.pack("<I", 7) + b"!"
+    fixtures["lpb/xor.bin"] = xor_header + bytes(byte ^ 0x73 for byte in lua_chunk)
+    fixtures["lpb/truncated.bin"] = b"rle\x0cshort"
+    fixtures["lpb/bad-chunk.bin"] = b"rlu\x0bABCDxxxxx"
+
+    # -- the static-actor SAN table --------------------------------------
+    # Only the framing is promoted: the authored strings resemble paths so
+    # the positive case exercises the retail byte class without assigning a
+    # meaning to either record member.
+    staticactor = staticactor_san(
+        [(7, b"/Synthetic/One"), (0x10203040, b"/Synthetic/Two")]
+    )
+    fixtures["staticactor/records.bin"] = staticactor
+    fixtures["staticactor/bad-magic.bin"] = b"x" + staticactor[1:]
+    fixtures["staticactor/truncated-header.bin"] = staticactor[:12]
+    fixtures["staticactor/count-bomb.bin"] = staticactor_san(
+        [], declared_count=100_001
+    )
+    fixtures["staticactor/missing-record.bin"] = staticactor_san(
+        [], declared_count=1
+    )
+    fixtures["staticactor/unterminated-record.bin"] = (
+        staticactor_san([], declared_count=1)
+        + bytes(byte ^ 0x73 for byte in struct.pack(">I", 9) + b"unfinished")
+    )
+    one_record = staticactor_san([(7, b"/Synthetic/One")])
+    fixtures["staticactor/trailing-partial-record.bin"] = one_record + b"\x01\x02"
+    fixtures["staticactor/trailing-record.bin"] = staticactor_san(
+        [(7, b"/Synthetic/One"), (9, b"/Synthetic/Extra")], declared_count=1
+    )
+
+    child = lua_proto(
+        lines=(4, 6),
+        shape=(1, 1, 0, 2),
+        instructions=(
+            lua_instruction_asbx(22, 0, -1),  # JMP: iAsBx to this instruction
+            lua_instruction_abc(30, 0, 1, 0),  # RETURN: iABC
+        ),
+        constants=(b"\x04" + lua_string(b"child"),),
+        line_info=(5, 6),
+    )
+    main = lua_proto(
+        source=b"@synthetic.lua",
+        lines=(0, 12),
+        shape=(1, 2, 2, 4),
+        instructions=(
+            lua_instruction_abc(0, 1, 2, 0),  # MOVE: iABC register and unused
+            lua_instruction_abx(1, 0, 0),  # LOADK: iABx constant reference
+            # ADD: the RK form keeps constant and register references distinct
+            # without resolving either reference to a value.
+            lua_instruction_abc(12, 2, 0x100 | 3, 1),
+            lua_instruction_abx(36, 0, 0),  # CLOSURE: nested prototype 0
+            lua_instruction_abc(4, 0, 0, 0),  # CLOSURE binding: parent upvalue 0
+            lua_instruction_abc(34, 0, 0, 0),  # SETLIST: C is the following word
+            1,  # SETLIST extra word, not an opcode
+            lua_instruction_asbx(22, 0, -1),  # JMP: iAsBx and excess-K bias
+            lua_instruction_abc(30, 0, 1, 0),  # RETURN: iABC
+        ),
+        constants=(
+            b"\x00",
+            b"\x01\x01",
+            b"\x03" + struct.pack("<d", 1.5),
+            b"\x04" + lua_string(b"hello"),
+        ),
+        nested=(child,),
+        line_info=(1, 2, 3, 4, 4, 5, 5, 6, 7),
+        locals_=((b"value", 0, 9),),
+        upvalues=(b"environment",),
+    )
+    bytecode = LUA51_HEADER + main
+    fixtures["lpb/bytecode.bin"] = b"rlu\x0bBCOD" + bytecode
+    fixtures["lpb/bytecode-xor.bin"] = (
+        b"rle\x0cBCOD" + struct.pack("<I", len(bytecode)) + b"?"
+        + bytes(byte ^ 0x73 for byte in bytecode)
+    )
+    fixtures["lpb/bytecode-trailing.bin"] = b"rlu\x0bBCOD" + bytecode + b"!"
+    unsupported = bytearray(bytecode)
+    unsupported[6] = 2
+    fixtures["lpb/bytecode-unsupported-header.bin"] = b"rlu\x0bBCOD" + unsupported
+    invalid_opcode = lua_proto(instructions=(38,))
+    fixtures["lpb/bytecode-invalid-opcode.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_opcode
+    )
+    invalid_constant = lua_proto(
+        instructions=(
+            lua_instruction_abx(1, 0, 1),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+        constants=(b"\x00",),
+    )
+    fixtures["lpb/bytecode-invalid-constant.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_constant
+    )
+    invalid_upvalue = lua_proto(
+        instructions=(
+            lua_instruction_abc(4, 0, 0, 0),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+    )
+    fixtures["lpb/bytecode-invalid-upvalue.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_upvalue
+    )
+    invalid_nested = lua_proto(
+        instructions=(
+            lua_instruction_abx(36, 0, 0),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+    )
+    fixtures["lpb/bytecode-invalid-nested.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_nested
+    )
+    invalid_register = lua_proto(
+        instructions=(
+            lua_instruction_abc(0, 2, 0, 0),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+    )
+    fixtures["lpb/bytecode-invalid-register.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_register
+    )
+    invalid_jump = lua_proto(
+        instructions=(
+            lua_instruction_asbx(22, 0, -2),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+    )
+    fixtures["lpb/bytecode-invalid-jump.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_jump
+    )
+    binding_child = lua_proto(
+        shape=(1, 0, 0, 2),
+        instructions=(lua_instruction_abc(30, 0, 1, 0),),
+    )
+    invalid_binding = lua_proto(
+        shape=(1, 0, 0, 2),
+        instructions=(
+            lua_instruction_abx(36, 0, 0),
+            lua_instruction_abx(1, 0, 0),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+        constants=(b"\x00",),
+        nested=(binding_child,),
+    )
+    fixtures["lpb/bytecode-invalid-closure-binding.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_binding
+    )
+    invalid_setlist = lua_proto(
+        instructions=(
+            lua_instruction_abc(34, 0, 0, 0),
+            lua_instruction_abc(30, 0, 1, 0),
+        ),
+    )
+    fixtures["lpb/bytecode-invalid-setlist.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + invalid_setlist
+    )
+    truncated_instruction = (
+        LUA51_HEADER
+        + lua_string(None)
+        + struct.pack("<II4BI", 0, 0, 0, 0, 0, 2, 2)
+        + struct.pack("<I", lua_instruction_abx(1, 0, 0))
+        + b"\x01\x00\x00"
+    )
+    fixtures["lpb/bytecode-instruction-truncated.bin"] = (
+        b"rlu\x0bBCOD" + truncated_instruction
+    )
+    fixtures["lpb/bytecode-string-bomb.bin"] = (
+        b"rlu\x0bBCOD" + LUA51_HEADER + struct.pack("<I", 16 * 1024 * 1024 + 1)
+    )
+    fixtures["lpb/bytecode-table-bomb.bin"] = (
+        b"rlu\x0bBCOD"
+        + LUA51_HEADER
+        + lua_string(None)
+        + struct.pack("<II4BI", 0, 0, 0, 0, 0, 2, 1_000_001)
+    )
+    deepest = lua_proto()
+    for _ in range(128):
+        deepest = lua_proto(nested=(deepest,))
+    fixtures["lpb/bytecode-nesting-bomb.bin"] = b"rlu\x0bBCOD" + LUA51_HEADER + deepest
 
     # -- sedb ------------------------------------------------------------
     # A well-formed non-composite container: 0x30 header, 0x20 payload, and

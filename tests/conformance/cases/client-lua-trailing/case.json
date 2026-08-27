@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "client-lua-trailing",
+  "formatId": "client-lua",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/bytecode-trailing.bin"
+  },
+  "arguments": ["--as", "lpb-bytecode"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "trailing-bytes"
+  },
+  "notes": "A complete root prototype must consume the decoded chunk exactly."
+}

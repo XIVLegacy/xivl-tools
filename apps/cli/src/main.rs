@@ -12,6 +12,7 @@
 use std::io::{Read, Write};
 use std::process::ExitCode;
 
+use xivl_formats::{extract_lpb, lua_path_document};
 use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_bytes_as, InspectAs};
 
 mod extract;
@@ -22,14 +23,16 @@ xivl - Final Fantasy XIV 1.23b client file tools
 usage:
   xivl inspect <file> [--as <format>] [--columns <list>]
   xivl validate <file> [--as <format>] [--columns <list>]
+  xivl lua-path <path>
+  xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
   xivl --help
   xivl --version
 
 inspect prints the normalized structural report for one file. With no
---as it recognizes SEDB containers, SSD documents, SQEX containers, and
-scrambled documents, the last by decoding them rather than by one
-trailer byte.
+--as it recognizes static-actor SAN tables, SEDB containers, SSD documents,
+SQEX containers, and scrambled documents, the last by decoding them rather
+than by one trailer byte.
 
 validate reads the input the same way and reports the checks that
 reading passed. For a format this tool can also write, that includes a
@@ -40,7 +43,12 @@ extract discovers SSD sheet definitions under a 1.23b game directory,
 reads their data, enable, and row-offset resources, and writes one
 lossless CSV view per definition document.
 
-  --as sedb | ssd | scrambled-xml | sqwt | enable-file | row-offsets
+lua-path applies the reversible ASCII resource-path transform. extract-lpb
+removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
+5.1 chunk without interpreting it. The output path must not already exist.
+
+  --as sedb | ssd | scrambled-xml | sqwt | lpb | lpb-bytecode | staticactor-san
+     | enable-file | row-offsets
      | sheet-data | config-sys | config-pad | config-lng | config-rgn
       Read the input as this format. Needed for enable-file and
       row-offsets, which are unsigned 32-bit arrays with no signature,
@@ -51,6 +59,9 @@ lossless CSV view per definition document.
       the container and a census of the document's shape instead.
       --as sqwt decodes a SQEX container, whose key is the file's own
       base name: renaming such a file makes it unreadable.
+      --as lpb-bytecode retains the LPB wrapper report and adds bounded
+      Lua 5.1 header, prototype, constant, nesting, and validated opcode
+      and operand structure. It does not decompile or execute code.
   --columns <type,...>
       Column types of a sheet-data file, from its schema document, for
       example 'str,s32,bool'. Without it the data is read as a stream of
@@ -116,6 +127,8 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         }
         Some("inspect") => read(&arguments[1..], Operation::Inspect),
         Some("validate") => read(&arguments[1..], Operation::Validate),
+        Some("lua-path") => lua_path(&arguments[1..]),
+        Some("extract-lpb") => extract_lpb_command(&arguments[1..]),
         Some("extract") => {
             let summary = extract::run(&arguments[1..])?;
             println!(
@@ -133,6 +146,44 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
             "unknown command '{other}'; run 'xivl --help'"
         ))),
     }
+}
+
+fn lua_path(arguments: &[String]) -> Result<(), Failure> {
+    let [path] = arguments else {
+        return Err(Failure::usage("usage: xivl lua-path <path>"));
+    };
+    let document = lua_path_document(path).map_err(|error| Failure::parse(error.to_string()))?;
+    std::io::stdout()
+        .write_all(to_canonical_json(&document).as_bytes())
+        .map_err(|error| Failure::usage(format!("cannot write output: {error}")))
+}
+
+fn extract_lpb_command(arguments: &[String]) -> Result<(), Failure> {
+    let [input, flag, output] = arguments else {
+        return Err(Failure::usage(
+            "usage: xivl extract-lpb <file> --output <file>",
+        ));
+    };
+    if flag != "--output" {
+        return Err(Failure::usage(
+            "usage: xivl extract-lpb <file> --output <file>",
+        ));
+    }
+    let data = read_capped(input)?;
+    let file = extract_lpb(&data).map_err(|error| Failure {
+        message: format!("{input}: {error}"),
+        code: EXIT_PARSE_FAILURE,
+    })?;
+    let mut destination = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(output)
+        .map_err(|error| Failure::usage(format!("cannot create '{output}': {error}")))?;
+    destination
+        .write_all(&file.decoded)
+        .map_err(|error| Failure::usage(format!("cannot write '{output}': {error}")))?;
+    println!("wrote {} bytes to {}", file.decoded.len(), output);
+    Ok(())
 }
 
 #[derive(Clone, Copy)]
@@ -205,5 +256,16 @@ fn base_name(path: &str) -> &str {
     match path.rfind(['/', '\\']) {
         Some(index) => &path[index + 1..],
         None => path,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn help_names_the_staticactor_reader() {
+        assert!(USAGE.contains("static-actor SAN tables"));
+        assert!(USAGE.contains("staticactor-san"));
     }
 }

@@ -1,0 +1,424 @@
+{
+  "bytecode": {
+    "header": {
+      "endianness": "little",
+      "format": 0,
+      "instructionSize": 4,
+      "intSize": 4,
+      "integralNumbers": false,
+      "numberSize": 8,
+      "sizeTSize": 4,
+      "span": {
+        "length": 12,
+        "offset": 0
+      },
+      "version": 81
+    },
+    "root": {
+      "constants": [
+        {
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+          "span": {
+            "length": 1,
+            "offset": 87
+          },
+          "type": "nil"
+        },
+        {
+          "sha256": "9dcf97a184f32623d11a73124ceb99a5709b083721e878a16d78f596718ba7b2",
+          "span": {
+            "length": 2,
+            "offset": 88
+          },
+          "type": "boolean"
+        },
+        {
+          "sha256": "d405a5caee3c2e7985d95c84835afbeb020e68fd7efe6ebbbd6550f95ce35fe0",
+          "span": {
+            "length": 9,
+            "offset": 90
+          },
+          "type": "number"
+        },
+        {
+          "length": 5,
+          "sha256": "4be4423a2789158f2c8ee754f8d4f447cd47bdb97d7ebdc4b115e3f279c7d9a5",
+          "span": {
+            "length": 11,
+            "offset": 99
+          },
+          "type": "string"
+        }
+      ],
+      "debug": {
+        "lineInfo": {
+          "count": 9,
+          "span": {
+            "length": 36,
+            "offset": 185
+          }
+        },
+        "localCount": 1,
+        "upvalueNameCount": 1
+      },
+      "instructions": {
+        "count": 9,
+        "items": [
+          {
+            "index": 0,
+            "mode": "iABC",
+            "offset": 47,
+            "opcode": {
+              "name": "MOVE",
+              "number": 0
+            },
+            "operands": {
+              "A": 1,
+              "B": {
+                "index": 2,
+                "kind": "register",
+                "raw": 2,
+                "rk": false
+              },
+              "C": {
+                "kind": "unused",
+                "raw": 0
+              }
+            },
+            "rawWord": 16777280,
+            "span": {
+              "length": 4,
+              "offset": 47
+            }
+          },
+          {
+            "index": 1,
+            "mode": "iABx",
+            "offset": 51,
+            "opcode": {
+              "name": "LOADK",
+              "number": 1
+            },
+            "operands": {
+              "A": 0,
+              "Bx": {
+                "index": 0,
+                "kind": "constant",
+                "raw": 0,
+                "rk": false
+              }
+            },
+            "rawWord": 1,
+            "span": {
+              "length": 4,
+              "offset": 51
+            }
+          },
+          {
+            "index": 2,
+            "mode": "iABC",
+            "offset": 55,
+            "opcode": {
+              "name": "ADD",
+              "number": 12
+            },
+            "operands": {
+              "A": 2,
+              "B": {
+                "index": 3,
+                "kind": "constant",
+                "raw": 259,
+                "rk": true
+              },
+              "C": {
+                "index": 1,
+                "kind": "register",
+                "raw": 1,
+                "rk": true
+              }
+            },
+            "rawWord": 2172665996,
+            "span": {
+              "length": 4,
+              "offset": 55
+            }
+          },
+          {
+            "index": 3,
+            "mode": "iABx",
+            "offset": 59,
+            "opcode": {
+              "name": "CLOSURE",
+              "number": 36
+            },
+            "operands": {
+              "A": 0,
+              "Bx": {
+                "kind": "value",
+                "value": 0
+              }
+            },
+            "rawWord": 36,
+            "span": {
+              "length": 4,
+              "offset": 59
+            }
+          },
+          {
+            "index": 4,
+            "mode": "iABC",
+            "offset": 63,
+            "opcode": {
+              "name": "GETUPVAL",
+              "number": 4
+            },
+            "operands": {
+              "A": 0,
+              "B": {
+                "kind": "value",
+                "value": 0
+              },
+              "C": {
+                "kind": "unused",
+                "raw": 0
+              }
+            },
+            "rawWord": 4,
+            "span": {
+              "length": 4,
+              "offset": 63
+            }
+          },
+          {
+            "index": 5,
+            "mode": "iABC",
+            "offset": 67,
+            "opcode": {
+              "name": "SETLIST",
+              "number": 34
+            },
+            "operands": {
+              "A": 0,
+              "B": {
+                "kind": "value",
+                "value": 0
+              },
+              "C": {
+                "kind": "value",
+                "value": 0
+              }
+            },
+            "rawWord": 34,
+            "span": {
+              "length": 4,
+              "offset": 67
+            }
+          },
+          {
+            "index": 7,
+            "mode": "iAsBx",
+            "offset": 75,
+            "opcode": {
+              "name": "JMP",
+              "number": 22
+            },
+            "operands": {
+              "A": 0,
+              "sBx": -1
+            },
+            "rawWord": 2147450902,
+            "span": {
+              "length": 4,
+              "offset": 75
+            }
+          },
+          {
+            "index": 8,
+            "mode": "iABC",
+            "offset": 79,
+            "opcode": {
+              "name": "RETURN",
+              "number": 30
+            },
+            "operands": {
+              "A": 0,
+              "B": {
+                "kind": "value",
+                "value": 1
+              },
+              "C": {
+                "kind": "unused",
+                "raw": 0
+              }
+            },
+            "rawWord": 8388638,
+            "span": {
+              "length": 4,
+              "offset": 79
+            }
+          }
+        ],
+        "setlistExtraWords": [
+          {
+            "index": 6,
+            "offset": 71,
+            "rawWord": 1,
+            "span": {
+              "length": 4,
+              "offset": 71
+            }
+          }
+        ],
+        "sha256": "e095670eeb356c06ce15ff56990c6c10ca233a8686fc0fd6a2e7200365beacab",
+        "span": {
+          "length": 36,
+          "offset": 47
+        }
+      },
+      "lastLineDefined": 12,
+      "lineDefined": 0,
+      "maxStackSize": 4,
+      "nested": [
+        {
+          "constants": [
+            {
+              "length": 5,
+              "sha256": "d7b8a8c7fedaba5caa84764c2fdcaaeae249abc4e31f3dd55fdbb3ab002c00ae",
+              "span": {
+                "length": 11,
+                "offset": 146
+              },
+              "type": "string"
+            }
+          ],
+          "debug": {
+            "lineInfo": {
+              "count": 2,
+              "span": {
+                "length": 8,
+                "offset": 165
+              }
+            },
+            "localCount": 0,
+            "upvalueNameCount": 0
+          },
+          "instructions": {
+            "count": 2,
+            "items": [
+              {
+                "index": 0,
+                "mode": "iAsBx",
+                "offset": 134,
+                "opcode": {
+                  "name": "JMP",
+                  "number": 22
+                },
+                "operands": {
+                  "A": 0,
+                  "sBx": -1
+                },
+                "rawWord": 2147450902,
+                "span": {
+                  "length": 4,
+                  "offset": 134
+                }
+              },
+              {
+                "index": 1,
+                "mode": "iABC",
+                "offset": 138,
+                "opcode": {
+                  "name": "RETURN",
+                  "number": 30
+                },
+                "operands": {
+                  "A": 0,
+                  "B": {
+                    "kind": "value",
+                    "value": 1
+                  },
+                  "C": {
+                    "kind": "unused",
+                    "raw": 0
+                  }
+                },
+                "rawWord": 8388638,
+                "span": {
+                  "length": 4,
+                  "offset": 138
+                }
+              }
+            ],
+            "setlistExtraWords": [],
+            "sha256": "edb8191dde85ab3a651f95fe958a70c0b353431fe230ea7fd6d11362acb6d433",
+            "span": {
+              "length": 8,
+              "offset": 134
+            }
+          },
+          "lastLineDefined": 6,
+          "lineDefined": 4,
+          "maxStackSize": 2,
+          "nested": [],
+          "parameterCount": 1,
+          "source": null,
+          "span": {
+            "length": 67,
+            "offset": 114
+          },
+          "upvalueCount": 1,
+          "varargFlags": 0
+        }
+      ],
+      "parameterCount": 2,
+      "source": {
+        "length": 14,
+        "sha256": "e13c9d5751326a77bc069deac3c8aa70e51baae2d20cac6bd96fadd55cc9b95c",
+        "span": {
+          "length": 15,
+          "offset": 16
+        }
+      },
+      "span": {
+        "length": 251,
+        "offset": 12
+      },
+      "upvalueCount": 1,
+      "varargFlags": 2
+    }
+  },
+  "format": "client-lua",
+  "input": {
+    "length": 271
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "spanBase": {
+    "bytecode": "decoded",
+    "wrapper": "input"
+  },
+  "wrapper": {
+    "advisorySize": null,
+    "decodedLength": 263,
+    "decodedSha256": "fb5d87813b7322b6b43962e010d3b86f8662af3abd8474820eb13f82374f3386",
+    "encodedPayload": {
+      "length": 263,
+      "offset": 8
+    },
+    "encodedPrefix": null,
+    "header": {
+      "length": 8,
+      "offset": 0
+    },
+    "unknownHeader": [
+      {
+        "sha256": "0a745114a8b42069f53c7927ec8c3ef4175fe6c9f08a6709661729bcc58da9b5",
+        "span": {
+          "length": 4,
+          "offset": 4
+        }
+      }
+    ],
+    "variant": "raw"
+  }
+}

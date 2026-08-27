@@ -195,12 +195,13 @@
       "name": "staticactor.san",
       "category": "world",
       "phase": 1,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
       "export": "planned",
       "exportViews": [
         "json"
-      ]
+      ],
+      "notes": "Reads the retail-evidenced 13-byte header and XOR-0x73 variable-record framing, preserving the five unknown header bytes and reporting both record members without semantic names. The one retail 1.23b file has 2812 complete records and no trailing bytes. Public conformance covers the positive shape, header truncation, count bombs, missing and unterminated records, and trailing partial or complete records. Unknown header meaning, record-member meanings, string character rules, ordering and uniqueness requirements, other SAN variants, writing, and lossless export remain unresolved. Evidence: docs/formats/staticactor-san.md."
     },
     {
       "id": "region",
@@ -219,21 +220,22 @@
       "name": "LPB compiled script container",
       "category": "script",
       "phase": 1,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
-      "export": "planned",
+      "export": "partial",
       "exportViews": [
         "json",
-        "lua"
-      ]
+        "binary"
+      ],
+      "notes": "Reads and extracts the raw and XOR-0x73 wrappers while preserving unknown header bytes. An explicit lpb-bytecode view structurally inspects an evidenced Lua 5.1 payload without changing wrapper boundaries. Unknown wrapper fields, the advisory size, unsupported wrapper variants, and LPB writing remain unresolved."
     },
     {
       "id": "lua-path",
       "name": "Lua path encoding",
       "category": "script",
       "phase": 1,
-      "read": "planned",
-      "write": "planned",
+      "read": "supported",
+      "write": "supported",
       "export": "not-applicable",
       "notes": "Encode and decode are the same primitive pair, so write support arrives with read."
     },
@@ -242,12 +244,13 @@
       "name": "Client Lua script payload",
       "category": "script",
       "phase": 1,
-      "read": "planned",
+      "read": "supported",
       "write": "none",
       "export": "planned",
       "exportViews": [
         "lua"
-      ]
+      ],
+      "notes": "Structurally reads the evidenced official Lua 5.1 little-endian representation with 32-bit int, size_t, and instruction plus 64-bit floating number. Validates prototype-local constant, upvalue, nested-prototype, direct-register, jump, SETLIST-extra-word, and CLOSURE-binding structure under fixed resource limits. It does not build control flow, analyze reachability or liveness, simulate the stack, expose string contents, recover source, execute code, or decompile."
     },
     {
       "id": "gtex",

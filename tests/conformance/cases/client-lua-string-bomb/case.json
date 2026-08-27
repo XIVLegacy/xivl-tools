@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "client-lua-string-bomb",
+  "formatId": "client-lua",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/bytecode-string-bomb.bin"
+  },
+  "arguments": ["--as", "lpb-bytecode"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "resource-limit-exceeded",
+    "errorOffset": 12
+  },
+  "notes": "A declared string larger than the fixed parser budget fails before allocation."
+}

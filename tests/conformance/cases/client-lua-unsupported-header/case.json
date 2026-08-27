@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "client-lua-unsupported-header",
+  "formatId": "client-lua",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/bytecode-unsupported-header.bin"
+  },
+  "arguments": ["--as", "lpb-bytecode"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unsupported-lua-header",
+    "errorOffset": 6
+  },
+  "notes": "A non-evidenced endian marker is refused rather than interpreted using host width or byte order."
+}
