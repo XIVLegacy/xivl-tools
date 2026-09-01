@@ -16,7 +16,7 @@ format claim or test boundary.
 
 You own every submitted change, including AI-assisted work. Do not open a
 pull request for a diff you could not explain yourself: what each material
-change does, why it belongs, and how the evidence and verification support it.
+change does, why it belongs, and how the evidence supports it.
 
 ## Code and documentation
 
@@ -34,19 +34,11 @@ need the evidence and conformance coverage required by the
 [support matrix](docs/support-matrix.md). Public prose follows the
 [documentation policy](docs/ai_agents/README.md).
 
-## Verification
-
-The [checks workflow](.github/workflows/checks.yml) is the authoritative list
-of checks covered by CI. Run the applicable checks immediately before opening a
-pull request and report each result accurately. The
-[verification guide](docs/ai_agents/verification.md) owns the private-fixture and private-conformance procedures and the limits of what each track proves.
-Do not claim private-fixture or retail validation unless that track ran.
-
 ## Pull requests
 
 Keep commits reviewable and commit subjects to one line of 50 characters or
 fewer. A pull request should explain the behavior or contract changed, cite
-the evidence behind format claims, and name the verification performed.
+the evidence behind format claims, and describe its user-visible effect.
 
 Review feedback should land as follow-up commits after review begins so that
 comments remain attached to the diff. Do not force-push during review.

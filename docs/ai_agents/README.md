@@ -2,7 +2,7 @@
 
 AI-assisted work follows the same ownership standard as any other change.
 The contributor owns the result and must be able to explain what it does, why it
-belongs here, and how it was verified.
+belongs here, and what evidence supports it.
 
 Agent output is not retail evidence. Use [Evidence and claims](evidence-and-claims.md)
 when turning research, observations, or reports into a claim.
@@ -36,7 +36,6 @@ Read these pages in order:
 
 1. [Evidence and claims](evidence-and-claims.md)
 2. [Comments and prose](comments-and-prose.md)
-3. [Verification](verification.md)
 
 The [documentation index](../README.md) lists every tracked page below `docs/`.
 Each page in this shelf links back to this index and to the root documentation index.

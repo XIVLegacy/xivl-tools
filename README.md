@@ -37,7 +37,6 @@ statuses.
 - [Conformance tests](docs/conformance-tests.md)
 - [Format evidence](docs/format-evidence.md)
 - [Source and data policy](docs/source-and-data-policy.md)
-- [Verification](docs/ai_agents/verification.md)
 - [Tooling and regeneration](tools/README.md)
 
 ## Community

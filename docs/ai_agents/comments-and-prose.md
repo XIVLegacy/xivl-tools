@@ -38,6 +38,10 @@ Public prose uses a plain, direct register.
   technical terms keep their hyphens.
 - Use semicolons sparingly, preferring periods, commas, or short lists.
 
+Every tracked authored prose or structured description contains current
+evidence or contracts. It does not contain prompts, assignments, review
+summaries, checkout state, internal milestones, or work-session plans.
+
 Internal working docs are outside this public policy tier.
 
 The [documentation index](../README.md) lists this page, and the

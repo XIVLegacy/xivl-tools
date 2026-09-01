@@ -1,26 +1,25 @@
 # tools
 
-Use these maintenance tools to run the contract gate, regenerate public
-fixtures, freeze private fixture snapshots, and perform non-gating research.
+Use these maintenance tools to run the contract checks, regenerate public
+fixtures, freeze private fixture snapshots, and perform optional research.
 
 ## Routine maintenance
 
-- `validate_repo.py` - the public repository boundary gate. It pins the tracked
-  tree and `.gitignore` and rejects ignored or private material in the index.
-  It also rejects the retired in-tree private mirror. Private bytes are
-  validated only from explicit external roots by the conformance runner and
-  snapshot tool.
-- `check_contract.py` - the contract gate. Must pass before every commit.
+- `validate_repo.py` - the public repository boundary check. It pins the tracked
+  tree and `.gitignore` and rejects ignored or private material in the index. It
+  also rejects the retired in-tree private mirror. Private bytes are validated
+  only from explicit external roots by the conformance runner and snapshot tool.
+- `check_contract.py` - the contract check. It must pass before every commit.
 - `make_public_fixtures.py` - generator for every byte under
   `tests/fixtures/public/`. `--check` regenerates in memory and fails if a
   committed fixture differs, which is what makes the fixtures auditable.
 - `freeze_private_fixtures.py` - freezes the bytes of one fixture root
   into a snapshot directory, verifying each file against
   `tests/fixtures/private-manifest.json` and refusing to copy one that
-  does not match. Needed because the configuration files are live: the
-  client rewrites them. Non-gating, every path explicit, no defaults.
+  does not match. This is needed because the client rewrites the live
+  configuration files. Every path is explicit and has no default.
 
-`requirements.txt` records the Python dependencies for the gate.
+`requirements.txt` records the Python dependencies for validation.
 
 ## Shared retail workflow actions
 
@@ -42,15 +41,15 @@ shared boundaries. `xivl-tools` never receives a retail-input credential.
 
 ## Shared library
 
-- `blowfish.py` - the block cipher, shared by the fixture generator and
-  the SQEX research command so the two cannot disagree about it. Its
+- `blowfish.py` - the block cipher shared by the fixture generator and the SQEX
+  research command, so the two cannot disagree about it. Its
   tables are computed from the hexadecimal expansion of pi.
 
 ## Evidence replay
 
-These non-gating research commands require an explicit external root, have
-no default path, make no support claim, and never run in CI. Together they
-produced the tables in `docs/format-evidence.md`.
+These optional research commands require an explicit external root, have no
+default path, make no support claim, and never run in CI. Together they produced
+the tables indexed by `docs/format-evidence.md`.
 
 ### Client install root
 
@@ -73,9 +72,3 @@ These commands require `--client-root`:
 
 - `research/census_config.py` - census the configuration files. It requires
   `--config-root`; optional `--client-root` enables the executable stamp pass.
-
-The [checks workflow](../.github/workflows/checks.yml) is the authoritative
-list of CI-covered checks. The
-[verification guide](../docs/ai_agents/verification.md) owns the owner-only
-private-fixture and private-conformance procedures and the limits of what each
-result proves.
