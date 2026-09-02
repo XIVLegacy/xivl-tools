@@ -38,9 +38,7 @@ tools/             contract checks and maintenance scripts
 
 Patch and export library crates and further front ends are outside the current
 scope.
-The [source and data policy](source-and-data-policy.md) defines the clean-room and self-containment boundaries. The [verification guide](ai_agents/verification.md)
-defines the bounded-parser posture, owner-only validation procedures, and claim
-limits. The [checks workflow](../.github/workflows/checks.yml) defines the
-CI-covered repository checks.
+The [source and data policy](source-and-data-policy.md) defines the clean-room
+and self-containment boundaries.
 
 See the [documentation index](README.md) for the rest of the public contract.
