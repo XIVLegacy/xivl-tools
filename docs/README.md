@@ -22,5 +22,5 @@ XIVLegacy Tools.
 | [Comments and prose](ai_agents/comments-and-prose.md) | Comment and public-prose keep rules |
 | [Evidence and claims](ai_agents/evidence-and-claims.md) | Evidence boundaries, claims, citations, and path defaults |
 
-Every tracked Markdown page below `docs/` is listed here. Every listed page
-links back to this index or to the policy index that owns it.
+This index provides entry points into the public documentation. Listed local
+targets are checked by the repository contract.

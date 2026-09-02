@@ -37,6 +37,5 @@ Read these pages in order:
 1. [Evidence and claims](evidence-and-claims.md)
 2. [Comments and prose](comments-and-prose.md)
 
-The [documentation index](../README.md) lists every tracked page below `docs/`.
-Each page in this shelf links back to this index and to the root documentation index.
-The ignored maintainer island is excluded from both.
+The [documentation index](../README.md) provides entry points into the public
+documentation. The ignored maintainer island is outside the public tree.

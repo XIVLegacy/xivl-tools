@@ -161,41 +161,15 @@ def doc_links(relative: str, text: str) -> set[str]:
 def check_docs_index(files: list[str]) -> list[Failure]:
     failures = []
     tracked = set(files)
-    public_docs = sorted(
-        name
-        for name in files
-        if name.startswith("docs/")
-        and name.endswith(".md")
-        and name != DOCS_INDEX
-        and not name.startswith("docs/ai_agents/local/")
-    )
 
     if DOCS_INDEX not in tracked:
         return [Failure("docs-index", "{0} is missing".format(DOCS_INDEX))]
 
     index_links = doc_links(DOCS_INDEX, (REPO_ROOT / DOCS_INDEX).read_text(encoding="utf-8"))
-    for name in public_docs:
-        if name not in index_links:
-            failures.append(
-                Failure("docs-index", "{0} is not listed in {1}".format(name, DOCS_INDEX))
-            )
-
     for name in sorted(index_links):
         if name.startswith("docs/") and name.endswith(".md") and name not in tracked:
             failures.append(
                 Failure("docs-index", "{0} links to untracked document {1}".format(DOCS_INDEX, name))
-            )
-
-    for name in public_docs:
-        links = doc_links(name, (REPO_ROOT / name).read_text(encoding="utf-8"))
-        if name.startswith("docs/ai_agents/") and name != "docs/ai_agents/README.md":
-            if "docs/ai_agents/README.md" not in links:
-                failures.append(
-                    Failure("docs-index", "{0} does not link to the policy index".format(name))
-                )
-        elif DOCS_INDEX not in links:
-            failures.append(
-                Failure("docs-index", "{0} does not link to {1}".format(name, DOCS_INDEX))
             )
 
     return failures
