@@ -4,11 +4,9 @@
 
 Promoted references:
 
-```text
-xivl-decomp:docs/script/lpb-format.md, sha256 38cf3bbc0b27681a7eb89f10f88968ea8ae10695fe41bfb044c0f8b96d9e344e
-xivl-decomp:docs/script/lua-bytecode-format.md, sha256 346b62a5b6c1732e3693b88c71c9383f02b0e700c5b6978800fd8987183ceb56
-xivl-decomp:tools/decode_lpb.py, sha256 74994d6714a5acd161d241a40db8b3907b88871129e29ac9aed821191dd5020a
-```
+- [LPB wrapper format](https://github.com/XIVLegacy/xivl-decomp/blob/c55640fe9ad024b2163a563d30d6b7673aff2e13/docs/script/lpb-format.md)
+- [Lua bytecode format](https://github.com/XIVLegacy/xivl-decomp/blob/c55640fe9ad024b2163a563d30d6b7673aff2e13/docs/script/lua-bytecode-format.md)
+- [LPB decoder](https://github.com/XIVLegacy/xivl-decomp/blob/a8815924361889e5f61a2fed047e7785110ad898/tools/decode_lpb.py)
 
 Lua resource paths use a character-wise involution after ASCII case folding:
 `a` through `j` pair with `9` through `0`, `k` through `z` pair so their

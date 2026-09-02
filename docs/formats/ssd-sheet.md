@@ -205,8 +205,9 @@ code 0x10 70238   0x16 28252   0x1d 21796   0x14 18439   0x08 15938
 ```
 
 The codes use the same SeString macro vocabulary retained by the modern
-Lumina reader. The comparison was made against Lumina commit
-`02934e4a077de6118fca5f8e0d7baad7048596bc`; its `MacroCode.cs` hashed to
+Lumina reader. The comparison used
+[Lumina revision 02934e4](https://github.com/NotAdam/Lumina/commit/02934e4a077de6118fca5f8e0d7baad7048596bc);
+its `MacroCode.cs` hashed to
 `78156B8963555937DD183125110CCFDFC661B54A1D9A65ACC12EBB6B944A2883`.
 All 26 retail codes have one name:
 

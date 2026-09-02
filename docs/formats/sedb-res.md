@@ -2,12 +2,10 @@
 
 [Documentation index](../README.md) | [Format evidence index](../format-evidence.md)
 
-Citation:
+Citations:
 
-```text
-bahamut-navmesh:docs/world-layout-data.md, sha256 2fc79e8a131fedd52da5373e4b644347079e2e34ca6239617de5b4284f1d73da
-bahamut-navmesh:docs/model-and-collision-data.md, sha256 6b5678670fccae4fb10f7283f3be46416bc6fceff744a55be45a5be83b3fb197
-```
+- [World-layout data](https://github.com/BahamutXIV/bahamut-navmesh/blob/e9f384c9d8c37e1942d942fb1566dc2967163f3e/docs/world-layout-data.md)
+- [Model and collision data](https://github.com/BahamutXIV/bahamut-navmesh/blob/e9f384c9d8c37e1942d942fb1566dc2967163f3e/docs/model-and-collision-data.md)
 
 The source statements, quoted verbatim for the client revision they record:
 

@@ -6,9 +6,9 @@ The canonical exact result is `data/lua51-retail-census.json`. It contains no
 resource path, script path, source or constant string, payload bytes, private
 root, host name, timestamp, or per-file row.
 
-The source inventory is identified by `XIVLegacy/xivl-client-scripts` commit
-`c9d0c376bafd43449468c22c910faffaf184cdb2`. Its retained coverage manifest
-file hashed to
+The source inventory is identified by the
+[retail Lua coverage census](https://github.com/XIVLegacy/xivl-client-scripts/blob/49957ae64471fecd5f705dcb196afb031d4eca7b/docs/retail-lua-coverage.md).
+Its retained coverage manifest file hashed to
 `33DFFF57BB2419C4B4778F73DB367726DABFA6532C73DF03A687CF31F5F50E31`, and its recorded retail inventory digest was
 `C0BC21DE2626F619AD278C4E043F537A2B6C1CF3263D3110323CC31054B97CF2`.
 

@@ -4,11 +4,9 @@
 
 Promoted comparison references:
 
-```text
-xivl-client-data:manifests/retail_inputs.json, sha256 fec8c7932b4c6c733ad5ad4afd4228d855581cf57f2c40ddd84d5ecd29c5930c
-xivl-client-data:manifests/staticactor_class_paths.json, sha256 d612438827e5997422ab6f64a807e567ddf1b953c532e8a319d67b93c53c9db0
-xivl-client-data:tools/extract_staticactor_san.py, sha256 fd1da86e30bb28279fa51dd5cd1cea6d29346c68ccb972ece7a5d14ee2cdb808
-```
+- [Retail input manifest](https://github.com/XIVLegacy/xivl-client-data/blob/1afaf3bc3630091f1516e0f3bf26a43ab295f52f/manifests/retail_inputs.json)
+- [Static actor class-path catalog](https://github.com/XIVLegacy/xivl-client-data/blob/ac5009849cfa76f0ddb53aa294290fc0c4b09fe2/manifests/staticactor_class_paths.json)
+- [Static actor extractor](https://github.com/XIVLegacy/xivl-client-data/blob/dbd9e600415262044754b6ff6711b094d8eb3d92/tools/extract_staticactor_san.py)
 
 The sanctioned retail 1.23b input is 108911 bytes with SHA-256
 `bb7306461b1728493242016a16d9dd5257d7512c60e423b017de5ec7aced3d14`.
