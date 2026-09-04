@@ -30,6 +30,13 @@ class RetailInputError(RuntimeError):
     """A safe, token-free retail-input validation failure."""
 
 
+def _blob_response_limit(size: int) -> int:
+    """Bound GitHub's JSON-wrapped, line-broken base64 blob response."""
+    encoded_size = ((size + 2) // 3) * 4
+    escaped_line_breaks = 2 * ((encoded_size + 59) // 60)
+    return max(METADATA_LIMIT, encoded_size + escaped_line_breaks + 1_000_000)
+
+
 def _require_hex(value: object, pattern: re.Pattern[str], label: str) -> str:
     if not isinstance(value, str) or pattern.fullmatch(value) is None:
         raise RetailInputError(f"{label} identity failed")
@@ -182,7 +189,7 @@ def fetch_retail_input(
         ):
             raise RetailInputError("retail-input parent tree failed")
 
-    encoded_limit = max(METADATA_LIMIT, ((size + 2) // 3) * 4 + 1_000_000)
+    encoded_limit = _blob_response_limit(size)
     blob_doc = request_json(f"git/blobs/{blob_sha}", encoded_limit)
     if (
         blob_doc.get("sha") != blob_sha
