@@ -219,7 +219,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
     }
 
     Ok(json!({
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "kind": "xivl-command-formula-inputs",
         "source": {
             "byteLength": data.len(),
@@ -340,39 +340,157 @@ fn command_document(record: &csv::StringRecord, id: u32) -> Result<Value, String
 
 // Exact class paths and inherited getter facts: docs/command-formula-profiles.md.
 fn level_adjustment_profile(class_path: &str) -> Value {
-    let (parent, high_cap, high_blends) = match class_path {
-        "/Command/Game/Ability/CmnAbility" => ("AbilityBaseClass", 15, [0.7; 4]),
-        "/Command/Game/WeaponSkill/MonsterAttackWeaponSkill" => {
-            ("WeaponSkillBaseClass", 15, [0.7; 4])
-        }
-        "/Command/Game/Magic/CmnAttackMagic" => ("MagicBaseClass", 10, [0.25, 0.0, 0.0, 0.7]),
-        "/Command/Game/Magic/CmnBadStatusMagic" | "/Command/Game/Magic/CmnCureMagic" => {
-            ("MagicBaseClass", 15, [0.0, 0.0, 0.0, 0.7])
-        }
-        _ => {
-            return json!({
-                "status": "unresolved",
-                "reason": if class_path.is_empty() { "missing-class-path" } else { "unrecognized-class-path" },
-            })
-        }
+    let Some(parents) = known_class_parents(class_path) else {
+        return json!({
+            "status": "unresolved",
+            "reason": if class_path.is_empty() { "missing-class-path" } else { "unrecognized-class-path" },
+        });
     };
     let class = class_path.rsplit('/').next().expect("known class path");
+    let mut inheritance = vec![class];
+    inheritance.extend_from_slice(parents);
+    if !parents.contains(&"GameCommandBaseClass") {
+        return json!({
+            "status": "not-applicable",
+            "reason": "outside-game-command-hierarchy",
+            "inheritance": inheritance,
+        });
+    }
+    let (high_cap, limits_owner) = match class_path {
+        "/Command/Game/AttackCommand"
+        | "/Command/Game/Basic/MonsterAttackCommand"
+        | "/Command/Game/ShotCommand"
+        | "/Command/Game/ThrowCommand" => (-1, class),
+        "/Command/Game/Magic/AncientMagic"
+        | "/Command/Game/Magic/CmnAttackMagic"
+        | "/Command/Game/Magic/CmnDrainMagic" => (10, class),
+        _ => (15, "GameCommandBaseClass"),
+    };
+    let ancient = class_path == "/Command/Game/Magic/AncientMagic";
+    let (high_blends, high_override_count) = match class_path {
+        "/Command/Game/Magic/AncientMagic" => ([0.0; 4], 4),
+        "/Command/Game/Magic/CmnAttackMagic" => ([0.25, 0.0, 0.0, 0.7], 3),
+        "/Command/Game/Magic/CmnBadStatusMagic"
+        | "/Command/Game/Magic/CmnCureMagic"
+        | "/Command/Game/Magic/CmnDrainMagic"
+        | "/Command/Game/Magic/CmnGoodStatusMagic" => ([0.0, 0.0, 0.0, 0.7], 3),
+        _ => ([0.7; 4], 0),
+    };
     let blends: Vec<Value> = high_blends.iter().enumerate().map(|(index, high)| json!({
         "number": index + 1,
-        "lowLevelBlend": 1,
+        "lowLevelBlend": if ancient { 0 } else { 1 },
         "highLevelBlend": high,
-        "lowLevelDefinedBy": "GameCommandBaseClass",
-        "highLevelDefinedBy": if parent == "MagicBaseClass" && index < 3 { class } else { "GameCommandBaseClass" },
+        "lowLevelDefinedBy": if ancient { class } else { "GameCommandBaseClass" },
+        "highLevelDefinedBy": if index < high_override_count { class } else { "GameCommandBaseClass" },
     })).collect();
     json!({
         "status": "resolved",
         "scope": "level-limit-and-parameter-blend-getters",
-        "inheritance": [class, parent, "BattleCommandBaseClass", "GameCommandBaseClass"],
+        "inheritance": inheritance,
         "lowLevelDistanceLimit": -1,
         "highLevelDistanceLimit": high_cap,
-        "levelLimitsDefinedBy": if class == "CmnAttackMagic" { class } else { "GameCommandBaseClass" },
+        "levelLimitsDefinedBy": limits_owner,
         "parameterBlends": blends,
     })
+}
+
+// Declared parent chains for the exact paths in docs/command-profile-sources.md.
+fn known_class_parents(class_path: &str) -> Option<&'static [&'static str]> {
+    match class_path {
+        "/Command/Game/Ability/Ability"
+        | "/Command/Game/Ability/AttackAbility"
+        | "/Command/Game/Ability/CmnAbility"
+        | "/Command/Game/Ability/CmnCrafterAbility"
+        | "/Command/Game/Ability/GathererStealthAbility"
+        | "/Command/Game/Ability/MonsterAbility"
+        | "/Command/Game/Ability/MonsterSubStatAbility"
+        | "/Command/Game/Ability/PointSearchAbility" => Some(&[
+            "AbilityBaseClass",
+            "BattleCommandBaseClass",
+            "GameCommandBaseClass",
+        ]),
+        "/Command/Game/ArrowReloadCommand"
+        | "/Command/Game/ArrowStockCommand"
+        | "/Command/Game/AttackCommand"
+        | "/Command/Game/Basic/GarudaOthers"
+        | "/Command/Game/Basic/MonsterAttackCommand"
+        | "/Command/Game/Basic/MonsterOthers"
+        | "/Command/Game/Basic/MonsterRangeAttack"
+        | "/Command/Game/Basic/MonsterShieldCommand"
+        | "/Command/Game/Basic/MonsterSubStatOthers"
+        | "/Command/Game/ShieldDefenceCommand"
+        | "/Command/Game/ShotCommand"
+        | "/Command/Game/ThrowCommand" => Some(&["BattleCommandBaseClass", "GameCommandBaseClass"]),
+        "/Command/AutoAttackTargetChangeCommand"
+        | "/Command/DebugInputCommand"
+        | "/Command/ItemCommand" => Some(&["CommandBaseClass"]),
+        "/Command/Game/Constance/CmnConstance" => Some(&[
+            "ConstanceBaseClass",
+            "BattleCommandBaseClass",
+            "GameCommandBaseClass",
+        ]),
+        "/Command/ChangeJobCommand"
+        | "/Command/EquipAbilityCommand"
+        | "/Command/EquipCommand"
+        | "/Command/Game/AcnItemCreateCommand"
+        | "/Command/Game/AcnItemPutCommand"
+        | "/Command/Game/ActivateCommand"
+        | "/Command/Game/BewareCommand"
+        | "/Command/Game/BoostPointCommand"
+        | "/Command/Game/ChangeEquipSetCommand"
+        | "/Command/Game/CombinationManagementCommand"
+        | "/Command/Game/CombinationStartCommand"
+        | "/Command/Game/CommandCancelCommand"
+        | "/Command/Game/CraftCommand"
+        | "/Command/Game/DummyCommand"
+        | "/Command/Game/HealingCommand"
+        | "/Command/Game/HighsenseCommand"
+        | "/Command/Game/NegotiationCommand"
+        | "/Command/Game/PartyTargetCommand"
+        | "/Command/Game/Prog/EquipPartsShowHideCommand"
+        | "/Command/Game/ResetOccupiedCommand"
+        | "/Command/Game/ShieldEffectCommand"
+        | "/Command/Game/WeaponSkill/MonsterTest"
+        | "/Command/System/ReserveInputOperationCommand" => Some(&["GameCommandBaseClass"]),
+        "/Command/Game/Magic/AncientMagic"
+        | "/Command/Game/Magic/AttackMagic"
+        | "/Command/Game/Magic/CmnAbsorptionMagic"
+        | "/Command/Game/Magic/CmnAttackMagic"
+        | "/Command/Game/Magic/CmnBadStatusMagic"
+        | "/Command/Game/Magic/CmnCureMagic"
+        | "/Command/Game/Magic/CmnDrainMagic"
+        | "/Command/Game/Magic/CmnGoodStatusMagic"
+        | "/Command/Game/Magic/CmnRemoveStatusMagic"
+        | "/Command/Game/Magic/CureMagic"
+        | "/Command/Game/Magic/CuregaMagic"
+        | "/Command/Game/Magic/EffectMagic"
+        | "/Command/Game/Magic/EsunaMagic"
+        | "/Command/Game/Magic/RaiseMagic"
+        | "/Command/Game/Magic/SongMagic" => Some(&[
+            "MagicBaseClass",
+            "BattleCommandBaseClass",
+            "GameCommandBaseClass",
+        ]),
+        "/Command/Game/Prog/ChocoboRideCommand" => {
+            Some(&["ProgCommandBaseClass", "GameCommandBaseClass"])
+        }
+        "/Command/Game/BonusPointCommand" => Some(&["SystemCommandBaseClass", "CommandBaseClass"]),
+        "/Command/Game/WeaponSkill/AttackWeaponSkill"
+        | "/Command/Game/WeaponSkill/CmnAttackWeaponSkill"
+        | "/Command/Game/WeaponSkill/DevideAttackWeaponSkill"
+        | "/Command/Game/WeaponSkill/GarudaAttackWeaponSkill"
+        | "/Command/Game/WeaponSkill/IfritAttackWeaponSkill"
+        | "/Command/Game/WeaponSkill/IfritSubStatWeaponSkill"
+        | "/Command/Game/WeaponSkill/MonsterAbsorbWeaponSkill"
+        | "/Command/Game/WeaponSkill/MonsterAttackWeaponSkill"
+        | "/Command/Game/WeaponSkill/MonsterSubStatWeaponSkill"
+        | "/Command/Game/WeaponSkill/WhiteGeneralAttackWeaponSkill" => Some(&[
+            "WeaponSkillBaseClass",
+            "BattleCommandBaseClass",
+            "GameCommandBaseClass",
+        ]),
+        _ => None,
+    }
 }
 
 struct CommandGrowth {
@@ -582,13 +700,124 @@ mod tests {
     }
 
     #[test]
+    fn resolves_remaining_level_overrides_and_preserves_getter_owners() {
+        let ancient = level_adjustment_profile("/Command/Game/Magic/AncientMagic");
+        assert_eq!(ancient["highLevelDistanceLimit"], 10);
+        assert_eq!(ancient["levelLimitsDefinedBy"], "AncientMagic");
+        for blend in ancient["parameterBlends"].as_array().unwrap() {
+            assert_eq!(blend["lowLevelBlend"], 0);
+            assert_eq!(blend["highLevelBlend"], 0.0);
+            assert_eq!(blend["lowLevelDefinedBy"], "AncientMagic");
+            assert_eq!(blend["highLevelDefinedBy"], "AncientMagic");
+        }
+        for (path, high_limit) in [
+            ("/Command/Game/Magic/CmnDrainMagic", 10),
+            ("/Command/Game/Magic/CmnGoodStatusMagic", 15),
+        ] {
+            let profile = level_adjustment_profile(path);
+            assert_eq!(profile["highLevelDistanceLimit"], high_limit);
+            for index in 0..3 {
+                assert_eq!(profile["parameterBlends"][index]["highLevelBlend"], 0.0);
+                assert_eq!(
+                    profile["parameterBlends"][index]["highLevelDefinedBy"],
+                    path.rsplit('/').next().unwrap()
+                );
+            }
+            assert_eq!(profile["parameterBlends"][3]["highLevelBlend"], 0.7);
+            assert_eq!(
+                profile["parameterBlends"][3]["highLevelDefinedBy"],
+                "GameCommandBaseClass"
+            );
+            assert_eq!(
+                profile["parameterBlends"][3]["lowLevelDefinedBy"],
+                "GameCommandBaseClass"
+            );
+        }
+        for path in [
+            "/Command/Game/AttackCommand",
+            "/Command/Game/Basic/MonsterAttackCommand",
+            "/Command/Game/ShotCommand",
+            "/Command/Game/ThrowCommand",
+        ] {
+            let profile = level_adjustment_profile(path);
+            assert_eq!(profile["lowLevelDistanceLimit"], -1);
+            assert_eq!(profile["highLevelDistanceLimit"], -1);
+            assert_eq!(
+                profile["levelLimitsDefinedBy"],
+                path.rsplit('/').next().unwrap()
+            );
+            assert_eq!(profile["parameterBlends"][0]["highLevelBlend"], 0.7);
+        }
+    }
+
+    #[test]
+    fn uses_declared_hierarchy_instead_of_directory_or_class_name() {
+        for (path, parents) in [
+            ("/Command/ChangeJobCommand", vec!["GameCommandBaseClass"]),
+            (
+                "/Command/System/ReserveInputOperationCommand",
+                vec!["GameCommandBaseClass"],
+            ),
+            (
+                "/Command/Game/Prog/EquipPartsShowHideCommand",
+                vec!["GameCommandBaseClass"],
+            ),
+            (
+                "/Command/Game/Prog/ChocoboRideCommand",
+                vec!["ProgCommandBaseClass", "GameCommandBaseClass"],
+            ),
+            (
+                "/Command/Game/Constance/CmnConstance",
+                vec![
+                    "ConstanceBaseClass",
+                    "BattleCommandBaseClass",
+                    "GameCommandBaseClass",
+                ],
+            ),
+            (
+                "/Command/Game/WeaponSkill/MonsterTest",
+                vec!["GameCommandBaseClass"],
+            ),
+        ] {
+            let profile = level_adjustment_profile(path);
+            assert_eq!(profile["status"], "resolved");
+            assert_eq!(profile["highLevelDistanceLimit"], 15);
+            let mut expected = vec![path.rsplit('/').next().unwrap()];
+            expected.extend(parents);
+            assert_eq!(profile["inheritance"], json!(expected));
+        }
+        for path in [
+            "/Command/AutoAttackTargetChangeCommand",
+            "/Command/DebugInputCommand",
+            "/Command/Game/BonusPointCommand",
+            "/Command/ItemCommand",
+        ] {
+            let data = catalog_with_class(&[("42", "Synthetic", "Example")], path);
+            let report = build_report(&data, "42").unwrap();
+            let profile = &report["matches"][0]["levelAdjustmentProfile"];
+            assert_eq!(profile["status"], "not-applicable");
+            assert_eq!(profile["reason"], "outside-game-command-hierarchy");
+            assert!(profile.get("highLevelDistanceLimit").is_none());
+            assert!(profile.get("parameterBlends").is_none());
+        }
+        assert_eq!(
+            level_adjustment_profile("/Command/EquipPartsShowHideCommand")["status"],
+            "unresolved"
+        );
+        assert_eq!(
+            level_adjustment_profile("/command/game/magic/ancientmagic")["status"],
+            "unresolved"
+        );
+    }
+
+    #[test]
     fn queries_id_and_duplicate_exact_names() {
         let data = catalog(&[
             ("27310", "Fire", "Fire JP"),
             ("27410", "Fire", "Fire II JP"),
         ]);
         let by_id = build_report(&data, "27310").unwrap();
-        assert_eq!(by_id["schemaVersion"], 3);
+        assert_eq!(by_id["schemaVersion"], 4);
         assert_eq!(by_id["query"]["mode"], "id");
         assert_eq!(by_id["matches"].as_array().unwrap().len(), 1);
         assert_eq!(by_id["matches"][0]["damage"]["magnitude"], 950);
