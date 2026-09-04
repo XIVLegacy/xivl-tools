@@ -19,6 +19,7 @@ cargo run --locked -p xivl-cli -- extract-lpb tests/fixtures/public/lpb/raw.bin 
 cargo run --locked -p xivl-cli -- extract "C:\path\to\FINAL FANTASY XIV" --output csv
 cargo run --locked -p xivl-cli -- catalog "C:\path\to\FINAL FANTASY XIV" --output catalog
 cargo run --locked -p xivl-cli -- extract-resource tests/fixtures/public/lpb/raw.bin --output resource
+cargo run --locked -p xivl-cli -- extract-catalog catalog/catalog.json --root "C:\path\to\FINAL FANTASY XIV" --output selected --id 0x12345678
 ```
 
 `inspect` reports the structure the reader found: the format ID, input length,
@@ -75,6 +76,23 @@ cargo run --locked -p xivl-cli -- extract-resource resource.DAT --output resourc
 
 The output schemas and complete field semantics are documented in
 [DAT catalog and resource extraction](resource-extraction.md).
+
+`extract-catalog` consumes `catalog.json` or `catalog.jsonl` and requires an
+explicit selection through one or more `--id` and `--path` options. It has no
+extract-all mode. `--root` names the same source root the catalog paths are
+relative to. The command validates the complete catalog and selection, source
+identities, formats, limits, and every per-resource extraction plan before it
+creates the absent-or-empty top-level output directory.
+
+Defaults are 32 resources, 67108864 aggregate source bytes, and 134217728
+aggregate output bytes. Override them with `--max-resources`,
+`--max-source-bytes`, and `--max-output-bytes`. `--format json` changes the
+default YAML batch and resource manifests to JSON. `--materialize-payloads`
+passes the existing opt-in behavior to selected SEDB/RES resources.
+
+```text
+cargo run --locked -p xivl-cli -- extract-catalog catalog/catalog.json --root install --output selected --id 0x12345678 --path data/12/34/56/79.DAT --max-resources 2 --materialize-payloads
+```
 
 ## Select a reader
 

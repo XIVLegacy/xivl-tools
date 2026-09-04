@@ -74,3 +74,61 @@ Both commands require an output directory that is absent or empty. A
 non-directory output path, nonempty output directory, symbolic link in a
 catalog walk, unreadable input, unrecognized extraction format, or malformed
 resource produces a noninteractive diagnostic and a nonzero exit status.
+
+## Explicit catalog selections
+
+`xivl extract-catalog` reads either catalog form and extracts only entries
+named by `--id` or `--path`. At least one selection is required; there is no
+implicit or explicit extract-all option. IDs use the canonical 32-bit resource
+identity, while paths are catalog-relative and accept either separator at the
+CLI boundary. Resolved entries are deduplicated strictly and sorted by catalog
+index, so argument order cannot change output order.
+
+The top-level YAML or JSON data model conforms to
+`schemas/catalog-extraction.schema.json`. Every isolated resource manifest
+continues to conform to `schemas/resource-extraction.schema.json`.
+
+The required `--root` is the filesystem root used to resolve catalog paths.
+Every catalog path must be relative, normalized, traversal-free, and free of
+drive prefixes or alternate-stream colons. Duplicate catalog rows, IDs, exact
+paths, and case-folded path aliases are refused. Each selected path component
+is checked for symbolic links and, on Windows, reparse points. The resolved
+regular file must remain below the canonical root.
+
+Before output creation, the command verifies each selected source's catalog
+size and SHA-256, plans its extraction with the same code as
+`extract-resource`, and checks that current format detection still matches the
+catalog. Missing, unknown, malformed, stale, mixed unsupported, or otherwise
+failed selections refuse the whole batch. No successful `batch.yaml` or
+`batch.json` is written for a refused plan.
+
+The conservative defaults are:
+
+| Limit | Default | Option |
+|---|---:|---|
+| Selected resources | 32 | `--max-resources` |
+| Aggregate source bytes | 67108864 | `--max-source-bytes` |
+| Aggregate output bytes | 134217728 | `--max-output-bytes` |
+
+All limits must be positive integers. Count and catalog source-size limits are
+checked before source reads. Actual sizes and hashes are then verified.
+Aggregate output accounting includes every per-resource manifest, every
+payload, and the top-level batch manifest. Every addition is checked for u64
+overflow. `resource-count-limit-exceeded`, `source-byte-limit-exceeded`,
+`output-byte-limit-exceeded`, and the corresponding accounting-overflow errors
+are stable noninteractive diagnostics.
+
+Each resource receives an isolated directory named from its selection ordinal,
+resource ID when present, and source-digest prefix. The top-level manifest
+records the catalog identity, configured limits, totals, catalog indexes,
+source identities, detected formats, isolated directories, and relative
+resource-manifest paths. YAML is the default; `--format json` changes both
+batch and resource manifests. `--materialize-payloads` enables the existing
+SEDB/RES behavior without changing LPB's already separate decoded payload.
+
+The writer remains serial. Planning order and write order are both catalog
+order, and no parallel extraction machinery is present. A validated batch is
+written to a same-parent staging directory and published by rename only after
+all isolated outputs and the batch manifest succeed. A refused or failed batch
+does not appear at the requested output path; a stale staging path is refused
+rather than overwritten.

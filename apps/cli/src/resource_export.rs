@@ -21,7 +21,7 @@ pub struct ExtractResourceSummary {
 }
 
 #[derive(Clone, Copy)]
-enum DocumentFormat {
+pub(crate) enum DocumentFormat {
     Yaml,
     Json,
 }
@@ -30,6 +30,13 @@ struct PayloadArtifact {
     path: String,
     bytes: Vec<u8>,
     manifest: Value,
+}
+
+pub(crate) struct PlannedExtraction {
+    document_name: &'static str,
+    document: String,
+    artifacts: Vec<PayloadArtifact>,
+    format_id: String,
 }
 
 pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
@@ -89,24 +96,47 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
     let output_path = Path::new(&output);
     require_empty_output(output_path)?;
     let data = read_capped(input)?;
+    let planned = plan_bytes(
+        input,
+        &data,
+        format,
+        materialize_payloads,
+        &inspect_arguments,
+    )?;
+    planned.write_to(output_path)?;
+    Ok(ExtractResourceSummary {
+        output: output_path
+            .join(planned.document_name)
+            .display()
+            .to_string(),
+    })
+}
+
+pub(crate) fn plan_bytes(
+    input: &str,
+    data: &[u8],
+    format: DocumentFormat,
+    materialize_payloads: bool,
+    inspect_arguments: &[String],
+) -> Result<PlannedExtraction, Failure> {
     let selected = if inspect_arguments.is_empty() {
-        detect(&data).map(|(_, how)| how).ok_or_else(|| {
+        detect(data).map(|(_, how)| how).ok_or_else(|| {
             Failure::usage(format!(
                 "{input}: unrecognized format; use --as for a signatureless supported format"
             ))
         })?
     } else {
-        InspectAs::from_arguments(&inspect_arguments).map_err(Failure::usage)?
+        InspectAs::from_arguments(inspect_arguments).map_err(Failure::usage)?
     };
     let name = base_name(input);
-    let parsed = inspect_named_bytes_as(&data, name, &selected).map_err(|error| Failure {
+    let parsed = inspect_named_bytes_as(data, name, &selected).map_err(|error| Failure {
         message: format!("{input}: {error}"),
         code: EXIT_PARSE_FAILURE,
     })?;
     let resource_id = parse_dat_path(input, 0).ok().map(|id| id.to_hex());
     let mut artifacts = Vec::new();
     let lpb = if matches!(selected, InspectAs::Lpb | InspectAs::LpbBytecode) {
-        Some(extract_lpb(&data).map_err(|error| Failure {
+        Some(extract_lpb(data).map_err(|error| Failure {
             message: format!("{input}: {error}"),
             code: EXIT_PARSE_FAILURE,
         })?)
@@ -129,14 +159,15 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
     let parsed_format = parsed
         .get("format")
         .and_then(Value::as_str)
-        .unwrap_or("unknown");
+        .unwrap_or("unknown")
+        .to_string();
     if materialize_payloads {
-        if !matches!(parsed_format, "sedb" | "res") {
+        if !matches!(parsed_format.as_str(), "sedb" | "res") {
             return Err(Failure::usage(format!(
                 "--materialize-payloads applies only to SEDB/RES input, not '{parsed_format}'"
             )));
         }
-        artifacts.extend(container_payloads(&data, input)?);
+        artifacts.extend(container_payloads(data, input)?);
     }
     let payloads: Vec<Value> = artifacts
         .iter()
@@ -147,7 +178,7 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
         "format": {
             "id": parsed_format,
             "parseStatus": "parsed",
-            "supportStatus": read_support(parsed_format),
+            "supportStatus": read_support(&parsed_format),
         },
         "parsed": parsed,
         "payloads": payloads,
@@ -155,7 +186,7 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
         "source": {
             "fileName": name,
             "resourceId": resource_id,
-            "sha256": sha256_hex(&data),
+            "sha256": sha256_hex(data),
             "size": data.len() as u64,
         },
         "tool": {
@@ -166,7 +197,7 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
     });
     // Render before creating the output directory. Parse, span-safety, and
     // document-generation failures therefore leave no partial extraction.
-    let (document_name, text) = match format {
+    let (document_name, document) = match format {
         DocumentFormat::Yaml => (
             "extraction.yaml",
             serde_yaml::to_string(&document)
@@ -174,34 +205,61 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
         ),
         DocumentFormat::Json => ("extraction.json", to_canonical_json(&document)),
     };
-    fs::create_dir_all(output_path).map_err(|error| {
-        Failure::usage(format!(
-            "cannot create output directory '{}': {error}",
-            output_path.display()
-        ))
-    })?;
-    if !artifacts.is_empty() {
-        let payload_directory = output_path.join("payloads");
-        fs::create_dir(&payload_directory).map_err(|error| {
+    Ok(PlannedExtraction {
+        document_name,
+        document,
+        artifacts,
+        format_id: parsed_format,
+    })
+}
+
+impl PlannedExtraction {
+    pub(crate) fn document_name(&self) -> &'static str {
+        self.document_name
+    }
+
+    pub(crate) fn format_id(&self) -> &str {
+        &self.format_id
+    }
+
+    pub(crate) fn output_bytes(&self) -> Result<u64, Failure> {
+        self.artifacts
+            .iter()
+            .try_fold(self.document.len() as u64, |total, artifact| {
+                total
+                    .checked_add(artifact.bytes.len() as u64)
+                    .ok_or_else(|| Failure::usage("output byte accounting overflowed u64"))
+            })
+    }
+
+    pub(crate) fn write_to(&self, output_path: &Path) -> Result<(), Failure> {
+        fs::create_dir_all(output_path).map_err(|error| {
             Failure::usage(format!(
-                "cannot create payload directory '{}': {error}",
-                payload_directory.display()
+                "cannot create output directory '{}': {error}",
+                output_path.display()
             ))
         })?;
-        for artifact in artifacts {
-            let destination = output_path.join(&artifact.path);
-            fs::write(&destination, artifact.bytes).map_err(|error| {
-                Failure::usage(format!("cannot write '{}': {error}", destination.display()))
+        if !self.artifacts.is_empty() {
+            let payload_directory = output_path.join("payloads");
+            fs::create_dir(&payload_directory).map_err(|error| {
+                Failure::usage(format!(
+                    "cannot create payload directory '{}': {error}",
+                    payload_directory.display()
+                ))
             })?;
+            for artifact in &self.artifacts {
+                let destination = output_path.join(&artifact.path);
+                fs::write(&destination, &artifact.bytes).map_err(|error| {
+                    Failure::usage(format!("cannot write '{}': {error}", destination.display()))
+                })?;
+            }
         }
+        let destination = output_path.join(self.document_name);
+        fs::write(&destination, &self.document).map_err(|error| {
+            Failure::usage(format!("cannot write '{}': {error}", destination.display()))
+        })?;
+        Ok(())
     }
-    let destination = output_path.join(document_name);
-    fs::write(&destination, text).map_err(|error| {
-        Failure::usage(format!("cannot write '{}': {error}", destination.display()))
-    })?;
-    Ok(ExtractResourceSummary {
-        output: destination.display().to_string(),
-    })
 }
 
 fn container_payloads(data: &[u8], input: &str) -> Result<Vec<PayloadArtifact>, Failure> {

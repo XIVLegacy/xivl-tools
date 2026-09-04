@@ -15,6 +15,7 @@ use std::process::ExitCode;
 use xivl_formats::{extract_lpb, lua_path_document};
 use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_bytes_as, InspectAs};
 
+mod batch_extract;
 mod extract;
 mod resource_export;
 mod scan;
@@ -30,6 +31,7 @@ usage:
   xivl extract <game-directory> --output <directory>
   xivl catalog <game-or-resource-directory> --output <directory> [--format json|jsonl]
   xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--as <format>] [--columns <list>]
+  xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads]
   xivl --help
   xivl --version
 
@@ -52,6 +54,8 @@ malformed, and unknown formats without guessing. extract-resource writes a
 schema-versioned YAML document by default, or JSON, and keeps decoded opaque
 payloads in separate files. --materialize-payloads explicitly writes exact
 direct-root SEDB/RES payload spans when their boundaries are unambiguous.
+extract-catalog plans and validates an explicit catalog selection before
+writing isolated per-resource outputs; it never has an implicit extract-all.
 
 lua-path applies the reversible ASCII resource-path transform. extract-lpb
 removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
@@ -164,6 +168,14 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         Some("extract-resource") => {
             let summary = resource_export::run(&arguments[1..])?;
             println!("wrote {}", summary.output);
+            Ok(())
+        }
+        Some("extract-catalog") => {
+            let summary = batch_extract::run(&arguments[1..])?;
+            println!(
+                "extracted {} resources, {} source bytes, {} output bytes to {}",
+                summary.resources, summary.source_bytes, summary.output_bytes, summary.output
+            );
             Ok(())
         }
         Some(other) => Err(Failure::usage(format!(
