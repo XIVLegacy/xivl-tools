@@ -29,7 +29,7 @@ usage:
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
   xivl catalog <game-or-resource-directory> --output <directory> [--format json|jsonl]
-  xivl extract-resource <file> --output <directory> [--format yaml|json] [--as <format>] [--columns <list>]
+  xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--as <format>] [--columns <list>]
   xivl --help
   xivl --version
 
@@ -50,7 +50,8 @@ lossless CSV view per definition document.
 catalog inventories DAT resources without changing them. It records known,
 malformed, and unknown formats without guessing. extract-resource writes a
 schema-versioned YAML document by default, or JSON, and keeps decoded opaque
-payloads in separate files.
+payloads in separate files. --materialize-payloads explicitly writes exact
+direct-root SEDB/RES payload spans when their boundaries are unambiguous.
 
 lua-path applies the reversible ASCII resource-path transform. extract-lpb
 removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua

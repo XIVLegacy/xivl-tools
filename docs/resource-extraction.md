@@ -42,6 +42,30 @@ LPB extraction writes its decoded Lua 5.1 chunk to
 path, role, size, and digest. Other reports do not copy opaque source spans.
 Large payloads are never base64-encoded into the document.
 
+`--materialize-payloads` opts a SEDB or RES input into exact binary payload
+materialization. Without the flag, container extraction remains a structural
+report. A plain SEDB writes its resolved payload entry. A RES writes each
+direct root subresource and each unknown gap, but not its directory bytes.
+Nested containers remain one direct parent subresource file; the manifest
+records the child format, subtype, and span without recursively writing the
+same bytes again. Empty entries produce empty files.
+
+Each filename contains the root entry ordinal, role, 16-digit hexadecimal
+offset and length, and a 16-digit SHA-256 prefix. The stable entry ordinal makes
+the name collision-safe; the manifest retains the full digest. It repeats the
+source span as offset, length, and exclusive end, and links it to JSON paths for
+the owning container and entry. Subresource records retain their index,
+declared offset, declared size, unresolved kind, and optional child-container
+relationship.
+
+Exact materialization refuses a container before creating the output directory
+when any nested level reports an overlapping or aliased subresource, a clamped
+or out-of-range extent, a span past the resolved container end, or a malformed
+nested SEDB signature. These conditions remain inspectable as anomalies, but
+the extraction command returns `ambiguous-payload-span` rather than choosing
+which declaration owns bytes. A malformed or truncated container retains its
+ordinary typed parser error.
+
 Signatureless readers remain explicit through `--as`. SQEX decoding continues
 to use the source file's own base name as its key, so extracting through this
 command preserves the filename-dependent input rather than renaming a copy.

@@ -63,12 +63,69 @@
           "path": { "type": "string", "pattern": "^payloads/[A-Za-z0-9._-]+$" },
           "role": { "type": "string", "minLength": 1 },
           "size": { "type": "integer", "minimum": 0 },
-          "sha256": { "$ref": "#/$defs/sha256" }
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "sourceSpan": { "$ref": "#/$defs/sourceSpan" },
+          "container": { "$ref": "#/$defs/containerRelationship" },
+          "entry": { "$ref": "#/$defs/entryRelationship" }
         }
       }
     }
   },
   "$defs": {
-    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offset", "length"],
+      "properties": {
+        "offset": { "type": "integer", "minimum": 0 },
+        "length": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "sourceSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offset", "length", "endExclusive"],
+      "properties": {
+        "offset": { "type": "integer", "minimum": 0 },
+        "length": { "type": "integer", "minimum": 0 },
+        "endExclusive": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "containerRelationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "format", "subtype", "span"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "format": { "enum": ["sedb", "res"] },
+        "subtype": { "type": "string" },
+        "span": { "$ref": "#/$defs/span" }
+      }
+    },
+    "entryRelationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "kind"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["payload", "subresource", "unknown-gap"] },
+        "index": { "type": "integer", "minimum": 0 },
+        "declaredOffset": { "type": "integer", "minimum": 0 },
+        "declaredSize": { "type": "integer", "minimum": 0 },
+        "declaredKind": { "type": "integer", "minimum": 0 },
+        "childContainer": { "$ref": "#/$defs/childContainer" }
+      }
+    },
+    "childContainer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "subtype", "span"],
+      "properties": {
+        "format": { "enum": ["sedb", "res"] },
+        "subtype": { "type": "string" },
+        "span": { "$ref": "#/$defs/span" }
+      }
+    }
   }
 }

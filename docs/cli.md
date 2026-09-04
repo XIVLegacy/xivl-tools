@@ -57,7 +57,21 @@ schema-versioned `extraction.yaml`, or canonical JSON with `--format json`.
 Use the same `--as` and `--columns` selectors as `inspect` for signatureless or
 explicit views. LPB decoded bytes are written separately under `payloads/` and
 referenced by path, size, role, and SHA-256; opaque data is not embedded as
-base64. The output directory must be absent or empty.
+base64. Add `--materialize-payloads` to a SEDB or RES input to write exact
+direct-root payload entries. The output directory must be absent or empty.
+
+For RES, direct subresources and unknown gaps become separate deterministic
+files. Directory bytes remain represented in the parsed report. A nested SEDB
+container stays inside its one parent subresource file and is linked from the
+manifest rather than recursively duplicated. Empty spans remain empty files.
+The command refuses overlap, alias, clamping, out-of-range extents, and malformed
+nested containers with `ambiguous-payload-span` before writing output. It does
+not guess ownership, trim, merge, decompress, or assign a semantic format to
+payload bytes.
+
+```text
+cargo run --locked -p xivl-cli -- extract-resource resource.DAT --output resource --materialize-payloads
+```
 
 The output schemas and complete field semantics are documented in
 [DAT catalog and resource extraction](resource-extraction.md).

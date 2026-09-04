@@ -27,6 +27,9 @@ pub enum ErrorKind {
     SubresourceCountMismatch,
     /// A subresource directory cannot fit inside the container.
     SubresourceCountOutOfRange,
+    /// Declared payload spans overlap, alias, escape the input, or otherwise
+    /// cannot be materialized as independent exact byte ranges.
+    AmbiguousPayloadSpan,
     /// Nested containers are deeper than the parser will follow.
     NestingTooDeep,
     /// A resource identifier is not eight hexadecimal digits.
@@ -87,6 +90,7 @@ impl ErrorKind {
             ErrorKind::DeclaredSizeOutOfRange => "declared-size-out-of-range",
             ErrorKind::SubresourceCountMismatch => "subresource-count-mismatch",
             ErrorKind::SubresourceCountOutOfRange => "subresource-count-out-of-range",
+            ErrorKind::AmbiguousPayloadSpan => "ambiguous-payload-span",
             ErrorKind::NestingTooDeep => "nesting-too-deep",
             ErrorKind::InvalidResourceId => "invalid-resource-id",
             ErrorKind::InvalidResourcePath => "invalid-resource-path",

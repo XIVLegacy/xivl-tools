@@ -52,12 +52,12 @@
       "phase": 1,
       "read": "partial",
       "write": "none",
-      "export": "planned",
+      "export": "partial",
       "exportViews": [
         "json",
         "binary"
       ],
-      "notes": "Header and bounded enumeration only. The 0x10 field is advisory, not a container extent: across the install it equals the file size for 92303 of 97749 SEDB resources, headerSize for the 5203 PHB, zero for the 145 mtb, and a sub-file extent for 98 vins and leaf. Payload interpretation, unknownA, and flags are unresolved and reported rather than guessed; non-SEDB resources such as GTEX and PWIB-wrapped textures are not read at all. Extraction and manifesting are not supported. Gaps: docs/formats/sedb-res.md."
+      "notes": "Header and bounded enumeration only. The 0x10 field is advisory, not a container extent: across the install it equals the file size for 92303 of 97749 SEDB resources, headerSize for the 5203 PHB, zero for the 145 mtb, and a sub-file extent for 98 vins and leaf. Opt-in extraction copies an unambiguous direct-root payload span exactly and records its source range, digest, and entry relationship; public CLI tests cover exact bytes, deterministic output, empty spans, truncation, and option boundaries. Payload interpretation, unknownA, and flags are unresolved and reported rather than guessed; non-SEDB resources such as GTEX and PWIB-wrapped textures are not read at all. Gaps: docs/formats/sedb-res.md."
     },
     {
       "id": "res",
@@ -66,12 +66,12 @@
       "phase": 1,
       "read": "partial",
       "write": "none",
-      "export": "planned",
+      "export": "partial",
       "exportViews": [
         "json",
         "binary"
       ],
-      "notes": "Extended header, subresource directory, nested containers, unknown gaps, and clamped over-long extents. Directory offsets are confirmed against retail 1.23b: subresources land on SEDB signatures at the headerSize + 16 * count payload base. Directory kind values and unknownB are unresolved, and the overlapping trailing region every RES carries is reported rather than resolved. Gaps: docs/formats/sedb-res.md."
+      "notes": "Extended header, subresource directory, nested containers, unknown gaps, and clamped over-long extents. Directory offsets are confirmed against retail 1.23b: subresources land on SEDB signatures at the headerSize + 16 * count payload base. Opt-in extraction writes exact direct-root subresources and gaps with deterministic names and relationship metadata, retaining nested containers once as their parent span. Public CLI tests cover nesting, overlap, complete alias, out-of-range, clamp, malformed nested input, empty spans, and determinism. Any span ambiguity fails with a typed error before output. Directory kind values and unknownB are unresolved, and the overlapping trailing region every RES carries is reported rather than resolved. Gaps: docs/formats/sedb-res.md."
     },
     {
       "id": "sqwt",

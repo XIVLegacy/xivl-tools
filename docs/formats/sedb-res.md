@@ -184,3 +184,23 @@ A 1508-file sample, every 93rd resource, run through `xivl inspect`: 1056
 SEDB resources parsed, 0 errors, 0 panics. The remaining 452 are not SEDB
 at all. They are reported as `bad-magic`: GTEX 226, zero-filled 59, PWIB 38,
 plus a tail of smaller signatures. None of those formats is handled here.
+
+## Exact payload materialization
+
+`xivl extract-resource <file> --output <directory> --materialize-payloads`
+uses the parser's resolved direct-root entry spans. Plain SEDB payload entries,
+RES subresources, unknown RES gaps, and empty entries are copied byte for byte.
+The manifest retains offsets, exclusive ends, lengths, SHA-256 digests, owning
+container and entry paths, declared RES fields, and nested-container identity.
+
+Nested bytes are emitted only as their direct parent subresource. Recursively
+emitting the child payload as another file would duplicate the same source
+bytes. RES directory bytes remain in the structural report and are not called
+payload.
+
+An overlap includes a complete alias. A clamped extent, out-of-range start,
+extent past the resolved container, overlap, alias, or nested parse failure
+means the directory does not define independent exact payload spans. Inspection
+continues to report those anomalies, but materialization fails with
+`ambiguous-payload-span` before any output is created. The exporter does not
+choose an owner, merge spans, trim declarations, or infer payload semantics.
