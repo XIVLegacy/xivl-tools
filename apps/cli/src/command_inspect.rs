@@ -1,6 +1,6 @@
 //! Agent-friendly queries over the explicit command battle-parameter catalog.
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::io::{Read, Write};
 
 use serde_json::{json, Map, Value};
@@ -163,6 +163,9 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
     let mut ids = HashSet::new();
     let mut matches = Vec::new();
     let mut row_count = 0_usize;
+    let mut flat_command_count = 0_usize;
+    let mut native_grow_command_count = 0_usize;
+    let mut native_grow_selectors = BTreeSet::new();
 
     for result in reader.records() {
         let record = result.map_err(|error| format!("invalid catalog row: {error}"))?;
@@ -185,6 +188,14 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
         }
         parse_effect_fields(field(&record, "effect_block_raw"))?;
 
+        let growth = command_growth(&record, row_count)?;
+        if growth.native_required {
+            native_grow_command_count += 1;
+            native_grow_selectors.extend(growth.selectors);
+        } else {
+            flat_command_count += 1;
+        }
+
         let matched = match numeric_query {
             Some(wanted) => id == wanted,
             None => {
@@ -202,7 +213,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
     }
 
     Ok(json!({
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "kind": "xivl-command-formula-inputs",
         "source": {
             "byteLength": data.len(),
@@ -217,6 +228,19 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
         "formulaModel": {
             "scope": "client-prediction-inputs",
             "parameterExpression": "levelAdjustedBase * compatibilityFactor * tpFactor",
+            "levelAdjustment": {
+                "scope": "GameCommandBaseClass defaults",
+                "growRatio": "getGrowData(adjustedActorLevel, selector) / getGrowData(commandLevel, selector)",
+                "actorLevelBelowCommand": "unbounded",
+                "actorLevelAboveCommandCap": 15,
+                "lowLevelBlend": 1,
+                "highLevelBlend": 0.7,
+            },
+            "growthCoverage": {
+                "flatCommandCount": flat_command_count,
+                "nativeGrowCommandCount": native_grow_command_count,
+                "nativeGrowSelectors": native_grow_selectors,
+            },
             "compatibilityFactor": {
                 "whenRawAdjustIsZero": 1,
                 "otherwise": "1 - (1 - compatibilityByHand) * rawCompatibilityAdjust",
@@ -231,6 +255,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
                 "native getGrowData curves",
                 "native magnitude scale and combine step",
                 "command-to-status linkage",
+                "command subclass level-adjust overrides",
             ],
         },
         "matches": matches,
@@ -240,15 +265,18 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
 fn command_document(record: &csv::StringRecord, id: u32) -> Result<Value, String> {
     let parameters: Vec<Value> = (1..=4)
         .map(|number| {
-            json!({
+            let base = field(record, &format!("p{number}_base"));
+            let grow = field(record, &format!("p{number}_grow"));
+            Ok(json!({
                 "number": number,
-                "base": scalar(field(record, &format!("p{number}_base"))),
-                "grow": scalar(field(record, &format!("p{number}_grow"))),
+                "base": scalar(base),
+                "grow": scalar(grow),
                 "compatibilityAdjust": scalar(field(record, &format!("p{number}_compat_adjust"))),
                 "tpAdjust": scalar(field(record, &format!("p{number}_tp_adjust"))),
-            })
+                "levelAdjustment": parameter_growth(base, grow)?,
+            }))
         })
-        .collect();
+        .collect::<Result<_, String>>()?;
 
     Ok(json!({
         "identity": {
@@ -298,6 +326,53 @@ fn command_document(record: &csv::StringRecord, id: u32) -> Result<Value, String
         "parameters": parameters,
         "rawEffectFields": parse_effect_fields(field(record, "effect_block_raw"))?,
     }))
+}
+
+struct CommandGrowth {
+    native_required: bool,
+    selectors: BTreeSet<i64>,
+}
+
+fn command_growth(record: &csv::StringRecord, row: usize) -> Result<CommandGrowth, String> {
+    let mut native_required = false;
+    let mut selectors = BTreeSet::new();
+    for number in 1..=4 {
+        let raw = field(record, &format!("p{number}_grow"));
+        if raw.is_empty() {
+            continue;
+        }
+        let selector = raw.parse::<i64>().map_err(|_| {
+            format!("catalog row {row} has an invalid parameter {number} grow selector")
+        })?;
+        if selector >= 0 {
+            native_required = true;
+            selectors.insert(selector);
+        }
+    }
+    Ok(CommandGrowth {
+        native_required,
+        selectors,
+    })
+}
+
+fn parameter_growth(base: &str, grow: &str) -> Result<Value, String> {
+    if base.is_empty() {
+        return Ok(json!({ "status": "absent" }));
+    }
+    if grow.is_empty() {
+        return Ok(json!({ "status": "flat", "factor": 1 }));
+    }
+    let selector = grow
+        .parse::<i64>()
+        .map_err(|_| "parameter grow selector is not an integer".to_owned())?;
+    if selector < 0 {
+        Ok(json!({ "status": "flat", "factor": 1 }))
+    } else {
+        Ok(json!({
+            "status": "native-grow-required",
+            "selector": selector,
+        }))
+    }
 }
 
 fn field<'a>(record: &'a csv::StringRecord, name: &str) -> &'a str {
@@ -398,10 +473,32 @@ mod tests {
             ("27410", "Fire", "Fire II JP"),
         ]);
         let by_id = build_report(&data, "27310").unwrap();
+        assert_eq!(by_id["schemaVersion"], 2);
         assert_eq!(by_id["query"]["mode"], "id");
         assert_eq!(by_id["matches"].as_array().unwrap().len(), 1);
         assert_eq!(by_id["matches"][0]["damage"]["magnitude"], 950);
         assert_eq!(by_id["matches"][0]["rawEffectFields"]["108"], 13);
+        assert_eq!(
+            by_id["matches"][0]["parameters"][2]["levelAdjustment"]["status"],
+            "flat"
+        );
+        assert_eq!(
+            by_id["formulaModel"]["growthCoverage"]["flatCommandCount"],
+            2
+        );
+        assert_eq!(
+            by_id["formulaModel"]["growthCoverage"]["nativeGrowCommandCount"],
+            0
+        );
+        assert_eq!(by_id["formulaModel"]["levelAdjustment"]["lowLevelBlend"], 1);
+        assert_eq!(
+            by_id["formulaModel"]["levelAdjustment"]["scope"],
+            "GameCommandBaseClass defaults"
+        );
+        assert_eq!(
+            by_id["formulaModel"]["levelAdjustment"]["highLevelBlend"],
+            0.7
+        );
 
         let by_name = build_report(&data, "fIrE").unwrap();
         assert_eq!(by_name["query"]["mode"], "exact-name");
@@ -421,5 +518,39 @@ mod tests {
         assert!(build_report(&valid, "Cure")
             .unwrap_err()
             .contains("did not match"));
+    }
+
+    #[test]
+    fn reports_native_growth_coverage_and_parameter_status() {
+        let mut data = catalog(&[("28602", "Bio", "Bio JP")]);
+        let text = String::from_utf8(data)
+            .unwrap()
+            .replace(",13,-1,1,0,", ",13,69,1,0,");
+        data = text.into_bytes();
+
+        let report = build_report(&data, "28602").unwrap();
+        assert_eq!(
+            report["formulaModel"]["growthCoverage"]["nativeGrowCommandCount"],
+            1
+        );
+        assert_eq!(
+            report["formulaModel"]["growthCoverage"]["nativeGrowSelectors"],
+            json!([69])
+        );
+        assert_eq!(
+            report["matches"][0]["parameters"][2]["levelAdjustment"],
+            json!({ "status": "native-grow-required", "selector": 69 })
+        );
+        assert_eq!(
+            report["matches"][0]["parameters"][0]["levelAdjustment"]["status"],
+            "absent"
+        );
+
+        let invalid = String::from_utf8(data)
+            .unwrap()
+            .replace(",13,69,1,0,", ",13,unknown,1,0,");
+        assert!(build_report(invalid.as_bytes(), "28602")
+            .unwrap_err()
+            .contains("invalid parameter 3 grow selector"));
     }
 }

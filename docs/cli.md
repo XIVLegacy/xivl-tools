@@ -36,10 +36,14 @@ case-insensitive English/Japanese name. YAML is the default for compact agent
 use; add `--format json` for canonical structured interchange. Duplicate names
 return every match in catalog order. The report groups names and descriptions,
 requirements, damage inputs, costs, timing, targeting, four raw parameter
-groups, and the lossless native effect block. It also states the recovered
-client parameter expression and unresolved boundaries. It does not search a
-workspace, infer a catalog path, or present client prediction inputs as the
-server-authoritative combat formula.
+groups, and the lossless native effect block. Each parameter is classified as
+absent, flat, or dependent on a native grow selector. The formula model records
+the base-class low- and high-level defaults, the 15-level high-side cap, the
+grow ratio expression, and the catalog-wide native-selector coverage. Command
+subclass overrides remain explicit unresolved data until command-to-script
+identity is established. The command does not search a workspace, infer a
+catalog path, invent unresolved grow values, or present client prediction
+inputs as the server-authoritative combat formula.
 
 `extract` discovers all SSD sheet definition documents under the named game
 directory and writes one UTF-8 CSV per document. It validates each present
