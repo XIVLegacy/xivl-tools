@@ -59,6 +59,7 @@ const HEADER: &[&str] = &[
     "p4_compat_adjust",
     "p4_tp_adjust",
     "effect_block_raw",
+    "lua_class_path",
 ];
 
 #[derive(Clone, Copy)]
@@ -154,8 +155,13 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
     let headers = reader
         .headers()
         .map_err(|error| format!("invalid catalog header: {error}"))?;
-    if !headers.iter().eq(HEADER.iter().copied()) {
-        return Err("catalog header does not match command_battle_params.csv v1".to_owned());
+    let catalog_width = headers.len();
+    if !headers.iter().eq(HEADER.iter().copied())
+        && !headers
+            .iter()
+            .eq(HEADER[..HEADER.len() - 1].iter().copied())
+    {
+        return Err("catalog header does not match command_battle_params.csv v1 or v2".to_owned());
     }
 
     let numeric_query = query.parse::<u32>().ok();
@@ -173,11 +179,11 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
         if row_count > MAX_CATALOG_ROWS {
             return Err(format!("catalog exceeds the {MAX_CATALOG_ROWS}-row limit"));
         }
-        if record.len() != HEADER.len() {
+        if record.len() != catalog_width {
             return Err(format!(
                 "catalog row {row_count} has {} fields; expected {}",
                 record.len(),
-                HEADER.len()
+                catalog_width
             ));
         }
         let id = field(&record, "id")
@@ -213,7 +219,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
     }
 
     Ok(json!({
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "kind": "xivl-command-formula-inputs",
         "source": {
             "byteLength": data.len(),
@@ -255,7 +261,8 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
                 "native getGrowData curves",
                 "native magnitude scale and combine step",
                 "command-to-status linkage",
-                "command subclass level-adjust overrides",
+                "level-adjust profiles for unrecognized or missing Lua class paths",
+                "subclass cost and parameter-method overrides outside the level-adjust profile",
             ],
         },
         "matches": matches,
@@ -263,6 +270,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
 }
 
 fn command_document(record: &csv::StringRecord, id: u32) -> Result<Value, String> {
+    let class_path = record.get(HEADER.len() - 1).unwrap_or("");
     let parameters: Vec<Value> = (1..=4)
         .map(|number| {
             let base = field(record, &format!("p{number}_base"));
@@ -284,7 +292,9 @@ fn command_document(record: &csv::StringRecord, id: u32) -> Result<Value, String
             "idBand": field(record, "id_band"),
             "nameEnglish": field(record, "name_en"),
             "nameJapanese": field(record, "name_jp"),
+            "luaClassPath": if class_path.is_empty() { Value::Null } else { json!(class_path) },
         },
+        "levelAdjustmentProfile": level_adjustment_profile(class_path),
         "description": {
             "english": field(record, "description_en"),
             "japanese": field(record, "description_jp"),
@@ -326,6 +336,43 @@ fn command_document(record: &csv::StringRecord, id: u32) -> Result<Value, String
         "parameters": parameters,
         "rawEffectFields": parse_effect_fields(field(record, "effect_block_raw"))?,
     }))
+}
+
+// Exact class paths and inherited getter facts: docs/command-formula-profiles.md.
+fn level_adjustment_profile(class_path: &str) -> Value {
+    let (parent, high_cap, high_blends) = match class_path {
+        "/Command/Game/Ability/CmnAbility" => ("AbilityBaseClass", 15, [0.7; 4]),
+        "/Command/Game/WeaponSkill/MonsterAttackWeaponSkill" => {
+            ("WeaponSkillBaseClass", 15, [0.7; 4])
+        }
+        "/Command/Game/Magic/CmnAttackMagic" => ("MagicBaseClass", 10, [0.25, 0.0, 0.0, 0.7]),
+        "/Command/Game/Magic/CmnBadStatusMagic" | "/Command/Game/Magic/CmnCureMagic" => {
+            ("MagicBaseClass", 15, [0.0, 0.0, 0.0, 0.7])
+        }
+        _ => {
+            return json!({
+                "status": "unresolved",
+                "reason": if class_path.is_empty() { "missing-class-path" } else { "unrecognized-class-path" },
+            })
+        }
+    };
+    let class = class_path.rsplit('/').next().expect("known class path");
+    let blends: Vec<Value> = high_blends.iter().enumerate().map(|(index, high)| json!({
+        "number": index + 1,
+        "lowLevelBlend": 1,
+        "highLevelBlend": high,
+        "lowLevelDefinedBy": "GameCommandBaseClass",
+        "highLevelDefinedBy": if parent == "MagicBaseClass" && index < 3 { class } else { "GameCommandBaseClass" },
+    })).collect();
+    json!({
+        "status": "resolved",
+        "scope": "level-limit-and-parameter-blend-getters",
+        "inheritance": [class, parent, "BattleCommandBaseClass", "GameCommandBaseClass"],
+        "lowLevelDistanceLimit": -1,
+        "highLevelDistanceLimit": high_cap,
+        "levelLimitsDefinedBy": if class == "CmnAttackMagic" { class } else { "GameCommandBaseClass" },
+        "parameterBlends": blends,
+    })
 }
 
 struct CommandGrowth {
@@ -440,6 +487,10 @@ mod tests {
     use super::*;
 
     fn catalog(rows: &[(&str, &str, &str)]) -> Vec<u8> {
+        catalog_with_class(rows, "")
+    }
+
+    fn catalog_with_class(rows: &[(&str, &str, &str)], class_path: &str) -> Vec<u8> {
         let mut writer = csv::WriterBuilder::new()
             .terminator(csv::Terminator::Any(b'\n'))
             .from_writer(Vec::new());
@@ -457,6 +508,7 @@ mod tests {
             row[index("p3_compat_adjust")] = "1".to_owned();
             row[index("p3_tp_adjust")] = "0".to_owned();
             row[index("effect_block_raw")] = "84=950;108=13".to_owned();
+            row[index("lua_class_path")] = class_path.to_owned();
             writer.write_record(row).unwrap();
         }
         writer.into_inner().unwrap()
@@ -467,13 +519,76 @@ mod tests {
     }
 
     #[test]
+    fn selects_exact_subclass_getters_without_guessing_from_names() {
+        for (path, cap, high) in [
+            (
+                "/Command/Game/Magic/CmnAttackMagic",
+                10,
+                [0.25, 0.0, 0.0, 0.7],
+            ),
+            (
+                "/Command/Game/Magic/CmnBadStatusMagic",
+                15,
+                [0.0, 0.0, 0.0, 0.7],
+            ),
+            ("/Command/Game/Magic/CmnCureMagic", 15, [0.0, 0.0, 0.0, 0.7]),
+            ("/Command/Game/Ability/CmnAbility", 15, [0.7; 4]),
+            (
+                "/Command/Game/WeaponSkill/MonsterAttackWeaponSkill",
+                15,
+                [0.7; 4],
+            ),
+        ] {
+            let data = catalog_with_class(&[("42", "Synthetic", "Example")], path);
+            let report = build_report(&data, "42").unwrap();
+            let command = &report["matches"][0];
+            assert_eq!(command["identity"]["luaClassPath"], path);
+            let profile = &command["levelAdjustmentProfile"];
+            assert_eq!(profile["status"], "resolved");
+            assert_eq!(profile["lowLevelDistanceLimit"], -1);
+            assert_eq!(profile["highLevelDistanceLimit"], cap);
+            for (index, expected) in high.iter().enumerate() {
+                assert_eq!(profile["parameterBlends"][index]["lowLevelBlend"], 1);
+                assert_eq!(
+                    profile["parameterBlends"][index]["highLevelBlend"],
+                    *expected
+                );
+            }
+        }
+        let unknown = catalog_with_class(
+            &[("42", "CmnAttackMagic", "Example")],
+            "/Command/Game/Magic/Unknown",
+        );
+        let report = build_report(&unknown, "42").unwrap();
+        assert_eq!(
+            report["matches"][0]["levelAdjustmentProfile"]["status"],
+            "unresolved"
+        );
+        let data = catalog(&[("42", "Synthetic", "Example")]);
+        let mut reader = csv::Reader::from_reader(data.as_slice());
+        let mut legacy = csv::Writer::from_writer(Vec::new());
+        legacy.write_record(&HEADER[..HEADER.len() - 1]).unwrap();
+        for row in reader.records() {
+            legacy
+                .write_record(row.unwrap().iter().take(HEADER.len() - 1))
+                .unwrap();
+        }
+        let report = build_report(&legacy.into_inner().unwrap(), "42").unwrap();
+        assert!(report["matches"][0]["identity"]["luaClassPath"].is_null());
+        assert_eq!(
+            report["matches"][0]["levelAdjustmentProfile"]["reason"],
+            "missing-class-path"
+        );
+    }
+
+    #[test]
     fn queries_id_and_duplicate_exact_names() {
         let data = catalog(&[
             ("27310", "Fire", "Fire JP"),
             ("27410", "Fire", "Fire II JP"),
         ]);
         let by_id = build_report(&data, "27310").unwrap();
-        assert_eq!(by_id["schemaVersion"], 2);
+        assert_eq!(by_id["schemaVersion"], 3);
         assert_eq!(by_id["query"]["mode"], "id");
         assert_eq!(by_id["matches"].as_array().unwrap().len(), 1);
         assert_eq!(by_id["matches"][0]["damage"]["magnitude"], 950);

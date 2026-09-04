@@ -40,8 +40,12 @@ groups, and the lossless native effect block. Each parameter is classified as
 absent, flat, or dependent on a native grow selector. The formula model records
 the base-class low- and high-level defaults, the 15-level high-side cap, the
 grow ratio expression, and the catalog-wide native-selector coverage. Command
-subclass overrides remain explicit unresolved data until command-to-script
-identity is established. The command does not search a workspace, infer a
+subclass profiles are selected by the v2 catalog's `lua_class_path` for the
+five classes documented in [Command formula profiles](command-formula-profiles.md).
+Each match reports its effective level limits and parameter blends, or an
+explicit unresolved profile. Legacy catalogs remain readable without class
+identity. Cost and other parameter-method overrides remain outside these
+profiles. The command does not search a workspace, infer a
 catalog path, invent unresolved grow values, or present client prediction
 inputs as the server-authoritative combat formula.
 
