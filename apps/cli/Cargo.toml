@@ -17,6 +17,8 @@ serde_json.workspace = true
 serde_yaml.workspace = true
 jsonschema.workspace = true
 same-file.workspace = true
+csv.workspace = true
+sha2.workspace = true
 
 [lints]
 workspace = true

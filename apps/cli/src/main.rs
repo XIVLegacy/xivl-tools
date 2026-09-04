@@ -16,6 +16,7 @@ use xivl_formats::{extract_lpb, lua_path_document};
 use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_bytes_as, InspectAs};
 
 mod batch_extract;
+mod command_inspect;
 mod extract;
 mod resource_export;
 mod scan;
@@ -27,6 +28,7 @@ xivl - Final Fantasy XIV 1.23b client file tools
 usage:
   xivl inspect <file> [--as <format>] [--columns <list>]
   xivl validate <file> [--as <format>] [--columns <list>]
+  xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--format yaml|json]
   xivl lua-path <path>
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
@@ -60,6 +62,10 @@ extract-catalog plans and validates an explicit catalog selection before
 writing isolated per-resource outputs; it never has an implicit extract-all.
 verify-extraction checks an existing single or catalog extraction without
 writing or repairing it. Source replay is explicit and optional.
+
+inspect-command queries an explicit command_battle_params.csv catalog by
+numeric id or exact case-insensitive English/Japanese name. It reports the
+client-visible formula inputs and their evidence limits, not a server formula.
 
 lua-path applies the reversible ASCII resource-path transform. extract-lpb
 removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
@@ -150,6 +156,7 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         }
         Some("inspect") => read(&arguments[1..], Operation::Inspect),
         Some("validate") => read(&arguments[1..], Operation::Validate),
+        Some("inspect-command") => command_inspect::run(&arguments[1..]),
         Some("lua-path") => lua_path(&arguments[1..]),
         Some("extract-lpb") => extract_lpb_command(&arguments[1..]),
         Some("extract") => {
