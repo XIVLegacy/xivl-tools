@@ -5,7 +5,7 @@ data addressing, plus the three boundaries of the PWIB split container. The
 canonical promoted finding is:
 
 - `xivl-decomp:docs/resource/gtex-pwib-loader.md` at commit
-  `86d4e7f25653a23f474643fcd78cb56f3c75738a`.
+  `8ea63af8dbb6ae335d025116e7602006e58f745b`.
 
 The source that identifies both tags as file-type resources rather than
 PackRead chunks remains:

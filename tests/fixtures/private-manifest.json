@@ -68,7 +68,7 @@
       "id": "retail-gtex-61c10005",
       "notes": "The smallest observed GTEX resource: a 4 by 4 2D texture with one mip, a data base of 32, one surface-offset entry, and 8 source-data bytes.",
       "repository": "XIVLegacy/xivl-private-assets",
-      "repositoryCommit": "8b5fcf9baaa21cd4e152fa69e0a3d4de6950ccd1",
+      "repositoryCommit": "2681763bcb5394d8ce5d78d6f93a1c99c130fb77",
       "sha256": "6663eafa5248c68d9804c4f4ca0677d4f24434f5c014b53889c70b2ccba204ef",
       "size": 40,
       "sourcePath": "data/61/C1/00/05.DAT"
@@ -81,7 +81,7 @@
       "id": "retail-gtex-a8r8g8b8-1c59027e",
       "notes": "A single-mip A8R8G8B8 GTEX representative with an exact encoded surface extent.",
       "repository": "XIVLegacy/xivl-private-assets",
-      "repositoryCommit": "8b5fcf9baaa21cd4e152fa69e0a3d4de6950ccd1",
+      "repositoryCommit": "2681763bcb5394d8ce5d78d6f93a1c99c130fb77",
       "sha256": "2018e48d77ab8529f764682f71d2f8364eb20b6f39e0d620a4978b5e1e9b6d6d",
       "size": 544,
       "sourcePath": "data/1C/59/02/7E.DAT"
@@ -94,7 +94,7 @@
       "id": "retail-gtex-dxt5-1c590028",
       "notes": "A four-mip DXT5 GTEX representative with exact encoded surface extents.",
       "repository": "XIVLegacy/xivl-private-assets",
-      "repositoryCommit": "8b5fcf9baaa21cd4e152fa69e0a3d4de6950ccd1",
+      "repositoryCommit": "2681763bcb5394d8ce5d78d6f93a1c99c130fb77",
       "sha256": "edff5bb2ba4b5b66ea2ff7f50473be1d23fd02dbf945ef34c4cc5305c80a4f02",
       "size": 5504,
       "sourcePath": "data/1C/59/00/28.DAT"
@@ -151,7 +151,7 @@
       "id": "retail-pwib-89b0005a",
       "notes": "The smallest observed PWIB resource: a 16-byte header, a 144-byte SEDB-prefixed first segment, and a 376-byte opaque second segment.",
       "repository": "XIVLegacy/xivl-private-assets",
-      "repositoryCommit": "e42f476037a525c953d5536e6bcd41ff7ca56fa1",
+      "repositoryCommit": "08f15741a65e5a5355e92aff126e8f07ee2179a9",
       "sha256": "42cd46946d39812f32d17fb683e0ab45c53bdff9948610feb5228e93f856f99a",
       "size": 536,
       "sourcePath": "data/89/B0/00/5A.DAT"
