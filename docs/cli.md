@@ -45,8 +45,10 @@ mapped classes documented in [Command formula profiles](command-formula-profiles
 Each match reports its effective level limits and parameter blends, or an
 explicit unresolved profile. Known paths outside the GameCommandBaseClass
 hierarchy report `not-applicable`. Legacy catalogs remain readable without class
-identity. Cost and other parameter-method overrides remain outside these
-profiles. The command does not search a workspace, infer a
+identity. A separate [cost profile](command-cost-profiles.md) identifies selected
+HP/MP/TP getters and actor/runtime dependencies while retaining raw catalog
+costs. Other parameter-method overrides remain outside these profiles.
+The command does not search a workspace, infer a
 catalog path, invent unresolved grow values, or present client prediction
 inputs as the server-authoritative combat formula.
 

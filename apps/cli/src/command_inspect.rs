@@ -219,7 +219,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
     }
 
     Ok(json!({
-        "schemaVersion": 4,
+        "schemaVersion": 5,
         "kind": "xivl-command-formula-inputs",
         "source": {
             "byteLength": data.len(),
@@ -262,7 +262,8 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
                 "native magnitude scale and combine step",
                 "command-to-status linkage",
                 "level-adjust profiles for unrecognized or missing Lua class paths",
-                "subclass cost and parameter-method overrides outside the level-adjust profile",
+                "actor-dependent MP getter and HP/MP/TP cost wrappers",
+                "parameter-method overrides outside the selected profiles",
             ],
         },
         "matches": matches,
@@ -316,11 +317,13 @@ fn command_document(record: &csv::StringRecord, id: u32) -> Result<Value, String
             "elementWeight": scalar(field(record, "dmg_elem_weight")),
         },
         "costs": {
+            "scope": "catalog-inputs",
             "hp": scalar(field(record, "hp_cost")),
             "mp": scalar(field(record, "mp_cost")),
             "tp": scalar(field(record, "tp_cost")),
             "actionGauge": scalar(field(record, "action_gauge")),
         },
+        "costProfile": cost_profile(class_path, id),
         "timing": {
             "cast": scalar(field(record, "cast_time")),
             "recast": scalar(field(record, "recast_time")),
@@ -336,6 +339,68 @@ fn command_document(record: &csv::StringRecord, id: u32) -> Result<Value, String
         "parameters": parameters,
         "rawEffectFields": parse_effect_fields(field(record, "effect_block_raw"))?,
     }))
+}
+
+// Getter selection and wrapper boundaries: docs/command-cost-profiles.md.
+fn cost_profile(class_path: &str, id: u32) -> Value {
+    let Some(parents) = known_class_parents(class_path) else {
+        return json!({
+            "status": "unresolved",
+            "reason": if class_path.is_empty() { "missing-class-path" } else { "unrecognized-class-path" },
+        });
+    };
+    if !parents.contains(&"GameCommandBaseClass") {
+        return json!({
+            "status": "not-applicable",
+            "reason": "outside-game-command-hierarchy",
+        });
+    }
+    let (hp_owner, parameter_id) = match class_path {
+        "/Command/Game/Ability/CmnAbility" => ("CmnAbility", Some(27591)),
+        "/Command/Game/Magic/CmnAttackMagic" => ("CmnAttackMagic", Some(28623)),
+        "/Command/Game/Magic/CmnCureMagic" => ("CmnCureMagic", Some(28669)),
+        _ => ("GameCommandBaseClass", None),
+    };
+    let hp_result = if parameter_id == Some(id) {
+        json!({
+            "kind": "catalog-input",
+            "field": "p3_base",
+            "via": "getCommandParam3",
+            "callArguments": "receiver-only",
+        })
+    } else {
+        json!({ "kind": "constant", "value": 0 })
+    };
+    json!({
+        "status": "resolved",
+        "scope": "lua-cost-getter-selection",
+        "hp": {
+            "method": "getCommandHPCost",
+            "definedBy": hp_owner,
+            "result": hp_result,
+        },
+        "mp": {
+            "method": "getCommandMPCost",
+            "definedBy": "GameCommandBaseClass",
+            "result": {
+                "kind": "actor-required",
+                "field": "mp_cost",
+                "actorMethod": "calculateCommandCost",
+            },
+        },
+        "tp": {
+            "method": "getCommandTPCost",
+            "definedBy": "GameCommandBaseClass",
+            "result": { "kind": "catalog-input", "field": "tp_cost" },
+        },
+        "wrappers": {
+            "status": "runtime-required",
+            "definedBy": "GameCommandBaseClass",
+            "hp": { "method": "getCostHP", "actorMethods": ["getHP"] },
+            "mp": { "method": "getCostMP", "actorMethods": ["getForceCostMPForCaster", "getMP"] },
+            "tp": { "method": "getCostTP", "actorMethods": ["getTP", "getForceCostTPForCaster"] },
+        },
+    })
 }
 
 // Exact class paths and inherited getter facts: docs/command-formula-profiles.md.
@@ -637,6 +702,119 @@ mod tests {
     }
 
     #[test]
+    fn selects_hp_cost_by_exact_path_and_conditional_id() {
+        for (path, id, owner) in [
+            ("/Command/Game/Ability/CmnAbility", 27591, "CmnAbility"),
+            (
+                "/Command/Game/Magic/CmnAttackMagic",
+                28623,
+                "CmnAttackMagic",
+            ),
+            ("/Command/Game/Magic/CmnCureMagic", 28669, "CmnCureMagic"),
+        ] {
+            let profile = cost_profile(path, id);
+            assert_eq!(profile["status"], "resolved");
+            assert_eq!(profile["hp"]["definedBy"], owner);
+            assert_eq!(
+                profile["hp"]["result"],
+                json!({
+                    "kind": "catalog-input", "field": "p3_base",
+                    "via": "getCommandParam3", "callArguments": "receiver-only",
+                })
+            );
+            for other_id in [42, id - 1, id + 1] {
+                let other = cost_profile(path, other_id);
+                assert_eq!(other["hp"]["definedBy"], owner);
+                assert_eq!(
+                    other["hp"]["result"],
+                    json!({"kind": "constant", "value": 0})
+                );
+            }
+            assert_eq!(
+                cost_profile("/Command/Game/Magic/AncientMagic", id)["hp"]["result"],
+                json!({"kind": "constant", "value": 0})
+            );
+        }
+    }
+
+    #[test]
+    fn keeps_catalog_costs_separate_from_getters_and_wrappers() {
+        let mut row = vec![String::new(); HEADER.len()];
+        for (field, value) in [
+            ("id", "28623"),
+            ("hp_cost", "777"),
+            ("mp_cost", "23"),
+            ("tp_cost", "31"),
+            ("p3_base", "17"),
+            ("p3_grow", "69"),
+            ("lua_class_path", "/Command/Game/Magic/CmnAttackMagic"),
+        ] {
+            row[index(field)] = value.to_owned();
+        }
+        let command = command_document(&csv::StringRecord::from(row), 28623).unwrap();
+        assert_eq!(command["costs"]["scope"], "catalog-inputs");
+        assert_eq!(command["costs"]["hp"], 777);
+        assert_eq!(command["costs"]["mp"], 23);
+        assert_eq!(command["costs"]["tp"], 31);
+        let profile = &command["costProfile"];
+        assert_eq!(profile["hp"]["result"]["field"], "p3_base");
+        assert!(profile["hp"]["result"].get("value").is_none());
+        assert_eq!(
+            command["parameters"][2]["levelAdjustment"]["status"],
+            "native-grow-required"
+        );
+        assert_eq!(profile["mp"]["result"]["kind"], "actor-required");
+        assert_eq!(profile["mp"]["result"]["field"], "mp_cost");
+        assert_eq!(
+            profile["mp"]["result"]["actorMethod"],
+            "calculateCommandCost"
+        );
+        assert_eq!(
+            profile["tp"]["result"],
+            json!({"kind": "catalog-input", "field": "tp_cost"})
+        );
+        assert_eq!(profile["wrappers"]["status"], "runtime-required");
+        assert_eq!(
+            profile["wrappers"]["tp"]["actorMethods"],
+            json!(["getTP", "getForceCostTPForCaster"])
+        );
+    }
+
+    #[test]
+    fn leaves_costs_unresolved_without_known_game_identity() {
+        for path in [
+            "",
+            "/Unknown/CmnAbility",
+            "/command/game/ability/cmnability",
+        ] {
+            let profile = cost_profile(path, 27591);
+            assert_eq!(profile["status"], "unresolved");
+            assert!(profile.get("hp").is_none());
+        }
+        for path in [
+            "/Command/AutoAttackTargetChangeCommand",
+            "/Command/DebugInputCommand",
+            "/Command/Game/BonusPointCommand",
+            "/Command/ItemCommand",
+        ] {
+            let profile = cost_profile(path, 27591);
+            assert_eq!(profile["status"], "not-applicable");
+            assert!(profile.get("hp").is_none());
+            assert!(profile.get("wrappers").is_none());
+        }
+        assert_eq!(
+            cost_profile("/Command/ChangeJobCommand", 27591)["hp"]["definedBy"],
+            "GameCommandBaseClass"
+        );
+        let data = catalog(&[("27591", "Synthetic", "Example")]);
+        let report = build_report(&data, "27591").unwrap();
+        assert_eq!(
+            report["matches"][0]["costProfile"]["reason"],
+            "missing-class-path"
+        );
+    }
+
+    #[test]
     fn selects_exact_subclass_getters_without_guessing_from_names() {
         for (path, cap, high) in [
             (
@@ -817,7 +995,7 @@ mod tests {
             ("27410", "Fire", "Fire II JP"),
         ]);
         let by_id = build_report(&data, "27310").unwrap();
-        assert_eq!(by_id["schemaVersion"], 4);
+        assert_eq!(by_id["schemaVersion"], 5);
         assert_eq!(by_id["query"]["mode"], "id");
         assert_eq!(by_id["matches"].as_array().unwrap().len(), 1);
         assert_eq!(by_id["matches"][0]["damage"]["magnitude"], 950);

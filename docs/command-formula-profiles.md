@@ -53,11 +53,11 @@ unresolved. There is no prefix or class-name fallback. The lookup uses the
 declared parents of each exact script path; this matters when two source
 files declare the same leaf class name.
 
-These profiles do not evaluate the complete parameter formula, subclass cost
-overrides, native grow values, or damage. A zero blend does not remove the
+These level profiles do not evaluate the complete parameter formula,
+native grow values, or damage. A zero blend does not remove the
 native grow requirement: the recovered caller still performs the lookup and
-division. Raw sheet costs and the base HP default remain inputs, not effective
-subclass costs.
+division. [Cost getter profiles](command-cost-profiles.md) separately identify
+selected HP/MP/TP getters and their actor/runtime dependencies.
 
 ## Identity and inheritance evidence
 
@@ -81,7 +81,7 @@ the corresponding getter from its declared ancestor.
 The v2 CSV header appends `lua_class_path` after `effect_block_raw`; all
 earlier columns retain their positions. Legacy v1 catalogs are accepted with
 missing identity and an unresolved profile. The JSON/YAML report schema is
-version 4, including the `not-applicable` profile status. The CLI consumes the
+version 5, including cost getter profiles. The CLI consumes the
 explicit input as supplied and records its SHA-256; it does not independently
 authenticate class-path values.
 
