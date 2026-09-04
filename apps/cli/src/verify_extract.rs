@@ -1365,10 +1365,23 @@ mod tests {
         let (work, _, output) = single_fixture("case");
         fs::write(output.join("EXTRA"), b"one").unwrap();
         fs::write(output.join("extra"), b"two").unwrap();
-        assert!(run(&verify_arguments(&output, None))
-            .unwrap_err()
-            .message
-            .contains("case-collision"));
+        let matching_entries = fs::read_dir(&output)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .eq_ignore_ascii_case("extra")
+            })
+            .count();
+        let message = run(&verify_arguments(&output, None)).unwrap_err().message;
+        if matching_entries == 2 {
+            assert!(message.contains("case-collision"));
+        } else {
+            assert_eq!(matching_entries, 1);
+            assert!(message.contains("extra-file"));
+        }
         fs::remove_dir_all(work).unwrap();
     }
 }
