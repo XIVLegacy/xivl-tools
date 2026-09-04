@@ -47,7 +47,9 @@ explicit unresolved profile. Known paths outside the GameCommandBaseClass
 hierarchy report `not-applicable`. Legacy catalogs remain readable without class
 identity. A separate [cost profile](command-cost-profiles.md) identifies selected
 HP/MP/TP getters and actor/runtime dependencies while retaining raw catalog
-costs. Other parameter-method overrides remain outside these profiles.
+costs. [Parameter getter profiles](command-parameter-profiles.md) identify the
+inherited getters and distinguish raw-input calls from actor/target-dependent
+calls and the unresolved non-live-target branch.
 The command does not search a workspace, infer a
 catalog path, invent unresolved grow values, or present client prediction
 inputs as the server-authoritative combat formula.

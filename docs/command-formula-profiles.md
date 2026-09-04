@@ -58,6 +58,8 @@ native grow values, or damage. A zero blend does not remove the
 native grow requirement: the recovered caller still performs the lookup and
 division. [Cost getter profiles](command-cost-profiles.md) separately identify
 selected HP/MP/TP getters and their actor/runtime dependencies.
+[Parameter getter profiles](command-parameter-profiles.md) distinguish raw
+input calls from contextual adjustment and unresolved non-live-target calls.
 
 ## Identity and inheritance evidence
 
@@ -81,7 +83,7 @@ the corresponding getter from its declared ancestor.
 The v2 CSV header appends `lua_class_path` after `effect_block_raw`; all
 earlier columns retain their positions. Legacy v1 catalogs are accepted with
 missing identity and an unresolved profile. The JSON/YAML report schema is
-version 5, including cost getter profiles. The CLI consumes the
+version 6, including parameter getter profiles. The CLI consumes the
 explicit input as supplied and records its SHA-256; it does not independently
 authenticate class-path values.
 

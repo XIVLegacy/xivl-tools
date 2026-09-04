@@ -95,7 +95,7 @@ Cost facts use these immutable source identities from extraction
 
 ## Report and verification contract
 
-JSON and YAML share report schema version 5. Legacy v1 CSV input is accepted
+JSON and YAML share report schema version 6. Legacy v1 CSV input is accepted
 with unresolved cost identity. No actor inputs, Lua evaluator, or native
 runtime capture are added by this profile.
 

@@ -219,7 +219,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
     }
 
     Ok(json!({
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "kind": "xivl-command-formula-inputs",
         "source": {
             "byteLength": data.len(),
@@ -234,6 +234,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
         "formulaModel": {
             "scope": "client-prediction-inputs",
             "parameterExpression": "levelAdjustedBase * compatibilityFactor * tpFactor",
+            "parameterExpressionScope": "complete-context-with-live-target",
             "levelAdjustment": {
                 "scope": "GameCommandBaseClass defaults",
                 "growRatio": "getGrowData(adjustedActorLevel, selector) / getGrowData(commandLevel, selector)",
@@ -261,9 +262,10 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
                 "native getGrowData curves",
                 "native magnitude scale and combine step",
                 "command-to-status linkage",
-                "level-adjust profiles for unrecognized or missing Lua class paths",
+                "profiles for unrecognized or missing Lua class paths",
                 "actor-dependent MP getter and HP/MP/TP cost wrappers",
-                "parameter-method overrides outside the selected profiles",
+                "actor/target-dependent parameter evaluation",
+                "complete-context parameter calls with non-live targets",
             ],
         },
         "matches": matches,
@@ -296,6 +298,7 @@ fn command_document(record: &csv::StringRecord, id: u32) -> Result<Value, String
             "luaClassPath": if class_path.is_empty() { Value::Null } else { json!(class_path) },
         },
         "levelAdjustmentProfile": level_adjustment_profile(class_path),
+        "parameterProfile": parameter_profile(class_path),
         "description": {
             "english": field(record, "description_en"),
             "japanese": field(record, "description_jp"),
@@ -339,6 +342,53 @@ fn command_document(record: &csv::StringRecord, id: u32) -> Result<Value, String
         "parameters": parameters,
         "rawEffectFields": parse_effect_fields(field(record, "effect_block_raw"))?,
     }))
+}
+
+// Inherited getter selection and call modes: docs/command-parameter-profiles.md.
+fn parameter_profile(class_path: &str) -> Value {
+    let Some(parents) = known_class_parents(class_path) else {
+        return json!({
+            "status": "unresolved",
+            "reason": if class_path.is_empty() { "missing-class-path" } else { "unrecognized-class-path" },
+        });
+    };
+    if !parents.contains(&"GameCommandBaseClass") {
+        return json!({
+            "status": "not-applicable",
+            "reason": "outside-game-command-hierarchy",
+        });
+    }
+    let getters: Vec<Value> = (1..=4)
+        .map(|number| {
+            json!({
+                "number": number,
+                "method": format!("getCommandParam{number}"),
+                "inputField": format!("p{number}_base"),
+                "growSelectorMethod": format!("getCommandParam{number}LevelAdjustGrow"),
+            })
+        })
+        .collect();
+    json!({
+        "status": "resolved",
+        "scope": "lua-parameter-getter-selection",
+        "definedBy": "GameCommandBaseClass",
+        "getters": getters,
+        "callModes": {
+            "missingContext": {
+                "condition": "any-of-first-three-arguments-after-receiver-is-nil",
+                "kind": "catalog-input",
+            },
+            "liveContext": {
+                "condition": "first-three-arguments-present-and-third-argument-_isAlive-truthy",
+                "kind": "actor-target-required",
+            },
+            "nonLiveContext": {
+                "condition": "first-three-arguments-present-and-third-argument-_isAlive-falsy",
+                "kind": "unresolved",
+                "reason": "recovered-factors-uninitialized",
+            },
+        },
+    })
 }
 
 // Getter selection and wrapper boundaries: docs/command-cost-profiles.md.
@@ -702,6 +752,73 @@ mod tests {
     }
 
     #[test]
+    fn distinguishes_parameter_call_modes_from_growth_coverage() {
+        for path in [
+            "/Command/Game/Ability/CmnAbility",
+            "/Command/Game/Magic/AncientMagic",
+            "/Command/Game/Magic/CmnAttackMagic",
+            "/Command/ChangeJobCommand",
+        ] {
+            let data = catalog_with_class(&[("42", "Synthetic", "Example")], path);
+            let report = build_report(&data, "42").unwrap();
+            let command = &report["matches"][0];
+            let profile = &command["parameterProfile"];
+            assert_eq!(profile["status"], "resolved");
+            assert_eq!(profile["definedBy"], "GameCommandBaseClass");
+            for number in 1..=4 {
+                let getter = &profile["getters"][number - 1];
+                assert_eq!(getter["number"], number);
+                assert_eq!(getter["method"], format!("getCommandParam{number}"));
+                assert_eq!(getter["inputField"], format!("p{number}_base"));
+                assert_eq!(
+                    getter["growSelectorMethod"],
+                    format!("getCommandParam{number}LevelAdjustGrow")
+                );
+            }
+            assert_eq!(
+                command["parameters"][2]["levelAdjustment"]["status"],
+                "flat"
+            );
+            assert_eq!(
+                profile["callModes"]["missingContext"]["kind"],
+                "catalog-input"
+            );
+            assert_eq!(
+                profile["callModes"]["liveContext"]["kind"],
+                "actor-target-required"
+            );
+            assert_eq!(profile["callModes"]["nonLiveContext"]["kind"], "unresolved");
+            assert_eq!(
+                profile["callModes"]["nonLiveContext"]["reason"],
+                "recovered-factors-uninitialized"
+            );
+            assert_eq!(
+                report["formulaModel"]["parameterExpressionScope"],
+                "complete-context-with-live-target"
+            );
+        }
+        for path in [
+            "",
+            "/Unknown/CmnAbility",
+            "/command/game/magic/ancientmagic",
+        ] {
+            let profile = parameter_profile(path);
+            assert_eq!(profile["status"], "unresolved");
+            assert!(profile.get("getters").is_none());
+        }
+        for path in [
+            "/Command/AutoAttackTargetChangeCommand",
+            "/Command/DebugInputCommand",
+            "/Command/Game/BonusPointCommand",
+            "/Command/ItemCommand",
+        ] {
+            let profile = parameter_profile(path);
+            assert_eq!(profile["status"], "not-applicable");
+            assert!(profile.get("callModes").is_none());
+        }
+    }
+
+    #[test]
     fn selects_hp_cost_by_exact_path_and_conditional_id() {
         for (path, id, owner) in [
             ("/Command/Game/Ability/CmnAbility", 27591, "CmnAbility"),
@@ -872,6 +989,10 @@ mod tests {
         let report = build_report(&legacy.into_inner().unwrap(), "42").unwrap();
         assert!(report["matches"][0]["identity"]["luaClassPath"].is_null());
         assert_eq!(
+            report["matches"][0]["parameterProfile"]["reason"],
+            "missing-class-path"
+        );
+        assert_eq!(
             report["matches"][0]["levelAdjustmentProfile"]["reason"],
             "missing-class-path"
         );
@@ -995,7 +1116,7 @@ mod tests {
             ("27410", "Fire", "Fire II JP"),
         ]);
         let by_id = build_report(&data, "27310").unwrap();
-        assert_eq!(by_id["schemaVersion"], 5);
+        assert_eq!(by_id["schemaVersion"], 6);
         assert_eq!(by_id["query"]["mode"], "id");
         assert_eq!(by_id["matches"].as_array().unwrap().len(), 1);
         assert_eq!(by_id["matches"][0]["damage"]["magnitude"], 950);
