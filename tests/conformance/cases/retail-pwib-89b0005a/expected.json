@@ -1,0 +1,76 @@
+{
+  "anomalies": [],
+  "firstSegment": {
+    "kind": "sedb-prefix",
+    "sedbHeader": {
+      "declaredSize": 520,
+      "flags": 512,
+      "headerSize": 64,
+      "span": {
+        "length": 20,
+        "offset": 16
+      },
+      "subtype": "txb\\x00",
+      "unknownA": 1
+    },
+    "sha256": "0fafddcd63f48968d56dba863e74577a5d37df675d36c3a4bfee33ad85a07245",
+    "span": {
+      "length": 144,
+      "offset": 16
+    }
+  },
+  "format": "pwib",
+  "header": {
+    "firstSegmentOffset": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 8
+      },
+      "value": 16
+    },
+    "secondSegmentOffset": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 12
+      },
+      "value": 160
+    },
+    "span": {
+      "length": 16,
+      "offset": 0
+    },
+    "totalSize": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 4
+      },
+      "value": 536
+    },
+    "unknown": []
+  },
+  "input": {
+    "length": 536
+  },
+  "layoutStatus": "bounded",
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "secondSegment": {
+    "kind": "opaque-continuation",
+    "sha256": "288e45b34dc2c8cb6fdc5af999e4b827999d14c1f5784d583cf8d5e2bb65c6f7",
+    "span": {
+      "length": 376,
+      "offset": 160
+    }
+  },
+  "signature": {
+    "ascii": "PWIB",
+    "span": {
+      "length": 4,
+      "offset": 0
+    }
+  },
+  "trailing": []
+}

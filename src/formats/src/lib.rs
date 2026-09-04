@@ -16,6 +16,7 @@ pub mod config;
 pub mod csv;
 pub mod digest;
 pub mod error;
+pub mod gtex_pwib;
 pub mod inspect;
 pub mod lpb;
 pub mod lua51;

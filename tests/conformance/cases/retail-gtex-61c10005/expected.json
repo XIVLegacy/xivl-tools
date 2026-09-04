@@ -1,0 +1,159 @@
+{
+  "anomalies": [],
+  "dataBase": {
+    "byteOrder": "big",
+    "span": {
+      "length": 4,
+      "offset": 20
+    },
+    "value": 32
+  },
+  "dataRegion": {
+    "gaps": [],
+    "kind": "texture-source-data",
+    "sha256": "41b8f24b79ae38bb5f3af44cf187d022c20517a6f576791e466d536517b68fb9",
+    "span": {
+      "length": 8,
+      "offset": 32
+    }
+  },
+  "format": "gtex",
+  "header": {
+    "span": {
+      "length": 32,
+      "offset": 0
+    },
+    "unknown": [
+      {
+        "kind": "unknown-gap",
+        "sha256": "9dcf97a184f32623d11a73124ceb99a5709b083721e878a16d78f596718ba7b2",
+        "span": {
+          "length": 2,
+          "offset": 4
+        }
+      },
+      {
+        "kind": "unknown-gap",
+        "sha256": "dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986",
+        "span": {
+          "length": 1,
+          "offset": 8
+        }
+      }
+    ]
+  },
+  "input": {
+    "length": 40
+  },
+  "layoutStatus": "bounded",
+  "offsetTable": {
+    "base": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 16
+      },
+      "value": 24
+    },
+    "entries": [
+      {
+        "calculatedSize": 8,
+        "face": 0,
+        "index": 0,
+        "mipLevel": 0,
+        "offsetField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 24
+          },
+          "value": 0
+        },
+        "sizeField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 28
+          },
+          "value": 8
+        },
+        "source": {
+          "sha256": "41b8f24b79ae38bb5f3af44cf187d022c20517a6f576791e466d536517b68fb9",
+          "span": {
+            "length": 8,
+            "offset": 32
+          }
+        }
+      }
+    ],
+    "entryStride": 8
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "signature": {
+    "ascii": "GTEX",
+    "span": {
+      "length": 4,
+      "offset": 0
+    }
+  },
+  "surfaceMaterialization": {
+    "status": "supported"
+  },
+  "texture": {
+    "depth": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 14
+      },
+      "value": 1
+    },
+    "flagBit2": false,
+    "flags": {
+      "span": {
+        "length": 1,
+        "offset": 9
+      },
+      "value": 0
+    },
+    "formatIndex": {
+      "mapping": {
+        "bitsPerPixel": 4,
+        "blockBytes": 8,
+        "d3dName": "D3DFMT_DXT1",
+        "d3dValue": 827611204
+      },
+      "span": {
+        "length": 1,
+        "offset": 6
+      },
+      "value": 24
+    },
+    "height": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 12
+      },
+      "value": 4
+    },
+    "kind": "2d",
+    "mipLevels": {
+      "span": {
+        "length": 1,
+        "offset": 7
+      },
+      "value": 1
+    },
+    "width": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 10
+      },
+      "value": 4
+    }
+  },
+  "trailing": []
+}

@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/XIVLegacy/xivl-tools/schemas/catalog-extraction.schema.json",
+  "title": "xivl catalog-driven extraction batch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "catalog",
+    "limits",
+    "materializePayloads",
+    "resources",
+    "tool",
+    "totals"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fileName", "sha256"],
+      "properties": {
+        "fileName": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxResources", "maxSourceBytes", "maxOutputBytes"],
+      "properties": {
+        "maxResources": { "type": "integer", "minimum": 1 },
+        "maxSourceBytes": { "type": "integer", "minimum": 1 },
+        "maxOutputBytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "materializePayloads": { "type": "boolean" },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ordinal",
+          "catalogIndex",
+          "sourcePath",
+          "resourceId",
+          "sourceSize",
+          "sourceSha256",
+          "detectedFormat",
+          "outputDirectory",
+          "manifest",
+          "outputBytes"
+        ],
+        "properties": {
+          "ordinal": { "type": "integer", "minimum": 1 },
+          "catalogIndex": { "type": "integer", "minimum": 0 },
+          "sourcePath": { "type": "string", "minLength": 1 },
+          "resourceId": {
+            "type": ["string", "null"],
+            "pattern": "^0x[0-9A-F]{8}$"
+          },
+          "sourceSize": { "type": "integer", "minimum": 0 },
+          "sourceSha256": { "$ref": "#/$defs/sha256" },
+          "detectedFormat": { "type": "string", "minLength": 1 },
+          "outputDirectory": {
+            "type": "string",
+            "pattern": "^[0-9]{6}-(id-[0-9A-F]{8}|path)-[0-9a-f]{16}$"
+          },
+          "manifest": {
+            "type": "string",
+            "pattern": "^[0-9]{6}-(id-[0-9A-F]{8}|path)-[0-9a-f]{16}/extraction\\.(yaml|json)$"
+          },
+          "outputBytes": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "commit"],
+      "properties": {
+        "name": { "type": "string", "const": "xivl" },
+        "version": { "type": "string", "minLength": 1 },
+        "commit": { "type": ["string", "null"], "minLength": 1 }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resourceCount", "sourceBytes", "outputBytes"],
+      "properties": {
+        "resourceCount": { "type": "integer", "minimum": 1 },
+        "sourceBytes": { "type": "integer", "minimum": 0 },
+        "outputBytes": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

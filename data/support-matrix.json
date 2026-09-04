@@ -43,7 +43,7 @@
       "read": "supported",
       "write": "none",
       "export": "not-applicable",
-      "notes": "The id to data/AA/BB/CC/DD.DAT mapping is total over the 32-bit space, both directions, with public cases for the mapping and for malformed identifiers. Confirmed against retail 1.23b: all 140180 install resources match the convention. Stays supported rather than verified because the operation takes an identifier listing, so no retail file is a fixture for it. Evidence: docs/formats/sedb-res.md."
+      "notes": "The id to data/AA/BB/CC/DD.DAT mapping is total over the 32-bit space, both directions, with public cases for the mapping and for malformed identifiers. The catalog CLI derives an id only from a matching path and otherwise records null; public CLI tests cover known, malformed, and unknown DAT rows plus deterministic ordering. Bounded catalog extraction accepts only explicit IDs or paths, validates catalog uniqueness, path containment, source identity, count and byte limits, and complete serial extraction plans before output. Public CLI tests cover JSON and JSONL input, duplicate and missing selections, ambiguous catalog identities, stale metadata, traversal and link refusal, overflow and limits, mixed unsupported or malformed resources, isolated collision-safe outputs, and determinism. Confirmed against retail 1.23b: all 140180 install resources match the convention. Stays supported rather than verified because the operation takes an identifier listing, so no retail file is a fixture for it. Evidence: docs/formats/sedb-res.md."
     },
     {
       "id": "sedb",
@@ -52,12 +52,12 @@
       "phase": 1,
       "read": "partial",
       "write": "none",
-      "export": "planned",
+      "export": "partial",
       "exportViews": [
         "json",
         "binary"
       ],
-      "notes": "Header and bounded enumeration only. The 0x10 field is advisory, not a container extent: across the install it equals the file size for 92303 of 97749 SEDB resources, headerSize for the 5203 PHB, zero for the 145 mtb, and a sub-file extent for 98 vins and leaf. Payload interpretation, unknownA, and flags are unresolved and reported rather than guessed; non-SEDB resources such as GTEX and PWIB-wrapped textures are not read at all. Extraction and manifesting are not supported. Gaps: docs/formats/sedb-res.md."
+      "notes": "Header and bounded enumeration only. The 0x10 field is advisory, not a container extent: across the install it equals the file size for 92303 of 97749 SEDB resources, headerSize for the 5203 PHB, zero for the 145 mtb, and a sub-file extent for 98 vins and leaf. Opt-in extraction copies an unambiguous direct-root payload span exactly and records its source range, digest, and entry relationship; public CLI tests cover exact bytes, deterministic output, empty spans, truncation, and option boundaries. Payload interpretation, unknownA, and flags are unresolved and reported rather than guessed. Standalone SEDB parsing does not accept GTEX; PWIB is read separately and delegates its nested resource to this reader. Gaps: docs/formats/sedb-res.md."
     },
     {
       "id": "res",
@@ -66,12 +66,12 @@
       "phase": 1,
       "read": "partial",
       "write": "none",
-      "export": "planned",
+      "export": "partial",
       "exportViews": [
         "json",
         "binary"
       ],
-      "notes": "Extended header, subresource directory, nested containers, unknown gaps, and clamped over-long extents. Directory offsets are confirmed against retail 1.23b: subresources land on SEDB signatures at the headerSize + 16 * count payload base. Directory kind values and unknownB are unresolved, and the overlapping trailing region every RES carries is reported rather than resolved. Gaps: docs/formats/sedb-res.md."
+      "notes": "Extended header, subresource directory, nested containers, unknown gaps, and clamped over-long extents. Directory offsets are confirmed against retail 1.23b: subresources land on SEDB signatures at the headerSize + 16 * count payload base. Opt-in extraction writes exact direct-root subresources and gaps with deterministic names and relationship metadata, retaining nested containers once as their parent span. Public CLI tests cover nesting, overlap, complete alias, out-of-range, clamp, malformed nested input, empty spans, and determinism. Any span ambiguity fails with a typed error before output. Directory kind values and unknownB are unresolved, and the overlapping trailing region every RES carries is reported rather than resolved. Gaps: docs/formats/sedb-res.md."
     },
     {
       "id": "sqwt",
@@ -257,14 +257,24 @@
       "name": "GTEX texture",
       "category": "graphics",
       "phase": 4,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
-      "export": "planned",
+      "export": "partial",
       "exportViews": [
-        "dds",
-        "png",
+        "binary",
         "json"
-      ]
+      ],
+      "notes": "Reads the loader-backed metadata and exact offset-size surface entries. Maps observed client indices 4, 24, and 26 to D3DFMT_A8R8G8B8, D3DFMT_DXT1, and D3DFMT_DXT5 and verifies linear or block-compressed encoded size. Across 21161 retail files, all 41217 size dwords match, spans do not overlap, and final surfaces end at EOF; two adjacent pairs have explicit eight-byte gaps. Opt-in extraction materializes exact encoded surfaces for mapped table-bearing 2D textures with flags zero and depth one. Cube, volume, flags, missing tables, unmapped indices, bit-2 meaning, decoding, DDS/PNG conversion, and GPU compatibility remain unsupported."
+    },
+    {
+      "id": "pwib",
+      "name": "PWIB tagged resource",
+      "category": "resource",
+      "phase": 4,
+      "read": "partial",
+      "write": "none",
+      "export": "none",
+      "notes": "Reads the exact PWIB signature and the big-endian total, first-segment, and second-segment boundaries at 0x04, 0x08, and 0x0c. It reports the SEDB-prefixed first segment and opaque second segment independently rather than treating the first as a standalone SEDB container. All 3544 retail files have ordered in-file boundaries, exact total sizes, and SEDB at the first offset. Metadata-only extraction and verification preserve the bounded model but are not a lossless export. The second segment's purpose and internal structure remain unresolved; no texture or index-buffer interpretation is claimed."
     },
     {
       "id": "fdt",

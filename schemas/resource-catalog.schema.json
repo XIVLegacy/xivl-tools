@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/XIVLegacy/xivl-tools/schemas/resource-catalog.schema.json",
+  "title": "xivl DAT resource catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "resourceCount", "resources"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "resourceCount": { "type": "integer", "minimum": 0 },
+    "resources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/resource" }
+    }
+  },
+  "$defs": {
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "sourcePath",
+        "resourceId",
+        "size",
+        "sha256",
+        "detectedFormat",
+        "formatStatus",
+        "supportStatus",
+        "spans",
+        "anomalies"
+      ],
+      "properties": {
+        "schemaVersion": { "type": "integer", "const": 1 },
+        "sourcePath": { "type": "string", "minLength": 1 },
+        "resourceId": {
+          "type": ["string", "null"],
+          "pattern": "^0x[0-9A-F]{8}$"
+        },
+        "size": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "detectedFormat": { "type": "string", "minLength": 1 },
+        "formatStatus": { "enum": ["parsed", "malformed", "unknown"] },
+        "supportStatus": {
+          "enum": ["none", "partial", "supported", "verified"]
+        },
+        "spans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "offset", "length"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "offset": { "type": "integer", "minimum": 0 },
+              "length": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "anomalies": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

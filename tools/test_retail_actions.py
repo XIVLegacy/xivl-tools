@@ -104,6 +104,16 @@ class FetchActionTests(unittest.TestCase):
             self.run_fetch(self.documents, output, Path(temp))
             self.assertEqual(output.read_bytes(), self.data)
 
+    def test_large_blob_limit_includes_escaped_line_breaks(self) -> None:
+        size = 70_110_686
+        encoded_size = ((size + 2) // 3) * 4
+        escaped_line_breaks = 2 * ((encoded_size + 59) // 60)
+        old_limit = encoded_size + 1_000_000
+        required = encoded_size + escaped_line_breaks
+
+        self.assertLess(old_limit, required)
+        self.assertGreater(fetch._blob_response_limit(size), required)
+
     def test_rejects_tree_and_content_drift_without_output(self) -> None:
         mutations = []
         truncated = deepcopy(self.documents)

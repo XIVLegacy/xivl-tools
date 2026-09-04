@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-trailing",
+  "formatId": "gtex",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/trailing.bin"
+  },
+  "arguments": ["--as", "gtex"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Authored bytes verify DXT1 surface sizing and an explicit alignment gap between mip payloads."
+}

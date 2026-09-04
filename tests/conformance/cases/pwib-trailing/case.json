@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-trailing",
+  "formatId": "pwib",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/pwib/trailing.bin"
+  },
+  "arguments": ["--as", "pwib"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "A PWIB file can continue after its declared total size; the later bytes remain separate."
+}

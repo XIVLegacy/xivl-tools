@@ -297,6 +297,70 @@ def build_fixtures() -> dict[str, bytes]:
     fixtures["lpb/truncated.bin"] = b"rle\x0cshort"
     fixtures["lpb/bad-chunk.bin"] = b"rlu\x0bABCDxxxxx"
 
+    # -- GTEX and PWIB resources ----------------------------------------
+    # The fields and boundaries are loader-evidenced; all values and source
+    # bytes are invented.
+    def gtex(
+        data: bytes,
+        *,
+        format_index: int = 4,
+        flags: int = 0,
+        mip_levels: int = 1,
+        width: int = 4,
+        height: int = 4,
+        depth: int = 1,
+        data_base: int = 0x20,
+        surfaces: tuple[tuple[int, int], ...] = (),
+    ) -> bytes:
+        header = bytearray(pattern(data_base, 0x31))
+        header[0:4] = b"GTEX"
+        header[6] = format_index
+        header[7] = mip_levels
+        header[9] = flags
+        header[0x0A:0x10] = struct.pack(">HHH", width, height, depth)
+        table_base = 0x18 if surfaces else 0
+        header[0x10:0x14] = struct.pack(">I", table_base)
+        header[0x14:0x18] = struct.pack(">I", data_base)
+        for index, (offset, size) in enumerate(surfaces):
+            entry = table_base + index * 8
+            header[entry : entry + 8] = struct.pack(">II", offset, size)
+        return bytes(header) + data
+
+    fixtures["gtex/tagged.bin"] = gtex(
+        pattern(40, 0x44), mip_levels=2, width=4, height=2,
+        data_base=0x28, surfaces=((0, 32), (32, 8))
+    )
+    fixtures["gtex/trailing.bin"] = gtex(
+        pattern(48, 0x51), format_index=24, mip_levels=2, width=8, height=8,
+        data_base=0x28, surfaces=((0, 32), (40, 8))
+    )
+    fixtures["gtex/truncated-header.bin"] = b"GTEX" + pattern(10, 0x71)
+    bad_gtex = bytearray(gtex(b"x"))
+    bad_gtex[0x14:0x18] = struct.pack(">I", len(bad_gtex) + 1)
+    fixtures["gtex/extent-out-of-range.bin"] = bytes(bad_gtex)
+
+    def pwib(first: bytes, second: bytes, trailing: bytes = b"") -> bytes:
+        first_offset = 0x10
+        second_offset = first_offset + len(first)
+        total_size = second_offset + len(second)
+        header = b"PWIB" + struct.pack(">III", total_size, first_offset, second_offset)
+        return header + first + second + trailing
+
+    first = sedb_header("syn", 7, 2, 0x14, 37) + pattern(5, 0x62)
+    fixtures["pwib/tagged.bin"] = pwib(first, pattern(12, 0x72))
+    fixtures["pwib/trailing.bin"] = pwib(
+        sedb_header("syn", 8, 2, 0x14, 29), pattern(9, 0x45), pattern(4, 0x55)
+    )
+    fixtures["pwib/truncated-header.bin"] = b"PWIB" + pattern(5, 0x55)
+    fixtures["pwib/bad-nested-magic.bin"] = pwib(
+        b"NOPE" + pattern(16, 0x75), pattern(4, 0x85)
+    )
+    bad_boundaries = bytearray(pwib(first, pattern(12, 0x72)))
+    bad_boundaries[8:12] = struct.pack(">I", 0x30)
+    fixtures["pwib/bad-boundaries.bin"] = bytes(bad_boundaries)
+    fixtures["gtex/truncated-tag.bin"] = b"GTE"
+    fixtures["pwib/truncated-tag.bin"] = b"PWI"
+
     # -- the static-actor SAN table --------------------------------------
     # Only the framing is promoted: the authored strings resemble paths so
     # the positive case exercises the retail byte class without assigning a

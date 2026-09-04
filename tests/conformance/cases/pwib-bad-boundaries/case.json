@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-bad-boundaries",
+  "formatId": "pwib",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/pwib/bad-boundaries.bin"
+  },
+  "arguments": ["--as", "pwib"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "declared-size-out-of-range",
+    "errorOffset": 4
+  },
+  "notes": "PWIB segment boundaries must be ordered and remain inside the declared total and input."
+}

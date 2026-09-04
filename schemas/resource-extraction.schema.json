@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/XIVLegacy/xivl-tools/schemas/resource-extraction.schema.json",
+  "title": "xivl resource extraction document",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "source",
+    "tool",
+    "format",
+    "parsed",
+    "anomalies",
+    "payloads"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fileName", "resourceId", "size", "sha256"],
+      "properties": {
+        "fileName": { "type": "string", "minLength": 1 },
+        "resourceId": {
+          "type": ["string", "null"],
+          "pattern": "^0x[0-9A-F]{8}$"
+        },
+        "size": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "commit"],
+      "properties": {
+        "name": { "type": "string", "const": "xivl" },
+        "version": { "type": "string", "minLength": 1 },
+        "commit": { "type": ["string", "null"], "minLength": 1 }
+      }
+    },
+    "format": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "parseStatus", "supportStatus"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "parseStatus": { "type": "string", "const": "parsed" },
+        "supportStatus": {
+          "enum": ["none", "partial", "supported", "verified"]
+        }
+      }
+    },
+    "parsed": { "type": "object" },
+    "anomalies": { "type": "array", "items": { "type": "object" } },
+    "payloads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "role", "size", "sha256"],
+        "properties": {
+          "path": { "type": "string", "pattern": "^payloads/[A-Za-z0-9._-]+$" },
+          "role": { "type": "string", "minLength": 1 },
+          "size": { "type": "integer", "minimum": 0 },
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "sourceSpan": { "$ref": "#/$defs/sourceSpan" },
+          "container": { "$ref": "#/$defs/containerRelationship" },
+          "entry": { "$ref": "#/$defs/entryRelationship" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offset", "length"],
+      "properties": {
+        "offset": { "type": "integer", "minimum": 0 },
+        "length": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "sourceSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offset", "length", "endExclusive"],
+      "properties": {
+        "offset": { "type": "integer", "minimum": 0 },
+        "length": { "type": "integer", "minimum": 0 },
+        "endExclusive": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "containerRelationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "format", "subtype", "span"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "format": { "enum": ["sedb", "res"] },
+        "subtype": { "type": "string" },
+        "span": { "$ref": "#/$defs/span" }
+      }
+    },
+    "entryRelationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "kind"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["payload", "subresource", "unknown-gap", "gtex-encoded-surface"] },
+        "face": { "type": "integer", "minimum": 0 },
+        "mipLevel": { "type": "integer", "minimum": 0 },
+        "gtexFormat": { "$ref": "#/$defs/gtexFormat" },
+        "index": { "type": "integer", "minimum": 0 },
+        "declaredOffset": { "type": "integer", "minimum": 0 },
+        "declaredSize": { "type": "integer", "minimum": 0 },
+        "declaredKind": { "type": "integer", "minimum": 0 },
+        "childContainer": { "$ref": "#/$defs/childContainer" }
+      }
+    },
+    "gtexFormat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clientIndex", "d3dName", "d3dValue"],
+      "properties": {
+        "clientIndex": { "enum": [4, 24, 26] },
+        "d3dName": { "enum": ["D3DFMT_A8R8G8B8", "D3DFMT_DXT1", "D3DFMT_DXT5"] },
+        "d3dValue": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "childContainer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "subtype", "span"],
+      "properties": {
+        "format": { "enum": ["sedb", "res"] },
+        "subtype": { "type": "string" },
+        "span": { "$ref": "#/$defs/span" }
+      }
+    }
+  }
+}

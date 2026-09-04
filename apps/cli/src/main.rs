@@ -15,7 +15,11 @@ use std::process::ExitCode;
 use xivl_formats::{extract_lpb, lua_path_document};
 use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_bytes_as, InspectAs};
 
+mod batch_extract;
 mod extract;
+mod resource_export;
+mod scan;
+mod verify_extract;
 
 const USAGE: &str = "\
 xivl - Final Fantasy XIV 1.23b client file tools
@@ -26,6 +30,10 @@ usage:
   xivl lua-path <path>
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
+  xivl catalog <game-or-resource-directory> --output <directory> [--format json|jsonl]
+  xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--as <format>] [--columns <list>]
+  xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads]
+  xivl verify-extraction <directory> [--source <file> | --catalog <catalog.json|catalog.jsonl> --root <directory>] [--report json]
   xivl --help
   xivl --version
 
@@ -43,11 +51,21 @@ extract discovers SSD sheet definitions under a 1.23b game directory,
 reads their data, enable, and row-offset resources, and writes one
 lossless CSV view per definition document.
 
+catalog inventories DAT resources without changing them. It records known,
+malformed, and unknown formats without guessing. extract-resource writes a
+schema-versioned YAML document by default, or JSON, and keeps decoded opaque
+payloads in separate files. --materialize-payloads explicitly writes exact
+direct-root SEDB/RES payload spans when their boundaries are unambiguous.
+extract-catalog plans and validates an explicit catalog selection before
+writing isolated per-resource outputs; it never has an implicit extract-all.
+verify-extraction checks an existing single or catalog extraction without
+writing or repairing it. Source replay is explicit and optional.
+
 lua-path applies the reversible ASCII resource-path transform. extract-lpb
 removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
 5.1 chunk without interpreting it. The output path must not already exist.
 
-  --as sedb | ssd | scrambled-xml | sqwt | lpb | lpb-bytecode | staticactor-san
+  --as sedb | ssd | scrambled-xml | sqwt | lpb | lpb-bytecode | staticactor-san | gtex | pwib
      | enable-file | row-offsets
      | sheet-data | config-sys | config-pad | config-lng | config-rgn
       Read the input as this format. Needed for enable-file and
@@ -59,6 +77,10 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
       the container and a census of the document's shape instead.
       --as sqwt decodes a SQEX container, whose key is the file's own
       base name: renaming such a file makes it unreadable.
+      --as gtex reports loader-backed texture fields, mapped formats,
+      surface offset-size entries, and exact source spans. --as pwib reports
+      its two loader-bounded segments and
+      the fixed SEDB header at the start of the first.
       --as lpb-bytecode retains the LPB wrapper report and adds bounded
       Lua 5.1 header, prototype, constant, nesting, and validated opcode
       and operand structure. It does not decompile or execute code.
@@ -93,6 +115,7 @@ fn main() -> ExitCode {
     }
 }
 
+#[derive(Debug)]
 struct Failure {
     message: String,
     code: u8,
@@ -140,6 +163,32 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
                 summary.absent_blocks,
                 summary.conflicting_values
             );
+            Ok(())
+        }
+        Some("catalog") => {
+            let summary = scan::run(&arguments[1..])?;
+            println!(
+                "cataloged {} resources to {}",
+                summary.resources, summary.output
+            );
+            Ok(())
+        }
+        Some("extract-resource") => {
+            let summary = resource_export::run(&arguments[1..])?;
+            println!("wrote {}", summary.output);
+            Ok(())
+        }
+        Some("extract-catalog") => {
+            let summary = batch_extract::run(&arguments[1..])?;
+            println!(
+                "extracted {} resources, {} source bytes, {} output bytes to {}",
+                summary.resources, summary.source_bytes, summary.output_bytes, summary.output
+            );
+            Ok(())
+        }
+        Some("verify-extraction") => {
+            let summary = verify_extract::run(&arguments[1..])?;
+            println!("{}", summary.text);
             Ok(())
         }
         Some(other) => Err(Failure::usage(format!(

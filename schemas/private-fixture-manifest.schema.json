@@ -19,6 +19,10 @@
         "type": "object",
         "additionalProperties": false,
         "required": ["id", "sourcePath", "sha256", "size", "formatIds", "addedOn"],
+        "dependentRequired": {
+          "repository": ["repositoryCommit"],
+          "repositoryCommit": ["repository"]
+        },
         "properties": {
           "id": {
             "type": "string",
@@ -28,6 +32,16 @@
           "root": {
             "enum": ["client-install", "user-config"],
             "description": "Which root sourcePath is relative to. Absent means client-install. The runner takes one directory per root and has no default for any of them."
+          },
+          "repository": {
+            "type": "string",
+            "const": "XIVLegacy/xivl-private-assets",
+            "description": "Restricted fixture store holding the selected immutable input, when the fixture root is a checkout rather than the live install."
+          },
+          "repositoryCommit": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$",
+            "description": "Exact private-repository commit containing the selected input."
           },
           "sourcePath": {
             "type": "string",

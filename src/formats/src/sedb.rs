@@ -350,6 +350,51 @@ impl Container {
     }
 }
 
+/// Refuse payload materialization when a declared RES extent is ambiguous.
+///
+/// Inspection remains permissive and reports these conditions as anomalies,
+/// because accounting for available bytes is useful even when a declaration
+/// runs long. Materialization has a stricter contract: every direct root entry
+/// must name one exact independent input span. Aliases are a complete overlap
+/// and therefore use the same refusal as a partial overlap. Nested containers
+/// are checked recursively even though their bytes are materialized only once
+/// as the parent's direct subresource.
+pub fn validate_payload_materialization(container: &Container) -> Result<()> {
+    const AMBIGUOUS: [&str; 6] = [
+        "subresource-start-out-of-range",
+        "subresource-extent-clamped",
+        "subresource-past-container-end",
+        "subresource-overlap",
+        "payload-past-container-end",
+        "nested-parse-error",
+    ];
+
+    if let Some(anomaly) = container
+        .anomalies
+        .iter()
+        .find(|anomaly| AMBIGUOUS.contains(&anomaly.kind))
+    {
+        return Err(FormatError::new(
+            ErrorKind::AmbiguousPayloadSpan,
+            anomaly.span.offset,
+            format!(
+                "{} prevents exact payload materialization: {}",
+                anomaly.kind, anomaly.detail
+            ),
+        ));
+    }
+
+    for entry in &container.entries {
+        if let EntryBody::Subresource {
+            child: Some(child), ..
+        } = &entry.body
+        {
+            validate_payload_materialization(child)?;
+        }
+    }
+    Ok(())
+}
+
 /// Enumerate a RES payload: the directory, every subresource it declares,
 /// and every payload byte no entry claims.
 fn parse_res_payload(

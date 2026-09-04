@@ -1,0 +1,188 @@
+{
+  "anomalies": [],
+  "dataBase": {
+    "byteOrder": "big",
+    "span": {
+      "length": 4,
+      "offset": 20
+    },
+    "value": 40
+  },
+  "dataRegion": {
+    "gaps": [],
+    "kind": "texture-source-data",
+    "sha256": "12051760c9036fb25efd6efc20c2ee98f8269ce3844745a7131414ef7ff7e9bd",
+    "span": {
+      "length": 40,
+      "offset": 40
+    }
+  },
+  "format": "gtex",
+  "header": {
+    "span": {
+      "length": 40,
+      "offset": 0
+    },
+    "unknown": [
+      {
+        "kind": "unknown-gap",
+        "sha256": "409521f02c8b29bd4f76b832de53a56fb64ac90f85f6fdce1545f53c643b2219",
+        "span": {
+          "length": 2,
+          "offset": 4
+        }
+      },
+      {
+        "kind": "unknown-gap",
+        "sha256": "de7d1b721a1e0632b7cf04edf5032c8ecffa9f9a08492152b926f1a5a7e765d7",
+        "span": {
+          "length": 1,
+          "offset": 8
+        }
+      }
+    ]
+  },
+  "input": {
+    "length": 80
+  },
+  "layoutStatus": "bounded",
+  "offsetTable": {
+    "base": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 16
+      },
+      "value": 24
+    },
+    "entries": [
+      {
+        "calculatedSize": 32,
+        "face": 0,
+        "index": 0,
+        "mipLevel": 0,
+        "offsetField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 24
+          },
+          "value": 0
+        },
+        "sizeField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 28
+          },
+          "value": 32
+        },
+        "source": {
+          "sha256": "175c6281fc6ce5ecb08f4b05e243f0f8f7c6bf66fa77b15a47e6129e69cb11cc",
+          "span": {
+            "length": 32,
+            "offset": 40
+          }
+        }
+      },
+      {
+        "calculatedSize": 8,
+        "face": 0,
+        "index": 1,
+        "mipLevel": 1,
+        "offsetField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 32
+          },
+          "value": 32
+        },
+        "sizeField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 36
+          },
+          "value": 8
+        },
+        "source": {
+          "sha256": "a01a9f40c64a8eb5e3400a498854795911c98e45292d119f9eaaebd00320d50c",
+          "span": {
+            "length": 8,
+            "offset": 72
+          }
+        }
+      }
+    ],
+    "entryStride": 8
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "signature": {
+    "ascii": "GTEX",
+    "span": {
+      "length": 4,
+      "offset": 0
+    }
+  },
+  "surfaceMaterialization": {
+    "status": "supported"
+  },
+  "texture": {
+    "depth": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 14
+      },
+      "value": 1
+    },
+    "flagBit2": false,
+    "flags": {
+      "span": {
+        "length": 1,
+        "offset": 9
+      },
+      "value": 0
+    },
+    "formatIndex": {
+      "mapping": {
+        "bitsPerPixel": 32,
+        "blockBytes": null,
+        "d3dName": "D3DFMT_A8R8G8B8",
+        "d3dValue": 21
+      },
+      "span": {
+        "length": 1,
+        "offset": 6
+      },
+      "value": 4
+    },
+    "height": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 12
+      },
+      "value": 2
+    },
+    "kind": "2d",
+    "mipLevels": {
+      "span": {
+        "length": 1,
+        "offset": 7
+      },
+      "value": 2
+    },
+    "width": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 10
+      },
+      "value": 4
+    }
+  },
+  "trailing": []
+}

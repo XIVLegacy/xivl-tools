@@ -1,0 +1,9 @@
+{
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "fixture": { "fixtureId": "retail-gtex-a8r8g8b8-1c59027e", "kind": "private" },
+  "formatId": "gtex",
+  "id": "retail-gtex-a8r8g8b8-1c59027e",
+  "notes": "Retail A8R8G8B8 surface sizing representative. Retail 1.23b, game.ver 2012.09.19.0001.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}
