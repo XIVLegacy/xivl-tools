@@ -265,7 +265,7 @@
         "png",
         "json"
       ],
-      "notes": "Reads the exact GTEX signature, a 32-byte outer header, and the big-endian extent size at 0x1c. Across all 21161 retail files the declared extent stays inside the input; 14187 leave separately preserved trailing bytes, so it is not treated as an end-of-file field. Metadata-only extraction and verification preserve spans and digests but are not a lossless export. The extent's purpose, every other header field, texture metadata, version, format identifier, dimension, mip or layer count, compression, swizzle, and GPU compatibility remain unresolved."
+      "notes": "Reads the loader-backed client format index, mip count, texture flags, dimensions, optional eight-byte surface-offset entries, and source-data base. The data region runs from that base to end of input. Across all 21161 retail files the data base is nonzero and stays inside the input. Metadata-only extraction and verification preserve fields, spans, and digests but are not a lossless export. Client format-table values, flag bit 2, the second dword of each surface entry, encoded surface sizes, header offset 0x1c, compression, swizzle, GPU compatibility, DDS/PNG conversion, and payload materialization remain unresolved."
     },
     {
       "id": "pwib",
@@ -275,7 +275,7 @@
       "read": "partial",
       "write": "none",
       "export": "none",
-      "notes": "Reads the exact PWIB signature, a 16-byte outer header, and the nested SEDB container beginning at 0x10. All 3544 retail files carry that child signature and its declared extent stays inside the input; 362 leave separately preserved trailing bytes. Metadata-only extraction and verification preserve the bounded model but are not a lossless export. The outer header fields and resource purpose remain unresolved; no texture or index-buffer interpretation is claimed."
+      "notes": "Reads the exact PWIB signature and the big-endian total, first-segment, and second-segment boundaries at 0x04, 0x08, and 0x0c. It reports the SEDB-prefixed first segment and opaque second segment independently rather than treating the first as a standalone SEDB container. All 3544 retail files have ordered in-file boundaries, exact total sizes, and SEDB at the first offset. Metadata-only extraction and verification preserve the bounded model but are not a lossless export. The second segment's purpose and internal structure remain unresolved; no texture or index-buffer interpretation is claimed."
     },
     {
       "id": "fdt",

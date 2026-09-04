@@ -1,54 +1,55 @@
 {
   "anomalies": [],
-  "declaredExtent": {
-    "child": {
-      "anomalies": [],
+  "firstSegment": {
+    "kind": "sedb-prefix",
+    "sedbHeader": {
       "declaredSize": 37,
-      "entries": [
-        {
-          "kind": "payload",
-          "sha256": "712e25bc12e11c02f20400a0bf3b34ff4b0b8cb0508e4bddb327bdd03cc03a98",
-          "span": {
-            "length": 17,
-            "offset": 36
-          }
-        }
-      ],
       "flags": 2,
       "headerSize": 20,
-      "headerUnknown": [],
-      "kind": "sedb-container",
       "span": {
-        "length": 37,
+        "length": 20,
         "offset": 16
       },
       "subtype": "syn\\x00",
-      "totalSize": 37,
       "unknownA": 7
     },
-    "kind": "sedb-container",
-    "sha256": "f290c7124eb1ab4cd9c3e444524d539beefff41de954e3593590edf3e7cdc6fd",
+    "sha256": "021d2e9ed32749c114bd76a1f95a57c09c298516bb28180dc6f707b6ccd942b8",
     "span": {
-      "length": 37,
+      "length": 25,
       "offset": 16
     }
   },
   "format": "pwib",
   "header": {
+    "firstSegmentOffset": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 8
+      },
+      "value": 16
+    },
+    "secondSegmentOffset": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 12
+      },
+      "value": 41
+    },
     "span": {
       "length": 16,
       "offset": 0
     },
-    "unknown": [
-      {
-        "kind": "unknown-gap",
-        "sha256": "ea46be70f06f3e21ae97c60bb10f5aa5fe7edc940680c6173e06a2b19974368b",
-        "span": {
-          "length": 12,
-          "offset": 4
-        }
-      }
-    ]
+    "totalSize": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 4
+      },
+      "value": 53
+    },
+    "unknown": []
   },
   "input": {
     "length": 53
@@ -56,6 +57,14 @@
   "layoutStatus": "bounded",
   "operation": "inspect",
   "schemaVersion": 1,
+  "secondSegment": {
+    "kind": "opaque-continuation",
+    "sha256": "096a912ff3c818b94b65990dede243dcadd5ff27276dabb0db1777272d3e9f60",
+    "span": {
+      "length": 12,
+      "offset": 41
+    }
+  },
   "signature": {
     "ascii": "PWIB",
     "span": {

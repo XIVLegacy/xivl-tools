@@ -77,8 +77,9 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
       the container and a census of the document's shape instead.
       --as sqwt decodes a SQEX container, whose key is the file's own
       base name: renaming such a file makes it unreadable.
-      --as gtex and --as pwib recognize only their four-byte signatures
-      and preserve every later byte as one unresolved span with a digest.
+      --as gtex reports loader-backed texture fields, surface offsets, and
+      source data. --as pwib reports its two loader-bounded segments and
+      the fixed SEDB header at the start of the first.
       --as lpb-bytecode retains the LPB wrapper report and adds bounded
       Lua 5.1 header, prototype, constant, nesting, and validated opcode
       and operand structure. It does not decompile or execute code.

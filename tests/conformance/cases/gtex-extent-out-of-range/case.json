@@ -11,7 +11,7 @@
   "expect": {
     "outcome": "parse-error",
     "errorKind": "declared-size-out-of-range",
-    "errorOffset": 28
+    "errorOffset": 20
   },
-  "notes": "A GTEX extent declaration cannot escape the input."
+  "notes": "A GTEX source-data base cannot escape the input."
 }

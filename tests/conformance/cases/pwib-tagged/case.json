@@ -9,5 +9,5 @@
   },
   "arguments": ["--as", "pwib"],
   "expect": { "outcome": "ok", "output": "expected.json" },
-  "notes": "Authored bytes verify the PWIB outer header and an exact nested synthetic SEDB extent."
+  "notes": "Authored bytes verify the three PWIB boundaries and both independent segments."
 }

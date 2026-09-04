@@ -1,20 +1,20 @@
 {
   "anomalies": [],
-  "declaredExtent": {
-    "kind": "opaque-extent",
-    "sha256": "aa46d04e53063652c09309a9fa6119aee11573ed335509b5a80dd9e73a32f058",
-    "span": {
-      "length": 5,
-      "offset": 32
-    }
-  },
-  "extentSize": {
+  "dataBase": {
     "byteOrder": "big",
     "span": {
       "length": 4,
-      "offset": 28
+      "offset": 20
     },
-    "value": 5
+    "value": 32
+  },
+  "dataRegion": {
+    "kind": "texture-source-data",
+    "sha256": "2837dd1e2c2e7c76ccfecd099e87df422483cafa7718867cc6ae81d06ac45416",
+    "span": {
+      "length": 12,
+      "offset": 32
+    }
   },
   "format": "gtex",
   "header": {
@@ -25,10 +25,26 @@
     "unknown": [
       {
         "kind": "unknown-gap",
-        "sha256": "1a8ec40c7205fc9c972b740d34e9e3d5f12a21d8ad2aa0210d808e238295cc1a",
+        "sha256": "409521f02c8b29bd4f76b832de53a56fb64ac90f85f6fdce1545f53c643b2219",
         "span": {
-          "length": 24,
+          "length": 2,
           "offset": 4
+        }
+      },
+      {
+        "kind": "unknown-gap",
+        "sha256": "de7d1b721a1e0632b7cf04edf5032c8ecffa9f9a08492152b926f1a5a7e765d7",
+        "span": {
+          "length": 1,
+          "offset": 8
+        }
+      },
+      {
+        "kind": "unknown-gap",
+        "sha256": "42640ec6e0eb514941c2e5f9e33e7cef82c0d53157c911a50b57f51c5e7e0819",
+        "span": {
+          "length": 8,
+          "offset": 24
         }
       }
     ]
@@ -37,6 +53,18 @@
     "length": 44
   },
   "layoutStatus": "bounded",
+  "offsetTable": {
+    "base": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 16
+      },
+      "value": 0
+    },
+    "entries": [],
+    "entryStride": 8
+  },
   "operation": "inspect",
   "schemaVersion": 1,
   "signature": {
@@ -46,14 +74,54 @@
       "offset": 0
     }
   },
-  "trailing": [
-    {
-      "kind": "trailing-bytes",
-      "sha256": "bd1f0da2d67085760488d35fa794768812fbd736624caad44086a8d047e34a71",
+  "texture": {
+    "depth": {
+      "byteOrder": "big",
       "span": {
-        "length": 7,
-        "offset": 37
-      }
+        "length": 2,
+        "offset": 14
+      },
+      "value": 1
+    },
+    "flagBit2": false,
+    "flags": {
+      "span": {
+        "length": 1,
+        "offset": 9
+      },
+      "value": 2
+    },
+    "formatIndex": {
+      "span": {
+        "length": 1,
+        "offset": 6
+      },
+      "value": 3
+    },
+    "height": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 12
+      },
+      "value": 32
+    },
+    "kind": "volume",
+    "mipLevels": {
+      "span": {
+        "length": 1,
+        "offset": 7
+      },
+      "value": 2
+    },
+    "width": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 10
+      },
+      "value": 64
     }
-  ]
+  },
+  "trailing": []
 }

@@ -1,33 +1,19 @@
 {
   "anomalies": [],
-  "declaredExtent": {
-    "child": {
-      "anomalies": [],
-      "declaredSize": 20,
-      "entries": [
-        {
-          "kind": "payload",
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "span": {
-            "length": 0,
-            "offset": 36
-          }
-        }
-      ],
+  "firstSegment": {
+    "kind": "sedb-prefix",
+    "sedbHeader": {
+      "declaredSize": 29,
       "flags": 2,
       "headerSize": 20,
-      "headerUnknown": [],
-      "kind": "sedb-container",
       "span": {
         "length": 20,
         "offset": 16
       },
       "subtype": "syn\\x00",
-      "totalSize": 20,
       "unknownA": 8
     },
-    "kind": "sedb-container",
-    "sha256": "8cb58ebb0f09e3dff3d8fe070260152698e449575574934b62beacf33f9a49d7",
+    "sha256": "86631a139a75287e4dd241d6cfb3d8819f7f79858140359acc0a37ff71020ebc",
     "span": {
       "length": 20,
       "offset": 16
@@ -35,27 +21,50 @@
   },
   "format": "pwib",
   "header": {
+    "firstSegmentOffset": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 8
+      },
+      "value": 16
+    },
+    "secondSegmentOffset": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 12
+      },
+      "value": 36
+    },
     "span": {
       "length": 16,
       "offset": 0
     },
-    "unknown": [
-      {
-        "kind": "unknown-gap",
-        "sha256": "6c7c8e0ef96aa209dd556fa468e78b7fc8e02793acddd85d7e19797088d29d1e",
-        "span": {
-          "length": 12,
-          "offset": 4
-        }
-      }
-    ]
+    "totalSize": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 4
+      },
+      "value": 45
+    },
+    "unknown": []
   },
   "input": {
-    "length": 45
+    "length": 49
   },
   "layoutStatus": "bounded",
   "operation": "inspect",
   "schemaVersion": 1,
+  "secondSegment": {
+    "kind": "opaque-continuation",
+    "sha256": "4b749e3cd75b823ce101e7dc9b898fd370f08ae62928f26842dd85efb9f96c4e",
+    "span": {
+      "length": 9,
+      "offset": 36
+    }
+  },
   "signature": {
     "ascii": "PWIB",
     "span": {
@@ -66,10 +75,10 @@
   "trailing": [
     {
       "kind": "trailing-bytes",
-      "sha256": "4b749e3cd75b823ce101e7dc9b898fd370f08ae62928f26842dd85efb9f96c4e",
+      "sha256": "c37ac4d9ca44801c33996b4cebedad4ebfbefc9f41cb76cb78ab642c90d0a9ad",
       "span": {
-        "length": 9,
-        "offset": 36
+        "length": 4,
+        "offset": 45
       }
     }
   ]

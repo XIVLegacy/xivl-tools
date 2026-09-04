@@ -66,7 +66,7 @@
         "gtex"
       ],
       "id": "retail-gtex-61c10005",
-      "notes": "The smallest observed GTEX resource: a 32-byte header whose big-endian extent size is 8, followed by exactly 8 bytes in that declared extent.",
+      "notes": "The smallest observed GTEX resource: a 4 by 4 2D texture with one mip, a data base of 32, one surface-offset entry, and 8 source-data bytes.",
       "repository": "XIVLegacy/xivl-private-assets",
       "repositoryCommit": "e42f476037a525c953d5536e6bcd41ff7ca56fa1",
       "sha256": "6663eafa5248c68d9804c4f4ca0677d4f24434f5c014b53889c70b2ccba204ef",
@@ -123,7 +123,7 @@
         "pwib"
       ],
       "id": "retail-pwib-89b0005a",
-      "notes": "The smallest observed PWIB resource: a 16-byte outer header followed by one exact 520-byte SEDB container.",
+      "notes": "The smallest observed PWIB resource: a 16-byte header, a 144-byte SEDB-prefixed first segment, and a 376-byte opaque second segment.",
       "repository": "XIVLegacy/xivl-private-assets",
       "repositoryCommit": "e42f476037a525c953d5536e6bcd41ff7ca56fa1",
       "sha256": "42cd46946d39812f32d17fb683e0ab45c53bdff9948610feb5228e93f856f99a",

@@ -56,9 +56,9 @@ pub enum InspectAs {
     LpbBytecode,
     /// The XOR-0x73 static-actor SAN record table.
     StaticActorSan,
-    /// A GTEX-tagged resource with no evidenced post-signature layout.
+    /// A GTEX texture with loader-backed metadata and source addressing.
     Gtex,
-    /// A PWIB-tagged resource with no evidenced post-signature layout.
+    /// A PWIB resource with two loader-bounded segments.
     Pwib,
     EnableFile,
     RowOffsets,
@@ -582,64 +582,118 @@ fn inspect_staticactor(data: &[u8]) -> Result<Value> {
 
 fn inspect_tagged_resource(data: &[u8], kind: TaggedResourceKind) -> Result<Value> {
     let resource = gtex_pwib::parse(data, kind)?;
-    let header_unknown = span_bytes(data, resource.header_unknown);
-    let declared_extent = span_bytes(data, resource.declared_extent);
-    let mut object = envelope(resource.kind.format_id(), data);
+    let mut object = envelope(kind.format_id(), data);
     object.insert(
         "signature".into(),
         json!({
-            "ascii": String::from_utf8_lossy(resource.kind.magic()),
-            "span": resource.signature.to_json(),
+            "ascii": String::from_utf8_lossy(kind.magic()),
+            "span": { "offset": 0, "length": 4 },
         }),
     );
-    object.insert(
-        "header".into(),
-        json!({
-            "span": resource.header.to_json(),
-            "unknown": [{
-                "kind": "unknown-gap",
-                "span": resource.header_unknown.to_json(),
-                "sha256": sha256_hex(header_unknown),
-            }],
-        }),
-    );
-    if resource.kind == TaggedResourceKind::Gtex {
-        object.insert(
-            "extentSize".into(),
-            json!({
-                "byteOrder": "big",
-                "span": { "offset": 0x1c, "length": 4 },
-                "value": resource.declared_extent_size,
-            }),
-        );
+    match resource {
+        gtex_pwib::TaggedResource::Gtex(gtex) => {
+            object.insert(
+                "header".into(),
+                json!({
+                    "span": gtex.header.to_json(),
+                    "unknown": gtex.header_unknown.iter().map(|span| json!({
+                        "kind": "unknown-gap",
+                        "span": span.to_json(),
+                        "sha256": sha256_hex(span_bytes(data, *span)),
+                    })).collect::<Vec<_>>(),
+                }),
+            );
+            object.insert(
+                "texture".into(),
+                json!({
+                    "formatIndex": { "span": { "offset": 6, "length": 1 }, "value": gtex.format_index },
+                    "mipLevels": { "span": { "offset": 7, "length": 1 }, "value": gtex.mip_levels },
+                    "flags": { "span": { "offset": 9, "length": 1 }, "value": gtex.flags },
+                    "kind": gtex.texture_kind.name(),
+                    "width": { "byteOrder": "big", "span": { "offset": 10, "length": 2 }, "value": gtex.width },
+                    "height": { "byteOrder": "big", "span": { "offset": 12, "length": 2 }, "value": gtex.height },
+                    "depth": { "byteOrder": "big", "span": { "offset": 14, "length": 2 }, "value": gtex.depth },
+                    "flagBit2": gtex.flags & 4 != 0,
+                }),
+            );
+            object.insert(
+                "offsetTable".into(),
+                json!({
+                    "base": { "byteOrder": "big", "span": { "offset": 16, "length": 4 }, "value": gtex.offset_table_base },
+                    "entryStride": gtex_pwib::SURFACE_OFFSET_ENTRY_SIZE,
+                    "entries": gtex.surface_offsets.iter().map(|entry| json!({
+                        "index": entry.index,
+                        "offsetField": { "byteOrder": "big", "span": entry.field_span.to_json(), "value": entry.value },
+                    })).collect::<Vec<_>>(),
+                }),
+            );
+            object.insert(
+                "dataBase".into(),
+                json!({
+                    "byteOrder": "big",
+                    "span": { "offset": 20, "length": 4 },
+                    "value": gtex.data_base,
+                }),
+            );
+            object.insert(
+                "dataRegion".into(),
+                json!({
+                    "kind": "texture-source-data",
+                    "span": gtex.data.to_json(),
+                    "sha256": sha256_hex(span_bytes(data, gtex.data)),
+                }),
+            );
+            object.insert("trailing".into(), json!([]));
+        }
+        gtex_pwib::TaggedResource::Pwib(pwib) => {
+            object.insert(
+                "header".into(),
+                json!({
+                    "span": pwib.header.to_json(),
+                    "totalSize": { "byteOrder": "big", "span": { "offset": 4, "length": 4 }, "value": pwib.total_size },
+                    "firstSegmentOffset": { "byteOrder": "big", "span": { "offset": 8, "length": 4 }, "value": pwib.first_offset },
+                    "secondSegmentOffset": { "byteOrder": "big", "span": { "offset": 12, "length": 4 }, "value": pwib.second_offset },
+                    "unknown": [],
+                }),
+            );
+            object.insert(
+                "firstSegment".into(),
+                json!({
+                    "kind": "sedb-prefix",
+                    "span": pwib.first_segment.to_json(),
+                    "sha256": sha256_hex(span_bytes(data, pwib.first_segment)),
+                    "sedbHeader": {
+                        "span": pwib.sedb_prefix.span.to_json(),
+                        "subtype": pwib.sedb_prefix.subtype,
+                        "unknownA": pwib.sedb_prefix.unknown_a,
+                        "flags": pwib.sedb_prefix.flags,
+                        "headerSize": pwib.sedb_prefix.header_size,
+                        "declaredSize": pwib.sedb_prefix.declared_size,
+                    },
+                }),
+            );
+            object.insert(
+                "secondSegment".into(),
+                json!({
+                    "kind": "opaque-continuation",
+                    "span": pwib.second_segment.to_json(),
+                    "sha256": sha256_hex(span_bytes(data, pwib.second_segment)),
+                }),
+            );
+            object.insert(
+                "trailing".into(),
+                if pwib.trailing.length == 0 {
+                    json!([])
+                } else {
+                    json!([{
+                        "kind": "trailing-bytes",
+                        "span": pwib.trailing.to_json(),
+                        "sha256": sha256_hex(span_bytes(data, pwib.trailing)),
+                    }])
+                },
+            );
+        }
     }
-    let mut extent_object = Map::new();
-    extent_object.insert(
-        "kind".into(),
-        json!(if resource.kind == TaggedResourceKind::Pwib {
-            "sedb-container"
-        } else {
-            "opaque-extent"
-        }),
-    );
-    extent_object.insert("span".into(), resource.declared_extent.to_json());
-    extent_object.insert("sha256".into(), json!(sha256_hex(declared_extent)));
-    if let Some(nested) = &resource.nested_sedb {
-        extent_object.insert("child".into(), container_to_json(nested));
-    }
-    object.insert("declaredExtent".into(), Value::Object(extent_object));
-    object.insert(
-        "trailing".into(),
-        if resource.trailing.length == 0 {
-            json!([])
-        } else {
-            json!([{
-                "kind": "trailing-bytes",
-                "span": resource.trailing.to_json(),
-                "sha256": sha256_hex(span_bytes(data, resource.trailing)),
-            }])
-        },
-    );
     object.insert("layoutStatus".into(), json!("bounded"));
     object.insert("anomalies".into(), json!([]));
     Ok(Value::Object(object))
@@ -1220,9 +1274,13 @@ mod tests {
         assert_eq!(document["format"], "staticactor-san");
         let mut gtex = vec![0u8; 0x20];
         gtex[0..4].copy_from_slice(b"GTEX");
+        gtex[0x14..0x18].copy_from_slice(&0x20u32.to_be_bytes());
         assert_eq!(inspect_bytes(&gtex).unwrap()["format"], "gtex");
         let mut pwib = vec![0u8; 0x24];
         pwib[0..4].copy_from_slice(b"PWIB");
+        pwib[4..8].copy_from_slice(&0x24u32.to_be_bytes());
+        pwib[8..12].copy_from_slice(&0x10u32.to_be_bytes());
+        pwib[12..16].copy_from_slice(&0x24u32.to_be_bytes());
         pwib[0x10..0x18].copy_from_slice(b"SEDBsyn\0");
         pwib[0x1e..0x20].copy_from_slice(&0x14u16.to_le_bytes());
         pwib[0x20..0x24].copy_from_slice(&0x14u32.to_le_bytes());

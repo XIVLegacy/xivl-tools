@@ -1,20 +1,20 @@
 {
   "anomalies": [],
-  "declaredExtent": {
-    "kind": "opaque-extent",
+  "dataBase": {
+    "byteOrder": "big",
+    "span": {
+      "length": 4,
+      "offset": 20
+    },
+    "value": 32
+  },
+  "dataRegion": {
+    "kind": "texture-source-data",
     "sha256": "41b8f24b79ae38bb5f3af44cf187d022c20517a6f576791e466d536517b68fb9",
     "span": {
       "length": 8,
       "offset": 32
     }
-  },
-  "extentSize": {
-    "byteOrder": "big",
-    "span": {
-      "length": 4,
-      "offset": 28
-    },
-    "value": 8
   },
   "format": "gtex",
   "header": {
@@ -25,10 +25,26 @@
     "unknown": [
       {
         "kind": "unknown-gap",
-        "sha256": "c3da6b5bd3470c205d5bcff9bd63f517f46c5841971cb40b958391d514523262",
+        "sha256": "9dcf97a184f32623d11a73124ceb99a5709b083721e878a16d78f596718ba7b2",
         "span": {
-          "length": 24,
+          "length": 2,
           "offset": 4
+        }
+      },
+      {
+        "kind": "unknown-gap",
+        "sha256": "dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986",
+        "span": {
+          "length": 1,
+          "offset": 8
+        }
+      },
+      {
+        "kind": "unknown-gap",
+        "sha256": "17eb70034b5b71092521d184c5e7b069d47de657e51aef2be11a00c115036943",
+        "span": {
+          "length": 4,
+          "offset": 28
         }
       }
     ]
@@ -37,6 +53,30 @@
     "length": 40
   },
   "layoutStatus": "bounded",
+  "offsetTable": {
+    "base": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 16
+      },
+      "value": 24
+    },
+    "entries": [
+      {
+        "index": 0,
+        "offsetField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 24
+          },
+          "value": 0
+        }
+      }
+    ],
+    "entryStride": 8
+  },
   "operation": "inspect",
   "schemaVersion": 1,
   "signature": {
@@ -44,6 +84,55 @@
     "span": {
       "length": 4,
       "offset": 0
+    }
+  },
+  "texture": {
+    "depth": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 14
+      },
+      "value": 1
+    },
+    "flagBit2": false,
+    "flags": {
+      "span": {
+        "length": 1,
+        "offset": 9
+      },
+      "value": 0
+    },
+    "formatIndex": {
+      "span": {
+        "length": 1,
+        "offset": 6
+      },
+      "value": 24
+    },
+    "height": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 12
+      },
+      "value": 4
+    },
+    "kind": "2d",
+    "mipLevels": {
+      "span": {
+        "length": 1,
+        "offset": 7
+      },
+      "value": 1
+    },
+    "width": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 10
+      },
+      "value": 4
     }
   },
   "trailing": []

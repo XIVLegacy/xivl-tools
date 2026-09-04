@@ -9,5 +9,5 @@
   },
   "arguments": ["--as", "gtex"],
   "expect": { "outcome": "ok", "output": "expected.json" },
-  "notes": "A declared GTEX extent shorter than the remaining file preserves the later bytes separately."
+  "notes": "Authored bytes verify the GTEX volume branch and an end-of-input source-data region."
 }

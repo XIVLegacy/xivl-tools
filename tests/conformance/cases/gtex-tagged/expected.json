@@ -1,42 +1,109 @@
 {
   "anomalies": [],
-  "declaredExtent": {
-    "kind": "opaque-extent",
-    "sha256": "51392be94fc0c2ce4be6356474750e4a910bb5bb044d619c0496e53c3f7a7395",
-    "span": {
-      "length": 13,
-      "offset": 32
-    }
-  },
-  "extentSize": {
+  "dataBase": {
     "byteOrder": "big",
     "span": {
       "length": 4,
-      "offset": 28
+      "offset": 20
     },
-    "value": 13
+    "value": 48
+  },
+  "dataRegion": {
+    "kind": "texture-source-data",
+    "sha256": "51392be94fc0c2ce4be6356474750e4a910bb5bb044d619c0496e53c3f7a7395",
+    "span": {
+      "length": 13,
+      "offset": 48
+    }
   },
   "format": "gtex",
   "header": {
     "span": {
-      "length": 32,
+      "length": 48,
       "offset": 0
     },
     "unknown": [
       {
         "kind": "unknown-gap",
-        "sha256": "1d9cc9959907ad4a96a878f6f0a67e917462c2e52f5ce8e8208ae0fd2a3ae020",
+        "sha256": "409521f02c8b29bd4f76b832de53a56fb64ac90f85f6fdce1545f53c643b2219",
         "span": {
-          "length": 24,
+          "length": 2,
           "offset": 4
+        }
+      },
+      {
+        "kind": "unknown-gap",
+        "sha256": "de7d1b721a1e0632b7cf04edf5032c8ecffa9f9a08492152b926f1a5a7e765d7",
+        "span": {
+          "length": 1,
+          "offset": 8
+        }
+      },
+      {
+        "kind": "unknown-gap",
+        "sha256": "42640ec6e0eb514941c2e5f9e33e7cef82c0d53157c911a50b57f51c5e7e0819",
+        "span": {
+          "length": 8,
+          "offset": 24
+        }
+      },
+      {
+        "kind": "unknown-gap",
+        "sha256": "243894c5743ad411e0532b10f5acd565dd5d4d3bd15aecc0f0968b6ca0142926",
+        "span": {
+          "length": 4,
+          "offset": 36
+        }
+      },
+      {
+        "kind": "unknown-gap",
+        "sha256": "c7e4f28eb081bba556fd94f5404572e88d5c9a34ce0ce460a654950326b48546",
+        "span": {
+          "length": 4,
+          "offset": 44
         }
       }
     ]
   },
   "input": {
-    "length": 45
+    "length": 61
   },
   "layoutStatus": "bounded",
+  "offsetTable": {
+    "base": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 16
+      },
+      "value": 32
+    },
+    "entries": [
+      {
+        "index": 0,
+        "offsetField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 32
+          },
+          "value": 0
+        }
+      },
+      {
+        "index": 1,
+        "offsetField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 40
+          },
+          "value": 5
+        }
+      }
+    ],
+    "entryStride": 8
+  },
   "operation": "inspect",
   "schemaVersion": 1,
   "signature": {
@@ -44,6 +111,55 @@
     "span": {
       "length": 4,
       "offset": 0
+    }
+  },
+  "texture": {
+    "depth": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 14
+      },
+      "value": 1
+    },
+    "flagBit2": false,
+    "flags": {
+      "span": {
+        "length": 1,
+        "offset": 9
+      },
+      "value": 0
+    },
+    "formatIndex": {
+      "span": {
+        "length": 1,
+        "offset": 6
+      },
+      "value": 3
+    },
+    "height": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 12
+      },
+      "value": 32
+    },
+    "kind": "2d",
+    "mipLevels": {
+      "span": {
+        "length": 1,
+        "offset": 7
+      },
+      "value": 2
+    },
+    "width": {
+      "byteOrder": "big",
+      "span": {
+        "length": 2,
+        "offset": 10
+      },
+      "value": 64
     }
   },
   "trailing": []

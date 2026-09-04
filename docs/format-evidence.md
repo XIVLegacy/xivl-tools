@@ -14,7 +14,7 @@ repository makes.
 - [Configuration files](formats/configuration.md)
 - [Static-actor SAN records](formats/staticactor-san.md)
 - [Lua paths, LPB wrappers, and Lua 5.1](formats/lua-lpb.md)
-- [GTEX and PWIB bounded extents](formats/gtex-pwib.md)
+- [GTEX fields and PWIB segments](formats/gtex-pwib.md)
 
 ## How a fact gets here
 
@@ -42,9 +42,10 @@ Specifically not handled:
   payload is one opaque span with a digest;
 - the meaning of `unknownA`, `flags`, the RES `unknownB`, and the
   directory `kind` values. The values are carried into the report;
-- non-SEDB layouts remain outside the SEDB/RES claim. GTEX has its own bounded
-  outer reader and PWIB delegates a child at offset `0x10` to SEDB; MapLayout,
-  zero-filled, and unrecognized files still fail with `bad-magic`;
+- non-SEDB layouts remain outside the SEDB/RES claim. GTEX has its own
+  loader-backed reader and PWIB reports two loader-bounded segments without
+  treating its SEDB prefix as a standalone child; MapLayout, zero-filled, and
+  unrecognized files still fail with `bad-magic`;
 - the `wrb` chunk tree, model, mesh, skeleton, and texture layouts, which are
   outside this support claim;
 - extraction and manifesting of subresource bytes, which are also outside this

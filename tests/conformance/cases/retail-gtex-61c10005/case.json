@@ -9,7 +9,7 @@
   },
   "formatId": "gtex",
   "id": "retail-gtex-61c10005",
-  "notes": "The smallest retail GTEX resource verifies a 32-byte header, its big-endian extent size, and an exact 8-byte declared span. Retail 1.23b, game.ver 2012.09.19.0001. The expected output contains spans and digests only.",
+  "notes": "The smallest retail GTEX resource verifies loader-backed texture fields, one surface-offset entry, and an exact 8-byte source-data region. Retail 1.23b, game.ver 2012.09.19.0001. The expected output contains fields, spans, and digests only.",
   "operation": "inspect",
   "schemaVersion": 1
 }

@@ -622,8 +622,8 @@ mod tests {
     }
 
     #[test]
-    fn materialize_flag_rejects_bounded_gtex_extent() {
-        let root = temp_root("gtex-extent-option");
+    fn materialize_flag_rejects_bounded_gtex_data() {
+        let root = temp_root("gtex-data-option");
         fs::create_dir_all(&root).unwrap();
         let source = root.join("texture.DAT");
         fs::write(

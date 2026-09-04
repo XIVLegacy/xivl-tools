@@ -298,32 +298,57 @@ def build_fixtures() -> dict[str, bytes]:
     fixtures["lpb/bad-chunk.bin"] = b"rlu\x0bABCDxxxxx"
 
     # -- GTEX and PWIB resources ----------------------------------------
-    # The fixed spans are retail-evidenced; all values and payload bytes are
-    # invented. The fields outside the two established extents stay opaque.
-    gtex_extent = pattern(13, 0x44)
-    fixtures["gtex/tagged.bin"] = (
-        b"GTEX" + pattern(24, 0x31) + struct.pack(">I", len(gtex_extent)) + gtex_extent
+    # The fields and boundaries are loader-evidenced; all values and source
+    # bytes are invented.
+    def gtex(
+        data: bytes,
+        *,
+        flags: int = 0,
+        data_base: int = 0x20,
+        surface_offsets: tuple[int, ...] = (),
+    ) -> bytes:
+        header = bytearray(pattern(data_base, 0x31))
+        header[0:4] = b"GTEX"
+        header[6] = 3
+        header[7] = 2
+        header[9] = flags
+        header[0x0A:0x10] = struct.pack(">HHH", 64, 32, 1)
+        table_base = 0x20 if surface_offsets else 0
+        header[0x10:0x14] = struct.pack(">I", table_base)
+        header[0x14:0x18] = struct.pack(">I", data_base)
+        for index, offset in enumerate(surface_offsets):
+            entry = table_base + index * 8
+            header[entry : entry + 4] = struct.pack(">I", offset)
+        return bytes(header) + data
+
+    fixtures["gtex/tagged.bin"] = gtex(
+        pattern(13, 0x44), data_base=0x30, surface_offsets=(0, 5)
     )
-    fixtures["gtex/trailing.bin"] = (
-        b"GTEX" + pattern(24, 0x41) + struct.pack(">I", 5) + pattern(12, 0x51)
-    )
+    fixtures["gtex/trailing.bin"] = gtex(pattern(12, 0x51), flags=2)
     fixtures["gtex/truncated-header.bin"] = b"GTEX" + pattern(10, 0x71)
-    fixtures["gtex/extent-out-of-range.bin"] = (
-        b"GTEX" + pattern(24, 0x61) + struct.pack(">I", 2) + b"x"
-    )
-    pwib_payload = pattern(17, 0x62)
-    nested_sedb = sedb_header("syn", 7, 2, 0x14, 0x14 + len(pwib_payload)) + pwib_payload
-    fixtures["pwib/tagged.bin"] = b"PWIB" + pattern(12, 0x25) + nested_sedb
-    fixtures["pwib/trailing.bin"] = (
-        b"PWIB"
-        + pattern(12, 0x35)
-        + sedb_header("syn", 8, 2, 0x14, 0x14)
-        + pattern(9, 0x45)
+    bad_gtex = bytearray(gtex(b"x"))
+    bad_gtex[0x14:0x18] = struct.pack(">I", len(bad_gtex) + 1)
+    fixtures["gtex/extent-out-of-range.bin"] = bytes(bad_gtex)
+
+    def pwib(first: bytes, second: bytes, trailing: bytes = b"") -> bytes:
+        first_offset = 0x10
+        second_offset = first_offset + len(first)
+        total_size = second_offset + len(second)
+        header = b"PWIB" + struct.pack(">III", total_size, first_offset, second_offset)
+        return header + first + second + trailing
+
+    first = sedb_header("syn", 7, 2, 0x14, 37) + pattern(5, 0x62)
+    fixtures["pwib/tagged.bin"] = pwib(first, pattern(12, 0x72))
+    fixtures["pwib/trailing.bin"] = pwib(
+        sedb_header("syn", 8, 2, 0x14, 29), pattern(9, 0x45), pattern(4, 0x55)
     )
     fixtures["pwib/truncated-header.bin"] = b"PWIB" + pattern(5, 0x55)
-    fixtures["pwib/bad-nested-magic.bin"] = (
-        b"PWIB" + pattern(12, 0x65) + b"NOPE" + pattern(16, 0x75)
+    fixtures["pwib/bad-nested-magic.bin"] = pwib(
+        b"NOPE" + pattern(16, 0x75), pattern(4, 0x85)
     )
+    bad_boundaries = bytearray(pwib(first, pattern(12, 0x72)))
+    bad_boundaries[8:12] = struct.pack(">I", 0x30)
+    fixtures["pwib/bad-boundaries.bin"] = bytes(bad_boundaries)
     fixtures["gtex/truncated-tag.bin"] = b"GTE"
     fixtures["pwib/truncated-tag.bin"] = b"PWI"
 

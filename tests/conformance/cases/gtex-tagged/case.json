@@ -9,5 +9,5 @@
   },
   "arguments": ["--as", "gtex"],
   "expect": { "outcome": "ok", "output": "expected.json" },
-  "notes": "Authored bytes verify the GTEX header, big-endian extent size, and exact declared extent."
+  "notes": "Authored bytes verify loader-backed GTEX texture fields and the source-data boundary."
 }

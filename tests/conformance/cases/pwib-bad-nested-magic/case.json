@@ -13,5 +13,5 @@
     "errorKind": "bad-magic",
     "errorOffset": 16
   },
-  "notes": "PWIB requires the nested resource at offset 16 to carry the SEDB signature."
+  "notes": "PWIB requires its first segment to begin with the SEDB signature."
 }

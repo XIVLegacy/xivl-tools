@@ -1,63 +1,55 @@
 {
   "anomalies": [],
-  "declaredExtent": {
-    "child": {
-      "anomalies": [],
+  "firstSegment": {
+    "kind": "sedb-prefix",
+    "sedbHeader": {
       "declaredSize": 520,
-      "entries": [
-        {
-          "kind": "payload",
-          "sha256": "14802e5d6836bb3959320fb2ad95352b920c2ffefe9ea5f877dad1a5e6e42c91",
-          "span": {
-            "length": 456,
-            "offset": 80
-          }
-        }
-      ],
       "flags": 512,
       "headerSize": 64,
-      "headerUnknown": [
-        {
-          "kind": "unknown-gap",
-          "sha256": "b8c96c902d3771a7c80884523bad3cff2c66415b75763860399e70ca3d686b7c",
-          "span": {
-            "length": 44,
-            "offset": 36
-          }
-        }
-      ],
-      "kind": "sedb-container",
       "span": {
-        "length": 520,
+        "length": 20,
         "offset": 16
       },
       "subtype": "txb\\x00",
-      "totalSize": 520,
       "unknownA": 1
     },
-    "kind": "sedb-container",
-    "sha256": "f481d0515136750b26eb36b7f8f55b63323da2fafc8412fca5c7f399df749b54",
+    "sha256": "0fafddcd63f48968d56dba863e74577a5d37df675d36c3a4bfee33ad85a07245",
     "span": {
-      "length": 520,
+      "length": 144,
       "offset": 16
     }
   },
   "format": "pwib",
   "header": {
+    "firstSegmentOffset": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 8
+      },
+      "value": 16
+    },
+    "secondSegmentOffset": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 12
+      },
+      "value": 160
+    },
     "span": {
       "length": 16,
       "offset": 0
     },
-    "unknown": [
-      {
-        "kind": "unknown-gap",
-        "sha256": "30ad215c427fe03e2f5a2e7f190e6062cb1d5d7ca0d2172257ff7eb917bbbe27",
-        "span": {
-          "length": 12,
-          "offset": 4
-        }
-      }
-    ]
+    "totalSize": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 4
+      },
+      "value": 536
+    },
+    "unknown": []
   },
   "input": {
     "length": 536
@@ -65,6 +57,14 @@
   "layoutStatus": "bounded",
   "operation": "inspect",
   "schemaVersion": 1,
+  "secondSegment": {
+    "kind": "opaque-continuation",
+    "sha256": "288e45b34dc2c8cb6fdc5af999e4b827999d14c1f5784d583cf8d5e2bb65c6f7",
+    "span": {
+      "length": 376,
+      "offset": 160
+    }
+  },
   "signature": {
     "ascii": "PWIB",
     "span": {
