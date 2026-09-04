@@ -61,6 +61,19 @@
       "sourcePath": "data/27/95/00/1F.DAT"
     },
     {
+      "addedOn": "2026-09-04",
+      "formatIds": [
+        "gtex"
+      ],
+      "id": "retail-gtex-61c10005",
+      "notes": "The smallest observed GTEX resource: a 32-byte header whose big-endian extent size is 8, followed by exactly 8 bytes in that declared extent.",
+      "repository": "XIVLegacy/xivl-private-assets",
+      "repositoryCommit": "e42f476037a525c953d5536e6bcd41ff7ca56fa1",
+      "sha256": "6663eafa5248c68d9804c4f4ca0677d4f24434f5c014b53889c70b2ccba204ef",
+      "size": 40,
+      "sourcePath": "data/61/C1/00/05.DAT"
+    },
+    {
       "addedOn": "2026-08-01",
       "formatIds": [
         "sedb"
@@ -103,6 +116,19 @@
       "sha256": "3218cfb49da670397d1e40664fc130c02712a64b989cbfecb1f4f25da6814592",
       "size": 7711,
       "sourcePath": "data/89/EB/00/00.DAT"
+    },
+    {
+      "addedOn": "2026-09-04",
+      "formatIds": [
+        "pwib"
+      ],
+      "id": "retail-pwib-89b0005a",
+      "notes": "The smallest observed PWIB resource: a 16-byte outer header followed by one exact 520-byte SEDB container.",
+      "repository": "XIVLegacy/xivl-private-assets",
+      "repositoryCommit": "e42f476037a525c953d5536e6bcd41ff7ca56fa1",
+      "sha256": "42cd46946d39812f32d17fb683e0ab45c53bdff9948610feb5228e93f856f99a",
+      "size": 536,
+      "sourcePath": "data/89/B0/00/5A.DAT"
     },
     {
       "addedOn": "2026-08-01",

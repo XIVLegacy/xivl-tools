@@ -135,7 +135,7 @@ specific view is required:
 | `lpb` | Read an LPB wrapper and report preserved header spans and the decoded payload digest. |
 | `lpb-bytecode` | Keep the LPB wrapper report and structurally inspect its evidenced Lua 5.1 payload. |
 | `staticactor-san` | Read the XOR-0x73 record framing while leaving both record-member meanings unknown. |
-| `gtex`, `pwib` | Recognize the exact four-byte tag and report every later byte as one unresolved span with a digest. |
+| `gtex`, `pwib` | Read the exact tag, fixed outer header, one bounded declared extent, and preserved trailing bytes; PWIB also parses its nested SEDB child. |
 | `enable-file` | Read the headerless enable-record array. |
 | `row-offsets` | Read the headerless row-offset array. |
 | `sheet-data` | Read sheet rows; add `--columns` for typed rows. |
@@ -145,12 +145,12 @@ specific view is required:
 schema list such as `str,s32,bool,float,u8`; omitting it reads a sheet as a
 stream of string values, the representation used by an all-string sheet.
 
-GTEX and PWIB inspection does not parse texture metadata or establish a
-payload boundary. Resource extraction therefore writes only the metadata
-manifest and no payload file. Direct `extract-resource --materialize-payloads`
-rejects both formats. See
-[GTEX and PWIB tagged resources](formats/gtex-pwib.md) for the evidence
-boundary.
+GTEX and PWIB inspection reports a bounded declared extent and any later bytes;
+PWIB also parses the nested SEDB resource at offset `0x10`. It does not assign
+texture metadata or an exportable-payload meaning. Resource extraction
+therefore writes only the metadata manifest and no payload file. Direct
+`extract-resource --materialize-payloads` rejects both formats. See
+[GTEX and PWIB bounded extents](formats/gtex-pwib.md) for the evidence boundary.
 
 The `staticactor-san` report carries the header and record spans, the
 big-endian values, decoded string lengths and digests, and two byte-shape

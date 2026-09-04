@@ -57,7 +57,7 @@
         "json",
         "binary"
       ],
-      "notes": "Header and bounded enumeration only. The 0x10 field is advisory, not a container extent: across the install it equals the file size for 92303 of 97749 SEDB resources, headerSize for the 5203 PHB, zero for the 145 mtb, and a sub-file extent for 98 vins and leaf. Opt-in extraction copies an unambiguous direct-root payload span exactly and records its source range, digest, and entry relationship; public CLI tests cover exact bytes, deterministic output, empty spans, truncation, and option boundaries. Payload interpretation, unknownA, and flags are unresolved and reported rather than guessed; non-SEDB resources such as GTEX and PWIB-wrapped textures are not read at all. Gaps: docs/formats/sedb-res.md."
+      "notes": "Header and bounded enumeration only. The 0x10 field is advisory, not a container extent: across the install it equals the file size for 92303 of 97749 SEDB resources, headerSize for the 5203 PHB, zero for the 145 mtb, and a sub-file extent for 98 vins and leaf. Opt-in extraction copies an unambiguous direct-root payload span exactly and records its source range, digest, and entry relationship; public CLI tests cover exact bytes, deterministic output, empty spans, truncation, and option boundaries. Payload interpretation, unknownA, and flags are unresolved and reported rather than guessed. Standalone SEDB parsing does not accept GTEX; PWIB is read separately and delegates its nested resource to this reader. Gaps: docs/formats/sedb-res.md."
     },
     {
       "id": "res",
@@ -265,7 +265,7 @@
         "png",
         "json"
       ],
-      "notes": "Recognizes the exact GTEX signature and reports the signature plus every later byte as one opaque span with a SHA-256 digest. Metadata-only extraction and verification preserve that report but are not a lossless export. No post-signature field, texture metadata, encoded-payload boundary, version, format identifier, dimension, mip or layer count, compression, swizzle, or GPU compatibility is claimed."
+      "notes": "Reads the exact GTEX signature, a 32-byte outer header, and the big-endian extent size at 0x1c. Across all 21161 retail files the declared extent stays inside the input; 14187 leave separately preserved trailing bytes, so it is not treated as an end-of-file field. Metadata-only extraction and verification preserve spans and digests but are not a lossless export. The extent's purpose, every other header field, texture metadata, version, format identifier, dimension, mip or layer count, compression, swizzle, and GPU compatibility remain unresolved."
     },
     {
       "id": "pwib",
@@ -275,7 +275,7 @@
       "read": "partial",
       "write": "none",
       "export": "none",
-      "notes": "Recognizes the exact PWIB signature and reports the signature plus every later byte as one opaque span with a SHA-256 digest. Metadata-only extraction and verification preserve that report but are not a lossless export. The resource's purpose and every post-signature field and payload boundary remain unresolved; no texture or index-buffer interpretation is claimed."
+      "notes": "Reads the exact PWIB signature, a 16-byte outer header, and the nested SEDB container beginning at 0x10. All 3544 retail files carry that child signature and its declared extent stays inside the input; 362 leave separately preserved trailing bytes. Metadata-only extraction and verification preserve the bounded model but are not a lossless export. The outer header fields and resource purpose remain unresolved; no texture or index-buffer interpretation is claimed."
     },
     {
       "id": "fdt",

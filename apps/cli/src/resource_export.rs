@@ -622,8 +622,8 @@ mod tests {
     }
 
     #[test]
-    fn materialize_flag_rejects_signature_only_gtex() {
-        let root = temp_root("gtex-payload-option");
+    fn materialize_flag_rejects_bounded_gtex_extent() {
+        let root = temp_root("gtex-extent-option");
         fs::create_dir_all(&root).unwrap();
         let source = root.join("texture.DAT");
         fs::write(

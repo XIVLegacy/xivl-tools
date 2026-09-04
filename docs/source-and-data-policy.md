@@ -84,6 +84,8 @@ data cannot be published. The split is:
 - the bytes stay on the owner's machine, outside this checkout;
 - this repository tracks only identity: a stable fixture id, sha256, size
   in bytes, the client-relative source path, and the frozen client version.
+  A selected input copied to the approved restricted fixture store also
+  records that store and its exact containing commit;
 
 That record lives in `tests/fixtures/private-manifest.json` and is
 validated by `schemas/private-fixture-manifest.schema.json`.

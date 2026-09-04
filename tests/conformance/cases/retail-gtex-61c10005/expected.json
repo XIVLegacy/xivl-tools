@@ -2,9 +2,9 @@
   "anomalies": [],
   "declaredExtent": {
     "kind": "opaque-extent",
-    "sha256": "51392be94fc0c2ce4be6356474750e4a910bb5bb044d619c0496e53c3f7a7395",
+    "sha256": "41b8f24b79ae38bb5f3af44cf187d022c20517a6f576791e466d536517b68fb9",
     "span": {
-      "length": 13,
+      "length": 8,
       "offset": 32
     }
   },
@@ -14,7 +14,7 @@
       "length": 4,
       "offset": 28
     },
-    "value": 13
+    "value": 8
   },
   "format": "gtex",
   "header": {
@@ -25,7 +25,7 @@
     "unknown": [
       {
         "kind": "unknown-gap",
-        "sha256": "1d9cc9959907ad4a96a878f6f0a67e917462c2e52f5ce8e8208ae0fd2a3ae020",
+        "sha256": "c3da6b5bd3470c205d5bcff9bd63f517f46c5841971cb40b958391d514523262",
         "span": {
           "length": 24,
           "offset": 4
@@ -34,7 +34,7 @@
     ]
   },
   "input": {
-    "length": 45
+    "length": 40
   },
   "layoutStatus": "bounded",
   "operation": "inspect",

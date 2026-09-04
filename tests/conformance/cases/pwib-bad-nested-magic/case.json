@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-bad-nested-magic",
+  "formatId": "pwib",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/pwib/bad-nested-magic.bin"
+  },
+  "arguments": ["--as", "pwib"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "bad-magic",
+    "errorOffset": 16
+  },
+  "notes": "PWIB requires the nested resource at offset 16 to carry the SEDB signature."
+}

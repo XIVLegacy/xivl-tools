@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-extent-out-of-range",
+  "formatId": "gtex",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/extent-out-of-range.bin"
+  },
+  "arguments": ["--as", "gtex"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "declared-size-out-of-range",
+    "errorOffset": 28
+  },
+  "notes": "A GTEX extent declaration cannot escape the input."
+}

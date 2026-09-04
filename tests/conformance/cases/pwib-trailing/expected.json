@@ -3,13 +3,13 @@
   "declaredExtent": {
     "child": {
       "anomalies": [],
-      "declaredSize": 37,
+      "declaredSize": 20,
       "entries": [
         {
           "kind": "payload",
-          "sha256": "712e25bc12e11c02f20400a0bf3b34ff4b0b8cb0508e4bddb327bdd03cc03a98",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "span": {
-            "length": 17,
+            "length": 0,
             "offset": 36
           }
         }
@@ -19,17 +19,17 @@
       "headerUnknown": [],
       "kind": "sedb-container",
       "span": {
-        "length": 37,
+        "length": 20,
         "offset": 16
       },
       "subtype": "syn\\x00",
-      "totalSize": 37,
-      "unknownA": 7
+      "totalSize": 20,
+      "unknownA": 8
     },
     "kind": "sedb-container",
-    "sha256": "f290c7124eb1ab4cd9c3e444524d539beefff41de954e3593590edf3e7cdc6fd",
+    "sha256": "8cb58ebb0f09e3dff3d8fe070260152698e449575574934b62beacf33f9a49d7",
     "span": {
-      "length": 37,
+      "length": 20,
       "offset": 16
     }
   },
@@ -42,7 +42,7 @@
     "unknown": [
       {
         "kind": "unknown-gap",
-        "sha256": "ea46be70f06f3e21ae97c60bb10f5aa5fe7edc940680c6173e06a2b19974368b",
+        "sha256": "6c7c8e0ef96aa209dd556fa468e78b7fc8e02793acddd85d7e19797088d29d1e",
         "span": {
           "length": 12,
           "offset": 4
@@ -51,7 +51,7 @@
     ]
   },
   "input": {
-    "length": 53
+    "length": 45
   },
   "layoutStatus": "bounded",
   "operation": "inspect",
@@ -63,5 +63,14 @@
       "offset": 0
     }
   },
-  "trailing": []
+  "trailing": [
+    {
+      "kind": "trailing-bytes",
+      "sha256": "4b749e3cd75b823ce101e7dc9b898fd370f08ae62928f26842dd85efb9f96c4e",
+      "span": {
+        "length": 9,
+        "offset": 36
+      }
+    }
+  ]
 }

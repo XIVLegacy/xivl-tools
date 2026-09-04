@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-truncated-header",
+  "formatId": "gtex",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/truncated-header.bin"
+  },
+  "arguments": ["--as", "gtex"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 14
+  },
+  "notes": "A complete GTEX tag does not make a truncated 32-byte header valid."
+}

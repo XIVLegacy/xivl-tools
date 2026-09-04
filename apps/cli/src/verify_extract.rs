@@ -1136,7 +1136,7 @@ mod tests {
     }
 
     #[test]
-    fn verifies_gtex_catalog_extraction_without_claiming_a_payload() {
+    fn verifies_gtex_catalog_extraction_without_materializing_an_extent() {
         let work = temp_root("gtex-batch");
         let root = work.join("root");
         let source = root.join("data/12/34/56/78.DAT");
@@ -1191,8 +1191,8 @@ mod tests {
         assert_eq!(extraction["format"]["id"], "gtex");
         assert_eq!(extraction["payloads"], json!([]));
         assert_eq!(
-            extraction["parsed"]["opaqueRemainder"]["meaning"],
-            "unknown"
+            extraction["parsed"]["declaredExtent"]["kind"],
+            "opaque-extent"
         );
         fs::remove_dir_all(work).unwrap();
     }

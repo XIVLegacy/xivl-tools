@@ -183,8 +183,9 @@ the cited document names:
 A 1508-file sample, every 93rd resource, run through the SEDB-only reader:
 1056 SEDB resources parsed, 0 errors, 0 panics. The remaining 452 were not
 SEDB at all and took `bad-magic`: GTEX 226, zero-filled 59, PWIB 38, plus a
-tail of smaller signatures. GTEX and PWIB now have signature-only readers;
-their layouts remain outside this SEDB/RES claim.
+tail of smaller signatures. GTEX now has a separate bounded reader. PWIB's
+separate outer reader delegates the child SEDB at offset `0x10` to this model;
+its outer layout remains outside the standalone SEDB/RES claim.
 
 ## Exact payload materialization
 

@@ -297,11 +297,33 @@ def build_fixtures() -> dict[str, bytes]:
     fixtures["lpb/truncated.bin"] = b"rle\x0cshort"
     fixtures["lpb/bad-chunk.bin"] = b"rlu\x0bABCDxxxxx"
 
-    # -- GTEX and PWIB tags ---------------------------------------------
-    # Only the signatures are evidenced. The bodies are invented patterns
-    # whose entire range must remain one unresolved span.
-    fixtures["gtex/tagged.bin"] = b"GTEX" + pattern(29, 0x44)
-    fixtures["pwib/tagged.bin"] = b"PWIB" + pattern(17, 0x62)
+    # -- GTEX and PWIB resources ----------------------------------------
+    # The fixed spans are retail-evidenced; all values and payload bytes are
+    # invented. The fields outside the two established extents stay opaque.
+    gtex_extent = pattern(13, 0x44)
+    fixtures["gtex/tagged.bin"] = (
+        b"GTEX" + pattern(24, 0x31) + struct.pack(">I", len(gtex_extent)) + gtex_extent
+    )
+    fixtures["gtex/trailing.bin"] = (
+        b"GTEX" + pattern(24, 0x41) + struct.pack(">I", 5) + pattern(12, 0x51)
+    )
+    fixtures["gtex/truncated-header.bin"] = b"GTEX" + pattern(10, 0x71)
+    fixtures["gtex/extent-out-of-range.bin"] = (
+        b"GTEX" + pattern(24, 0x61) + struct.pack(">I", 2) + b"x"
+    )
+    pwib_payload = pattern(17, 0x62)
+    nested_sedb = sedb_header("syn", 7, 2, 0x14, 0x14 + len(pwib_payload)) + pwib_payload
+    fixtures["pwib/tagged.bin"] = b"PWIB" + pattern(12, 0x25) + nested_sedb
+    fixtures["pwib/trailing.bin"] = (
+        b"PWIB"
+        + pattern(12, 0x35)
+        + sedb_header("syn", 8, 2, 0x14, 0x14)
+        + pattern(9, 0x45)
+    )
+    fixtures["pwib/truncated-header.bin"] = b"PWIB" + pattern(5, 0x55)
+    fixtures["pwib/bad-nested-magic.bin"] = (
+        b"PWIB" + pattern(12, 0x65) + b"NOPE" + pattern(16, 0x75)
+    )
     fixtures["gtex/truncated-tag.bin"] = b"GTE"
     fixtures["pwib/truncated-tag.bin"] = b"PWI"
 

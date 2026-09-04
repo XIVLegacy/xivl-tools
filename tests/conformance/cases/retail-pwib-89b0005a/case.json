@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "fixtureId": "retail-pwib-89b0005a",
+    "kind": "private"
+  },
+  "formatId": "pwib",
+  "id": "retail-pwib-89b0005a",
+  "notes": "The smallest retail PWIB resource verifies a 16-byte outer header followed by one exact 520-byte SEDB container. Retail 1.23b, game.ver 2012.09.19.0001. The expected output contains spans and digests only.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

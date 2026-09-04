@@ -71,9 +71,10 @@ to use the source file's own base name as its key, so extracting through this
 command preserves the filename-dependent input rather than renaming a copy.
 
 GTEX and PWIB extractions are metadata-only. Their manifests preserve the
-signature and the span and SHA-256 of every later byte, but `payloads` remains
-empty because the evidence does not establish where an encoded texture or
-other payload begins. Source replay through `verify-extraction` reproduces and
+outer header, one declared extent, and any trailing bytes by span and SHA-256;
+PWIB also reports its nested SEDB model. `payloads` remains empty because the
+GTEX extent has no established semantic role and PWIB's outer-resource purpose
+is unresolved. Source replay through `verify-extraction` reproduces and
 compares that report. Exact payload materialization and DDS/PNG conversion are
 not supported.
 

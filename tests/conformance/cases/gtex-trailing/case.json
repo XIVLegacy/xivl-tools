@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "id": "gtex-tagged",
+  "id": "gtex-trailing",
   "formatId": "gtex",
   "operation": "inspect",
   "fixture": {
     "kind": "public",
-    "path": "tests/fixtures/public/gtex/tagged.bin"
+    "path": "tests/fixtures/public/gtex/trailing.bin"
   },
   "arguments": ["--as", "gtex"],
   "expect": { "outcome": "ok", "output": "expected.json" },
-  "notes": "Authored bytes verify the GTEX header, big-endian extent size, and exact declared extent."
+  "notes": "A declared GTEX extent shorter than the remaining file preserves the later bytes separately."
 }

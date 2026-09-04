@@ -582,7 +582,8 @@ fn inspect_staticactor(data: &[u8]) -> Result<Value> {
 
 fn inspect_tagged_resource(data: &[u8], kind: TaggedResourceKind) -> Result<Value> {
     let resource = gtex_pwib::parse(data, kind)?;
-    let remainder = span_bytes(data, resource.opaque_remainder);
+    let header_unknown = span_bytes(data, resource.header_unknown);
+    let declared_extent = span_bytes(data, resource.declared_extent);
     let mut object = envelope(resource.kind.format_id(), data);
     object.insert(
         "signature".into(),
@@ -592,14 +593,54 @@ fn inspect_tagged_resource(data: &[u8], kind: TaggedResourceKind) -> Result<Valu
         }),
     );
     object.insert(
-        "opaqueRemainder".into(),
+        "header".into(),
         json!({
-            "meaning": "unknown",
-            "span": resource.opaque_remainder.to_json(),
-            "sha256": sha256_hex(remainder),
+            "span": resource.header.to_json(),
+            "unknown": [{
+                "kind": "unknown-gap",
+                "span": resource.header_unknown.to_json(),
+                "sha256": sha256_hex(header_unknown),
+            }],
         }),
     );
-    object.insert("layoutStatus".into(), json!("unresolved"));
+    if resource.kind == TaggedResourceKind::Gtex {
+        object.insert(
+            "extentSize".into(),
+            json!({
+                "byteOrder": "big",
+                "span": { "offset": 0x1c, "length": 4 },
+                "value": resource.declared_extent_size,
+            }),
+        );
+    }
+    let mut extent_object = Map::new();
+    extent_object.insert(
+        "kind".into(),
+        json!(if resource.kind == TaggedResourceKind::Pwib {
+            "sedb-container"
+        } else {
+            "opaque-extent"
+        }),
+    );
+    extent_object.insert("span".into(), resource.declared_extent.to_json());
+    extent_object.insert("sha256".into(), json!(sha256_hex(declared_extent)));
+    if let Some(nested) = &resource.nested_sedb {
+        extent_object.insert("child".into(), container_to_json(nested));
+    }
+    object.insert("declaredExtent".into(), Value::Object(extent_object));
+    object.insert(
+        "trailing".into(),
+        if resource.trailing.length == 0 {
+            json!([])
+        } else {
+            json!([{
+                "kind": "trailing-bytes",
+                "span": resource.trailing.to_json(),
+                "sha256": sha256_hex(span_bytes(data, resource.trailing)),
+            }])
+        },
+    );
+    object.insert("layoutStatus".into(), json!("bounded"));
     object.insert("anomalies".into(), json!([]));
     Ok(Value::Object(object))
 }
@@ -1177,8 +1218,15 @@ mod tests {
         san.extend([0u8; 9].map(|byte| byte ^ staticactor::XOR_KEY));
         let document = inspect_bytes(&san).unwrap();
         assert_eq!(document["format"], "staticactor-san");
-        assert_eq!(inspect_bytes(b"GTEXbody").unwrap()["format"], "gtex");
-        assert_eq!(inspect_bytes(b"PWIBbody").unwrap()["format"], "pwib");
+        let mut gtex = vec![0u8; 0x20];
+        gtex[0..4].copy_from_slice(b"GTEX");
+        assert_eq!(inspect_bytes(&gtex).unwrap()["format"], "gtex");
+        let mut pwib = vec![0u8; 0x24];
+        pwib[0..4].copy_from_slice(b"PWIB");
+        pwib[0x10..0x18].copy_from_slice(b"SEDBsyn\0");
+        pwib[0x1e..0x20].copy_from_slice(&0x14u16.to_le_bytes());
+        pwib[0x20..0x24].copy_from_slice(&0x14u32.to_le_bytes());
+        assert_eq!(inspect_bytes(&pwib).unwrap()["format"], "pwib");
         let error = inspect_bytes(b"not a container at all").unwrap_err();
         assert_eq!(error.kind(), crate::error::ErrorKind::BadMagic);
     }

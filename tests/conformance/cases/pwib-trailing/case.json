@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "id": "pwib-tagged",
+  "id": "pwib-trailing",
   "formatId": "pwib",
   "operation": "inspect",
   "fixture": {
     "kind": "public",
-    "path": "tests/fixtures/public/pwib/tagged.bin"
+    "path": "tests/fixtures/public/pwib/trailing.bin"
   },
   "arguments": ["--as", "pwib"],
   "expect": { "outcome": "ok", "output": "expected.json" },
-  "notes": "Authored bytes verify the PWIB outer header and an exact nested synthetic SEDB extent."
+  "notes": "A PWIB file can continue after its first nested SEDB extent; the later bytes remain separate."
 }

@@ -18,7 +18,7 @@ XIVLegacy Tools.
 | [Configuration files](formats/configuration.md) | Structural reads and byte-exact round trips |
 | [Static-actor SAN records](formats/staticactor-san.md) | SAN header and record framing |
 | [Lua paths, LPB wrappers, and Lua 5.1](formats/lua-lpb.md) | Path transforms, wrappers, and bytecode structure |
-| [GTEX and PWIB tagged resources](formats/gtex-pwib.md) | Signature-only recognition and unresolved layout boundary |
+| [GTEX and PWIB bounded extents](formats/gtex-pwib.md) | Outer headers, declared extents, and preserved trailing bytes |
 | [Lua 5.1 retail census](lua51-retail-census.md) | Aggregate full-corpus instruction and structural validation |
 | [AI-assisted contributions](ai_agents/README.md) | Tracked contribution and documentation policy |
 | [Comments and prose](ai_agents/comments-and-prose.md) | Comment and public-prose keep rules |

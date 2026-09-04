@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-truncated-header",
+  "formatId": "pwib",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/pwib/truncated-header.bin"
+  },
+  "arguments": ["--as", "pwib"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 9
+  },
+  "notes": "A complete PWIB tag does not make a truncated 16-byte outer header valid."
+}
