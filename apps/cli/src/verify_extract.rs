@@ -463,6 +463,47 @@ fn verify_payload_relationship(
     if integer(span, "endExclusive")? != end || integer(payload, "size")? != length {
         return Err(fail("payload-span-mismatch", format!("payload {index}")));
     }
+    if string(payload, "role")? == "gtex-encoded-surface" {
+        let entry = object(payload, "entry")?;
+        let entry_path = string(entry, "path")?;
+        let entry_index = entry_path
+            .strip_prefix("$.parsed.offsetTable.entries[")
+            .and_then(|value| value.strip_suffix(']'))
+            .and_then(|value| value.parse::<usize>().ok())
+            .ok_or_else(|| fail("entry-path-invalid", entry_path))?;
+        let parsed_entry = document
+            .pointer(&format!("/parsed/offsetTable/entries/{entry_index}"))
+            .ok_or_else(|| fail("relationship-target-missing", entry_path))?;
+        let mut expected_span = span.clone();
+        expected_span
+            .as_object_mut()
+            .expect("schema validated sourceSpan as an object")
+            .remove("endExclusive");
+        let parsed_format = document
+            .pointer("/parsed/texture/formatIndex/mapping")
+            .ok_or_else(|| {
+                fail(
+                    "relationship-target-missing",
+                    "$.parsed.texture.formatIndex.mapping",
+                )
+            })?;
+        let recorded_format = object(entry, "gtexFormat")?;
+        if entry.get("kind").and_then(Value::as_str) != Some("gtex-encoded-surface")
+            || entry.get("face") != parsed_entry.get("face")
+            || entry.get("mipLevel") != parsed_entry.get("mipLevel")
+            || parsed_entry.pointer("/source/span") != Some(&expected_span)
+            || recorded_format.get("clientIndex")
+                != document.pointer("/parsed/texture/formatIndex/value")
+            || recorded_format.get("d3dName") != parsed_format.get("d3dName")
+            || recorded_format.get("d3dValue") != parsed_format.get("d3dValue")
+        {
+            return Err(fail(
+                "entry-relationship-mismatch",
+                format!("payload {index}"),
+            ));
+        }
+        return Ok(Some(entry_path.to_string()));
+    }
     let container = object(payload, "container")?;
     if string(container, "path")? != "$.parsed.root" {
         return Err(fail("container-path-mismatch", format!("payload {index}")));
@@ -1136,7 +1177,7 @@ mod tests {
     }
 
     #[test]
-    fn verifies_gtex_catalog_extraction_without_materializing_source_data() {
+    fn verifies_gtex_catalog_extraction_with_exact_surface_payloads() {
         let work = temp_root("gtex-batch");
         let root = work.join("root");
         let source = root.join("data/12/34/56/78.DAT");
@@ -1168,6 +1209,7 @@ mod tests {
             output.display().to_string(),
             "--id".into(),
             "0x12345678".into(),
+            "--materialize-payloads".into(),
         ])
         .unwrap();
         let report = run(&[
@@ -1182,14 +1224,15 @@ mod tests {
         .unwrap();
         let report: Value = serde_json::from_str(&report.text).unwrap();
         assert_eq!(report["sourceReplay"], true);
-        assert_eq!(report["payloads"], 0);
+        assert_eq!(report["payloads"], 2);
 
         let batch: Value =
             serde_yaml::from_str(&fs::read_to_string(output.join("batch.yaml")).unwrap()).unwrap();
         let nested = output.join(batch["resources"][0]["manifest"].as_str().unwrap());
         let extraction: Value = serde_yaml::from_str(&fs::read_to_string(nested).unwrap()).unwrap();
         assert_eq!(extraction["format"]["id"], "gtex");
-        assert_eq!(extraction["payloads"], json!([]));
+        assert_eq!(extraction["payloads"].as_array().unwrap().len(), 2);
+        assert_eq!(extraction["payloads"][0]["role"], "gtex-encoded-surface");
         assert_eq!(
             extraction["parsed"]["dataRegion"]["kind"],
             "texture-source-data"

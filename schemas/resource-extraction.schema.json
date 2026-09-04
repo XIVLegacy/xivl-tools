@@ -109,12 +109,25 @@
       "required": ["path", "kind"],
       "properties": {
         "path": { "type": "string", "minLength": 1 },
-        "kind": { "enum": ["payload", "subresource", "unknown-gap"] },
+        "kind": { "enum": ["payload", "subresource", "unknown-gap", "gtex-encoded-surface"] },
+        "face": { "type": "integer", "minimum": 0 },
+        "mipLevel": { "type": "integer", "minimum": 0 },
+        "gtexFormat": { "$ref": "#/$defs/gtexFormat" },
         "index": { "type": "integer", "minimum": 0 },
         "declaredOffset": { "type": "integer", "minimum": 0 },
         "declaredSize": { "type": "integer", "minimum": 0 },
         "declaredKind": { "type": "integer", "minimum": 0 },
         "childContainer": { "$ref": "#/$defs/childContainer" }
+      }
+    },
+    "gtexFormat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clientIndex", "d3dName", "d3dValue"],
+      "properties": {
+        "clientIndex": { "enum": [4, 24, 26] },
+        "d3dName": { "enum": ["D3DFMT_A8R8G8B8", "D3DFMT_DXT1", "D3DFMT_DXT5"] },
+        "d3dValue": { "type": "integer", "minimum": 0 }
       }
     },
     "childContainer": {

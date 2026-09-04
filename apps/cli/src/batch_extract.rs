@@ -178,8 +178,8 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
                 entry.source_path, entry.sha256
             )));
         }
-        let materialize =
-            materialize_payloads && matches!(entry.detected_format.as_str(), "sedb" | "res");
+        let materialize = materialize_payloads
+            && matches!(entry.detected_format.as_str(), "sedb" | "res" | "gtex");
         let plan = plan_bytes(
             &source.display().to_string(),
             &data,

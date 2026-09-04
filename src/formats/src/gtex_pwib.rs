@@ -49,11 +49,53 @@ impl TextureKind {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GtexFormat {
+    pub index: u8,
+    pub d3d_value: u32,
+    pub d3d_name: &'static str,
+    pub bits_per_pixel: u8,
+    pub block_bytes: Option<u8>,
+}
+
+pub const fn gtex_format(index: u8) -> Option<GtexFormat> {
+    match index {
+        4 => Some(GtexFormat {
+            index,
+            d3d_value: 21,
+            d3d_name: "D3DFMT_A8R8G8B8",
+            bits_per_pixel: 32,
+            block_bytes: None,
+        }),
+        24 => Some(GtexFormat {
+            index,
+            d3d_value: 0x3154_5844,
+            d3d_name: "D3DFMT_DXT1",
+            bits_per_pixel: 4,
+            block_bytes: Some(8),
+        }),
+        26 => Some(GtexFormat {
+            index,
+            d3d_value: 0x3554_5844,
+            d3d_name: "D3DFMT_DXT5",
+            bits_per_pixel: 8,
+            block_bytes: Some(16),
+        }),
+        _ => None,
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SurfaceOffset {
+pub struct SurfaceEntry {
     pub index: u32,
-    pub field_span: Span,
-    pub value: u32,
+    pub face: u8,
+    pub mip_level: u8,
+    pub offset_field_span: Span,
+    pub size_field_span: Span,
+    pub relative_offset: u32,
+    pub declared_size: u32,
+    pub source_span: Span,
+    pub calculated_size: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -69,9 +111,38 @@ pub struct GtexResource {
     pub depth: u16,
     pub offset_table_base: u32,
     pub data_base: u32,
-    pub surface_offsets: Vec<SurfaceOffset>,
+    pub format: Option<GtexFormat>,
+    pub surfaces: Vec<SurfaceEntry>,
     pub header_unknown: Vec<Span>,
+    pub data_gaps: Vec<Span>,
     pub data: Span,
+}
+
+impl GtexResource {
+    pub fn materialization_refusal(&self) -> Option<&'static str> {
+        if self.offset_table_base == 0 {
+            return Some("GTEX has no surface table");
+        }
+        if self.format.is_none() {
+            return Some("GTEX client format index is not mapped");
+        }
+        if self.flags != 0 {
+            return Some("GTEX materialization supports only flags 0");
+        }
+        if self.texture_kind != TextureKind::Texture2d {
+            return Some("GTEX materialization supports only 2D textures");
+        }
+        if self.depth != 1 {
+            return Some("GTEX materialization supports only depth 1");
+        }
+        if self.mip_levels == 0 || self.width == 0 || self.height == 0 {
+            return Some("GTEX materialization requires nonzero mip count, width, and height");
+        }
+        if self.surfaces.len() != usize::from(self.mip_levels) {
+            return Some("GTEX surface table does not contain exactly one entry per mip");
+        }
+        None
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -186,8 +257,10 @@ fn parse_gtex(data: &[u8]) -> Result<GtexResource> {
         1
     };
     let entry_count = usize::from(mip_levels) * face_count;
-    let mut surface_offsets = Vec::new();
+    let format = gtex_format(format_index);
+    let mut surfaces = Vec::new();
     let mut header_unknown = vec![Span::new(4, 2), Span::new(8, 1)];
+    let mut data_gaps = Vec::new();
     if offset_table_base != 0 {
         let table_start = usize::try_from(offset_table_base).map_err(|_| {
             FormatError::new(
@@ -230,27 +303,92 @@ fn parse_gtex(data: &[u8]) -> Result<GtexResource> {
         for index in 0..entry_count {
             let field_offset = table_start + index * SURFACE_OFFSET_ENTRY_SIZE;
             reader.seek(field_offset)?;
-            let value = reader.u32_be()?;
-            let source = data_start.checked_add(value as usize).ok_or_else(|| {
-                FormatError::new(
-                    ErrorKind::DeclaredSizeOutOfRange,
-                    field_offset as u64,
-                    "GTEX surface source offset overflows the address space",
-                )
-            })?;
+            let relative_offset = reader.u32_be()?;
+            let declared_size = reader.u32_be()?;
+            let source = data_start
+                .checked_add(relative_offset as usize)
+                .ok_or_else(|| {
+                    FormatError::new(
+                        ErrorKind::DeclaredSizeOutOfRange,
+                        field_offset as u64,
+                        "GTEX surface source offset overflows the address space",
+                    )
+                })?;
             if source > data.len() {
                 return Err(FormatError::new(
                     ErrorKind::DeclaredSizeOutOfRange,
                     field_offset as u64,
-                    format!("GTEX surface source offset {value} escapes the input"),
+                    format!("GTEX surface source offset {relative_offset} escapes the input"),
                 ));
             }
-            surface_offsets.push(SurfaceOffset {
-                index: index as u32,
-                field_span: Span::new(field_offset as u64, 4),
-                value,
+            let end = source.checked_add(declared_size as usize).ok_or_else(|| {
+                FormatError::new(
+                    ErrorKind::DeclaredSizeOutOfRange,
+                    (field_offset + 4) as u64,
+                    "GTEX surface end overflows the address space",
+                )
+            })?;
+            if end > data.len() {
+                return Err(FormatError::new(
+                    ErrorKind::DeclaredSizeOutOfRange,
+                    (field_offset + 4) as u64,
+                    format!("GTEX surface span [{source}, {end}) escapes the input"),
+                ));
+            }
+            if let Some(previous) = surfaces.last() {
+                let previous: &SurfaceEntry = previous;
+                let previous_end = previous.source_span.offset + previous.source_span.length;
+                if (source as u64) < previous_end {
+                    return Err(FormatError::new(
+                        ErrorKind::AmbiguousPayloadSpan,
+                        field_offset as u64,
+                        "GTEX surface spans overlap or run out of table order",
+                    ));
+                }
+            }
+            let mip_level = (index % usize::from(mip_levels.max(1))) as u8;
+            let face = (index / usize::from(mip_levels.max(1))) as u8;
+            let calculated_size = format.and_then(|format| {
+                encoded_surface_size(
+                    format,
+                    u32::from(width)
+                        .checked_shr(u32::from(mip_level))
+                        .unwrap_or(0)
+                        .max(1),
+                    u32::from(height)
+                        .checked_shr(u32::from(mip_level))
+                        .unwrap_or(0)
+                        .max(1),
+                    if texture_kind == TextureKind::Volume {
+                        u32::from(depth)
+                            .checked_shr(u32::from(mip_level))
+                            .unwrap_or(0)
+                            .max(1)
+                    } else {
+                        1
+                    },
+                )
             });
-            header_unknown.push(Span::new((field_offset + 4) as u64, 4));
+            if let Some(calculated) = calculated_size {
+                if calculated != u64::from(declared_size) {
+                    return Err(FormatError::new(
+                        ErrorKind::AmbiguousPayloadSpan,
+                        (field_offset + 4) as u64,
+                        format!("GTEX declared surface size {declared_size} differs from calculated size {calculated}"),
+                    ));
+                }
+            }
+            surfaces.push(SurfaceEntry {
+                index: index as u32,
+                face,
+                mip_level,
+                offset_field_span: Span::new(field_offset as u64, 4),
+                size_field_span: Span::new((field_offset + 4) as u64, 4),
+                relative_offset,
+                declared_size,
+                source_span: Span::new(source as u64, declared_size as u64),
+                calculated_size,
+            });
         }
         if table_end < data_start {
             header_unknown.push(Span::new(table_end as u64, (data_start - table_end) as u64));
@@ -260,6 +398,17 @@ fn parse_gtex(data: &[u8]) -> Result<GtexResource> {
             GTEX_FIXED_FIELDS_SIZE as u64,
             (data_start - GTEX_FIXED_FIELDS_SIZE) as u64,
         ));
+    }
+
+    let mut cursor = data_start as u64;
+    for surface in &surfaces {
+        if surface.source_span.offset > cursor {
+            data_gaps.push(Span::new(cursor, surface.source_span.offset - cursor));
+        }
+        cursor = surface.source_span.offset + surface.source_span.length;
+    }
+    if cursor < data.len() as u64 {
+        data_gaps.push(Span::new(cursor, data.len() as u64 - cursor));
     }
 
     Ok(GtexResource {
@@ -274,10 +423,26 @@ fn parse_gtex(data: &[u8]) -> Result<GtexResource> {
         depth,
         offset_table_base,
         data_base,
-        surface_offsets,
+        format,
+        surfaces,
         header_unknown,
+        data_gaps,
         data: Span::new(data_base as u64, (data.len() - data_start) as u64),
     })
+}
+
+fn encoded_surface_size(format: GtexFormat, width: u32, height: u32, depth: u32) -> Option<u64> {
+    let plane = if let Some(block_bytes) = format.block_bytes {
+        u64::from(width.div_ceil(4))
+            .checked_mul(u64::from(height.div_ceil(4)))?
+            .checked_mul(u64::from(block_bytes))?
+    } else {
+        u64::from(width)
+            .checked_mul(u64::from(height))?
+            .checked_mul(u64::from(format.bits_per_pixel))?
+            .checked_div(8)?
+    };
+    plane.checked_mul(u64::from(depth))
 }
 
 fn parse_pwib(data: &[u8]) -> Result<PwibResource> {
@@ -384,6 +549,30 @@ mod tests {
         bytes
     }
 
+    fn surface_gtex(format: u8, width: u16, height: u16, entries: &[(u32, u32)]) -> Vec<u8> {
+        let data_base = 0x18 + entries.len() * 8;
+        let data_size = entries
+            .iter()
+            .map(|(offset, size)| offset + size)
+            .max()
+            .unwrap_or(0);
+        let mut bytes = vec![0u8; data_base + data_size as usize];
+        bytes[0..4].copy_from_slice(GTEX_MAGIC);
+        bytes[6] = format;
+        bytes[7] = entries.len() as u8;
+        bytes[0x0a..0x0c].copy_from_slice(&width.to_be_bytes());
+        bytes[0x0c..0x0e].copy_from_slice(&height.to_be_bytes());
+        bytes[0x0e..0x10].copy_from_slice(&1u16.to_be_bytes());
+        bytes[0x10..0x14].copy_from_slice(&0x18u32.to_be_bytes());
+        bytes[0x14..0x18].copy_from_slice(&(data_base as u32).to_be_bytes());
+        for (index, (offset, size)) in entries.iter().enumerate() {
+            let start = 0x18 + index * 8;
+            bytes[start..start + 4].copy_from_slice(&offset.to_be_bytes());
+            bytes[start + 4..start + 8].copy_from_slice(&size.to_be_bytes());
+        }
+        bytes
+    }
+
     #[test]
     fn recognizes_only_the_two_exact_tags() {
         assert_eq!(detect(b"GTEXbody"), Some(TaggedResourceKind::Gtex));
@@ -400,6 +589,50 @@ mod tests {
         assert_eq!(parsed.data, Span::new(0x20, 0x10));
         assert_eq!(parsed.texture_kind, TextureKind::Cube);
         assert_eq!((parsed.width, parsed.height, parsed.depth), (64, 32, 1));
+    }
+
+    #[test]
+    fn calculates_linear_and_block_sizes_and_preserves_gaps() {
+        let TaggedResource::Gtex(linear) = parse(
+            &surface_gtex(4, 4, 2, &[(0, 32), (40, 8)]),
+            TaggedResourceKind::Gtex,
+        )
+        .unwrap() else {
+            panic!("expected GTEX")
+        };
+        assert_eq!(linear.surfaces[0].calculated_size, Some(32));
+        assert_eq!(
+            linear.data_gaps,
+            vec![Span::new(linear.data_base as u64 + 32, 8)]
+        );
+
+        let TaggedResource::Gtex(dxt1) = parse(
+            &surface_gtex(24, 8, 8, &[(0, 32), (32, 8)]),
+            TaggedResourceKind::Gtex,
+        )
+        .unwrap() else {
+            panic!("expected GTEX")
+        };
+        assert_eq!(
+            dxt1.surfaces
+                .iter()
+                .map(|entry| entry.calculated_size)
+                .collect::<Vec<_>>(),
+            vec![Some(32), Some(8)]
+        );
+    }
+
+    #[test]
+    fn rejects_surface_size_mismatch_and_overlap() {
+        let mismatch =
+            parse(&surface_gtex(26, 4, 4, &[(0, 8)]), TaggedResourceKind::Gtex).unwrap_err();
+        assert_eq!(mismatch.kind(), ErrorKind::AmbiguousPayloadSpan);
+        let overlap = parse(
+            &surface_gtex(3, 4, 4, &[(0, 8), (4, 8)]),
+            TaggedResourceKind::Gtex,
+        )
+        .unwrap_err();
+        assert_eq!(overlap.kind(), ErrorKind::AmbiguousPayloadSpan);
     }
 
     #[test]

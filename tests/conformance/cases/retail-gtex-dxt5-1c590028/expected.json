@@ -6,27 +6,27 @@
       "length": 4,
       "offset": 20
     },
-    "value": 40
+    "value": 64
   },
   "dataRegion": {
     "gaps": [],
     "kind": "texture-source-data",
-    "sha256": "12051760c9036fb25efd6efc20c2ee98f8269ce3844745a7131414ef7ff7e9bd",
+    "sha256": "f00bd7ac21e44d9c72b845f11618ced9910d50495bce292c474526b6e83a58f6",
     "span": {
-      "length": 40,
-      "offset": 40
+      "length": 5440,
+      "offset": 64
     }
   },
   "format": "gtex",
   "header": {
     "span": {
-      "length": 40,
+      "length": 64,
       "offset": 0
     },
     "unknown": [
       {
         "kind": "unknown-gap",
-        "sha256": "409521f02c8b29bd4f76b832de53a56fb64ac90f85f6fdce1545f53c643b2219",
+        "sha256": "9dcf97a184f32623d11a73124ceb99a5709b083721e878a16d78f596718ba7b2",
         "span": {
           "length": 2,
           "offset": 4
@@ -34,16 +34,24 @@
       },
       {
         "kind": "unknown-gap",
-        "sha256": "de7d1b721a1e0632b7cf04edf5032c8ecffa9f9a08492152b926f1a5a7e765d7",
+        "sha256": "dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986",
         "span": {
           "length": 1,
           "offset": 8
+        }
+      },
+      {
+        "kind": "unknown-gap",
+        "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+        "span": {
+          "length": 8,
+          "offset": 56
         }
       }
     ]
   },
   "input": {
-    "length": 80
+    "length": 5504
   },
   "layoutStatus": "bounded",
   "offsetTable": {
@@ -57,7 +65,7 @@
     },
     "entries": [
       {
-        "calculatedSize": 32,
+        "calculatedSize": 4096,
         "face": 0,
         "index": 0,
         "mipLevel": 0,
@@ -75,18 +83,18 @@
             "length": 4,
             "offset": 28
           },
-          "value": 32
+          "value": 4096
         },
         "source": {
-          "sha256": "175c6281fc6ce5ecb08f4b05e243f0f8f7c6bf66fa77b15a47e6129e69cb11cc",
+          "sha256": "f2e3b5b9ac4fd6b870d4f3ba2cab0411fedc240bfbb491a11053f53fef288fac",
           "span": {
-            "length": 32,
-            "offset": 40
+            "length": 4096,
+            "offset": 64
           }
         }
       },
       {
-        "calculatedSize": 8,
+        "calculatedSize": 1024,
         "face": 0,
         "index": 1,
         "mipLevel": 1,
@@ -96,7 +104,7 @@
             "length": 4,
             "offset": 32
           },
-          "value": 32
+          "value": 4096
         },
         "sizeField": {
           "byteOrder": "big",
@@ -104,13 +112,71 @@
             "length": 4,
             "offset": 36
           },
-          "value": 8
+          "value": 1024
         },
         "source": {
-          "sha256": "a01a9f40c64a8eb5e3400a498854795911c98e45292d119f9eaaebd00320d50c",
+          "sha256": "e27db01db335933a8696cb165b3e7496766d4d432751e8dd8f196566fe94e7d9",
           "span": {
-            "length": 8,
-            "offset": 72
+            "length": 1024,
+            "offset": 4160
+          }
+        }
+      },
+      {
+        "calculatedSize": 256,
+        "face": 0,
+        "index": 2,
+        "mipLevel": 2,
+        "offsetField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 40
+          },
+          "value": 5120
+        },
+        "sizeField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 44
+          },
+          "value": 256
+        },
+        "source": {
+          "sha256": "1017082a7c5f4140761be10e1f86b916985fe4dde43c03b6716b943815d4db17",
+          "span": {
+            "length": 256,
+            "offset": 5184
+          }
+        }
+      },
+      {
+        "calculatedSize": 64,
+        "face": 0,
+        "index": 3,
+        "mipLevel": 3,
+        "offsetField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 48
+          },
+          "value": 5376
+        },
+        "sizeField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 52
+          },
+          "value": 64
+        },
+        "source": {
+          "sha256": "36c37bdbdeb8f7d20826cc1bce80e42e3f0c2ff6646ea921fc1669a771449c47",
+          "span": {
+            "length": 64,
+            "offset": 5440
           }
         }
       }
@@ -148,16 +214,16 @@
     },
     "formatIndex": {
       "mapping": {
-        "bitsPerPixel": 32,
-        "blockBytes": null,
-        "d3dName": "D3DFMT_A8R8G8B8",
-        "d3dValue": 21
+        "bitsPerPixel": 8,
+        "blockBytes": 16,
+        "d3dName": "D3DFMT_DXT5",
+        "d3dValue": 894720068
       },
       "span": {
         "length": 1,
         "offset": 6
       },
-      "value": 4
+      "value": 26
     },
     "height": {
       "byteOrder": "big",
@@ -165,7 +231,7 @@
         "length": 2,
         "offset": 12
       },
-      "value": 2
+      "value": 64
     },
     "kind": "2d",
     "mipLevels": {
@@ -173,7 +239,7 @@
         "length": 1,
         "offset": 7
       },
-      "value": 2
+      "value": 4
     },
     "width": {
       "byteOrder": "big",
@@ -181,7 +247,7 @@
         "length": 2,
         "offset": 10
       },
-      "value": 4
+      "value": 64
     }
   },
   "trailing": []

@@ -11,9 +11,9 @@
   "dataRegion": {
     "gaps": [],
     "kind": "texture-source-data",
-    "sha256": "41b8f24b79ae38bb5f3af44cf187d022c20517a6f576791e466d536517b68fb9",
+    "sha256": "b91640b4bbac3f5178c7d0ae5e8f8a204ba9fce58625a9db33c68afb2b0bf821",
     "span": {
-      "length": 8,
+      "length": 512,
       "offset": 32
     }
   },
@@ -43,7 +43,7 @@
     ]
   },
   "input": {
-    "length": 40
+    "length": 544
   },
   "layoutStatus": "bounded",
   "offsetTable": {
@@ -57,7 +57,7 @@
     },
     "entries": [
       {
-        "calculatedSize": 8,
+        "calculatedSize": 512,
         "face": 0,
         "index": 0,
         "mipLevel": 0,
@@ -75,12 +75,12 @@
             "length": 4,
             "offset": 28
           },
-          "value": 8
+          "value": 512
         },
         "source": {
-          "sha256": "41b8f24b79ae38bb5f3af44cf187d022c20517a6f576791e466d536517b68fb9",
+          "sha256": "b91640b4bbac3f5178c7d0ae5e8f8a204ba9fce58625a9db33c68afb2b0bf821",
           "span": {
-            "length": 8,
+            "length": 512,
             "offset": 32
           }
         }
@@ -119,16 +119,16 @@
     },
     "formatIndex": {
       "mapping": {
-        "bitsPerPixel": 4,
-        "blockBytes": 8,
-        "d3dName": "D3DFMT_DXT1",
-        "d3dValue": 827611204
+        "bitsPerPixel": 32,
+        "blockBytes": null,
+        "d3dName": "D3DFMT_A8R8G8B8",
+        "d3dValue": 21
       },
       "span": {
         "length": 1,
         "offset": 6
       },
-      "value": 24
+      "value": 4
     },
     "height": {
       "byteOrder": "big",
@@ -136,7 +136,7 @@
         "length": 2,
         "offset": 12
       },
-      "value": 4
+      "value": 16
     },
     "kind": "2d",
     "mipLevels": {
@@ -152,7 +152,7 @@
         "length": 2,
         "offset": 10
       },
-      "value": 4
+      "value": 8
     }
   },
   "trailing": []

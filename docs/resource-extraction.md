@@ -70,14 +70,13 @@ Signatureless readers remain explicit through `--as`. SQEX decoding continues
 to use the source file's own base name as its key, so extracting through this
 command preserves the filename-dependent input rather than renaming a copy.
 
-GTEX and PWIB extractions are metadata-only. GTEX manifests preserve the
-loader-backed texture fields, surface offsets, source-data span, and digests.
-PWIB manifests preserve its header boundaries, SEDB-prefixed first segment,
-opaque second segment, and any trailing bytes. `payloads` remains empty because
-encoded GTEX surfaces and PWIB's second segment do not yet have independently
-materializable boundaries and meanings. Source replay through
-`verify-extraction` reproduces and compares that report. Exact payload
-materialization and DDS/PNG conversion are not supported.
+GTEX manifests preserve both dwords of every surface entry, the mapped client
+format, calculated size, exact source spans, alignment gaps, and digests.
+For mapped table-bearing 2D textures with flags zero and depth one,
+`--materialize-payloads` writes each encoded surface independently and links
+it back to its table entry. Cube, volume, flagged, tableless, and unmapped
+variants are refused before output. PWIB remains metadata-only. Source replay
+and artifact verification cover GTEX output; DDS/PNG conversion is unsupported.
 
 Both commands require an output directory that is absent or empty. A
 non-directory output path, nonempty output directory, symbolic link in a

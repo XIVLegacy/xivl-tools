@@ -6,20 +6,30 @@
       "length": 4,
       "offset": 20
     },
-    "value": 32
+    "value": 40
   },
   "dataRegion": {
+    "gaps": [
+      {
+        "kind": "alignment-or-unknown-gap",
+        "sha256": "e3073db75bd56aacae5e07e3d33da7e1a951cbfc953bdde294808c2c1b344b35",
+        "span": {
+          "length": 8,
+          "offset": 72
+        }
+      }
+    ],
     "kind": "texture-source-data",
-    "sha256": "2837dd1e2c2e7c76ccfecd099e87df422483cafa7718867cc6ae81d06ac45416",
+    "sha256": "717ab371e9b980fedcb2355687307538069a7e084c8e12091718eaa1853365e8",
     "span": {
-      "length": 12,
-      "offset": 32
+      "length": 48,
+      "offset": 40
     }
   },
   "format": "gtex",
   "header": {
     "span": {
-      "length": 32,
+      "length": 40,
       "offset": 0
     },
     "unknown": [
@@ -38,19 +48,11 @@
           "length": 1,
           "offset": 8
         }
-      },
-      {
-        "kind": "unknown-gap",
-        "sha256": "42640ec6e0eb514941c2e5f9e33e7cef82c0d53157c911a50b57f51c5e7e0819",
-        "span": {
-          "length": 8,
-          "offset": 24
-        }
       }
     ]
   },
   "input": {
-    "length": 44
+    "length": 88
   },
   "layoutStatus": "bounded",
   "offsetTable": {
@@ -60,9 +62,68 @@
         "length": 4,
         "offset": 16
       },
-      "value": 0
+      "value": 24
     },
-    "entries": [],
+    "entries": [
+      {
+        "calculatedSize": 32,
+        "face": 0,
+        "index": 0,
+        "mipLevel": 0,
+        "offsetField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 24
+          },
+          "value": 0
+        },
+        "sizeField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 28
+          },
+          "value": 32
+        },
+        "source": {
+          "sha256": "154ce50a10926cd34cd0598428349bd766c183ff9157d2f7d3325330432fc102",
+          "span": {
+            "length": 32,
+            "offset": 40
+          }
+        }
+      },
+      {
+        "calculatedSize": 8,
+        "face": 0,
+        "index": 1,
+        "mipLevel": 1,
+        "offsetField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 32
+          },
+          "value": 40
+        },
+        "sizeField": {
+          "byteOrder": "big",
+          "span": {
+            "length": 4,
+            "offset": 36
+          },
+          "value": 8
+        },
+        "source": {
+          "sha256": "85d95da16b97e49dd76acfc9157e2c4998379473564685c0a420e58f1f70d0c5",
+          "span": {
+            "length": 8,
+            "offset": 80
+          }
+        }
+      }
+    ],
     "entryStride": 8
   },
   "operation": "inspect",
@@ -73,6 +134,9 @@
       "length": 4,
       "offset": 0
     }
+  },
+  "surfaceMaterialization": {
+    "status": "supported"
   },
   "texture": {
     "depth": {
@@ -89,14 +153,20 @@
         "length": 1,
         "offset": 9
       },
-      "value": 2
+      "value": 0
     },
     "formatIndex": {
+      "mapping": {
+        "bitsPerPixel": 4,
+        "blockBytes": 8,
+        "d3dName": "D3DFMT_DXT1",
+        "d3dValue": 827611204
+      },
       "span": {
         "length": 1,
         "offset": 6
       },
-      "value": 3
+      "value": 24
     },
     "height": {
       "byteOrder": "big",
@@ -104,9 +174,9 @@
         "length": 2,
         "offset": 12
       },
-      "value": 32
+      "value": 8
     },
-    "kind": "volume",
+    "kind": "2d",
     "mipLevels": {
       "span": {
         "length": 1,
@@ -120,7 +190,7 @@
         "length": 2,
         "offset": 10
       },
-      "value": 64
+      "value": 8
     }
   },
   "trailing": []

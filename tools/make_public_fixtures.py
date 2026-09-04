@@ -303,28 +303,37 @@ def build_fixtures() -> dict[str, bytes]:
     def gtex(
         data: bytes,
         *,
+        format_index: int = 4,
         flags: int = 0,
+        mip_levels: int = 1,
+        width: int = 4,
+        height: int = 4,
+        depth: int = 1,
         data_base: int = 0x20,
-        surface_offsets: tuple[int, ...] = (),
+        surfaces: tuple[tuple[int, int], ...] = (),
     ) -> bytes:
         header = bytearray(pattern(data_base, 0x31))
         header[0:4] = b"GTEX"
-        header[6] = 3
-        header[7] = 2
+        header[6] = format_index
+        header[7] = mip_levels
         header[9] = flags
-        header[0x0A:0x10] = struct.pack(">HHH", 64, 32, 1)
-        table_base = 0x20 if surface_offsets else 0
+        header[0x0A:0x10] = struct.pack(">HHH", width, height, depth)
+        table_base = 0x18 if surfaces else 0
         header[0x10:0x14] = struct.pack(">I", table_base)
         header[0x14:0x18] = struct.pack(">I", data_base)
-        for index, offset in enumerate(surface_offsets):
+        for index, (offset, size) in enumerate(surfaces):
             entry = table_base + index * 8
-            header[entry : entry + 4] = struct.pack(">I", offset)
+            header[entry : entry + 8] = struct.pack(">II", offset, size)
         return bytes(header) + data
 
     fixtures["gtex/tagged.bin"] = gtex(
-        pattern(13, 0x44), data_base=0x30, surface_offsets=(0, 5)
+        pattern(40, 0x44), mip_levels=2, width=4, height=2,
+        data_base=0x28, surfaces=((0, 32), (32, 8))
     )
-    fixtures["gtex/trailing.bin"] = gtex(pattern(12, 0x51), flags=2)
+    fixtures["gtex/trailing.bin"] = gtex(
+        pattern(48, 0x51), format_index=24, mip_levels=2, width=8, height=8,
+        data_base=0x28, surfaces=((0, 32), (40, 8))
+    )
     fixtures["gtex/truncated-header.bin"] = b"GTEX" + pattern(10, 0x71)
     bad_gtex = bytearray(gtex(b"x"))
     bad_gtex[0x14:0x18] = struct.pack(">I", len(bad_gtex) + 1)

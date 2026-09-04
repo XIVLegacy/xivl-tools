@@ -5,7 +5,7 @@ data addressing, plus the three boundaries of the PWIB split container. The
 canonical promoted finding is:
 
 - `xivl-decomp:docs/resource/gtex-pwib-loader.md` at commit
-  `80ee4c29dc7847bd558404572cd516a11cbb221d`.
+  `86d4e7f25653a23f474643fcd78cb56f3c75738a`.
 
 The source that identifies both tags as file-type resources rather than
 PackRead chunks remains:
@@ -30,14 +30,25 @@ GTEX multibyte fields are big-endian. The reader reports:
 
 Flag bit 0 selects cube, otherwise bit 1 selects volume, otherwise the texture
 is 2D. Bit 2 is reported without a semantic name. A nonzero offset-table base
-selects eight-byte entries for every face and mip. The first big-endian dword
-of each entry is a source offset relative to the data base; the second dword
-remains unknown. Header gaps retain spans and digests. The data region extends
-from the loader-backed data base to end of input.
+selects eight-byte entries for every face and mip. Each entry contains a
+big-endian source offset relative to the data base followed by its big-endian
+encoded byte size. Header gaps retain spans and digests; data gaps between
+surface spans are reported independently.
 
-The reader does not interpret the client format-table index, assign a meaning
-to flag bit 2 or header offset `0x1c`, calculate encoded surface lengths, or
-decode, convert, or materialize texture bytes.
+The observed mappings are index 4 -> `D3DFMT_A8R8G8B8` (numeric 21, 32 bits
+per pixel), index 24 -> `D3DFMT_DXT1` (`0x31545844`, 8 bytes per 4 by 4
+block), and index 26 -> `D3DFMT_DXT5` (`0x35545844`, 16 bytes per block).
+Linear size is `width * height * bitsPerPixel / 8`; block size is
+`ceil(width / 4) * ceil(height / 4) * blockBytes`. Each mip clamps width and
+height to one. The parser requires declared and calculated sizes to agree for
+these mappings, rejects overlapping or out-of-file spans, and permits gaps.
+
+Exact encoded-surface materialization is limited to mapped, table-bearing 2D
+textures with flags zero and depth one. Cube, volume, nonzero flags, missing
+tables, and unmapped indices remain inspectable but are explicitly unsupported
+for materialization. Bit 2 still has no stable semantic name. Offset `0x1c`
+is not a fixed header field: with the retail table base of 24 it is entry 0's
+size dword. DDS/PNG conversion remains unsupported.
 
 ## PWIB contract
 
@@ -62,10 +73,14 @@ No texture or index-buffer interpretation is claimed.
 
 ## Retail parity
 
-On 2026-09-04, a header-only census of client build `2012.09.19.0001` found:
+On 2026-09-04, a complete install census of client build
+`2012.09.19.0001` found:
 
 - 21,161 GTEX files, with no zero or out-of-file data bases. Observed data
   bases were 32, 48, 64, and 96.
+- All 41,217 GTEX surface size dwords match the client sizing formula. Every
+  surface is non-overlapping and the last ends at EOF. Two adjacent mip pairs
+  contain explicit eight-byte gaps; all other adjacent deltas equal size.
 - 3,544 PWIB files, with no unordered boundaries, total-size mismatch, or
   missing `SEDB` signature at the first offset. Every observed first offset
   was 16.
@@ -76,6 +91,8 @@ The private representatives are recorded in
 | Fixture | Client path | Size | SHA-256 |
 |---|---|---:|---|
 | `retail-gtex-61c10005` | `data/61/C1/00/05.DAT` | 40 | `6663eafa5248c68d9804c4f4ca0677d4f24434f5c014b53889c70b2ccba204ef` |
+| `retail-gtex-a8r8g8b8-1c59027e` | `data/1C/59/02/7E.DAT` | 544 | `2018e48d77ab8529f764682f71d2f8364eb20b6f39e0d620a4978b5e1e9b6d6d` |
+| `retail-gtex-dxt5-1c590028` | `data/1C/59/00/28.DAT` | 5,504 | `edff5bb2ba4b5b66ea2ff7f50473be1d23fd02dbf945ef34c4cc5305c80a4f02` |
 | `retail-pwib-89b0005a` | `data/89/B0/00/5A.DAT` | 536 | `42cd46946d39812f32d17fb683e0ab45c53bdff9948610feb5228e93f856f99a` |
 
 The GTEX representative is a 4 by 4 2D texture with one mip, data base 32,
@@ -91,9 +108,10 @@ Automatic inspection recognizes either exact tag. Explicit `--as gtex` and
 fields, both PWIB segments, preserved trailing bytes, tag and header
 truncation, invalid GTEX data bases, invalid PWIB boundaries, validation,
 catalog extraction, and source replay. Private cases verify the same report
-shape against the two retail resources without retaining recoverable bytes.
+shape against the four retail resources without retaining recoverable bytes.
 
-Metadata extraction remains non-materializing. Its manifest preserves the
-parsed fields, spans, and SHA-256 digests, and source replay compares that
-report. DDS/PNG conversion and exact payload materialization remain
-unsupported.
+With `--materialize-payloads`, supported GTEX inputs produce one deterministic
+`gtex-encoded-surface` artifact per table entry. Each manifest records the
+face, mip, format mapping, source span, and digest; verification checks both
+the artifact and source replay. PWIB remains metadata-only. DDS/PNG conversion
+is not supported.

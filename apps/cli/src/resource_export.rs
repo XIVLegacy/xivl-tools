@@ -5,6 +5,7 @@ use std::path::Path;
 
 use serde_json::{json, Value};
 use xivl_formats::digest::sha256_hex;
+use xivl_formats::gtex_pwib::{self, TaggedResource, TaggedResourceKind};
 use xivl_formats::sedb::{self, EntryBody};
 use xivl_formats::{
     extract_lpb, inspect_named_bytes_as, parse_dat_path, to_canonical_json, InspectAs,
@@ -162,12 +163,16 @@ pub(crate) fn plan_bytes(
         .unwrap_or("unknown")
         .to_string();
     if materialize_payloads {
-        if !matches!(parsed_format.as_str(), "sedb" | "res") {
+        if !matches!(parsed_format.as_str(), "sedb" | "res" | "gtex") {
             return Err(Failure::usage(format!(
-                "--materialize-payloads applies only to SEDB/RES input, not '{parsed_format}'"
+                "--materialize-payloads applies only to SEDB/RES/GTEX input, not '{parsed_format}'"
             )));
         }
-        artifacts.extend(container_payloads(data, input)?);
+        if parsed_format == "gtex" {
+            artifacts.extend(gtex_surface_payloads(data, input)?);
+        } else {
+            artifacts.extend(container_payloads(data, input)?);
+        }
     }
     let payloads: Vec<Value> = artifacts
         .iter()
@@ -364,6 +369,82 @@ fn container_payloads(data: &[u8], input: &str) -> Result<Vec<PayloadArtifact>, 
         });
     }
     Ok(artifacts)
+}
+
+fn gtex_surface_payloads(data: &[u8], input: &str) -> Result<Vec<PayloadArtifact>, Failure> {
+    let TaggedResource::Gtex(gtex) = gtex_pwib::parse(data, TaggedResourceKind::Gtex)
+        .map_err(|error| Failure::parse(format!("{input}: {error}")))?
+    else {
+        unreachable!("the requested parser returns GTEX");
+    };
+    if let Some(reason) = gtex.materialization_refusal() {
+        return Err(Failure::parse(format!(
+            "{input}: unsupported GTEX surface materialization: {reason}"
+        )));
+    }
+    let format = gtex
+        .format
+        .expect("materialization requires a mapped format");
+    gtex.surfaces
+        .iter()
+        .map(|surface| {
+            let start = usize::try_from(surface.source_span.offset).map_err(|_| {
+                Failure::parse(format!(
+                    "{input}: GTEX surface offset does not fit this platform"
+                ))
+            })?;
+            let end_u64 = surface
+                .source_span
+                .offset
+                .checked_add(surface.source_span.length)
+                .ok_or_else(|| {
+                    Failure::parse(format!("{input}: GTEX surface end overflows u64"))
+                })?;
+            let end = usize::try_from(end_u64).map_err(|_| {
+                Failure::parse(format!(
+                    "{input}: GTEX surface end does not fit this platform"
+                ))
+            })?;
+            let bytes = data.get(start..end).ok_or_else(|| {
+                Failure::parse(format!("{input}: GTEX surface span escapes the input"))
+            })?;
+            let digest = sha256_hex(bytes);
+            let path = format!(
+                "payloads/surface-f{:02}-m{:03}-o{:016x}-l{:016x}-{}.bin",
+                surface.face,
+                surface.mip_level,
+                surface.source_span.offset,
+                surface.source_span.length,
+                &digest[..16],
+            );
+            Ok(PayloadArtifact {
+                manifest: json!({
+                    "entry": {
+                        "face": surface.face,
+                        "gtexFormat": {
+                            "clientIndex": format.index,
+                            "d3dName": format.d3d_name,
+                            "d3dValue": format.d3d_value,
+                        },
+                        "kind": "gtex-encoded-surface",
+                        "mipLevel": surface.mip_level,
+                        "path": format!("$.parsed.offsetTable.entries[{}]", surface.index),
+                    },
+                    "path": path,
+                    "role": "gtex-encoded-surface",
+                    "sha256": digest,
+                    "size": surface.source_span.length,
+                    "sourceSpan": {
+                        "endExclusive": end_u64,
+                        "length": surface.source_span.length,
+                        "offset": surface.source_span.offset,
+                    },
+                }),
+                path,
+                bytes: bytes.to_vec(),
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -616,13 +697,13 @@ mod tests {
         ])
         .unwrap_err();
         assert_eq!(error.code, 1);
-        assert!(error.message.contains("applies only to SEDB/RES"));
+        assert!(error.message.contains("applies only to SEDB/RES/GTEX"));
         assert!(!output.exists());
         fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
-    fn materialize_flag_rejects_bounded_gtex_data() {
+    fn materializes_gtex_surfaces_as_exact_independent_files() {
         let root = temp_root("gtex-data-option");
         fs::create_dir_all(&root).unwrap();
         let source = root.join("texture.DAT");
@@ -632,6 +713,38 @@ mod tests {
         )
         .unwrap();
         let output = root.join("out");
+        run(&[
+            source.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--materialize-payloads".into(),
+        ])
+        .unwrap();
+        let document = yaml_document(&output);
+        let payloads = document["payloads"].as_array().unwrap();
+        assert_eq!(payloads.len(), 2);
+        for payload in payloads {
+            assert_eq!(payload["role"], "gtex-encoded-surface");
+            let start = payload["sourceSpan"]["offset"].as_u64().unwrap() as usize;
+            let end = payload["sourceSpan"]["endExclusive"].as_u64().unwrap() as usize;
+            let path = payload["path"].as_str().unwrap();
+            assert_eq!(
+                fs::read(output.join(path)).unwrap(),
+                &fs::read(&source).unwrap()[start..end]
+            );
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn refuses_unmapped_gtex_materialization_before_output() {
+        let root = temp_root("gtex-unmapped-option");
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("texture.DAT");
+        let mut bytes = include_bytes!("../../../tests/fixtures/public/gtex/tagged.bin").to_vec();
+        bytes[6] = 3;
+        fs::write(&source, bytes).unwrap();
+        let output = root.join("out");
         let error = run(&[
             source.display().to_string(),
             "--output".into(),
@@ -639,7 +752,7 @@ mod tests {
             "--materialize-payloads".into(),
         ])
         .unwrap_err();
-        assert!(error.message.contains("applies only to SEDB/RES"));
+        assert!(error.message.contains("client format index is not mapped"));
         assert!(!output.exists());
         fs::remove_dir_all(root).unwrap();
     }

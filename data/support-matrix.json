@@ -259,13 +259,12 @@
       "phase": 4,
       "read": "partial",
       "write": "none",
-      "export": "planned",
+      "export": "partial",
       "exportViews": [
-        "dds",
-        "png",
+        "binary",
         "json"
       ],
-      "notes": "Reads the loader-backed client format index, mip count, texture flags, dimensions, optional eight-byte surface-offset entries, and source-data base. The data region runs from that base to end of input. Across all 21161 retail files the data base is nonzero and stays inside the input. Metadata-only extraction and verification preserve fields, spans, and digests but are not a lossless export. Client format-table values, flag bit 2, the second dword of each surface entry, encoded surface sizes, header offset 0x1c, compression, swizzle, GPU compatibility, DDS/PNG conversion, and payload materialization remain unresolved."
+      "notes": "Reads the loader-backed metadata and exact offset-size surface entries. Maps observed client indices 4, 24, and 26 to D3DFMT_A8R8G8B8, D3DFMT_DXT1, and D3DFMT_DXT5 and verifies linear or block-compressed encoded size. Across 21161 retail files, all 41217 size dwords match, spans do not overlap, and final surfaces end at EOF; two adjacent pairs have explicit eight-byte gaps. Opt-in extraction materializes exact encoded surfaces for mapped table-bearing 2D textures with flags zero and depth one. Cube, volume, flags, missing tables, unmapped indices, bit-2 meaning, decoding, DDS/PNG conversion, and GPU compatibility remain unsupported."
     },
     {
       "id": "pwib",

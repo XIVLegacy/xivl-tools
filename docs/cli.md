@@ -145,12 +145,12 @@ specific view is required:
 schema list such as `str,s32,bool,float,u8`; omitting it reads a sheet as a
 stream of string values, the representation used by an all-string sheet.
 
-GTEX inspection reports texture kind, dimensions, mip count, the client format
-index, surface offsets, and the source-data region. PWIB reports its two exact
+GTEX inspection reports texture kind, dimensions, mip count, mapped client
+format, surface offset-size entries, exact source spans, and data gaps. PWIB reports its two exact
 segments and the fixed SEDB header in the first; it does not parse that prefix
 as a standalone SEDB container. Resource extraction writes only the metadata
-manifest and no payload file. Direct `extract-resource --materialize-payloads`
-rejects both formats. See [GTEX fields and PWIB segments](formats/gtex-pwib.md)
+manifest by default. `extract-resource --materialize-payloads` writes exact
+encoded GTEX surfaces for the supported 2D boundary and rejects PWIB. See [GTEX fields and PWIB segments](formats/gtex-pwib.md)
 for the evidence boundary.
 
 The `staticactor-san` report carries the header and record spans, the

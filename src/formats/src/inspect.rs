@@ -606,7 +606,16 @@ fn inspect_tagged_resource(data: &[u8], kind: TaggedResourceKind) -> Result<Valu
             object.insert(
                 "texture".into(),
                 json!({
-                    "formatIndex": { "span": { "offset": 6, "length": 1 }, "value": gtex.format_index },
+                    "formatIndex": {
+                        "span": { "offset": 6, "length": 1 },
+                        "value": gtex.format_index,
+                        "mapping": gtex.format.map(|format| json!({
+                            "d3dValue": format.d3d_value,
+                            "d3dName": format.d3d_name,
+                            "bitsPerPixel": format.bits_per_pixel,
+                            "blockBytes": format.block_bytes,
+                        })),
+                    },
                     "mipLevels": { "span": { "offset": 7, "length": 1 }, "value": gtex.mip_levels },
                     "flags": { "span": { "offset": 9, "length": 1 }, "value": gtex.flags },
                     "kind": gtex.texture_kind.name(),
@@ -621,11 +630,26 @@ fn inspect_tagged_resource(data: &[u8], kind: TaggedResourceKind) -> Result<Valu
                 json!({
                     "base": { "byteOrder": "big", "span": { "offset": 16, "length": 4 }, "value": gtex.offset_table_base },
                     "entryStride": gtex_pwib::SURFACE_OFFSET_ENTRY_SIZE,
-                    "entries": gtex.surface_offsets.iter().map(|entry| json!({
+                    "entries": gtex.surfaces.iter().map(|entry| json!({
                         "index": entry.index,
-                        "offsetField": { "byteOrder": "big", "span": entry.field_span.to_json(), "value": entry.value },
+                        "face": entry.face,
+                        "mipLevel": entry.mip_level,
+                        "offsetField": { "byteOrder": "big", "span": entry.offset_field_span.to_json(), "value": entry.relative_offset },
+                        "sizeField": { "byteOrder": "big", "span": entry.size_field_span.to_json(), "value": entry.declared_size },
+                        "calculatedSize": entry.calculated_size,
+                        "source": {
+                            "span": entry.source_span.to_json(),
+                            "sha256": sha256_hex(span_bytes(data, entry.source_span)),
+                        },
                     })).collect::<Vec<_>>(),
                 }),
+            );
+            object.insert(
+                "surfaceMaterialization".into(),
+                match gtex.materialization_refusal() {
+                    None => json!({ "status": "supported" }),
+                    Some(reason) => json!({ "status": "unsupported", "reason": reason }),
+                },
             );
             object.insert(
                 "dataBase".into(),
@@ -641,6 +665,11 @@ fn inspect_tagged_resource(data: &[u8], kind: TaggedResourceKind) -> Result<Valu
                     "kind": "texture-source-data",
                     "span": gtex.data.to_json(),
                     "sha256": sha256_hex(span_bytes(data, gtex.data)),
+                    "gaps": gtex.data_gaps.iter().map(|span| json!({
+                        "kind": "alignment-or-unknown-gap",
+                        "span": span.to_json(),
+                        "sha256": sha256_hex(span_bytes(data, *span)),
+                    })).collect::<Vec<_>>(),
                 }),
             );
             object.insert("trailing".into(), json!([]));

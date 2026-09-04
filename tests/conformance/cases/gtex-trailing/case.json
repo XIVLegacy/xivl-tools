@@ -9,5 +9,5 @@
   },
   "arguments": ["--as", "gtex"],
   "expect": { "outcome": "ok", "output": "expected.json" },
-  "notes": "Authored bytes verify the GTEX volume branch and an end-of-input source-data region."
+  "notes": "Authored bytes verify DXT1 surface sizing and an explicit alignment gap between mip payloads."
 }
