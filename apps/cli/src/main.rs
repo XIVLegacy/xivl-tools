@@ -16,6 +16,8 @@ use xivl_formats::{extract_lpb, lua_path_document};
 use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_bytes_as, InspectAs};
 
 mod extract;
+mod resource_export;
+mod scan;
 
 const USAGE: &str = "\
 xivl - Final Fantasy XIV 1.23b client file tools
@@ -26,6 +28,8 @@ usage:
   xivl lua-path <path>
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
+  xivl catalog <game-or-resource-directory> --output <directory> [--format json|jsonl]
+  xivl extract-resource <file> --output <directory> [--format yaml|json] [--as <format>] [--columns <list>]
   xivl --help
   xivl --version
 
@@ -42,6 +46,11 @@ input exactly.
 extract discovers SSD sheet definitions under a 1.23b game directory,
 reads their data, enable, and row-offset resources, and writes one
 lossless CSV view per definition document.
+
+catalog inventories DAT resources without changing them. It records known,
+malformed, and unknown formats without guessing. extract-resource writes a
+schema-versioned YAML document by default, or JSON, and keeps decoded opaque
+payloads in separate files.
 
 lua-path applies the reversible ASCII resource-path transform. extract-lpb
 removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
@@ -93,6 +102,7 @@ fn main() -> ExitCode {
     }
 }
 
+#[derive(Debug)]
 struct Failure {
     message: String,
     code: u8,
@@ -140,6 +150,19 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
                 summary.absent_blocks,
                 summary.conflicting_values
             );
+            Ok(())
+        }
+        Some("catalog") => {
+            let summary = scan::run(&arguments[1..])?;
+            println!(
+                "cataloged {} resources to {}",
+                summary.resources, summary.output
+            );
+            Ok(())
+        }
+        Some("extract-resource") => {
+            let summary = resource_export::run(&arguments[1..])?;
+            println!("wrote {}", summary.output);
             Ok(())
         }
         Some(other) => Err(Failure::usage(format!(

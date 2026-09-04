@@ -8,6 +8,11 @@ const XOR_MAGIC: &[u8; 4] = b"rle\x0c";
 const LUA_51_SIGNATURE: &[u8; 5] = b"\x1bLuaQ";
 const XOR_KEY: u8 = 0x73;
 
+/// Whether the input begins with one of the evidenced LPB wrappers.
+pub fn has_signature(data: &[u8]) -> bool {
+    data.starts_with(RAW_MAGIC) || data.starts_with(XOR_MAGIC)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LpbVariant {
     Raw,

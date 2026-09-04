@@ -17,6 +17,8 @@ cargo run --locked -p xivl-cli -- validate tests/fixtures/public/config/lng-word
 cargo run --locked -p xivl-cli -- lua-path Quest/Scenario/Man0g0.lua
 cargo run --locked -p xivl-cli -- extract-lpb tests/fixtures/public/lpb/raw.bin --output chunk.luac
 cargo run --locked -p xivl-cli -- extract "C:\path\to\FINAL FANTASY XIV" --output csv
+cargo run --locked -p xivl-cli -- catalog "C:\path\to\FINAL FANTASY XIV" --output catalog
+cargo run --locked -p xivl-cli -- extract-resource tests/fixtures/public/lpb/raw.bin --output resource
 ```
 
 `inspect` reports the structure the reader found: the format ID, input length,
@@ -42,6 +44,23 @@ locale-dependent case rules.
 `extract-lpb` accepts either evidenced LPB wrapper, verifies that the decoded
 payload starts with a Lua 5.1 chunk signature, and writes those compiled bytes
 without interpreting them. It refuses to replace an existing output file.
+
+`catalog` walks only `.DAT` files below an explicit game or resource directory
+and writes canonical `catalog.json`, or JSONL with `--format jsonl`. Rows are
+path-sorted and record source identity, a resource ID when the path establishes
+one, detected format, parse and support status, spans, and anomalies. Unknown
+resources remain explicitly unknown. Recognized malformed resources remain in
+the catalog with their typed parse failure instead of aborting the walk.
+
+`extract-resource` reuses the selected inspection reader and writes a
+schema-versioned `extraction.yaml`, or canonical JSON with `--format json`.
+Use the same `--as` and `--columns` selectors as `inspect` for signatureless or
+explicit views. LPB decoded bytes are written separately under `payloads/` and
+referenced by path, size, role, and SHA-256; opaque data is not embedded as
+base64. The output directory must be absent or empty.
+
+The output schemas and complete field semantics are documented in
+[DAT catalog and resource extraction](resource-extraction.md).
 
 ## Select a reader
 

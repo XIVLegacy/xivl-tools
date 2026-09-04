@@ -10,6 +10,7 @@ XIVLegacy Tools.
 | [Support matrix](support-matrix.md) | The frozen target, status vocabulary, and promotion rules |
 | [Conformance tests](conformance-tests.md) | Case manifests, normalized output, fixture roots |
 | [CLI](cli.md) | User-facing inspect and validate commands, selectors, reports, and exit statuses |
+| [DAT catalog and resource extraction](resource-extraction.md) | Catalog and extraction schemas, status fields, payload references, and output boundaries |
 | [Format evidence](format-evidence.md) | Index of byte-layout evidence and retail citations |
 | [SEDB, RES, and resource paths](formats/sedb-res.md) | Resource paths and container layouts |
 | [SSD documents, sheets, and scrambled XML](formats/ssd-sheet.md) | Sheet documents, rows, strings, and XML containers |

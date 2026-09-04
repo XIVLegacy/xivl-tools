@@ -43,7 +43,7 @@
       "read": "supported",
       "write": "none",
       "export": "not-applicable",
-      "notes": "The id to data/AA/BB/CC/DD.DAT mapping is total over the 32-bit space, both directions, with public cases for the mapping and for malformed identifiers. Confirmed against retail 1.23b: all 140180 install resources match the convention. Stays supported rather than verified because the operation takes an identifier listing, so no retail file is a fixture for it. Evidence: docs/formats/sedb-res.md."
+      "notes": "The id to data/AA/BB/CC/DD.DAT mapping is total over the 32-bit space, both directions, with public cases for the mapping and for malformed identifiers. The catalog CLI derives an id only from a matching path and otherwise records null; public CLI tests cover known, malformed, and unknown DAT rows plus deterministic ordering. Confirmed against retail 1.23b: all 140180 install resources match the convention. Stays supported rather than verified because the operation takes an identifier listing, so no retail file is a fixture for it. Evidence: docs/formats/sedb-res.md."
     },
     {
       "id": "sedb",

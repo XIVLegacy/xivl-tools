@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/XIVLegacy/xivl-tools/schemas/resource-extraction.schema.json",
+  "title": "xivl resource extraction document",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "source",
+    "tool",
+    "format",
+    "parsed",
+    "anomalies",
+    "payloads"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fileName", "resourceId", "size", "sha256"],
+      "properties": {
+        "fileName": { "type": "string", "minLength": 1 },
+        "resourceId": {
+          "type": ["string", "null"],
+          "pattern": "^0x[0-9A-F]{8}$"
+        },
+        "size": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "commit"],
+      "properties": {
+        "name": { "type": "string", "const": "xivl" },
+        "version": { "type": "string", "minLength": 1 },
+        "commit": { "type": ["string", "null"], "minLength": 1 }
+      }
+    },
+    "format": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "parseStatus", "supportStatus"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "parseStatus": { "type": "string", "const": "parsed" },
+        "supportStatus": {
+          "enum": ["none", "partial", "supported", "verified"]
+        }
+      }
+    },
+    "parsed": { "type": "object" },
+    "anomalies": { "type": "array", "items": { "type": "object" } },
+    "payloads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "role", "size", "sha256"],
+        "properties": {
+          "path": { "type": "string", "pattern": "^payloads/[A-Za-z0-9._-]+$" },
+          "role": { "type": "string", "minLength": 1 },
+          "size": { "type": "integer", "minimum": 0 },
+          "sha256": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}
