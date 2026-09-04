@@ -20,6 +20,7 @@ cargo run --locked -p xivl-cli -- extract "C:\path\to\FINAL FANTASY XIV" --outpu
 cargo run --locked -p xivl-cli -- catalog "C:\path\to\FINAL FANTASY XIV" --output catalog
 cargo run --locked -p xivl-cli -- extract-resource tests/fixtures/public/lpb/raw.bin --output resource
 cargo run --locked -p xivl-cli -- extract-catalog catalog/catalog.json --root "C:\path\to\FINAL FANTASY XIV" --output selected --id 0x12345678
+cargo run --locked -p xivl-cli -- verify-extraction selected --catalog catalog/catalog.json --root "C:\path\to\FINAL FANTASY XIV"
 ```
 
 `inspect` reports the structure the reader found: the format ID, input length,
@@ -92,6 +93,27 @@ passes the existing opt-in behavior to selected SEDB/RES resources.
 
 ```text
 cargo run --locked -p xivl-cli -- extract-catalog catalog/catalog.json --root install --output selected --id 0x12345678 --path data/12/34/56/79.DAT --max-resources 2 --materialize-payloads
+```
+
+`verify-extraction` checks an existing single-resource or catalog extraction
+without writing, repairing, or deleting anything. It auto-detects exactly one
+supported root manifest, validates its embedded JSON Schema version and
+semantic relationships, inventories every member, and rejects missing or extra
+files and directories, unsafe or case-colliding paths, symbolic links, Windows
+reparse points, hardlink aliases, digest or size changes, span errors, and
+incorrect aggregate totals.
+
+Internal verification needs only the extraction directory. Add `--source` for
+a single-resource extraction to re-read the original source and reproduce its
+parsed structure and payload bytes. For a catalog extraction, supply
+`--catalog` and `--root` together to validate the catalog identity and replay
+each selected source. `--report json` emits one compact stable summary instead
+of the default text line; reports contain counts and identities, never payload
+bytes.
+
+```text
+cargo run --locked -p xivl-cli -- verify-extraction resource --source resource.DAT
+cargo run --locked -p xivl-cli -- verify-extraction selected --catalog catalog/catalog.json --root install --report json
 ```
 
 ## Select a reader

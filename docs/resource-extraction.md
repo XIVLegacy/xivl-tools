@@ -132,3 +132,34 @@ written to a same-parent staging directory and published by rename only after
 all isolated outputs and the batch manifest succeed. A refused or failed batch
 does not appear at the requested output path; a stale staging path is refused
 rather than overwritten.
+
+## Read-only verification
+
+`xivl verify-extraction <directory>` auto-detects a single
+`extraction.yaml`/`extraction.json` or `batch.yaml`/`batch.json`. More than one
+root manifest is ambiguous. The verifier accepts schema version 1, validates
+the loaded YAML or JSON against the corresponding embedded JSON Schema, then
+checks invariants that the schema alone cannot express.
+
+For one resource, it verifies every declared payload's normalized relative
+path, regular-file identity, size, SHA-256, source-span arithmetic, and parsed
+container and entry relationship. Exact directory membership is required, so
+missing and unlisted files or directories fail. `--source <file>` additionally
+checks source name, resource identity when derivable, size, digest, parsed
+structure, materialization plan, exact source slices, and LPB decoding.
+
+For a batch, every isolated resource receives the same verification. The
+top-level resource records, ordinals, catalog indexes, paths, formats, byte
+counts, and aggregate totals must agree with their nested manifests and actual
+files. `--catalog <file> --root <directory>` must be supplied as a pair. It
+checks the recorded catalog identity, resolves each selected regular source
+below the explicit root, and performs source replay for every resource.
+
+The inventory refuses path traversal, alternate-stream syntax, case-folded
+collisions, symbolic links, Windows reparse points, hardlink aliases, and
+non-regular members. Arithmetic is checked for overflow. Failures use stable
+typed prefixes such as `schema-validation-failed`, `payload-sha256-mismatch`,
+`extra-file`, `file-alias-refused`, `stale-source-sha256`, and
+`batch-totals-mismatch`. The command never repairs, creates, removes, or
+rewrites extraction content. `--report json` changes only the concise success
+summary and never includes payload bytes.

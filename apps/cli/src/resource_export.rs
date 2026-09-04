@@ -214,6 +214,10 @@ pub(crate) fn plan_bytes(
 }
 
 impl PlannedExtraction {
+    pub(crate) fn document(&self) -> &str {
+        &self.document
+    }
+
     pub(crate) fn document_name(&self) -> &'static str {
         self.document_name
     }

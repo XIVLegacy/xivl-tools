@@ -30,14 +30,14 @@ enum Selection {
     Path(String),
 }
 
-struct CatalogEntry {
-    index: usize,
-    source_path: String,
-    resource_id: Option<String>,
-    size: u64,
-    sha256: String,
-    detected_format: String,
-    format_status: String,
+pub(crate) struct CatalogEntry {
+    pub(crate) index: usize,
+    pub(crate) source_path: String,
+    pub(crate) resource_id: Option<String>,
+    pub(crate) size: u64,
+    pub(crate) sha256: String,
+    pub(crate) detected_format: String,
+    pub(crate) format_status: String,
 }
 
 struct PlannedResource {
@@ -362,7 +362,7 @@ fn parse_positive_u64(text: &str, option: &str) -> Result<u64, Failure> {
     Ok(value)
 }
 
-fn parse_catalog(data: &[u8]) -> Result<Vec<CatalogEntry>, Failure> {
+pub(crate) fn parse_catalog(data: &[u8]) -> Result<Vec<CatalogEntry>, Failure> {
     let value = serde_json::from_slice::<Value>(data);
     let resources = match value {
         Ok(Value::Object(object)) if object.contains_key("resources") => {
@@ -494,7 +494,7 @@ fn required_string<'a>(
         .ok_or_else(|| batch_error(format!("invalid-catalog-entry: index {index} {key}")))
 }
 
-fn normalize_relative_path(text: &str) -> Result<String, Failure> {
+pub(crate) fn normalize_relative_path(text: &str) -> Result<String, Failure> {
     let normalized = text.replace('\\', "/");
     if normalized.is_empty()
         || normalized.starts_with('/')
@@ -555,7 +555,7 @@ fn resolve_selections<'a>(
     Ok(selected.into_values().collect())
 }
 
-fn secure_root(root: &Path) -> Result<PathBuf, Failure> {
+pub(crate) fn secure_root(root: &Path) -> Result<PathBuf, Failure> {
     reject_link_if_present(root, "catalog root")?;
     if !root.is_dir() {
         return Err(batch_error(format!(
@@ -571,7 +571,11 @@ fn secure_root(root: &Path) -> Result<PathBuf, Failure> {
     })
 }
 
-fn secure_source(root: &Path, canonical_root: &Path, relative: &str) -> Result<PathBuf, Failure> {
+pub(crate) fn secure_source(
+    root: &Path,
+    canonical_root: &Path,
+    relative: &str,
+) -> Result<PathBuf, Failure> {
     let mut path = root.to_path_buf();
     for component in relative.split('/') {
         path.push(component);
@@ -592,7 +596,7 @@ fn secure_source(root: &Path, canonical_root: &Path, relative: &str) -> Result<P
     Ok(canonical)
 }
 
-fn reject_link_if_present(path: &Path, role: &str) -> Result<(), Failure> {
+pub(crate) fn reject_link_if_present(path: &Path, role: &str) -> Result<(), Failure> {
     let metadata = match fs::symlink_metadata(path) {
         Ok(value) => value,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
