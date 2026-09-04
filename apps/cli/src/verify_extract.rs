@@ -1135,6 +1135,68 @@ mod tests {
         fs::remove_dir_all(work).unwrap();
     }
 
+    #[test]
+    fn verifies_gtex_catalog_extraction_without_claiming_a_payload() {
+        let work = temp_root("gtex-batch");
+        let root = work.join("root");
+        let source = root.join("data/12/34/56/78.DAT");
+        fs::create_dir_all(source.parent().unwrap()).unwrap();
+        fs::write(
+            &source,
+            include_bytes!("../../../tests/fixtures/public/gtex/tagged.bin"),
+        )
+        .unwrap();
+        let catalog_output = work.join("catalog");
+        let catalog_summary = crate::scan::run(&[
+            root.display().to_string(),
+            "--output".into(),
+            catalog_output.display().to_string(),
+        ])
+        .unwrap();
+        let catalog: Value =
+            serde_json::from_str(&fs::read_to_string(&catalog_summary.output).unwrap()).unwrap();
+        assert_eq!(catalog["resources"][0]["detectedFormat"], "gtex");
+        assert_eq!(catalog["resources"][0]["formatStatus"], "parsed");
+        assert_eq!(catalog["resources"][0]["supportStatus"], "partial");
+
+        let output = work.join("output");
+        crate::batch_extract::run(&[
+            catalog_summary.output.clone(),
+            "--root".into(),
+            root.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--id".into(),
+            "0x12345678".into(),
+        ])
+        .unwrap();
+        let report = run(&[
+            output.display().to_string(),
+            "--catalog".into(),
+            catalog_summary.output,
+            "--root".into(),
+            root.display().to_string(),
+            "--report".into(),
+            "json".into(),
+        ])
+        .unwrap();
+        let report: Value = serde_json::from_str(&report.text).unwrap();
+        assert_eq!(report["sourceReplay"], true);
+        assert_eq!(report["payloads"], 0);
+
+        let batch: Value =
+            serde_yaml::from_str(&fs::read_to_string(output.join("batch.yaml")).unwrap()).unwrap();
+        let nested = output.join(batch["resources"][0]["manifest"].as_str().unwrap());
+        let extraction: Value = serde_yaml::from_str(&fs::read_to_string(nested).unwrap()).unwrap();
+        assert_eq!(extraction["format"]["id"], "gtex");
+        assert_eq!(extraction["payloads"], json!([]));
+        assert_eq!(
+            extraction["parsed"]["opaqueRemainder"]["meaning"],
+            "unknown"
+        );
+        fs::remove_dir_all(work).unwrap();
+    }
+
     fn catalog_row(path: &str, bytes: &[u8]) -> Value {
         json!({
             "anomalies": [],

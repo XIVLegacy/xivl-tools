@@ -1,0 +1,25 @@
+{
+  "anomalies": [],
+  "format": "gtex",
+  "input": {
+    "length": 33
+  },
+  "layoutStatus": "unresolved",
+  "opaqueRemainder": {
+    "meaning": "unknown",
+    "sha256": "7dce8e45ac5c1277b2b4972a5dabcbb20c59b0ed8b9b0e5c6bc54827c25cfaf5",
+    "span": {
+      "length": 29,
+      "offset": 4
+    }
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "signature": {
+    "ascii": "GTEX",
+    "span": {
+      "length": 4,
+      "offset": 0
+    }
+  }
+}

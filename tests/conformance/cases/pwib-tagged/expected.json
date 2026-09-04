@@ -1,0 +1,25 @@
+{
+  "anomalies": [],
+  "format": "pwib",
+  "input": {
+    "length": 21
+  },
+  "layoutStatus": "unresolved",
+  "opaqueRemainder": {
+    "meaning": "unknown",
+    "sha256": "712e25bc12e11c02f20400a0bf3b34ff4b0b8cb0508e4bddb327bdd03cc03a98",
+    "span": {
+      "length": 17,
+      "offset": 4
+    }
+  },
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "signature": {
+    "ascii": "PWIB",
+    "span": {
+      "length": 4,
+      "offset": 0
+    }
+  }
+}

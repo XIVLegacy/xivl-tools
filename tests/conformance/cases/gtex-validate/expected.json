@@ -1,0 +1,19 @@
+{
+  "checks": [
+    {
+      "name": "parse",
+      "status": "pass"
+    },
+    {
+      "name": "round-trip",
+      "status": "not-applicable"
+    }
+  ],
+  "format": "gtex",
+  "input": {
+    "length": 33
+  },
+  "operation": "validate",
+  "schemaVersion": 1,
+  "sha256": "47b1df2318d353ee502f89ec8e90849c363e761a1d58e852374fcadf0d505429"
+}

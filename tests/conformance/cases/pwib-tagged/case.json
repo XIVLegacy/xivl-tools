@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-tagged",
+  "formatId": "pwib",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/pwib/tagged.bin"
+  },
+  "arguments": ["--as", "pwib"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Authored bytes verify only exact PWIB tag recognition and opaque preservation of the remainder."
+}

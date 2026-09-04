@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-truncated-tag",
+  "formatId": "gtex",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/truncated-tag.bin"
+  },
+  "arguments": ["--as", "gtex"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 0
+  },
+  "notes": "An explicit GTEX read refuses a tag truncated before four bytes."
+}

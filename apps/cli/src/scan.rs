@@ -228,7 +228,12 @@ pub fn read_support(format: &str) -> &'static str {
 }
 
 pub fn detect(data: &[u8]) -> Option<(&'static str, InspectAs)> {
-    if xivl_formats::staticactor::has_signature(data) {
+    if let Some(kind) = xivl_formats::gtex_pwib::detect(data) {
+        match kind {
+            xivl_formats::gtex_pwib::TaggedResourceKind::Gtex => Some(("gtex", InspectAs::Gtex)),
+            xivl_formats::gtex_pwib::TaggedResourceKind::Pwib => Some(("pwib", InspectAs::Pwib)),
+        }
+    } else if xivl_formats::staticactor::has_signature(data) {
         Some(("staticactor-san", InspectAs::StaticActorSan))
     } else if xivl_formats::ssd::has_document_signature(data) {
         Some(("ssd", InspectAs::Ssd))

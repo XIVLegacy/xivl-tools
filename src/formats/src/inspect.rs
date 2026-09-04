@@ -14,6 +14,7 @@ use serde_json::{json, Map, Value};
 use crate::config::{self, ConfigFile, ConfigKind};
 use crate::digest::{sha256_hex, sha256_xor_hex};
 use crate::error::Result;
+use crate::gtex_pwib::{self, TaggedResourceKind};
 use crate::lpb;
 use crate::lua51::{
     self, Lua51Instruction, Lua51Operand, Lua51Operands, Lua51Prototype, LuaConstant, LuaString,
@@ -55,6 +56,10 @@ pub enum InspectAs {
     LpbBytecode,
     /// The XOR-0x73 static-actor SAN record table.
     StaticActorSan,
+    /// A GTEX-tagged resource with no evidenced post-signature layout.
+    Gtex,
+    /// A PWIB-tagged resource with no evidenced post-signature layout.
+    Pwib,
     EnableFile,
     RowOffsets,
     /// A sheet data file. With no columns it is read as a stream of string
@@ -68,7 +73,7 @@ pub enum InspectAs {
 
 impl InspectAs {
     /// Names accepted by the `--as` option.
-    pub const NAMES: [&'static str; 14] = [
+    pub const NAMES: [&'static str; 16] = [
         "sedb",
         "ssd",
         "scrambled-xml",
@@ -76,6 +81,8 @@ impl InspectAs {
         "lpb",
         "lpb-bytecode",
         "staticactor-san",
+        "gtex",
+        "pwib",
         "enable-file",
         "row-offsets",
         "sheet-data",
@@ -120,6 +127,8 @@ impl InspectAs {
             Some("lpb") => Self::Lpb,
             Some("lpb-bytecode") => Self::LpbBytecode,
             Some("staticactor-san") => Self::StaticActorSan,
+            Some("gtex") => Self::Gtex,
+            Some("pwib") => Self::Pwib,
             Some("enable-file") => Self::EnableFile,
             Some("row-offsets") => Self::RowOffsets,
             Some("sheet-data") => Self::SheetData(columns.clone().unwrap_or_default()),
@@ -162,7 +171,9 @@ pub fn inspect_bytes_as(data: &[u8], how: &InspectAs) -> Result<Value> {
 pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Result<Value> {
     match how {
         InspectAs::Auto => {
-            if staticactor::has_signature(data) {
+            if let Some(kind) = gtex_pwib::detect(data) {
+                inspect_tagged_resource(data, kind)
+            } else if staticactor::has_signature(data) {
                 inspect_staticactor(data)
             } else if ssd::has_document_signature(data) {
                 inspect_ssd(data)
@@ -187,6 +198,8 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
         InspectAs::Lpb => inspect_lpb(data),
         InspectAs::LpbBytecode => inspect_lpb_bytecode(data),
         InspectAs::StaticActorSan => inspect_staticactor(data),
+        InspectAs::Gtex => inspect_tagged_resource(data, TaggedResourceKind::Gtex),
+        InspectAs::Pwib => inspect_tagged_resource(data, TaggedResourceKind::Pwib),
         InspectAs::EnableFile => inspect_enable_file(data),
         InspectAs::RowOffsets => inspect_row_offsets(data),
         InspectAs::SheetData(columns) => inspect_sheet_data(data, columns),
@@ -564,6 +577,30 @@ fn inspect_staticactor(data: &[u8]) -> Result<Value> {
                 .collect(),
         ),
     );
+    Ok(Value::Object(object))
+}
+
+fn inspect_tagged_resource(data: &[u8], kind: TaggedResourceKind) -> Result<Value> {
+    let resource = gtex_pwib::parse(data, kind)?;
+    let remainder = span_bytes(data, resource.opaque_remainder);
+    let mut object = envelope(resource.kind.format_id(), data);
+    object.insert(
+        "signature".into(),
+        json!({
+            "ascii": String::from_utf8_lossy(resource.kind.magic()),
+            "span": resource.signature.to_json(),
+        }),
+    );
+    object.insert(
+        "opaqueRemainder".into(),
+        json!({
+            "meaning": "unknown",
+            "span": resource.opaque_remainder.to_json(),
+            "sha256": sha256_hex(remainder),
+        }),
+    );
+    object.insert("layoutStatus".into(), json!("unresolved"));
+    object.insert("anomalies".into(), json!([]));
     Ok(Value::Object(object))
 }
 
@@ -1112,12 +1149,16 @@ mod tests {
             InspectAs::StaticActorSan
         );
         assert_eq!(
+            InspectAs::from_arguments(&arguments(&["--as", "gtex"])).unwrap(),
+            InspectAs::Gtex
+        );
+        assert_eq!(
             InspectAs::from_arguments(&arguments(&["--as", "sheet-data", "--columns", "str,u8"]))
                 .unwrap(),
             InspectAs::SheetData(vec![ColumnType::Text, ColumnType::Unsigned8])
         );
         for (parts, needle) in [
-            (vec!["--as", "gtex"], "unknown format"),
+            (vec!["--as", "not-a-format"], "unknown format"),
             (vec!["--as"], "needs a format name"),
             (vec!["--columns", "str"], "applies to --as sheet-data"),
             (vec!["--as", "sheet-data", "--columns", "s64"], "s64"),
@@ -1136,6 +1177,8 @@ mod tests {
         san.extend([0u8; 9].map(|byte| byte ^ staticactor::XOR_KEY));
         let document = inspect_bytes(&san).unwrap();
         assert_eq!(document["format"], "staticactor-san");
+        assert_eq!(inspect_bytes(b"GTEXbody").unwrap()["format"], "gtex");
+        assert_eq!(inspect_bytes(b"PWIBbody").unwrap()["format"], "pwib");
         let error = inspect_bytes(b"not a container at all").unwrap_err();
         assert_eq!(error.kind(), crate::error::ErrorKind::BadMagic);
     }

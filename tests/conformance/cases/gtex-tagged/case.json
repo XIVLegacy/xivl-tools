@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-tagged",
+  "formatId": "gtex",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/tagged.bin"
+  },
+  "arguments": ["--as", "gtex"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Authored bytes verify only exact GTEX tag recognition and opaque preservation of the remainder."
+}

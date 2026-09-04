@@ -297,6 +297,14 @@ def build_fixtures() -> dict[str, bytes]:
     fixtures["lpb/truncated.bin"] = b"rle\x0cshort"
     fixtures["lpb/bad-chunk.bin"] = b"rlu\x0bABCDxxxxx"
 
+    # -- GTEX and PWIB tags ---------------------------------------------
+    # Only the signatures are evidenced. The bodies are invented patterns
+    # whose entire range must remain one unresolved span.
+    fixtures["gtex/tagged.bin"] = b"GTEX" + pattern(29, 0x44)
+    fixtures["pwib/tagged.bin"] = b"PWIB" + pattern(17, 0x62)
+    fixtures["gtex/truncated-tag.bin"] = b"GTE"
+    fixtures["pwib/truncated-tag.bin"] = b"PWI"
+
     # -- the static-actor SAN table --------------------------------------
     # Only the framing is promoted: the authored strings resemble paths so
     # the positive case exercises the retail byte class without assigning a

@@ -118,10 +118,10 @@ cargo run --locked -p xivl-cli -- verify-extraction selected --catalog catalog/c
 
 ## Select a reader
 
-Without `--as`, the tool recognizes static-actor SAN tables, SEDB containers,
-SSD documents, SQEX containers, and scrambled XML. An input with no recognized
-signature is tried as SEDB and fails with a parse error if it is not a SEDB
-container.
+Without `--as`, the tool recognizes GTEX and PWIB tags, static-actor SAN
+tables, SEDB containers, SSD documents, SQEX containers, and scrambled XML.
+An input with no recognized signature is tried as SEDB and fails with a parse
+error if it is not a SEDB container.
 
 Use `--as <format>` when the bytes do not identify their format or when a
 specific view is required:
@@ -135,6 +135,7 @@ specific view is required:
 | `lpb` | Read an LPB wrapper and report preserved header spans and the decoded payload digest. |
 | `lpb-bytecode` | Keep the LPB wrapper report and structurally inspect its evidenced Lua 5.1 payload. |
 | `staticactor-san` | Read the XOR-0x73 record framing while leaving both record-member meanings unknown. |
+| `gtex`, `pwib` | Recognize the exact four-byte tag and report every later byte as one unresolved span with a digest. |
 | `enable-file` | Read the headerless enable-record array. |
 | `row-offsets` | Read the headerless row-offset array. |
 | `sheet-data` | Read sheet rows; add `--columns` for typed rows. |
@@ -143,6 +144,13 @@ specific view is required:
 `--columns` applies only to `sheet-data`. Its value is a comma-separated
 schema list such as `str,s32,bool,float,u8`; omitting it reads a sheet as a
 stream of string values, the representation used by an all-string sheet.
+
+GTEX and PWIB inspection does not parse texture metadata or establish a
+payload boundary. Resource extraction therefore writes only the metadata
+manifest and no payload file. Direct `extract-resource --materialize-payloads`
+rejects both formats. See
+[GTEX and PWIB tagged resources](formats/gtex-pwib.md) for the evidence
+boundary.
 
 The `staticactor-san` report carries the header and record spans, the
 big-endian values, decoded string lengths and digests, and two byte-shape

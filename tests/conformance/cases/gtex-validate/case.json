@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-validate",
+  "formatId": "gtex",
+  "operation": "validate",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/tagged.bin"
+  },
+  "arguments": ["--as", "gtex"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Validation confirms only the bounded signature read; writing and round-trip validation are not applicable."
+}

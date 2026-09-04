@@ -257,14 +257,25 @@
       "name": "GTEX texture",
       "category": "graphics",
       "phase": 4,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
       "export": "planned",
       "exportViews": [
         "dds",
         "png",
         "json"
-      ]
+      ],
+      "notes": "Recognizes the exact GTEX signature and reports the signature plus every later byte as one opaque span with a SHA-256 digest. Metadata-only extraction and verification preserve that report but are not a lossless export. No post-signature field, texture metadata, encoded-payload boundary, version, format identifier, dimension, mip or layer count, compression, swizzle, or GPU compatibility is claimed."
+    },
+    {
+      "id": "pwib",
+      "name": "PWIB tagged resource",
+      "category": "resource",
+      "phase": 4,
+      "read": "partial",
+      "write": "none",
+      "export": "none",
+      "notes": "Recognizes the exact PWIB signature and reports the signature plus every later byte as one opaque span with a SHA-256 digest. Metadata-only extraction and verification preserve that report but are not a lossless export. The resource's purpose and every post-signature field and payload boundary remain unresolved; no texture or index-buffer interpretation is claimed."
     },
     {
       "id": "fdt",

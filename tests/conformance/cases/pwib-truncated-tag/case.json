@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-truncated-tag",
+  "formatId": "pwib",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/pwib/truncated-tag.bin"
+  },
+  "arguments": ["--as", "pwib"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 0
+  },
+  "notes": "An explicit PWIB read refuses a tag truncated before four bytes."
+}

@@ -14,6 +14,7 @@ repository makes.
 - [Configuration files](formats/configuration.md)
 - [Static-actor SAN records](formats/staticactor-san.md)
 - [Lua paths, LPB wrappers, and Lua 5.1](formats/lua-lpb.md)
+- [GTEX and PWIB tagged resources](formats/gtex-pwib.md)
 
 ## How a fact gets here
 
@@ -41,9 +42,9 @@ Specifically not handled:
   payload is one opaque span with a digest;
 - the meaning of `unknownA`, `flags`, the RES `unknownB`, and the
   directory `kind` values. The values are carried into the report;
-- any non-SEDB resource. GTEX, PWIB-wrapped textures, MapLayout, and the
-  zero-filled and unrecognized files fail with `bad-magic`. Together they
-  are 452 of every 1508 resources sampled;
+- non-SEDB layouts remain outside the SEDB/RES claim. GTEX and PWIB now have
+  signature-only readers; MapLayout, zero-filled, and unrecognized files
+  still fail with `bad-magic`;
 - the `wrb` chunk tree, model, mesh, skeleton, and texture layouts, which are
   outside this support claim;
 - extraction and manifesting of subresource bytes, which are also outside this

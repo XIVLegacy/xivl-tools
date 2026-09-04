@@ -620,4 +620,27 @@ mod tests {
         assert!(!output.exists());
         fs::remove_dir_all(root).unwrap();
     }
+
+    #[test]
+    fn materialize_flag_rejects_signature_only_gtex() {
+        let root = temp_root("gtex-payload-option");
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("texture.DAT");
+        fs::write(
+            &source,
+            include_bytes!("../../../tests/fixtures/public/gtex/tagged.bin"),
+        )
+        .unwrap();
+        let output = root.join("out");
+        let error = run(&[
+            source.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--materialize-payloads".into(),
+        ])
+        .unwrap_err();
+        assert!(error.message.contains("applies only to SEDB/RES"));
+        assert!(!output.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
 }

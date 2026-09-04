@@ -180,10 +180,11 @@ the cited document names:
 
 ### Parser behavior over the install
 
-A 1508-file sample, every 93rd resource, run through `xivl inspect`: 1056
-SEDB resources parsed, 0 errors, 0 panics. The remaining 452 are not SEDB
-at all. They are reported as `bad-magic`: GTEX 226, zero-filled 59, PWIB 38,
-plus a tail of smaller signatures. None of those formats is handled here.
+A 1508-file sample, every 93rd resource, run through the SEDB-only reader:
+1056 SEDB resources parsed, 0 errors, 0 panics. The remaining 452 were not
+SEDB at all and took `bad-magic`: GTEX 226, zero-filled 59, PWIB 38, plus a
+tail of smaller signatures. GTEX and PWIB now have signature-only readers;
+their layouts remain outside this SEDB/RES claim.
 
 ## Exact payload materialization
 

@@ -70,6 +70,13 @@ Signatureless readers remain explicit through `--as`. SQEX decoding continues
 to use the source file's own base name as its key, so extracting through this
 command preserves the filename-dependent input rather than renaming a copy.
 
+GTEX and PWIB extractions are metadata-only. Their manifests preserve the
+signature and the span and SHA-256 of every later byte, but `payloads` remains
+empty because the evidence does not establish where an encoded texture or
+other payload begins. Source replay through `verify-extraction` reproduces and
+compares that report. Exact payload materialization and DDS/PNG conversion are
+not supported.
+
 Both commands require an output directory that is absent or empty. A
 non-directory output path, nonempty output directory, symbolic link in a
 catalog walk, unreadable input, unrecognized extraction format, or malformed
