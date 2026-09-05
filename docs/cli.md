@@ -17,6 +17,7 @@ cargo run --locked -p xivl-cli -- validate tests/fixtures/public/config/lng-word
 cargo run --locked -p xivl-cli -- inspect-command Fire --catalog "C:\path\to\command_battle_params.csv"
 cargo run --locked -p xivl-cli -- inspect-command-loadout --slot-context "C:\path\to\command_slot_context.json"
 cargo run --locked -p xivl-cli -- inspect-command-loadout --slot-context "C:\path\to\command_slot_context.json" --trace 0 --format json
+cargo run --locked -p xivl-cli -- materialize-command-loadout --slot-context "C:\path\to\command_slot_context.json" --trace 0 --record-range 10:18 --output command-0137.bin --format json
 cargo run --locked -p xivl-cli -- lua-path Quest/Scenario/Man0g0.lua
 cargo run --locked -p xivl-cli -- extract-lpb tests/fixtures/public/lpb/raw.bin --output chunk.luac
 cargo run --locked -p xivl-cli -- extract "C:\path\to\FINAL FANTASY XIV" --output csv
@@ -84,6 +85,31 @@ joins. Reports explicitly retain `partialState: true`, `initialState:
 unknown`, `finalState: unasserted`, `packetReplay: false`, and
 `serverAuthoritative: false`; the retained writes are not complete packets or
 a complete loadout policy.
+
+`materialize-command-loadout` requires schema 2 and a deterministic trace
+index. It optionally takes an inclusive `--record-range START:END`; the range
+must select at least one record from that trace. The command validates the
+same manifest, write digest, record fragments, operation shapes, ordering, and
+identity joins as `inspect-command-loadout`, then projects the selected exact
+record fragments into one 136-byte synthetic `0x0137` application payload.
+Byte 0 contains the selected fragment-byte total, fragments begin at byte 1,
+and the remainder is zero-filled. The selected total must not exceed the
+capture-observed 128-byte maximum. The report includes the trace identity,
+record range, each fragment's record index, payload offset, and length, stream,
+padding, and payload sizes, and the payload SHA-256. It marks
+`syntheticProjection: true`, `packetReplay: false`, `serverAuthoritative:
+false`, and `targetMarkers: omitted`; wrapper, header, actor, and transport
+bytes are never emitted. Without `--output` the command only prints the same
+projection report with `status: planned`; with `--output` it writes the 136
+bytes to a new file and reports `status: written` plus the caller's
+`outputPath`. It refuses an existing path.
+
+The payload layout and observed maximum are pinned to
+`XIVLegacy/xivl-captures:studies/property-stream-hash-catalog/README.md`
+at commit `5d49f6039e98df15e249d2e1f88fb942cc267efa`. That retained retail study
+also establishes complete consumption of each declared region and zero-filled
+trailing bytes; it does not establish whether declarations above 128 are
+accepted.
 
 `extract` discovers all SSD sheet definition documents under the named game
 directory and writes one UTF-8 CSV per document. It validates each present

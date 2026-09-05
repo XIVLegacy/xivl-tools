@@ -30,6 +30,7 @@ usage:
   xivl validate <file> [--as <format>] [--columns <list>]
   xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--slot-context <command_slot_context.json>] [--format yaml|json]
   xivl inspect-command-loadout --slot-context <command_slot_context.json> [--trace <index>] [--format yaml|json]
+  xivl materialize-command-loadout --slot-context <command_slot_context.json> --trace <index> [--record-range <first>:<last>] [--output <new-file>] [--format yaml|json]
   xivl lua-path <path>
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
@@ -72,6 +73,11 @@ inspect-command-loadout reads a bounded schema-2 command-slot context and
 reports observed ordered property writes by deterministic trace index. It
 preserves partial-state and evidence-boundary markers; the writes are not
 complete packets or server-authoritative policy.
+
+materialize-command-loadout projects one selected schema-2 trace and record
+range into one 136-byte synthetic 0x0137 application payload. It retains only
+the selected record fragments, zero-fills the remaining payload, and refuses
+to write an existing output path.
 
 lua-path applies the reversible ASCII resource-path transform. extract-lpb
 removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
@@ -164,6 +170,9 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         Some("validate") => read(&arguments[1..], Operation::Validate),
         Some("inspect-command") => command_inspect::run(&arguments[1..]),
         Some("inspect-command-loadout") => command_inspect::run_loadout(&arguments[1..]),
+        Some("materialize-command-loadout") => {
+            command_inspect::run_materialize_loadout(&arguments[1..])
+        }
         Some("lua-path") => lua_path(&arguments[1..]),
         Some("extract-lpb") => extract_lpb_command(&arguments[1..]),
         Some("extract") => {

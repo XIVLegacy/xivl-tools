@@ -2,6 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::{Read, Write};
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -12,6 +13,9 @@ use crate::Failure;
 const MAX_CATALOG_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_CATALOG_ROWS: usize = 100_000;
 const MAX_SLOT_CONTEXT_BYTES: u64 = 4 * 1024 * 1024;
+const COMMAND_LOADOUT_PAYLOAD_SIZE: usize = 136;
+const COMMAND_LOADOUT_STREAM_OFFSET: usize = 1;
+const COMMAND_LOADOUT_MAX_FRAGMENT_BYTES: usize = 128;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
@@ -555,6 +559,7 @@ struct ParsedWrite {
     class_path: Option<String>,
     category_value: Option<u8>,
     joined_command_record_index: Option<u64>,
+    record_fragment: Vec<u8>,
 }
 
 type TraceKey = (String, u32, u32);
@@ -1108,6 +1113,7 @@ fn parse_write(value: &Value, index: usize) -> Result<ParsedWrite, String> {
         class_path,
         category_value,
         joined_command_record_index: joined,
+        record_fragment: fragment,
     })
 }
 
@@ -1242,6 +1248,286 @@ pub(crate) fn run_loadout(arguments: &[String]) -> Result<(), Failure> {
     std::io::stdout()
         .write_all(text.as_bytes())
         .map_err(|error| Failure::usage(format!("cannot write output: {error}")))
+}
+
+pub(crate) fn run_materialize_loadout(arguments: &[String]) -> Result<(), Failure> {
+    let (slot_context_path, trace_index, record_range, output, format) =
+        parse_materialize_arguments(arguments)?;
+    if let Some(path) = output.as_deref() {
+        reject_existing_output(path).map_err(Failure::usage)?;
+    }
+    let manifest = read_slot_context(&slot_context_path)?;
+    let materialized = materialize_command_loadout(&manifest, trace_index, record_range)
+        .map_err(Failure::usage)?;
+
+    if let Some(path) = output.as_deref() {
+        let mut destination = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(path)
+            .map_err(|error| Failure::usage(format!("cannot create '{path}': {error}")))?;
+        destination
+            .write_all(&materialized.payload)
+            .map_err(|error| Failure::usage(format!("cannot write '{path}': {error}")))?;
+    }
+
+    let report = materialized_report(&materialized, output.as_deref());
+    let text = match format {
+        OutputFormat::Yaml => serde_yaml::to_string(&report)
+            .map_err(|error| Failure::usage(format!("cannot encode YAML report: {error}")))?,
+        OutputFormat::Json => {
+            let mut text = serde_json::to_string_pretty(&report)
+                .map_err(|error| Failure::usage(format!("cannot encode JSON report: {error}")))?;
+            text.push('\n');
+            text
+        }
+    };
+    std::io::stdout()
+        .write_all(text.as_bytes())
+        .map_err(|error| Failure::usage(format!("cannot write output: {error}")))
+}
+
+fn materialized_report(materialized: &MaterializedCommandLoadout, output: Option<&str>) -> Value {
+    let mut report = materialized.report.clone();
+    report["status"] = json!(if output.is_some() {
+        "written"
+    } else {
+        "planned"
+    });
+    if let Some(path) = output {
+        report["outputPath"] = json!(path);
+    }
+    report
+}
+
+#[derive(Debug)]
+struct MaterializedCommandLoadout {
+    report: Value,
+    payload: Vec<u8>,
+}
+
+type MaterializeArguments = (
+    String,
+    usize,
+    Option<(u64, u64)>,
+    Option<String>,
+    OutputFormat,
+);
+
+fn materialize_command_loadout(
+    manifest: &SlotContextManifest,
+    trace_index: usize,
+    record_range: Option<(u64, u64)>,
+) -> Result<MaterializedCommandLoadout, String> {
+    if manifest.schema_version != 2 {
+        return Err("materialize-command-loadout requires slot context schema 2".to_owned());
+    }
+    let corpus = manifest
+        .write_corpus
+        .as_ref()
+        .ok_or_else(|| "slot context schema 2 requires writeCorpus".to_owned())?;
+    let traces = index_traces(corpus)?;
+    let trace = traces.get(trace_index).ok_or_else(|| {
+        format!(
+            "trace index {trace_index} is out of range ({} traces)",
+            traces.len()
+        )
+    })?;
+    let first_record_index = trace.parsed_writes[0].record_index;
+    let last_record_index = trace.parsed_writes.last().unwrap().record_index;
+    let selected_range = record_range.unwrap_or((first_record_index, last_record_index));
+    if selected_range.0 < first_record_index || selected_range.1 > last_record_index {
+        return Err(format!(
+            "record range {}:{} is outside trace record range {}:{}",
+            selected_range.0, selected_range.1, first_record_index, last_record_index
+        ));
+    }
+
+    let selected: Vec<&ParsedWrite> = trace
+        .parsed_writes
+        .iter()
+        .filter(|write| {
+            write.record_index >= selected_range.0 && write.record_index <= selected_range.1
+        })
+        .collect();
+    if selected.is_empty() {
+        return Err(format!(
+            "record range {}:{} selects no records in trace {trace_index}",
+            selected_range.0, selected_range.1
+        ));
+    }
+
+    let stream_size = selected
+        .iter()
+        .map(|write| write.record_fragment.len())
+        .sum::<usize>();
+    if stream_size > COMMAND_LOADOUT_MAX_FRAGMENT_BYTES {
+        return Err(format!(
+            "selected record fragments total {stream_size} bytes, above the capture-observed {}-byte maximum",
+            COMMAND_LOADOUT_MAX_FRAGMENT_BYTES
+        ));
+    }
+    let mut payload = vec![0_u8; COMMAND_LOADOUT_PAYLOAD_SIZE];
+    payload[0] = stream_size as u8;
+    let mut offset = COMMAND_LOADOUT_STREAM_OFFSET;
+    let mut fragments = Vec::with_capacity(selected.len());
+    for write in &selected {
+        let length = write.record_fragment.len();
+        let end = offset + length;
+        payload[offset..end].copy_from_slice(&write.record_fragment);
+        fragments.push(json!({
+            "recordIndex": write.record_index,
+            "operation": write.operation,
+            "payloadOffset": offset,
+            "payloadLength": length,
+        }));
+        offset = end;
+    }
+    let padding_size = COMMAND_LOADOUT_PAYLOAD_SIZE - offset;
+    let report = json!({
+        "status": "planned",
+        "syntheticProjection": true,
+        "packetReplay": false,
+        "serverAuthoritative": false,
+        "targetMarkers": "omitted",
+        "opcode": "0x0137",
+        "manifestSchemaVersion": manifest.schema_version,
+        "sourceSnapshots": manifest.source_snapshots,
+        "derivation": manifest.derivation,
+        "rowsSha256": manifest.rows_sha256,
+        "writesSha256": corpus.writes_sha256,
+        "partialState": corpus.partial_state,
+        "initialState": corpus.initial_state,
+        "finalState": corpus.final_state,
+        "unresolved": manifest.unresolved,
+        "trace": {
+            "index": trace_index,
+            "capture": trace.capture,
+            "laneIndex": trace.lane_index,
+            "sourceActorId": trace.source_actor_id,
+            "firstRecordIndex": first_record_index,
+            "lastRecordIndex": last_record_index,
+            "writeCount": trace.writes.len(),
+        },
+        "recordRange": {
+            "start": selected_range.0,
+            "end": selected_range.1,
+        },
+        "fragments": fragments,
+        "streamLength": stream_size,
+        "paddingLength": padding_size,
+        "payloadSize": payload.len(),
+        "payloadSha256": sha256(&payload),
+    });
+    Ok(MaterializedCommandLoadout { report, payload })
+}
+
+fn reject_existing_output(path: &str) -> Result<(), String> {
+    match std::fs::symlink_metadata(Path::new(path)) {
+        Ok(_) => Err(format!("output path already exists: '{path}'")),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("cannot inspect output path '{path}': {error}")),
+    }
+}
+
+fn parse_materialize_arguments(arguments: &[String]) -> Result<MaterializeArguments, Failure> {
+    let mut slot_context = None;
+    let mut trace = None;
+    let mut record_range = None;
+    let mut output = None;
+    let mut format = OutputFormat::Yaml;
+    let mut index = 0;
+    while index < arguments.len() {
+        match arguments[index].as_str() {
+            "--slot-context" => {
+                index += 1;
+                let Some(path) = arguments.get(index) else {
+                    return Err(materialize_usage());
+                };
+                if path.starts_with("--") {
+                    return Err(materialize_usage());
+                }
+                if slot_context.replace(path.clone()).is_some() {
+                    return Err(Failure::usage("--slot-context may be supplied only once"));
+                }
+            }
+            "--trace" => {
+                index += 1;
+                let Some(value) = arguments.get(index) else {
+                    return Err(materialize_usage());
+                };
+                let parsed = value
+                    .parse::<usize>()
+                    .map_err(|_| Failure::usage("--trace must be a nonnegative integer"))?;
+                if trace.replace(parsed).is_some() {
+                    return Err(Failure::usage("--trace may be supplied only once"));
+                }
+            }
+            "--record-range" => {
+                index += 1;
+                let Some(value) = arguments.get(index) else {
+                    return Err(materialize_usage());
+                };
+                let Some((first, last)) = value.split_once(':') else {
+                    return Err(Failure::usage(
+                        "--record-range must use inclusive START:END syntax",
+                    ));
+                };
+                if first.is_empty() || last.is_empty() || last.contains(':') {
+                    return Err(Failure::usage(
+                        "--record-range must use inclusive START:END syntax",
+                    ));
+                }
+                let first = first.parse::<u64>().map_err(|_| {
+                    Failure::usage("--record-range START must be a nonnegative integer")
+                })?;
+                let last = last.parse::<u64>().map_err(|_| {
+                    Failure::usage("--record-range END must be a nonnegative integer")
+                })?;
+                if first > last {
+                    return Err(Failure::usage("--record-range START must not exceed END"));
+                }
+                if record_range.replace((first, last)).is_some() {
+                    return Err(Failure::usage("--record-range may be supplied only once"));
+                }
+            }
+            "--output" => {
+                index += 1;
+                let Some(path) = arguments.get(index) else {
+                    return Err(materialize_usage());
+                };
+                if path.starts_with("--") {
+                    return Err(materialize_usage());
+                }
+                if output.replace(path.clone()).is_some() {
+                    return Err(Failure::usage("--output may be supplied only once"));
+                }
+            }
+            "--format" => {
+                index += 1;
+                format = match arguments.get(index).map(String::as_str) {
+                    Some("yaml") => OutputFormat::Yaml,
+                    Some("json") => OutputFormat::Json,
+                    _ => return Err(Failure::usage("--format must be yaml or json")),
+                };
+            }
+            option => {
+                return Err(Failure::usage(format!(
+                    "unknown materialize-command-loadout option '{option}'"
+                )))
+            }
+        }
+        index += 1;
+    }
+    let slot_context = slot_context.ok_or_else(materialize_usage)?;
+    let trace = trace.ok_or_else(materialize_usage)?;
+    Ok((slot_context, trace, record_range, output, format))
+}
+
+fn materialize_usage() -> Failure {
+    Failure::usage(
+        "usage: xivl materialize-command-loadout --slot-context <command_slot_context.json> --trace <index> [--record-range <first>:<last>] [--output <new-file>] [--format yaml|json]",
+    )
 }
 
 fn parse_loadout_arguments(
@@ -3420,6 +3706,186 @@ mod tests {
         assert_eq!(trace["trace"]["writes"][0]["operation"], "clear");
         assert_eq!(trace["trace"]["writes"][1]["operation"], "set-command");
         assert_eq!(trace["trace"]["writes"][2]["joinedCommandRecordIndex"], 2);
+    }
+
+    #[test]
+    fn materializes_exact_payload_and_stable_projection_report() {
+        let fixture = parsed_schema2_slot_context_fixture();
+        let materialized = materialize_command_loadout(&fixture, 0, Some((1, 16))).unwrap();
+        assert_eq!(materialized.payload.len(), COMMAND_LOADOUT_PAYLOAD_SIZE);
+        assert_eq!(materialized.payload[0], 123);
+        assert!(materialized.payload[124..].iter().all(|byte| *byte == 0));
+        assert_eq!(
+            sha256(&materialized.payload),
+            "9f1ceb8833cfb669d0a04d20fd3231465138146c6ddda19cb28ff5554974facd"
+        );
+        assert_eq!(materialized.report["syntheticProjection"], true);
+        assert_eq!(materialized.report["packetReplay"], false);
+        assert_eq!(materialized.report["serverAuthoritative"], false);
+        assert_eq!(materialized.report["targetMarkers"], "omitted");
+        assert_eq!(materialized.report["partialState"], true);
+        assert_eq!(materialized.report["initialState"], "unknown");
+        assert_eq!(materialized.report["finalState"], "unasserted");
+        assert_eq!(materialized.report["status"], "planned");
+        assert_eq!(
+            materialized.report["unresolved"][0],
+            "category 2 is not observed"
+        );
+        assert_eq!(materialized.report["trace"]["index"], 0);
+        assert_eq!(materialized.report["trace"]["capture"], "synthetic.pcapng");
+        assert_eq!(materialized.report["recordRange"]["start"], 1);
+        assert_eq!(materialized.report["recordRange"]["end"], 16);
+        assert_eq!(materialized.report["fragments"][0]["payloadOffset"], 1);
+        assert_eq!(materialized.report["fragments"][0]["payloadLength"], 9);
+        assert_eq!(materialized.report["fragments"][15]["payloadOffset"], 118);
+        assert_eq!(materialized.report["fragments"][15]["payloadLength"], 6);
+        assert_eq!(materialized.report["streamLength"], 123);
+        assert_eq!(materialized.report["paddingLength"], 12);
+        assert_eq!(materialized.report["payloadSize"], 136);
+        assert_eq!(
+            materialized.report["payloadSha256"],
+            "9f1ceb8833cfb669d0a04d20fd3231465138146c6ddda19cb28ff5554974facd"
+        );
+
+        for serialized in [
+            serde_json::to_string(&materialized.report).unwrap(),
+            serde_yaml::to_string(&materialized.report).unwrap(),
+        ] {
+            let report: Value = if serialized.starts_with('{') {
+                serde_json::from_str(&serialized).unwrap()
+            } else {
+                serde_yaml::from_str(&serialized).unwrap()
+            };
+            assert_eq!(report["syntheticProjection"], true);
+            assert_eq!(report["targetMarkers"], "omitted");
+            assert_eq!(report["status"], "planned");
+            assert_eq!(report["payloadSize"], 136);
+            assert_eq!(
+                report["payloadSha256"],
+                materialized.report["payloadSha256"]
+            );
+        }
+    }
+
+    #[test]
+    fn cli_materializes_output_with_written_report_state() {
+        let fixture = parsed_schema2_slot_context_fixture();
+        let test_stem = format!(
+            "xivl-materialize-success-{}-{}",
+            std::process::id(),
+            fixture.rows[0].command_id
+        );
+        let context_path = std::env::temp_dir().join(format!("{test_stem}.json"));
+        let output_path = std::env::temp_dir().join(format!("{test_stem}.bin"));
+        let context_string = context_path.to_string_lossy().into_owned();
+        let output_string = output_path.to_string_lossy().into_owned();
+        let _ = std::fs::remove_file(&context_path);
+        let _ = std::fs::remove_file(&output_path);
+        std::fs::write(&context_path, serde_json::to_vec(&fixture).unwrap()).unwrap();
+        let arguments = vec![
+            "--slot-context".to_owned(),
+            context_string,
+            "--trace".to_owned(),
+            "0".to_owned(),
+            "--record-range".to_owned(),
+            "1:16".to_owned(),
+            "--output".to_owned(),
+            output_string.clone(),
+            "--format".to_owned(),
+            "json".to_owned(),
+        ];
+        run_materialize_loadout(&arguments).unwrap();
+
+        let bytes = std::fs::read(&output_path).unwrap();
+        assert_eq!(bytes.len(), COMMAND_LOADOUT_PAYLOAD_SIZE);
+        assert_eq!(bytes[0], 123);
+        let mut expected = vec![0_u8; COMMAND_LOADOUT_PAYLOAD_SIZE];
+        expected[0] = 123;
+        let mut offset = COMMAND_LOADOUT_STREAM_OFFSET;
+        for write in &fixture.write_corpus.as_ref().unwrap().writes[..16] {
+            let fragment = parse_hex_bytes(write["recordFragmentHex"].as_str().unwrap()).unwrap();
+            let end = offset + fragment.len();
+            expected[offset..end].copy_from_slice(&fragment);
+            offset = end;
+        }
+        assert_eq!(bytes, expected);
+        assert!(bytes[offset..].iter().all(|byte| *byte == 0));
+
+        let materialized = materialize_command_loadout(&fixture, 0, Some((1, 16))).unwrap();
+        let written_report = materialized_report(&materialized, Some(&output_string));
+        assert_eq!(written_report["status"], "written");
+        assert_eq!(written_report["outputPath"], output_string);
+        let planned_report = materialized_report(&materialized, None);
+        assert_eq!(planned_report["status"], "planned");
+        assert!(planned_report.get("outputPath").is_none());
+
+        let _ = std::fs::remove_file(context_path);
+        let _ = std::fs::remove_file(output_path);
+    }
+
+    #[test]
+    fn rejects_materialization_capacity_ranges_and_schema_without_output() {
+        let fixture = parsed_schema2_slot_context_fixture();
+        assert!(materialize_command_loadout(&fixture, 0, None)
+            .unwrap_err()
+            .contains("above the capture-observed 128-byte maximum"));
+        assert!(materialize_command_loadout(&fixture, 0, Some((100, 101)))
+            .unwrap_err()
+            .contains("outside trace record range"));
+
+        let schema1 = parsed_slot_context_fixture();
+        assert!(materialize_command_loadout(&schema1, 0, Some((1, 1)))
+            .unwrap_err()
+            .contains("requires slot context schema 2"));
+
+        let test_stem = format!(
+            "xivl-materialize-invalid-{}-{}",
+            std::process::id(),
+            fixture.rows[0].command_id
+        );
+        let context_path = std::env::temp_dir().join(format!("{test_stem}.json"));
+        let output = std::env::temp_dir().join(format!("{test_stem}.bin"));
+        let context_string = context_path.to_string_lossy().into_owned();
+        let output_string = output.to_string_lossy().into_owned();
+        let _ = std::fs::remove_file(&context_path);
+        let _ = std::fs::remove_file(&output);
+        std::fs::write(&context_path, serde_json::to_vec(&fixture).unwrap()).unwrap();
+        let arguments = vec![
+            "--slot-context".to_owned(),
+            context_string,
+            "--trace".to_owned(),
+            "0".to_owned(),
+            "--record-range".to_owned(),
+            "1:17".to_owned(),
+            "--output".to_owned(),
+            output_string,
+        ];
+        let failure = run_materialize_loadout(&arguments).unwrap_err();
+        assert!(failure
+            .message
+            .contains("above the capture-observed 128-byte maximum"));
+        assert!(!output.exists());
+        let _ = std::fs::remove_file(context_path);
+
+        let arguments = vec![
+            "--slot-context".to_owned(),
+            "missing-slot-context.json".to_owned(),
+            "--trace".to_owned(),
+            "0".to_owned(),
+            "--record-range".to_owned(),
+            "17:16".to_owned(),
+            "--output".to_owned(),
+            output.to_string_lossy().into_owned(),
+        ];
+        assert!(parse_materialize_arguments(&arguments).is_err());
+        assert!(!output.exists());
+    }
+
+    #[test]
+    fn refuses_existing_materialization_output() {
+        assert!(reject_existing_output(env!("CARGO_MANIFEST_DIR"))
+            .unwrap_err()
+            .contains("output path already exists"));
     }
 
     #[test]
