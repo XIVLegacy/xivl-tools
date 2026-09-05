@@ -15,6 +15,8 @@ Run the binary from this checkout with Cargo:
 cargo run --locked -p xivl-cli -- inspect tests/fixtures/public/sedb/plain-container.bin
 cargo run --locked -p xivl-cli -- validate tests/fixtures/public/config/lng-words.bin --as config-lng
 cargo run --locked -p xivl-cli -- inspect-command Fire --catalog "C:\path\to\command_battle_params.csv"
+cargo run --locked -p xivl-cli -- inspect-command-loadout --slot-context "C:\path\to\command_slot_context.json"
+cargo run --locked -p xivl-cli -- inspect-command-loadout --slot-context "C:\path\to\command_slot_context.json" --trace 0 --format json
 cargo run --locked -p xivl-cli -- lua-path Quest/Scenario/Man0g0.lua
 cargo run --locked -p xivl-cli -- extract-lpb tests/fixtures/public/lpb/raw.bin --output chunk.luac
 cargo run --locked -p xivl-cli -- extract "C:\path\to\FINAL FANTASY XIV" --output csv
@@ -59,7 +61,7 @@ execution path that derives hand context from an action-slot category when the
 caller omits it. The report keeps their direct relationship unresolved because
 the Lua corpus contains no connecting call edge.
 Pass `--slot-context <command_slot_context.json>` to include the bounded,
-validated schema-1 command-slot observation manifest. The resulting
+validated command-slot observation manifest. The resulting
 `observedCommandSlotContext` block carries its source snapshots, derivation,
 coverage, unresolved notes, and only rows matching the command query; without
 the option the block reports that observations are unavailable. Validation
@@ -68,6 +70,20 @@ The other source snapshots remain declarations carried by the manifest.
 The command does not search a workspace, infer a
 catalog path, invent unresolved grow values, or present client prediction
 inputs as the server-authoritative combat formula.
+
+`inspect-command-loadout` reads schema 2 of the same manifest and exposes the
+observed filtered property-write corpus. Without `--trace`, YAML output (the
+default) contains bounded manifest metadata and a deterministic trace
+inventory. Traces are indexed by first `recordIndex`, with capture, lane, and
+source actor as deterministic tie-breakers. With `--trace <index>`, the report
+contains that trace's exact ordered writes, including operation-specific fields,
+value bytes, and record fragments. The parser checks the write digest, coverage
+totals, operation shapes, record-fragment encoding, increasing order within
+each `(capture, laneIndex, sourceActorId)` partition, and command identity
+joins. Reports explicitly retain `partialState: true`, `initialState:
+unknown`, `finalState: unasserted`, `packetReplay: false`, and
+`serverAuthoritative: false`; the retained writes are not complete packets or
+a complete loadout policy.
 
 `extract` discovers all SSD sheet definition documents under the named game
 directory and writes one UTF-8 CSV per document. It validates each present

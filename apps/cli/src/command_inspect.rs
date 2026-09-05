@@ -1,6 +1,6 @@
 //! Agent-friendly queries over the explicit command battle-parameter catalog.
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::{Read, Write};
 
 use serde::{Deserialize, Serialize};
@@ -25,6 +25,8 @@ struct SlotContextManifest {
     coverage: Coverage,
     rows_sha256: String,
     rows: Vec<SlotContextRow>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    write_corpus: Option<WriteCorpus>,
     unresolved: Vec<String>,
 }
 
@@ -51,6 +53,8 @@ struct ClientStructSnapshot {
     repository: String,
     generator_artifact: String,
     generator_sha256: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    generator_hash_normalization: Option<String>,
     hash_names_artifact: String,
     hash_names_sha256: String,
     actor_identity_artifact: String,
@@ -90,6 +94,14 @@ struct Coverage {
     static_actor_catalog_hits: u64,
     command_catalog_hits: u64,
     category_records: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    border_records: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    relevant_write_records: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    zero_command_writes: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    state_partitions: Option<u64>,
     category_hashes: u64,
     category_value_distribution: Vec<CategoryValueDistribution>,
     stateful_category_observations: u64,
@@ -135,6 +147,23 @@ struct SlotObservation {
 struct CategoryObservation {
     value: u8,
     occurrences: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct WriteCorpus {
+    scope: String,
+    record_encoding: String,
+    property_hash_encoding: String,
+    state_partition: Vec<String>,
+    state_order: String,
+    partial_state: bool,
+    initial_state: String,
+    final_state: String,
+    server_authoritative: bool,
+    packet_replay: bool,
+    writes_sha256: String,
+    writes: Vec<Value>,
 }
 
 const HEADER: &[&str] = &[
@@ -197,9 +226,9 @@ enum OutputFormat {
 
 impl SlotContextManifest {
     fn validate(&self) -> Result<(), String> {
-        if self.schema_version != 1 {
+        if self.schema_version != 1 && self.schema_version != 2 {
             return Err(format!(
-                "slot context schemaVersion must be 1, got {}",
+                "slot context schemaVersion must be 1 or 2, got {}",
                 self.schema_version
             ));
         }
@@ -218,7 +247,37 @@ impl SlotContextManifest {
         if self.rows.is_empty() {
             return Err("slot context rows must not be empty".to_owned());
         }
-        validate_coverage(&self.coverage)?;
+        if self.schema_version == 2 {
+            let normalization = self
+                .source_snapshots
+                .client_structs
+                .generator_hash_normalization
+                .as_deref()
+                .ok_or_else(|| {
+                    "slot context schema 2 requires generatorHashNormalization".to_owned()
+                })?;
+            if normalization != "UTF-8 text with CRLF and CR normalized to LF" {
+                return Err(
+                    "slot context generatorHashNormalization does not match schema 2".to_owned(),
+                );
+            }
+            if self.write_corpus.is_none() {
+                return Err("slot context schema 2 requires writeCorpus".to_owned());
+            }
+        } else if self.write_corpus.is_some()
+            || self
+                .source_snapshots
+                .client_structs
+                .generator_hash_normalization
+                .is_some()
+            || self.coverage.border_records.is_some()
+            || self.coverage.relevant_write_records.is_some()
+            || self.coverage.zero_command_writes.is_some()
+            || self.coverage.state_partitions.is_some()
+        {
+            return Err("slot context schema 1 does not permit schema 2 fields".to_owned());
+        }
+        validate_coverage(&self.coverage, self.schema_version)?;
         let row_value = serde_json::to_value(&self.rows)
             .map_err(|error| format!("cannot canonicalize slot context rows: {error}"))?;
         let row_bytes = serde_json::to_vec(&row_value)
@@ -334,6 +393,9 @@ impl SlotContextManifest {
                 "slot context row categories do not match categoryValueDistribution".to_owned(),
             );
         }
+        if let Some(write_corpus) = &self.write_corpus {
+            validate_write_corpus(write_corpus, &self.coverage, &self.rows)?;
+        }
         Ok(())
     }
 
@@ -383,7 +445,7 @@ impl SlotContextManifest {
     }
 }
 
-fn validate_coverage(coverage: &Coverage) -> Result<(), String> {
+fn validate_coverage(coverage: &Coverage, schema_version: u32) -> Result<(), String> {
     let counts = [
         ("commandRecords", coverage.command_records),
         (
@@ -410,6 +472,21 @@ fn validate_coverage(coverage: &Coverage) -> Result<(), String> {
     ];
     if let Some((label, _)) = counts.into_iter().find(|(_, value)| *value == 0) {
         return Err(format!("slot context coverage {label} must be nonzero"));
+    }
+    if schema_version == 2 {
+        for (label, value) in [
+            ("borderRecords", coverage.border_records),
+            ("relevantWriteRecords", coverage.relevant_write_records),
+            ("zeroCommandWrites", coverage.zero_command_writes),
+            ("statePartitions", coverage.state_partitions),
+        ] {
+            if value.is_none() {
+                return Err(format!("slot context coverage {label} is missing"));
+            }
+            if value == Some(0) {
+                return Err(format!("slot context coverage {label} must be nonzero"));
+            }
+        }
     }
     if coverage.category_value_distribution.is_empty() {
         return Err("slot context coverage categoryValueDistribution must not be empty".to_owned());
@@ -464,6 +541,649 @@ fn validate_coverage(coverage: &Coverage) -> Result<(), String> {
     Ok(())
 }
 
+#[derive(Debug, Clone)]
+struct ParsedWrite {
+    record_index: u64,
+    capture: String,
+    lane_index: u32,
+    source_actor_id: u32,
+    operation: String,
+    property_hash: u32,
+    slot: Option<u8>,
+    command_id: Option<u32>,
+    actor_id: Option<u32>,
+    class_path: Option<String>,
+    category_value: Option<u8>,
+    joined_command_record_index: Option<u64>,
+}
+
+type TraceKey = (String, u32, u32);
+
+fn validate_write_corpus(
+    corpus: &WriteCorpus,
+    coverage: &Coverage,
+    rows: &[SlotContextRow],
+) -> Result<(), String> {
+    if corpus.scope != "observed-filtered-property-record-fragments"
+        || corpus.record_encoding != "valueWidth:u8 + propertyHash:u32le + value[valueWidth]"
+        || corpus.property_hash_encoding != "little-endian u32"
+        || corpus.state_partition
+            != ["capture", "laneIndex", "sourceActorId"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        || corpus.state_order != "increasing recordIndex within each partition"
+    {
+        return Err("slot context writeCorpus metadata is inconsistent".to_owned());
+    }
+    if !corpus.partial_state
+        || corpus.initial_state != "unknown"
+        || corpus.final_state != "unasserted"
+        || corpus.server_authoritative
+        || corpus.packet_replay
+    {
+        return Err("slot context writeCorpus evidence boundary is inconsistent".to_owned());
+    }
+    let writes_bytes = serde_json::to_vec(&corpus.writes)
+        .map_err(|error| format!("cannot canonicalize writeCorpus writes: {error}"))?;
+    if corpus.writes_sha256 != sha256(&writes_bytes) {
+        return Err("slot context writeCorpus writesSha256 does not match writes".to_owned());
+    }
+
+    let mut parsed = Vec::with_capacity(corpus.writes.len());
+    let mut last_record_by_trace: BTreeMap<TraceKey, u64> = BTreeMap::new();
+    let mut writes_by_trace_record: HashMap<(TraceKey, u64), ParsedWrite> = HashMap::new();
+    let mut operation_counts: BTreeMap<String, u64> = BTreeMap::new();
+    let mut category_hashes = HashSet::new();
+    let mut category_values: BTreeMap<u8, u64> = BTreeMap::new();
+    let mut unjoined_categories: BTreeMap<u8, u64> = BTreeMap::new();
+    let mut partitions = BTreeSet::new();
+
+    for (index, value) in corpus.writes.iter().enumerate() {
+        let write = parse_write(value, index)?;
+        let trace = (
+            write.capture.clone(),
+            write.lane_index,
+            write.source_actor_id,
+        );
+        if let Some(previous) = last_record_by_trace.get(&trace) {
+            if write.record_index <= *previous {
+                return Err(format!(
+                    "slot context writeCorpus record order is not increasing in trace at write {}",
+                    index + 1
+                ));
+            }
+        }
+        last_record_by_trace.insert(trace.clone(), write.record_index);
+        partitions.insert(trace.clone());
+        *operation_counts.entry(write.operation.clone()).or_default() += 1;
+        if write.operation == "set-category" {
+            category_hashes.insert(write.property_hash);
+            *category_values
+                .entry(write.category_value.unwrap())
+                .or_default() += 1;
+            if write.joined_command_record_index.is_none() {
+                *unjoined_categories.entry(write.slot.unwrap()).or_default() += 1;
+            }
+        }
+        if writes_by_trace_record
+            .insert((trace, write.record_index), write.clone())
+            .is_some()
+        {
+            return Err(format!(
+                "slot context writeCorpus contains duplicate trace record at write {}",
+                index + 1
+            ));
+        }
+        parsed.push(write);
+    }
+
+    let count = |name: &str| operation_counts.get(name).copied().unwrap_or_default();
+    let expected_counts = [
+        (
+            "commandRecords",
+            count("set-command") + count("clear"),
+            coverage.command_records,
+        ),
+        (
+            "nonzeroCommandOccurrences",
+            count("set-command"),
+            coverage.nonzero_command_occurrences,
+        ),
+        (
+            "categoryRecords",
+            count("set-category"),
+            coverage.category_records,
+        ),
+        (
+            "borderRecords",
+            count("set-border"),
+            coverage.border_records.unwrap(),
+        ),
+        (
+            "relevantWriteRecords",
+            corpus.writes.len() as u64,
+            coverage.relevant_write_records.unwrap(),
+        ),
+        (
+            "zeroCommandWrites",
+            count("clear"),
+            coverage.zero_command_writes.unwrap(),
+        ),
+        (
+            "statePartitions",
+            partitions.len() as u64,
+            coverage.state_partitions.unwrap(),
+        ),
+        (
+            "categoryHashes",
+            category_hashes.len() as u64,
+            coverage.category_hashes,
+        ),
+    ];
+    if let Some((name, actual, expected)) = expected_counts
+        .into_iter()
+        .find(|(_, actual, expected)| actual != expected)
+    {
+        return Err(format!(
+            "slot context writeCorpus {name} does not match coverage ({actual} != {expected})"
+        ));
+    }
+
+    let declared_categories: BTreeMap<u8, u64> = coverage
+        .category_value_distribution
+        .iter()
+        .map(|entry| (entry.value, entry.occurrences))
+        .collect();
+    if declared_categories != category_values {
+        return Err(
+            "slot context writeCorpus category value distribution does not match coverage"
+                .to_owned(),
+        );
+    }
+    let declared_unjoined: BTreeMap<u8, u64> = coverage
+        .category_writes_without_current_command
+        .iter()
+        .map(|entry| (entry.slot, entry.occurrences))
+        .collect();
+    if declared_unjoined != unjoined_categories {
+        return Err(
+            "slot context writeCorpus unjoined category totals do not match coverage".to_owned(),
+        );
+    }
+
+    let identities: HashMap<u32, (u32, String)> = rows
+        .iter()
+        .map(|row| {
+            (
+                row.command_id,
+                (
+                    parse_actor_id(&row.actor_id_hex).unwrap(),
+                    row.class_path.clone(),
+                ),
+            )
+        })
+        .collect();
+    let mut stateful_category_observations = 0_u64;
+    let mut current_commands: HashMap<(TraceKey, u8), u64> = HashMap::new();
+    for write in &parsed {
+        if write.operation == "set-command" {
+            let command_id = write.command_id.unwrap();
+            let (expected_actor, expected_class) =
+                identities.get(&command_id).ok_or_else(|| {
+                    format!(
+                        "slot context writeCorpus command {} has no matching row identity",
+                        command_id
+                    )
+                })?;
+            if write.actor_id != Some(*expected_actor)
+                || write.class_path.as_deref() != Some(expected_class.as_str())
+            {
+                return Err(format!(
+                    "slot context writeCorpus command identity does not match row for command {}",
+                    command_id
+                ));
+            }
+            current_commands.insert(
+                (
+                    (
+                        write.capture.clone(),
+                        write.lane_index,
+                        write.source_actor_id,
+                    ),
+                    write.slot.unwrap(),
+                ),
+                write.record_index,
+            );
+        } else if write.operation == "clear" {
+            current_commands.remove(&(
+                (
+                    write.capture.clone(),
+                    write.lane_index,
+                    write.source_actor_id,
+                ),
+                write.slot.unwrap(),
+            ));
+        } else if write.operation == "set-category" {
+            let current = current_commands.get(&(
+                (
+                    write.capture.clone(),
+                    write.lane_index,
+                    write.source_actor_id,
+                ),
+                write.slot.unwrap(),
+            ));
+            if current.copied() != write.joined_command_record_index {
+                return Err(
+                    "slot context writeCorpus category join does not match current command state"
+                        .to_owned(),
+                );
+            }
+            if let Some(joined_record_index) = write.joined_command_record_index {
+                stateful_category_observations += 1;
+                let trace = (
+                    write.capture.clone(),
+                    write.lane_index,
+                    write.source_actor_id,
+                );
+                let joined = writes_by_trace_record
+                    .get(&(trace, joined_record_index))
+                    .ok_or_else(|| {
+                        format!(
+                            "slot context writeCorpus category join references missing record {}",
+                            joined_record_index
+                        )
+                    })?;
+                if joined.operation != "set-command"
+                    || joined.slot != write.slot
+                    || joined.record_index >= write.record_index
+                {
+                    return Err(
+                        "slot context writeCorpus category join is inconsistent with command order"
+                            .to_owned(),
+                    );
+                }
+            }
+        }
+    }
+    if stateful_category_observations != coverage.stateful_category_observations {
+        return Err(
+            "slot context writeCorpus stateful category total does not match coverage".to_owned(),
+        );
+    }
+    Ok(())
+}
+
+fn parse_write(value: &Value, index: usize) -> Result<ParsedWrite, String> {
+    let object = value.as_object().ok_or_else(|| {
+        format!(
+            "slot context writeCorpus write {} must be an object",
+            index + 1
+        )
+    })?;
+    let operation = object
+        .get("operation")
+        .and_then(Value::as_str)
+        .ok_or_else(|| {
+            format!(
+                "slot context writeCorpus write {} has no operation",
+                index + 1
+            )
+        })?;
+    let expected_keys: &[&str] = match operation {
+        "clear" => &[
+            "recordIndex",
+            "capture",
+            "laneIndex",
+            "sourceActorId",
+            "propertyPath",
+            "propertyHash",
+            "valueWidth",
+            "valueHex",
+            "recordFragmentHex",
+            "operation",
+            "slot",
+        ],
+        "set-command" => &[
+            "recordIndex",
+            "capture",
+            "laneIndex",
+            "sourceActorId",
+            "propertyPath",
+            "propertyHash",
+            "valueWidth",
+            "valueHex",
+            "recordFragmentHex",
+            "operation",
+            "slot",
+            "actorIdHex",
+            "commandId",
+            "classPath",
+        ],
+        "set-category" => &[
+            "recordIndex",
+            "capture",
+            "laneIndex",
+            "sourceActorId",
+            "propertyPath",
+            "propertyHash",
+            "valueWidth",
+            "valueHex",
+            "recordFragmentHex",
+            "operation",
+            "slot",
+            "categoryValue",
+            "joinedCommandRecordIndex",
+        ],
+        "set-border" => &[
+            "recordIndex",
+            "capture",
+            "laneIndex",
+            "sourceActorId",
+            "propertyPath",
+            "propertyHash",
+            "valueWidth",
+            "valueHex",
+            "recordFragmentHex",
+            "operation",
+            "borderValue",
+        ],
+        _ => {
+            return Err(format!(
+                "slot context writeCorpus write {} has unsupported operation '{}',",
+                index + 1,
+                operation
+            ));
+        }
+    };
+    if object.len() != expected_keys.len()
+        || expected_keys.iter().any(|key| !object.contains_key(*key))
+    {
+        return Err(format!(
+            "slot context writeCorpus write {} has invalid {} operation shape",
+            index + 1,
+            operation
+        ));
+    }
+
+    let record_index = required_u64(object, "recordIndex", index)?;
+    let capture = required_string(object, "capture", index)?;
+    if capture.is_empty() {
+        return Err(format!(
+            "slot context writeCorpus write {} capture must not be empty",
+            index + 1
+        ));
+    }
+    let lane_index = required_u32(object, "laneIndex", index)?;
+    let source_actor_id = required_u32(object, "sourceActorId", index)?;
+    let property_path = required_string(object, "propertyPath", index)?;
+    let property_hash = parse_actor_id(required_string(object, "propertyHash", index)?.as_str())
+        .map_err(|error| {
+            format!(
+                "slot context writeCorpus write {} propertyHash {}",
+                index + 1,
+                error
+            )
+        })?;
+    let value_width = required_u8(object, "valueWidth", index)?;
+    let value_hex = required_string(object, "valueHex", index)?;
+    let value = parse_hex_bytes(value_hex.as_str()).map_err(|error| {
+        format!(
+            "slot context writeCorpus write {} valueHex {}",
+            index + 1,
+            error
+        )
+    })?;
+    if value.len() != usize::from(value_width) {
+        return Err(format!(
+            "slot context writeCorpus write {} valueHex length does not match valueWidth",
+            index + 1
+        ));
+    }
+    let fragment = parse_hex_bytes(required_string(object, "recordFragmentHex", index)?.as_str())
+        .map_err(|error| {
+        format!(
+            "slot context writeCorpus write {} recordFragmentHex {}",
+            index + 1,
+            error
+        )
+    })?;
+    let mut expected_fragment = Vec::with_capacity(5 + value.len());
+    expected_fragment.push(value_width);
+    expected_fragment.extend_from_slice(&property_hash.to_le_bytes());
+    expected_fragment.extend_from_slice(&value);
+    if fragment != expected_fragment {
+        return Err(format!(
+            "slot context writeCorpus write {} record fragment does not match encoding",
+            index + 1
+        ));
+    }
+
+    let slot = match operation {
+        "clear" | "set-command" | "set-category" => {
+            let slot = required_u8(object, "slot", index)?;
+            validate_slot(
+                slot,
+                &format!("slot context writeCorpus write {}", index + 1),
+            )?;
+            let prefix = if operation == "set-category" {
+                "charaWork.commandCategory["
+            } else {
+                "charaWork.command["
+            };
+            if parse_indexed_property(&property_path, prefix)? != slot {
+                return Err(format!(
+                    "slot context writeCorpus write {} property path and slot disagree",
+                    index + 1
+                ));
+            }
+            Some(slot)
+        }
+        "set-border" => {
+            if property_path != "charaWork.commandBorder" {
+                return Err(format!(
+                    "slot context writeCorpus write {} set-border property path is invalid",
+                    index + 1
+                ));
+            }
+            None
+        }
+        _ => unreachable!(),
+    };
+
+    let (command_id, actor_id, class_path, category_value, joined) = match operation {
+        "clear" => {
+            if value_width != 4 || value.iter().any(|byte| *byte != 0) {
+                return Err(format!(
+                    "slot context writeCorpus write {} clear must contain four zero bytes",
+                    index + 1
+                ));
+            }
+            (None, None, None, None, None)
+        }
+        "set-command" => {
+            if value_width != 4 {
+                return Err(format!(
+                    "slot context writeCorpus write {} set-command must have valueWidth 4",
+                    index + 1
+                ));
+            }
+            let actor_id_hex = required_string(object, "actorIdHex", index)?;
+            let actor_id = parse_actor_id(actor_id_hex.as_str()).map_err(|error| {
+                format!(
+                    "slot context writeCorpus write {} actorIdHex {}",
+                    index + 1,
+                    error
+                )
+            })?;
+            if actor_id & 0xffff_0000 != 0xa0f0_0000 {
+                return Err(format!(
+                    "slot context writeCorpus write {} actorIdHex must use static actor prefix",
+                    index + 1
+                ));
+            }
+            if value != actor_id.to_le_bytes() {
+                return Err(format!(
+                    "slot context writeCorpus write {} valueHex does not match actorIdHex",
+                    index + 1
+                ));
+            }
+            let command_id = required_u32(object, "commandId", index)?;
+            if command_id == 0 || actor_id & 0xffff != command_id {
+                return Err(format!(
+                    "slot context writeCorpus write {} command identity is inconsistent",
+                    index + 1
+                ));
+            }
+            let class_path = required_string(object, "classPath", index)?;
+            if !class_path.starts_with("/Command/") {
+                return Err(format!(
+                    "slot context writeCorpus write {} classPath must start with /Command/",
+                    index + 1
+                ));
+            }
+            (
+                Some(command_id),
+                Some(actor_id),
+                Some(class_path),
+                None,
+                None,
+            )
+        }
+        "set-category" => {
+            if value_width != 1 {
+                return Err(format!(
+                    "slot context writeCorpus write {} set-category must have valueWidth 1",
+                    index + 1
+                ));
+            }
+            let category_value = required_u8(object, "categoryValue", index)?;
+            if value != [category_value] {
+                return Err(format!(
+                    "slot context writeCorpus write {} valueHex does not match categoryValue",
+                    index + 1
+                ));
+            }
+            let joined = match object.get("joinedCommandRecordIndex") {
+                Some(Value::Null) => None,
+                Some(value) => Some(value.as_u64().ok_or_else(|| {
+                    format!(
+                        "slot context writeCorpus write {} joinedCommandRecordIndex must be an integer or null",
+                        index + 1
+                    )
+                })?),
+                None => unreachable!(),
+            };
+            (None, None, None, Some(category_value), joined)
+        }
+        "set-border" => {
+            if value_width != 1 {
+                return Err(format!(
+                    "slot context writeCorpus write {} set-border must have valueWidth 1",
+                    index + 1
+                ));
+            }
+            let border_value = required_u8(object, "borderValue", index)?;
+            if value != [border_value] {
+                return Err(format!(
+                    "slot context writeCorpus write {} valueHex does not match borderValue",
+                    index + 1
+                ));
+            }
+            (None, None, None, None, None)
+        }
+        _ => unreachable!(),
+    };
+
+    Ok(ParsedWrite {
+        record_index,
+        capture,
+        lane_index,
+        source_actor_id,
+        operation: operation.to_owned(),
+        property_hash,
+        slot,
+        command_id,
+        actor_id,
+        class_path,
+        category_value,
+        joined_command_record_index: joined,
+    })
+}
+
+fn parse_indexed_property(path: &str, prefix: &str) -> Result<u8, String> {
+    let digits = path
+        .strip_prefix(prefix)
+        .and_then(|value| value.strip_suffix(']'))
+        .ok_or_else(|| "property path is not an indexed command property".to_owned())?;
+    if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_digit()) {
+        return Err("property path has an invalid slot index".to_owned());
+    }
+    let slot = digits
+        .parse::<u8>()
+        .map_err(|_| "property path slot index is out of range".to_owned())?;
+    validate_slot(slot, "property path")?;
+    Ok(slot)
+}
+
+fn required_string(object: &Map<String, Value>, key: &str, index: usize) -> Result<String, String> {
+    object
+        .get(key)
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| {
+            format!(
+                "slot context writeCorpus write {} {key} must be a string",
+                index + 1
+            )
+        })
+}
+
+fn required_u64(object: &Map<String, Value>, key: &str, index: usize) -> Result<u64, String> {
+    object.get(key).and_then(Value::as_u64).ok_or_else(|| {
+        format!(
+            "slot context writeCorpus write {} {key} must be an integer",
+            index + 1
+        )
+    })
+}
+
+fn required_u32(object: &Map<String, Value>, key: &str, index: usize) -> Result<u32, String> {
+    let value = required_u64(object, key, index)?;
+    u32::try_from(value).map_err(|_| {
+        format!(
+            "slot context writeCorpus write {} {key} is out of range",
+            index + 1
+        )
+    })
+}
+
+fn required_u8(object: &Map<String, Value>, key: &str, index: usize) -> Result<u8, String> {
+    let value = required_u64(object, key, index)?;
+    u8::try_from(value).map_err(|_| {
+        format!(
+            "slot context writeCorpus write {} {key} is out of range",
+            index + 1
+        )
+    })
+}
+
+fn parse_hex_bytes(value: &str) -> Result<Vec<u8>, String> {
+    if value.len() % 2 != 0 {
+        return Err("must contain an even number of hexadecimal digits".to_owned());
+    }
+    if !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err("contains invalid hexadecimal digits".to_owned());
+    }
+    (0..value.len())
+        .step_by(2)
+        .map(|index| {
+            u8::from_str_radix(&value[index..index + 2], 16)
+                .map_err(|_| "contains invalid hexadecimal digits".to_owned())
+        })
+        .collect()
+}
+
 fn validate_slot(slot: u8, label: &str) -> Result<(), String> {
     if slot >= 64 {
         return Err(format!("{label} slot must be in range 0..=63"));
@@ -503,6 +1223,84 @@ pub(crate) fn run(arguments: &[String]) -> Result<(), Failure> {
     std::io::stdout()
         .write_all(text.as_bytes())
         .map_err(|error| Failure::usage(format!("cannot write output: {error}")))
+}
+
+pub(crate) fn run_loadout(arguments: &[String]) -> Result<(), Failure> {
+    let (slot_context_path, trace_index, format) = parse_loadout_arguments(arguments)?;
+    let manifest = read_slot_context(&slot_context_path)?;
+    let report = build_loadout_report(&manifest, trace_index).map_err(Failure::usage)?;
+    let text = match format {
+        OutputFormat::Yaml => serde_yaml::to_string(&report)
+            .map_err(|error| Failure::usage(format!("cannot encode YAML report: {error}")))?,
+        OutputFormat::Json => {
+            let mut text = serde_json::to_string_pretty(&report)
+                .map_err(|error| Failure::usage(format!("cannot encode JSON report: {error}")))?;
+            text.push('\n');
+            text
+        }
+    };
+    std::io::stdout()
+        .write_all(text.as_bytes())
+        .map_err(|error| Failure::usage(format!("cannot write output: {error}")))
+}
+
+fn parse_loadout_arguments(
+    arguments: &[String],
+) -> Result<(String, Option<usize>, OutputFormat), Failure> {
+    let mut slot_context = None;
+    let mut trace = None;
+    let mut format = OutputFormat::Yaml;
+    let mut index = 0;
+    while index < arguments.len() {
+        match arguments[index].as_str() {
+            "--slot-context" => {
+                index += 1;
+                let Some(path) = arguments.get(index) else {
+                    return Err(loadout_usage());
+                };
+                if path.starts_with("--") {
+                    return Err(loadout_usage());
+                }
+                if slot_context.replace(path.clone()).is_some() {
+                    return Err(Failure::usage("--slot-context may be supplied only once"));
+                }
+            }
+            "--trace" => {
+                index += 1;
+                let Some(value) = arguments.get(index) else {
+                    return Err(loadout_usage());
+                };
+                let parsed = value
+                    .parse::<usize>()
+                    .map_err(|_| Failure::usage("--trace must be a nonnegative integer"))?;
+                if trace.replace(parsed).is_some() {
+                    return Err(Failure::usage("--trace may be supplied only once"));
+                }
+            }
+            "--format" => {
+                index += 1;
+                format = match arguments.get(index).map(String::as_str) {
+                    Some("yaml") => OutputFormat::Yaml,
+                    Some("json") => OutputFormat::Json,
+                    _ => return Err(Failure::usage("--format must be yaml or json")),
+                };
+            }
+            option => {
+                return Err(Failure::usage(format!(
+                    "unknown inspect-command-loadout option '{option}'"
+                )))
+            }
+        }
+        index += 1;
+    }
+    let slot_context = slot_context.ok_or_else(loadout_usage)?;
+    Ok((slot_context, trace, format))
+}
+
+fn loadout_usage() -> Failure {
+    Failure::usage(
+        "usage: xivl inspect-command-loadout --slot-context <command_slot_context.json> [--trace <index>] [--format yaml|json]",
+    )
 }
 
 fn parse_arguments(
@@ -601,6 +1399,157 @@ fn parse_slot_context(data: &[u8]) -> Result<SlotContextManifest, String> {
         .map_err(|error| format!("invalid slot context JSON: {error}"))?;
     manifest.validate()?;
     Ok(manifest)
+}
+
+#[derive(Debug)]
+struct Trace {
+    capture: String,
+    lane_index: u32,
+    source_actor_id: u32,
+    writes: Vec<Value>,
+    parsed_writes: Vec<ParsedWrite>,
+}
+
+fn index_traces(corpus: &WriteCorpus) -> Result<Vec<Trace>, String> {
+    let mut grouped: BTreeMap<TraceKey, (Vec<Value>, Vec<ParsedWrite>)> = BTreeMap::new();
+    for (index, value) in corpus.writes.iter().enumerate() {
+        let parsed = parse_write(value, index)?;
+        let key = (
+            parsed.capture.clone(),
+            parsed.lane_index,
+            parsed.source_actor_id,
+        );
+        let entry = grouped.entry(key).or_default();
+        entry.0.push(value.clone());
+        entry.1.push(parsed);
+    }
+    let mut traces: Vec<Trace> = grouped
+        .into_iter()
+        .map(
+            |((capture, lane_index, source_actor_id), (writes, parsed_writes))| Trace {
+                capture,
+                lane_index,
+                source_actor_id,
+                writes,
+                parsed_writes,
+            },
+        )
+        .collect();
+    traces.sort_by(|left, right| {
+        let left_first = left.parsed_writes[0].record_index;
+        let right_first = right.parsed_writes[0].record_index;
+        left_first
+            .cmp(&right_first)
+            .then_with(|| left.capture.cmp(&right.capture))
+            .then_with(|| left.lane_index.cmp(&right.lane_index))
+            .then_with(|| left.source_actor_id.cmp(&right.source_actor_id))
+    });
+    Ok(traces)
+}
+
+fn trace_inventory(traces: &[Trace]) -> Vec<Value> {
+    traces
+        .iter()
+        .enumerate()
+        .map(|(index, trace)| {
+            let mut operation_counts = BTreeMap::new();
+            for write in &trace.parsed_writes {
+                *operation_counts
+                    .entry(write.operation.as_str())
+                    .or_insert(0_u64) += 1;
+            }
+            json!({
+                "index": index,
+                "capture": trace.capture,
+                "laneIndex": trace.lane_index,
+                "sourceActorId": trace.source_actor_id,
+                "firstRecordIndex": trace.parsed_writes[0].record_index,
+                "lastRecordIndex": trace.parsed_writes.last().unwrap().record_index,
+                "writeCount": trace.writes.len(),
+                "operationCounts": operation_counts,
+            })
+        })
+        .collect()
+}
+
+fn loadout_metadata(
+    manifest: &SlotContextManifest,
+    corpus: &WriteCorpus,
+    trace_count: usize,
+) -> Value {
+    json!({
+        "scope": corpus.scope,
+        "recordEncoding": corpus.record_encoding,
+        "propertyHashEncoding": corpus.property_hash_encoding,
+        "statePartition": corpus.state_partition,
+        "stateOrder": corpus.state_order,
+        "partialState": corpus.partial_state,
+        "initialState": corpus.initial_state,
+        "finalState": corpus.final_state,
+        "serverAuthoritative": corpus.server_authoritative,
+        "packetReplay": corpus.packet_replay,
+        "writesSha256": corpus.writes_sha256,
+        "writeCount": corpus.writes.len(),
+        "traceCount": trace_count,
+        "manifestSchemaVersion": manifest.schema_version,
+    })
+}
+
+fn build_loadout_report(
+    manifest: &SlotContextManifest,
+    trace_index: Option<usize>,
+) -> Result<Value, String> {
+    if manifest.schema_version != 2 {
+        return Err("inspect-command-loadout requires slot context schema 2".to_owned());
+    }
+    let corpus = manifest.write_corpus.as_ref().unwrap();
+    let traces = index_traces(corpus)?;
+    let metadata = loadout_metadata(manifest, corpus, traces.len());
+    let mut report = json!({
+        "status": "available",
+        "schemaVersion": manifest.schema_version,
+        "kind": manifest.kind,
+        "gameVersion": manifest.game_version,
+        "manifestStatus": manifest.status,
+        "sourceSnapshots": manifest.source_snapshots,
+        "derivation": manifest.derivation,
+        "coverage": manifest.coverage,
+        "rowsSha256": manifest.rows_sha256,
+        "writeCorpus": metadata,
+        "partialState": true,
+        "initialState": "unknown",
+        "finalState": "unasserted",
+        "packetReplay": false,
+        "serverAuthoritative": false,
+        "validation": {
+            "input": "bounded-canonical-json",
+            "writesSha256": "matched",
+            "writeCorpus": "matched",
+            "traceIndex": "firstRecordIndex then capture, laneIndex, sourceActorId",
+        },
+        "unresolved": manifest.unresolved,
+    });
+    if let Some(index) = trace_index {
+        let trace = traces.get(index).ok_or_else(|| {
+            format!(
+                "trace index {index} is out of range ({} traces)",
+                traces.len()
+            )
+        })?;
+        report["trace"] = json!({
+            "index": index,
+            "capture": trace.capture,
+            "laneIndex": trace.lane_index,
+            "sourceActorId": trace.source_actor_id,
+            "firstRecordIndex": trace.parsed_writes[0].record_index,
+            "lastRecordIndex": trace.parsed_writes.last().unwrap().record_index,
+            "writeCount": trace.writes.len(),
+            "writes": trace.writes,
+        });
+    } else {
+        report["traces"] = json!(trace_inventory(&traces));
+    }
+    Ok(report)
 }
 
 #[cfg(test)]
@@ -1502,6 +2451,7 @@ mod tests {
                     repository: "XIVLegacy/xivl-client-structs".to_owned(),
                     generator_artifact: "generator.py".to_owned(),
                     generator_sha256: "generator-sha".to_owned(),
+                    generator_hash_normalization: None,
                     hash_names_artifact: "hash-names.json".to_owned(),
                     hash_names_sha256: "hash-names-sha".to_owned(),
                     actor_identity_artifact: "identity.json#relationship".to_owned(),
@@ -1537,6 +2487,10 @@ mod tests {
                 static_actor_catalog_hits: 1,
                 command_catalog_hits: 1,
                 category_records: 7,
+                border_records: None,
+                relevant_write_records: None,
+                zero_command_writes: None,
+                state_partitions: None,
                 category_hashes: 1,
                 category_value_distribution: vec![CategoryValueDistribution {
                     value: 1,
@@ -1572,6 +2526,7 @@ mod tests {
                     },
                 ],
             }],
+            write_corpus: None,
             unresolved: vec!["category 2 is not observed".to_owned()],
         };
         fixture.rows_sha256 =
@@ -1584,8 +2539,165 @@ mod tests {
         parse_slot_context(&serde_json::to_vec(&fixture).unwrap()).unwrap()
     }
 
+    fn synthetic_write(
+        record_index: u64,
+        operation: &str,
+        slot: Option<u8>,
+        value: &[u8],
+        property_hash: u32,
+        joined_command_record_index: Option<u64>,
+    ) -> Value {
+        let property_path = match (operation, slot) {
+            ("set-border", None) => "charaWork.commandBorder".to_owned(),
+            ("set-category", Some(slot)) => format!("charaWork.commandCategory[{slot}]"),
+            (_, Some(slot)) => format!("charaWork.command[{slot}]"),
+            _ => panic!("invalid synthetic write shape"),
+        };
+        let value_hex = value
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        let mut fragment = vec![value.len() as u8];
+        fragment.extend_from_slice(&property_hash.to_le_bytes());
+        fragment.extend_from_slice(value);
+        let record_fragment_hex = fragment
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        let mut write = json!({
+            "recordIndex": record_index,
+            "capture": "synthetic.pcapng",
+            "laneIndex": 0,
+            "sourceActorId": 43723073,
+            "propertyPath": property_path,
+            "propertyHash": format!("0x{property_hash:08x}"),
+            "valueWidth": value.len(),
+            "valueHex": value_hex,
+            "recordFragmentHex": record_fragment_hex,
+            "operation": operation,
+        });
+        if let Some(slot) = slot {
+            write["slot"] = json!(slot);
+        }
+        match operation {
+            "set-command" => {
+                write["actorIdHex"] = json!("0xa0f06a04");
+                write["commandId"] = json!(27140);
+                write["classPath"] = json!("/Command/Game/Ability/Ability");
+            }
+            "set-category" => {
+                write["categoryValue"] = json!(1);
+                write["joinedCommandRecordIndex"] =
+                    joined_command_record_index.map_or(Value::Null, |record| json!(record));
+            }
+            "set-border" => write["borderValue"] = json!(value[0]),
+            "clear" => {}
+            _ => unreachable!(),
+        }
+        write
+    }
+
+    fn parsed_schema2_slot_context_fixture() -> SlotContextManifest {
+        let mut fixture = slot_context_fixture();
+        fixture.schema_version = 2;
+        fixture
+            .source_snapshots
+            .client_structs
+            .generator_hash_normalization =
+            Some("UTF-8 text with CRLF and CR normalized to LF".to_owned());
+        fixture.coverage.command_records = 9;
+        fixture.coverage.nonzero_command_occurrences = 8;
+        fixture.coverage.border_records = Some(1);
+        fixture.coverage.relevant_write_records = Some(17);
+        fixture.coverage.zero_command_writes = Some(1);
+        fixture.coverage.state_partitions = Some(1);
+        fixture.coverage.category_records = 7;
+        fixture.coverage.category_hashes = 1;
+        fixture.coverage.category_value_distribution = vec![CategoryValueDistribution {
+            value: 1,
+            occurrences: 7,
+        }];
+        fixture.coverage.stateful_category_observations = 6;
+        fixture.coverage.category_writes_without_current_command = vec![CategoryWriteSummary {
+            slot: 51,
+            occurrences: 1,
+        }];
+        let mut writes = vec![synthetic_write(
+            1,
+            "clear",
+            Some(39),
+            &[0, 0, 0, 0],
+            1,
+            None,
+        )];
+        let mut record_index = 2;
+        for category_record_index in [3, 5, 7, 9, 11, 13] {
+            writes.push(synthetic_write(
+                record_index,
+                "set-command",
+                Some(39),
+                &[0x04, 0x6a, 0xf0, 0xa0],
+                2,
+                None,
+            ));
+            writes.push(synthetic_write(
+                category_record_index,
+                "set-category",
+                Some(39),
+                &[1],
+                3,
+                Some(record_index),
+            ));
+            record_index += 2;
+        }
+        writes.push(synthetic_write(
+            14,
+            "set-command",
+            Some(39),
+            &[0x04, 0x6a, 0xf0, 0xa0],
+            2,
+            None,
+        ));
+        writes.push(synthetic_write(
+            15,
+            "set-command",
+            Some(43),
+            &[0x04, 0x6a, 0xf0, 0xa0],
+            4,
+            None,
+        ));
+        writes.push(synthetic_write(16, "set-category", Some(51), &[1], 3, None));
+        writes.push(synthetic_write(17, "set-border", None, &[32], 5, None));
+        let writes_sha256 = sha256(&serde_json::to_vec(&writes).unwrap());
+        fixture.write_corpus = Some(WriteCorpus {
+            scope: "observed-filtered-property-record-fragments".to_owned(),
+            record_encoding: "valueWidth:u8 + propertyHash:u32le + value[valueWidth]".to_owned(),
+            property_hash_encoding: "little-endian u32".to_owned(),
+            state_partition: vec![
+                "capture".to_owned(),
+                "laneIndex".to_owned(),
+                "sourceActorId".to_owned(),
+            ],
+            state_order: "increasing recordIndex within each partition".to_owned(),
+            partial_state: true,
+            initial_state: "unknown".to_owned(),
+            final_state: "unasserted".to_owned(),
+            server_authoritative: false,
+            packet_replay: false,
+            writes_sha256,
+            writes,
+        });
+        fixture
+    }
+
     fn refresh_rows_sha256(value: &mut Value) {
         value["rowsSha256"] = json!(sha256(&serde_json::to_vec(&value["rows"]).unwrap()));
+    }
+
+    fn refresh_writes_sha256(value: &mut Value) {
+        value["writeCorpus"]["writesSha256"] = json!(sha256(
+            &serde_json::to_vec(&value["writeCorpus"]["writes"]).unwrap()
+        ));
     }
 
     #[test]
@@ -2290,6 +3402,72 @@ mod tests {
     }
 
     #[test]
+    fn validates_schema2_write_corpus_and_indexes_traces() {
+        let fixture = parsed_schema2_slot_context_fixture();
+        let report = build_loadout_report(&fixture, None).unwrap();
+        assert_eq!(report["writeCorpus"]["writeCount"], 17);
+        assert_eq!(report["writeCorpus"]["traceCount"], 1);
+        assert_eq!(report["traces"][0]["firstRecordIndex"], 1);
+        assert_eq!(report["traces"][0]["lastRecordIndex"], 17);
+        assert_eq!(report["partialState"], true);
+        assert_eq!(report["initialState"], "unknown");
+        assert_eq!(report["finalState"], "unasserted");
+        assert_eq!(report["packetReplay"], false);
+        assert_eq!(report["serverAuthoritative"], false);
+
+        let trace = build_loadout_report(&fixture, Some(0)).unwrap();
+        assert_eq!(trace["trace"]["writes"].as_array().unwrap().len(), 17);
+        assert_eq!(trace["trace"]["writes"][0]["operation"], "clear");
+        assert_eq!(trace["trace"]["writes"][1]["operation"], "set-command");
+        assert_eq!(trace["trace"]["writes"][2]["joinedCommandRecordIndex"], 2);
+    }
+
+    #[test]
+    fn rejects_schema2_write_digest_fragment_order_and_shape_drift() {
+        let fixture = parsed_schema2_slot_context_fixture();
+        let encoded = |value: SlotContextManifest| serde_json::to_vec(&value).unwrap();
+
+        let mut version = serde_json::to_value(&fixture).unwrap();
+        version["schemaVersion"] = json!(1);
+        version.as_object_mut().unwrap().remove("writeCorpus");
+        version["sourceSnapshots"]["clientStructs"]
+            .as_object_mut()
+            .unwrap()
+            .remove("generatorHashNormalization");
+        let parsed: SlotContextManifest = serde_json::from_value(version).unwrap();
+        assert!(parsed
+            .validate()
+            .unwrap_err()
+            .contains("schema 1 does not permit schema 2 fields"));
+
+        let mut digest = serde_json::to_value(&fixture).unwrap();
+        digest["writeCorpus"]["writes"][0]["valueHex"] = json!("01000000");
+        assert!(
+            parse_slot_context(&encoded(serde_json::from_value(digest).unwrap()))
+                .unwrap_err()
+                .contains("writesSha256")
+        );
+
+        let mut fragment = serde_json::to_value(&fixture).unwrap();
+        fragment["writeCorpus"]["writes"][1]["recordFragmentHex"] = json!("040000000001020304");
+        refresh_writes_sha256(&mut fragment);
+        let parsed: SlotContextManifest = serde_json::from_value(fragment).unwrap();
+        assert!(parsed.validate().unwrap_err().contains("record fragment"));
+
+        let mut order = serde_json::to_value(&fixture).unwrap();
+        order["writeCorpus"]["writes"][1]["recordIndex"] = json!(1);
+        refresh_writes_sha256(&mut order);
+        let parsed: SlotContextManifest = serde_json::from_value(order).unwrap();
+        assert!(parsed.validate().unwrap_err().contains("record order"));
+
+        let mut shape = serde_json::to_value(&fixture).unwrap();
+        shape["writeCorpus"]["writes"][0]["actorIdHex"] = json!("0xa0f06a04");
+        refresh_writes_sha256(&mut shape);
+        let parsed: SlotContextManifest = serde_json::from_value(shape).unwrap();
+        assert!(parsed.validate().unwrap_err().contains("operation shape"));
+    }
+
+    #[test]
     fn reports_missing_slot_context_observation_without_inference() {
         let data = catalog(&[("27141", "Other", "Other")]);
         let mut context = parsed_slot_context_fixture();
@@ -2312,7 +3490,7 @@ mod tests {
         let fixture = slot_context_fixture();
         let encoded = |value: Value| serde_json::to_vec(&value).unwrap();
         let valid = serde_json::to_value(&fixture).unwrap();
-        for (field, expected) in [("schemaVersion", 2), ("schemaVersion", 0)] {
+        for (field, expected) in [("schemaVersion", 0), ("schemaVersion", 3)] {
             let mut value = valid.clone();
             value[field] = json!(expected);
             assert!(parse_slot_context(&encoded(value))

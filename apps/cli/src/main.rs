@@ -29,6 +29,7 @@ usage:
   xivl inspect <file> [--as <format>] [--columns <list>]
   xivl validate <file> [--as <format>] [--columns <list>]
   xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--slot-context <command_slot_context.json>] [--format yaml|json]
+  xivl inspect-command-loadout --slot-context <command_slot_context.json> [--trace <index>] [--format yaml|json]
   xivl lua-path <path>
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
@@ -66,6 +67,11 @@ writing or repairing it. Source replay is explicit and optional.
 inspect-command queries an explicit command_battle_params.csv catalog by
 numeric id or exact case-insensitive English/Japanese name. It reports the
 client-visible formula inputs and their evidence limits, not a server formula.
+
+inspect-command-loadout reads a bounded schema-2 command-slot context and
+reports observed ordered property writes by deterministic trace index. It
+preserves partial-state and evidence-boundary markers; the writes are not
+complete packets or server-authoritative policy.
 
 lua-path applies the reversible ASCII resource-path transform. extract-lpb
 removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
@@ -157,6 +163,7 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         Some("inspect") => read(&arguments[1..], Operation::Inspect),
         Some("validate") => read(&arguments[1..], Operation::Validate),
         Some("inspect-command") => command_inspect::run(&arguments[1..]),
+        Some("inspect-command-loadout") => command_inspect::run_loadout(&arguments[1..]),
         Some("lua-path") => lua_path(&arguments[1..]),
         Some("extract-lpb") => extract_lpb_command(&arguments[1..]),
         Some("extract") => {
