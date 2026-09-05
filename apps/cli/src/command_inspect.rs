@@ -241,7 +241,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
     }
 
     Ok(json!({
-        "schemaVersion": 7,
+        "schemaVersion": 8,
         "kind": "xivl-command-formula-inputs",
         "source": {
             "byteLength": data.len(),
@@ -329,6 +329,7 @@ fn command_document(
         "compatibilityProfile": compatibility_profile(
             class_path,
             field(record, "compat_key"),
+            field(record, "class_job"),
             compatibility,
         )?,
         "description": {
@@ -377,7 +378,12 @@ fn command_document(
 }
 
 // Matrix selection and actor-dependent shortcuts: docs/command-compatibility-profiles.md.
-fn compatibility_profile(class_path: &str, key: &str, values: &[i8]) -> Result<Value, String> {
+fn compatibility_profile(
+    class_path: &str,
+    key: &str,
+    command_main_skill: &str,
+    values: &[i8],
+) -> Result<Value, String> {
     let Some(parents) = known_class_parents(class_path) else {
         return Ok(json!({
             "status": "unresolved",
@@ -400,6 +406,9 @@ fn compatibility_profile(class_path: &str, key: &str, values: &[i8]) -> Result<V
     let key = key
         .parse::<u32>()
         .map_err(|_| "compatibility key is not an unsigned integer".to_owned())?;
+    let command_main_skill = command_main_skill
+        .parse::<u32>()
+        .map_err(|_| "command main skill is not an unsigned integer".to_owned())?;
     let skill_values: Vec<Value> = values
         .iter()
         .enumerate()
@@ -422,9 +431,18 @@ fn compatibility_profile(class_path: &str, key: &str, values: &[i8]) -> Result<V
             "inputField": "compatibility_percent_by_skill",
             "skillValues": skill_values,
         },
+        "commandMainSkill": {
+            "inputField": "class_job",
+            "skillId": command_main_skill,
+        },
         "skillSelection": {
+            "handInput": "parameter-getter-argument-2",
             "handEquals2": "actor-sub-skill",
             "otherwise": "actor-main-skill",
+        },
+        "jobSkillRule": {
+            "definedBy": "CharaBaseClass.isJob",
+            "skillIds": [15, 16, 17, 18, 19, 26, 27],
         },
         "shortcuts": [
             { "condition": "selected-skill-id-is-zero", "factor": 0 },
@@ -433,8 +451,28 @@ fn compatibility_profile(class_path: &str, key: &str, values: &[i8]) -> Result<V
         ],
         "fallback": "capped-matrix-factor",
         "evaluation": {
-            "status": "actor-required",
-            "actorMethods": ["getStateMainSkill", "getStateMainSkillForSub", "isJob"],
+            "status": "runtime-capture-required",
+            "missingLink": "native-or-dynamic-caller-values-at-parameter-getter-entry",
+            "captureFields": [
+                {
+                    "field": "handSelector",
+                    "source": "parameter-getter-argument-2",
+                },
+                {
+                    "field": "actorStateMainSkill",
+                    "source": "actor.charaWork.parameterSave.state_mainSkill[1]",
+                    "valueType": "integer8",
+                },
+                {
+                    "field": "actorStateMainSkillForSub",
+                    "source": "actor.charaWork.parameterSave.state_mainSkill[3]",
+                    "valueType": "integer8",
+                },
+                {
+                    "field": "targetAlive",
+                    "source": "parameter-getter-argument-3._isAlive()",
+                },
+            ],
         },
     }))
 }
@@ -468,6 +506,12 @@ fn parameter_profile(class_path: &str) -> Value {
         "scope": "lua-parameter-getter-selection",
         "definedBy": "GameCommandBaseClass",
         "getters": getters,
+        "argumentRoles": [
+            { "position": 1, "role": "actor" },
+            { "position": 2, "role": "hand-selector" },
+            { "position": 3, "role": "target", "use": "liveness-and-grow-context" },
+            { "position": 4, "role": "unused" },
+        ],
         "callModes": {
             "missingContext": {
                 "condition": "any-of-first-three-arguments-after-receiver-is-nil",
@@ -915,9 +959,41 @@ mod tests {
         assert_eq!(profile["matrix"]["skillValues"][22]["percent"], 120);
         assert_eq!(profile["matrix"]["skillValues"][22]["matrixFactor"], 1.2);
         assert_eq!(profile["matrix"]["skillValues"][22]["cappedFactor"], 1.0);
+        assert_eq!(profile["commandMainSkill"]["skillId"], 23);
+        assert_eq!(
+            profile["skillSelection"]["handInput"],
+            "parameter-getter-argument-2"
+        );
         assert_eq!(profile["skillSelection"]["handEquals2"], "actor-sub-skill");
+        assert_eq!(
+            profile["jobSkillRule"]["skillIds"],
+            json!([15, 16, 17, 18, 19, 26, 27])
+        );
         assert_eq!(profile["fallback"], "capped-matrix-factor");
-        assert_eq!(profile["evaluation"]["status"], "actor-required");
+        assert_eq!(profile["evaluation"]["status"], "runtime-capture-required");
+        assert_eq!(
+            profile["evaluation"]["captureFields"],
+            json!([
+                {
+                    "field": "handSelector",
+                    "source": "parameter-getter-argument-2",
+                },
+                {
+                    "field": "actorStateMainSkill",
+                    "source": "actor.charaWork.parameterSave.state_mainSkill[1]",
+                    "valueType": "integer8",
+                },
+                {
+                    "field": "actorStateMainSkillForSub",
+                    "source": "actor.charaWork.parameterSave.state_mainSkill[3]",
+                    "valueType": "integer8",
+                },
+                {
+                    "field": "targetAlive",
+                    "source": "parameter-getter-argument-3._isAlive()",
+                },
+            ])
+        );
     }
 
     #[test]
@@ -940,7 +1016,7 @@ mod tests {
                 .contains(message));
         }
         for path in ["", "/Unknown/CmnAbility"] {
-            let profile = compatibility_profile(path, "3", &[]).unwrap();
+            let profile = compatibility_profile(path, "3", "23", &[]).unwrap();
             assert_eq!(profile["status"], "unresolved");
         }
         let values = parse_compatibility_values(&compatibility_values(100)).unwrap();
@@ -950,12 +1026,18 @@ mod tests {
             "/Command/Game/BonusPointCommand",
             "/Command/ItemCommand",
         ] {
-            let profile = compatibility_profile(path, "3", &values).unwrap();
+            let profile = compatibility_profile(path, "3", "23", &values).unwrap();
             assert_eq!(profile["status"], "not-applicable");
             assert!(profile.get("matrix").is_none());
         }
-        let profile = compatibility_profile("/Command/ChangeJobCommand", "3", &[]).unwrap();
+        let profile = compatibility_profile("/Command/ChangeJobCommand", "3", "23", &[]).unwrap();
         assert_eq!(profile["reason"], "missing-compatibility-data");
+
+        assert!(
+            compatibility_profile("/Command/ChangeJobCommand", "3", "bad", &values,)
+                .unwrap_err()
+                .contains("command main skill")
+        );
 
         for (key, values, message) in [
             (
@@ -1015,6 +1097,10 @@ mod tests {
                 profile["callModes"]["missingContext"]["kind"],
                 "catalog-input"
             );
+            assert_eq!(profile["argumentRoles"][0]["role"], "actor");
+            assert_eq!(profile["argumentRoles"][1]["role"], "hand-selector");
+            assert_eq!(profile["argumentRoles"][2]["role"], "target");
+            assert_eq!(profile["argumentRoles"][3]["role"], "unused");
             assert_eq!(
                 profile["callModes"]["liveContext"]["kind"],
                 "actor-target-required"
@@ -1364,7 +1450,7 @@ mod tests {
             ("27410", "Fire", "Fire II JP"),
         ]);
         let by_id = build_report(&data, "27310").unwrap();
-        assert_eq!(by_id["schemaVersion"], 7);
+        assert_eq!(by_id["schemaVersion"], 8);
         assert_eq!(by_id["query"]["mode"], "id");
         assert_eq!(by_id["matches"].as_array().unwrap().len(), 1);
         assert_eq!(by_id["matches"][0]["damage"]["magnitude"], 950);

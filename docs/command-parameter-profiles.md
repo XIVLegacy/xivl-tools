@@ -11,8 +11,9 @@ level limits and blend overrides used inside contextual parameter calls.
 
 The four parameter getters share the following recovered control flow.
 Argument positions below exclude the command receiver. The first three
-arguments form the context tested by the method; the third is the target
-whose `_isAlive` method is called. A fourth optional argument is not used.
+arguments form the context tested by the method. The first is the actor, the
+second is the hand selector, and the third is the target whose `_isAlive`
+method is called. A fourth optional argument is not used.
 
 | Call mode | Recovered behavior | Report kind |
 |---|---|---|
@@ -34,7 +35,7 @@ target, rather than every invocation of a parameter getter.
 
 ## Report contract
 
-The JSON/YAML report schema is version 7. Each match's `parameterProfile`
+The JSON/YAML report schema is version 8. Each match's `parameterProfile`
 reports getter selection, not evaluated parameter values:
 
 - `status: resolved` and `definedBy: GameCommandBaseClass` identify the owner
@@ -44,6 +45,8 @@ reports getter selection, not evaluated parameter values:
   corresponding `parameters` entry's `base` field; no missing input is filled.
 - `callModes` reports the conditions and kinds from the table above. It does
   not infer actor state or select a call mode from the catalog alone.
+- `argumentRoles` records the actor, hand-selector, target, and unused
+  positions established by the shared getter bodies.
 
 The exact-path lookup covers 70 game-command paths and 1,606 frozen catalog
 rows. Four known paths outside the GameCommandBaseClass hierarchy report
@@ -71,6 +74,12 @@ The catalog's grow field is therefore the raw selector, not a claim about the
 selector used by every actor/target pairing. Native `getGrowData` values remain
 unresolved. Compatibility and TP helpers are at 1327-1347 and 1350-1362;
 level adjustment is at 1375-1433 in the same source.
+
+No contextual call to any of the four getters appears in the complete frozen
+Lua corpus. Three subclass HP-cost methods call `getCommandParam3` with only
+the receiver and therefore take the raw-input path. The caller that supplies
+the actor, hand selector, and target remains native or dynamically dispatched;
+static Lua establishes the argument flow but not the runtime values.
 
 The CSV names and column mapping are defined by
 `xivl-client-data:tools/build_command_battle_params.py`, sha256
