@@ -13,9 +13,101 @@ use crate::Failure;
 const MAX_CATALOG_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_CATALOG_ROWS: usize = 100_000;
 const MAX_SLOT_CONTEXT_BYTES: u64 = 4 * 1024 * 1024;
+const MAX_MONSTER_ATTACK_PROFILES_BYTES: u64 = 4 * 1024 * 1024;
 const COMMAND_LOADOUT_PAYLOAD_SIZE: usize = 136;
 const COMMAND_LOADOUT_STREAM_OFFSET: usize = 1;
 const COMMAND_LOADOUT_MAX_FRAGMENT_BYTES: usize = 128;
+const MONSTER_ATTACK_CLASS_PATH: &str = "/Command/Game/WeaponSkill/MonsterAttackWeaponSkill";
+const MONSTER_ATTACK_PARENT_PATH: &str = "/Command/Game/WeaponSkill/WeaponSkillBaseClass";
+const MONSTER_ATTACK_SOURCE_SCRIPT: &str =
+    "lua/scripts/command/game/weaponskill/monsterattackweaponskill.lua";
+const MONSTER_ATTACK_SOURCE_SHA256: &str =
+    "d5b8e884aad2ca2cfe5cfa96cf5e029d975a32bb0bc1742873ded2f3a78b668e";
+const MONSTER_ATTACK_RULES_SHA256: &str =
+    "446bb12571d90c6a5095feb49ed9f5056c2ccee84f902204e70ec985833e25f2";
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct MonsterAttackProfilesManifest {
+    version: String,
+    game_version: String,
+    extraction: String,
+    class_path: String,
+    parent_path: String,
+    getter_rules_sha256: String,
+    source: MonsterAttackProfileSource,
+    summary: MonsterAttackProfileSummary,
+    getter_rules: MonsterAttackGetterRules,
+    unresolved: Vec<String>,
+    #[serde(skip)]
+    input_byte_length: u64,
+    #[serde(skip)]
+    input_sha256: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct MonsterAttackProfileSource {
+    script: String,
+    sha256: String,
+    bytes: u64,
+    line_count: u32,
+    manifest: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct MonsterAttackProfileSummary {
+    getter_count: u32,
+    override_group_count: u32,
+    override_command_count: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct MonsterAttackGetterRules {
+    get_command_information: MonsterAttackInformationRule,
+    get_frequency: MonsterAttackScalarRule,
+    get_range_width: MonsterAttackScalarRule,
+    get_range_rotate: MonsterAttackScalarRule,
+    get_command_range_height: MonsterAttackScalarRule,
+    get_parts_damage_adjust: MonsterAttackPairRule,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct MonsterAttackInformationRule {
+    default: i64,
+    selector: u32,
+    other_selectors: String,
+    overrides: Vec<MonsterAttackOverride>,
+    definition_line: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct MonsterAttackScalarRule {
+    default: i64,
+    overrides: Vec<MonsterAttackOverride>,
+    definition_line: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct MonsterAttackPairRule {
+    default: [i64; 2],
+    return_arity: u32,
+    overrides: Vec<MonsterAttackOverride>,
+    definition_line: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct MonsterAttackOverride {
+    command_ids: Vec<u32>,
+    result: Value,
+    source_lines: Vec<u32>,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
@@ -227,6 +319,8 @@ enum OutputFormat {
     Yaml,
     Json,
 }
+
+type InspectArguments = (String, String, Option<String>, Option<String>, OutputFormat);
 
 impl SlotContextManifest {
     fn validate(&self) -> Result<(), String> {
@@ -1208,14 +1302,24 @@ fn parse_actor_id(value: &str) -> Result<u32, String> {
 }
 
 pub(crate) fn run(arguments: &[String]) -> Result<(), Failure> {
-    let (query, catalog_path, slot_context_path, format) = parse_arguments(arguments)?;
+    let (query, catalog_path, slot_context_path, monster_attack_profiles_path, format) =
+        parse_arguments(arguments)?;
     let data = read_catalog(&catalog_path)?;
     let slot_context = slot_context_path
         .as_deref()
         .map(read_slot_context)
         .transpose()?;
-    let report = build_report_with_slot_context(&data, &query, slot_context.as_ref())
-        .map_err(Failure::usage)?;
+    let monster_attack_profiles = monster_attack_profiles_path
+        .as_deref()
+        .map(read_monster_attack_profiles)
+        .transpose()?;
+    let report = build_report_with_inputs(
+        &data,
+        &query,
+        slot_context.as_ref(),
+        monster_attack_profiles.as_ref(),
+    )
+    .map_err(Failure::usage)?;
     let text = match format {
         OutputFormat::Yaml => serde_yaml::to_string(&report)
             .map_err(|error| Failure::usage(format!("cannot encode YAML report: {error}")))?,
@@ -1589,9 +1693,7 @@ fn loadout_usage() -> Failure {
     )
 }
 
-fn parse_arguments(
-    arguments: &[String],
-) -> Result<(String, String, Option<String>, OutputFormat), Failure> {
+fn parse_arguments(arguments: &[String]) -> Result<InspectArguments, Failure> {
     let Some(query) = arguments.first() else {
         return Err(usage());
     };
@@ -1601,6 +1703,7 @@ fn parse_arguments(
 
     let mut catalog = None;
     let mut slot_context = None;
+    let mut monster_attack_profiles = None;
     let mut format = OutputFormat::Yaml;
     let mut index = 1;
     while index < arguments.len() {
@@ -1631,6 +1734,20 @@ fn parse_arguments(
                     return Err(Failure::usage("--slot-context may be supplied only once"));
                 }
             }
+            "--monster-attack-profiles" => {
+                index += 1;
+                let Some(path) = arguments.get(index) else {
+                    return Err(usage());
+                };
+                if path.starts_with("--") {
+                    return Err(usage());
+                }
+                if monster_attack_profiles.replace(path.clone()).is_some() {
+                    return Err(Failure::usage(
+                        "--monster-attack-profiles may be supplied only once",
+                    ));
+                }
+            }
             option => {
                 return Err(Failure::usage(format!(
                     "unknown inspect-command option '{option}'"
@@ -1640,12 +1757,18 @@ fn parse_arguments(
         index += 1;
     }
     let catalog = catalog.ok_or_else(usage)?;
-    Ok((query.clone(), catalog, slot_context, format))
+    Ok((
+        query.clone(),
+        catalog,
+        slot_context,
+        monster_attack_profiles,
+        format,
+    ))
 }
 
 fn usage() -> Failure {
     Failure::usage(
-        "usage: xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--slot-context <command_slot_context.json>] [--format yaml|json]",
+        "usage: xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--slot-context <command_slot_context.json>] [--monster-attack-profiles <json>] [--format yaml|json]",
     )
 }
 
@@ -1685,6 +1808,210 @@ fn parse_slot_context(data: &[u8]) -> Result<SlotContextManifest, String> {
         .map_err(|error| format!("invalid slot context JSON: {error}"))?;
     manifest.validate()?;
     Ok(manifest)
+}
+
+fn read_monster_attack_profiles(path: &str) -> Result<MonsterAttackProfilesManifest, Failure> {
+    let file = std::fs::File::open(path)
+        .map_err(|error| Failure::usage(format!("cannot read '{path}': {error}")))?;
+    let mut data = Vec::new();
+    file.take(MAX_MONSTER_ATTACK_PROFILES_BYTES + 1)
+        .read_to_end(&mut data)
+        .map_err(|error| Failure::usage(format!("cannot read '{path}': {error}")))?;
+    if data.len() as u64 > MAX_MONSTER_ATTACK_PROFILES_BYTES {
+        return Err(Failure::usage(format!(
+            "monster attack profiles is larger than the {MAX_MONSTER_ATTACK_PROFILES_BYTES}-byte limit"
+        )));
+    }
+    let mut manifest = parse_monster_attack_profiles(&data).map_err(|error| {
+        Failure::usage(format!(
+            "cannot parse monster attack profiles '{path}': {error}"
+        ))
+    })?;
+    manifest.input_byte_length = data.len() as u64;
+    manifest.input_sha256 = sha256(&data);
+    Ok(manifest)
+}
+
+fn parse_monster_attack_profiles(data: &[u8]) -> Result<MonsterAttackProfilesManifest, String> {
+    let manifest = serde_json::from_slice::<MonsterAttackProfilesManifest>(data)
+        .map_err(|error| format!("invalid JSON: {error}"))?;
+    if manifest.version != "1" {
+        return Err(format!("version must be 1, got {}", manifest.version));
+    }
+    if manifest.game_version != "1.23b" {
+        return Err(format!(
+            "gameVersion must be 1.23b, got {}",
+            manifest.game_version
+        ));
+    }
+    if manifest.extraction != "2012.09.19.0001" {
+        return Err(format!(
+            "extraction must be 2012.09.19.0001, got {}",
+            manifest.extraction
+        ));
+    }
+    if manifest.class_path != MONSTER_ATTACK_CLASS_PATH {
+        return Err(format!(
+            "classPath must be {MONSTER_ATTACK_CLASS_PATH}, got {}",
+            manifest.class_path
+        ));
+    }
+    if manifest.parent_path != MONSTER_ATTACK_PARENT_PATH {
+        return Err(format!(
+            "parentPath must be {MONSTER_ATTACK_PARENT_PATH}, got {}",
+            manifest.parent_path
+        ));
+    }
+    if manifest.getter_rules_sha256 != MONSTER_ATTACK_RULES_SHA256 {
+        return Err(format!(
+            "getterRulesSha256 must be {MONSTER_ATTACK_RULES_SHA256}, got {}",
+            manifest.getter_rules_sha256
+        ));
+    }
+    if manifest.summary.getter_count != 6
+        || manifest.summary.override_group_count != 12
+        || manifest.summary.override_command_count != 57
+    {
+        return Err("summary does not match the producer contract".to_owned());
+    }
+    if manifest.source.script != MONSTER_ATTACK_SOURCE_SCRIPT
+        || manifest.source.sha256 != MONSTER_ATTACK_SOURCE_SHA256
+        || manifest.source.bytes != 59_652
+        || manifest.source.line_count != 3_469
+        || manifest.source.manifest != "manifests/scripts.json"
+    {
+        return Err("source does not match the producer contract".to_owned());
+    }
+    if manifest.unresolved.is_empty()
+        || manifest.unresolved.iter().any(|value| value.is_empty())
+        || manifest.unresolved.iter().collect::<HashSet<_>>().len() != manifest.unresolved.len()
+    {
+        return Err("unresolved must contain unique nonempty strings".to_owned());
+    }
+    validate_monster_attack_rules(&manifest.getter_rules)?;
+    let getter_rules = serde_json::to_value(&manifest.getter_rules)
+        .map_err(|error| format!("cannot canonicalize getterRules: {error}"))?;
+    let canonical_getter_rules = serde_json::to_vec(&getter_rules)
+        .map_err(|error| format!("cannot encode canonical getterRules: {error}"))?;
+    if sha256(&canonical_getter_rules) != manifest.getter_rules_sha256 {
+        return Err("getterRulesSha256 does not match getterRules".to_owned());
+    }
+    Ok(manifest)
+}
+
+fn validate_monster_attack_rules(rules: &MonsterAttackGetterRules) -> Result<(), String> {
+    if rules.get_command_information.default != 1
+        || rules.get_command_information.selector != 8
+        || rules.get_command_information.other_selectors != "nil"
+        || rules.get_command_information.definition_line == 0
+    {
+        return Err("getCommandInformation defaults or selector drifted".to_owned());
+    }
+    if rules.get_frequency.definition_line == 0
+        || rules.get_range_width.definition_line == 0
+        || rules.get_range_rotate.definition_line == 0
+        || rules.get_command_range_height.definition_line == 0
+        || rules.get_parts_damage_adjust.definition_line == 0
+    {
+        return Err("getter definitionLine must be positive".to_owned());
+    }
+    if rules.get_parts_damage_adjust.return_arity != 2 {
+        return Err("getPartsDamageAdjust returnArity must be 2".to_owned());
+    }
+    let mut groups = 0_u32;
+    let mut command_count = 0_u32;
+    validate_monster_attack_rule_overrides(
+        "getCommandInformation",
+        &rules.get_command_information.overrides,
+        |result| result.as_i64().is_some(),
+        &mut groups,
+        &mut command_count,
+    )?;
+    for (name, rule) in [
+        ("getFrequency", &rules.get_frequency.overrides),
+        ("getRangeWidth", &rules.get_range_width.overrides),
+        ("getRangeRotate", &rules.get_range_rotate.overrides),
+        (
+            "getCommandRangeHeight",
+            &rules.get_command_range_height.overrides,
+        ),
+    ] {
+        validate_monster_attack_rule_overrides(
+            name,
+            rule,
+            |result| result.as_i64().is_some(),
+            &mut groups,
+            &mut command_count,
+        )?;
+    }
+    validate_monster_attack_rule_overrides(
+        "getPartsDamageAdjust",
+        &rules.get_parts_damage_adjust.overrides,
+        |result| {
+            result.as_array().is_some_and(|values| {
+                values.len() == 2 && values.iter().all(|value| value.as_i64().is_some())
+            })
+        },
+        &mut groups,
+        &mut command_count,
+    )?;
+    if groups != 12 || command_count != 57 {
+        return Err(format!(
+            "getter rule override summary does not match (groups {groups}, commands {command_count})"
+        ));
+    }
+    Ok(())
+}
+
+fn validate_monster_attack_rule_overrides(
+    getter: &str,
+    overrides: &[MonsterAttackOverride],
+    valid_result: impl Fn(&Value) -> bool,
+    groups: &mut u32,
+    command_count: &mut u32,
+) -> Result<(), String> {
+    for (index, override_rule) in overrides.iter().enumerate() {
+        if override_rule.command_ids.is_empty()
+            || override_rule
+                .command_ids
+                .iter()
+                .any(|command_id| *command_id < 10_000)
+            || override_rule
+                .command_ids
+                .iter()
+                .collect::<HashSet<_>>()
+                .len()
+                != override_rule.command_ids.len()
+        {
+            return Err(format!(
+                "{getter} override {} has invalid commandIds",
+                index + 1
+            ));
+        }
+        if !valid_result(&override_rule.result) {
+            return Err(format!(
+                "{getter} override {} has an invalid result",
+                index + 1
+            ));
+        }
+        if override_rule.source_lines.is_empty()
+            || override_rule.source_lines.contains(&0)
+            || override_rule
+                .source_lines
+                .iter()
+                .collect::<HashSet<_>>()
+                .len()
+                != override_rule.source_lines.len()
+        {
+            return Err(format!(
+                "{getter} override {} has invalid sourceLines",
+                index + 1
+            ));
+        }
+        *groups += 1;
+        *command_count += override_rule.command_ids.len() as u32;
+    }
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -1840,13 +2167,32 @@ fn build_loadout_report(
 
 #[cfg(test)]
 fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
-    build_report_with_slot_context(data, query, None)
+    build_report_with_inputs(data, query, None, None)
 }
 
+#[cfg(test)]
 fn build_report_with_slot_context(
     data: &[u8],
     query: &str,
     slot_context: Option<&SlotContextManifest>,
+) -> Result<Value, String> {
+    build_report_with_inputs(data, query, slot_context, None)
+}
+
+#[cfg(test)]
+fn build_report_with_monster_attack_profiles(
+    data: &[u8],
+    query: &str,
+    profiles: Option<&MonsterAttackProfilesManifest>,
+) -> Result<Value, String> {
+    build_report_with_inputs(data, query, None, profiles)
+}
+
+fn build_report_with_inputs(
+    data: &[u8],
+    query: &str,
+    slot_context: Option<&SlotContextManifest>,
+    monster_attack_profiles: Option<&MonsterAttackProfilesManifest>,
 ) -> Result<Value, String> {
     let mut reader = csv::ReaderBuilder::new().from_reader(data);
     let headers = reader
@@ -1936,7 +2282,12 @@ fn build_report_with_slot_context(
                     optional_field(&record, "lua_class_path").to_owned(),
                 ),
             );
-            matches.push(command_document(&record, id, &compatibility)?);
+            matches.push(command_document(
+                &record,
+                id,
+                &compatibility,
+                monster_attack_profiles,
+            )?);
         }
     }
 
@@ -1954,7 +2305,7 @@ fn build_report_with_slot_context(
     };
 
     Ok(json!({
-        "schemaVersion": 12,
+        "schemaVersion": 13,
         "kind": "xivl-command-formula-inputs",
         "source": {
             "byteLength": data.len(),
@@ -2013,6 +2364,7 @@ fn command_document(
     record: &csv::StringRecord,
     id: u32,
     compatibility: &[i8],
+    monster_attack_profiles: Option<&MonsterAttackProfilesManifest>,
 ) -> Result<Value, String> {
     let class_path = optional_field(record, "lua_class_path");
     let parameters: Vec<Value> = (1..=4)
@@ -2040,7 +2392,11 @@ fn command_document(
         },
         "levelAdjustmentProfile": level_adjustment_profile(class_path),
         "parameterProfile": parameter_profile(class_path),
-        "subclassGetterProfile": subclass_getter_profile(class_path, id),
+        "subclassGetterProfile": subclass_getter_profile(
+            class_path,
+            id,
+            monster_attack_profiles,
+        ),
         "compatibilityProfile": compatibility_profile(
             id,
             class_path,
@@ -2097,38 +2453,108 @@ fn command_document(
     }))
 }
 
-// Exact command-specific Lua getter results: docs/command-formula-profiles.md.
-fn subclass_getter_profile(class_path: &str, command_id: u32) -> Value {
-    if class_path == "/Command/Game/WeaponSkill/MonsterAttackWeaponSkill" && command_id == 23_144 {
+// Exact command-specific Lua getter results supplied by the producer manifest.
+fn subclass_getter_profile(
+    class_path: &str,
+    command_id: u32,
+    profiles: Option<&MonsterAttackProfilesManifest>,
+) -> Value {
+    if class_path.is_empty() {
         return json!({
-            "status": "resolved",
-            "scope": "retained-lua-command-specific-return-values",
-            "definedBy": "MonsterAttackWeaponSkill",
-            "getters": {
-                "getCommandInformation": {
-                    "selector": 8,
-                    "result": 1,
-                    "otherSelectors": "no-retained-return",
-                },
-                "getFrequency": 1,
-                "getRangeWidth": 2,
-                "getRangeRotate": 0,
-                "getCommandRangeHeight": 10,
-                "getPartsDamageAdjust": {
-                    "result": [1, 1],
-                    "consumer": "unresolved",
-                },
-            },
+            "status": "unavailable",
+            "reason": "missing-class-path",
+        });
+    }
+    let Some(manifest) = profiles else {
+        return json!({
+            "status": "unavailable",
+            "reason": "monster-attack-profiles-input-not-supplied",
+        });
+    };
+    if class_path != manifest.class_path {
+        return json!({
+            "status": "unavailable",
+            "reason": "monster-attack-profiles-class-path-mismatch",
+            "expectedClassPath": manifest.class_path,
         });
     }
 
+    let rules = &manifest.getter_rules;
+    let information = &rules.get_command_information;
+    let information_result = monster_attack_scalar_result(&information.overrides, command_id)
+        .unwrap_or(information.default);
+    let frequency = monster_attack_scalar_result(&rules.get_frequency.overrides, command_id)
+        .unwrap_or(rules.get_frequency.default);
+    let range_width = monster_attack_scalar_result(&rules.get_range_width.overrides, command_id)
+        .unwrap_or(rules.get_range_width.default);
+    let range_rotate = monster_attack_scalar_result(&rules.get_range_rotate.overrides, command_id)
+        .unwrap_or(rules.get_range_rotate.default);
+    let command_range_height =
+        monster_attack_scalar_result(&rules.get_command_range_height.overrides, command_id)
+            .unwrap_or(rules.get_command_range_height.default);
+    let parts_damage_adjust =
+        monster_attack_pair_result(&rules.get_parts_damage_adjust.overrides, command_id)
+            .unwrap_or(rules.get_parts_damage_adjust.default);
     json!({
-        "status": "unavailable",
-        "reason": if class_path.is_empty() {
-            "missing-class-path"
-        } else {
-            "no-promoted-command-specific-getter-results"
+        "status": "resolved",
+        "scope": "producer-rule-manifest-defaults-and-sparse-overrides",
+        "definedBy": "MonsterAttackWeaponSkill",
+        "profileIdentity": {
+            "version": manifest.version,
+            "gameVersion": manifest.game_version,
+            "extraction": manifest.extraction,
+            "classPath": manifest.class_path,
+            "parentPath": manifest.parent_path,
+            "getterRulesSha256": manifest.getter_rules_sha256,
         },
+        "input": {
+            "byteLength": manifest.input_byte_length,
+            "sha256": manifest.input_sha256,
+        },
+        "source": manifest.source,
+        "summary": manifest.summary,
+        "unresolved": manifest.unresolved,
+        "getters": {
+            "getCommandInformation": {
+                "selector": information.selector,
+                "result": information_result,
+                "otherSelectors": information.other_selectors,
+            },
+            "getFrequency": frequency,
+            "getRangeWidth": range_width,
+            "getRangeRotate": range_rotate,
+            "getCommandRangeHeight": command_range_height,
+            "getPartsDamageAdjust": {
+                "result": parts_damage_adjust,
+                "consumer": "unresolved",
+            },
+        },
+    })
+}
+
+fn monster_attack_scalar_result(
+    overrides: &[MonsterAttackOverride],
+    command_id: u32,
+) -> Option<i64> {
+    overrides.iter().find_map(|override_rule| {
+        if override_rule.command_ids.contains(&command_id) {
+            override_rule.result.as_i64()
+        } else {
+            None
+        }
+    })
+}
+
+fn monster_attack_pair_result(
+    overrides: &[MonsterAttackOverride],
+    command_id: u32,
+) -> Option<[i64; 2]> {
+    overrides.iter().find_map(|override_rule| {
+        if !override_rule.command_ids.contains(&command_id) {
+            return None;
+        }
+        let values = override_rule.result.as_array()?;
+        Some([values[0].as_i64()?, values[1].as_i64()?])
     })
 }
 
@@ -2865,6 +3291,25 @@ mod tests {
         parse_slot_context(&serde_json::to_vec(&fixture).unwrap()).unwrap()
     }
 
+    fn monster_attack_profiles_fixture_value() -> Value {
+        serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/monster_attack_weapon_skill_profiles.json"
+        )))
+        .unwrap()
+    }
+
+    fn monster_attack_profiles_fixture() -> MonsterAttackProfilesManifest {
+        let encoded = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/monster_attack_weapon_skill_profiles.json"
+        ));
+        let mut parsed = parse_monster_attack_profiles(encoded).unwrap();
+        parsed.input_byte_length = encoded.len() as u64;
+        parsed.input_sha256 = sha256(encoded);
+        parsed
+    }
+
     fn synthetic_write(
         record_index: u64,
         operation: &str,
@@ -3041,7 +3486,7 @@ mod tests {
             parse_compatibility_values(row[index("compatibility_percent_by_skill")].as_str())
                 .unwrap();
         let command =
-            command_document(&csv::StringRecord::from(row), 27_346, &compatibility).unwrap();
+            command_document(&csv::StringRecord::from(row), 27_346, &compatibility, None).unwrap();
         let profile = &command["compatibilityProfile"];
         assert_eq!(profile["status"], "resolved");
         assert_eq!(profile["definedBy"], "GameCommandBaseClass");
@@ -3343,7 +3788,7 @@ mod tests {
         ] {
             row[index(field)] = value.to_owned();
         }
-        let command = command_document(&csv::StringRecord::from(row), 28623, &[]).unwrap();
+        let command = command_document(&csv::StringRecord::from(row), 28623, &[], None).unwrap();
         assert_eq!(command["costs"]["scope"], "catalog-inputs");
         assert_eq!(command["costs"]["hp"], 777);
         assert_eq!(command["costs"]["mp"], 23);
@@ -3490,17 +3935,33 @@ mod tests {
     }
 
     #[test]
-    fn exposes_foul_bite_subclass_getters_without_damage_inference() {
+    fn consumes_monster_attack_defaults_and_sparse_overrides_without_damage_inference() {
         let path = "/Command/Game/WeaponSkill/MonsterAttackWeaponSkill";
         let data = catalog_with_class(&[("23144", "Foul Bite", "Foul Bite JP")], path);
-        let report = build_report(&data, "23144").unwrap();
+        let profiles = monster_attack_profiles_fixture();
+        let report =
+            build_report_with_monster_attack_profiles(&data, "23144", Some(&profiles)).unwrap();
         let command = &report["matches"][0];
         let profile = &command["subclassGetterProfile"];
 
         assert_eq!(profile["status"], "resolved");
         assert_eq!(profile["definedBy"], "MonsterAttackWeaponSkill");
+        assert_eq!(profile["profileIdentity"]["version"], "1");
+        assert_eq!(profile["profileIdentity"]["classPath"], path);
+        assert_eq!(
+            profile["profileIdentity"]["parentPath"],
+            MONSTER_ATTACK_PARENT_PATH
+        );
+        assert_eq!(profile["source"]["bytes"], 59652);
+        assert_eq!(profile["source"]["sha256"], MONSTER_ATTACK_SOURCE_SHA256);
+        assert_eq!(profile["input"]["byteLength"], profiles.input_byte_length);
+        assert_eq!(profile["input"]["sha256"], profiles.input_sha256);
         assert_eq!(profile["getters"]["getCommandInformation"]["selector"], 8);
         assert_eq!(profile["getters"]["getCommandInformation"]["result"], 1);
+        assert_eq!(
+            profile["getters"]["getCommandInformation"]["otherSelectors"],
+            "nil"
+        );
         assert_eq!(profile["getters"]["getFrequency"], 1);
         assert_eq!(profile["getters"]["getRangeWidth"], 2);
         assert_eq!(profile["getters"]["getRangeRotate"], 0);
@@ -3516,21 +3977,127 @@ mod tests {
         assert_eq!(command["damage"]["resolution"]["status"], "unresolved");
         assert_eq!(command["damage"]["magnitude"], 950);
 
-        let wrong_id = catalog_with_class(&[("23145", "Other", "Other JP")], path);
-        let report = build_report(&wrong_id, "23145").unwrap();
+        let default_data = catalog_with_class(&[("23145", "Other", "Other JP")], path);
+        let report =
+            build_report_with_monster_attack_profiles(&default_data, "23145", Some(&profiles))
+                .unwrap();
+        let defaults = &report["matches"][0]["subclassGetterProfile"];
+        assert_eq!(defaults["status"], "resolved");
+        assert_eq!(defaults["getters"]["getFrequency"], 1);
+        assert_eq!(defaults["getters"]["getRangeWidth"], 2);
+        assert_eq!(defaults["getters"]["getCommandRangeHeight"], 10);
+        assert_eq!(
+            defaults["getters"]["getPartsDamageAdjust"]["result"],
+            json!([1, 1])
+        );
+
+        let override_data = catalog_with_class(&[("23486", "Override", "Override JP")], path);
+        let report =
+            build_report_with_monster_attack_profiles(&override_data, "23486", Some(&profiles))
+                .unwrap();
+        assert_eq!(
+            report["matches"][0]["subclassGetterProfile"]["getters"]["getFrequency"],
+            2
+        );
+
+        let information_override = subclass_getter_profile(path, 23164, Some(&profiles));
+        assert_eq!(
+            information_override["getters"]["getCommandInformation"]["result"],
+            -1
+        );
+        assert_eq!(information_override["getters"]["getRangeRotate"], 90);
+        let pair_override = subclass_getter_profile(path, 23114, Some(&profiles));
+        assert_eq!(
+            pair_override["getters"]["getPartsDamageAdjust"]["result"],
+            json!([1, 0])
+        );
+
+        let report = build_report(&data, "23144").unwrap();
         assert_eq!(
             report["matches"][0]["subclassGetterProfile"]["status"],
             "unavailable"
+        );
+        assert_eq!(
+            report["matches"][0]["subclassGetterProfile"]["reason"],
+            "monster-attack-profiles-input-not-supplied"
         );
 
         let wrong_class = catalog_with_class(
             &[("23144", "Foul Bite", "Foul Bite JP")],
             "/Command/Game/WeaponSkill/AttackWeaponSkill",
         );
-        let report = build_report(&wrong_class, "23144").unwrap();
+        let report =
+            build_report_with_monster_attack_profiles(&wrong_class, "23144", Some(&profiles))
+                .unwrap();
         assert_eq!(
             report["matches"][0]["subclassGetterProfile"]["status"],
             "unavailable"
+        );
+        assert_eq!(
+            report["matches"][0]["subclassGetterProfile"]["reason"],
+            "monster-attack-profiles-class-path-mismatch"
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_monster_attack_profile_manifest_identity_and_shapes() {
+        let valid = monster_attack_profiles_fixture_value();
+        for (field, value, message) in [
+            ("version", json!("2"), "version"),
+            ("gameVersion", json!("2.0"), "gameVersion"),
+            ("extraction", json!("wrong"), "extraction"),
+            (
+                "classPath",
+                json!("/Command/Game/Ability/CmnAbility"),
+                "classPath",
+            ),
+            (
+                "parentPath",
+                json!("/Command/Game/WeaponSkill/WeaponSkillBaseClass2"),
+                "parentPath",
+            ),
+        ] {
+            let mut invalid = valid.clone();
+            invalid[field] = value;
+            assert!(
+                parse_monster_attack_profiles(&serde_json::to_vec(&invalid).unwrap())
+                    .unwrap_err()
+                    .contains(message),
+                "expected {field} to be rejected"
+            );
+        }
+
+        let mut unknown = valid.clone();
+        unknown["unexpected"] = json!(true);
+        assert!(
+            parse_monster_attack_profiles(&serde_json::to_vec(&unknown).unwrap())
+                .unwrap_err()
+                .contains("unknown field")
+        );
+
+        let mut source = valid.clone();
+        source["source"]["sha256"] = json!("bad");
+        assert!(
+            parse_monster_attack_profiles(&serde_json::to_vec(&source).unwrap())
+                .unwrap_err()
+                .contains("source")
+        );
+
+        let mut getter = valid.clone();
+        getter["getterRules"]["unknownGetter"] = json!(1);
+        assert!(
+            parse_monster_attack_profiles(&serde_json::to_vec(&getter).unwrap())
+                .unwrap_err()
+                .contains("unknown field")
+        );
+
+        let mut duplicate = valid.clone();
+        duplicate["getterRules"]["getFrequency"]["overrides"][0]["commandIds"] =
+            json!([23486, 23486]);
+        assert!(
+            parse_monster_attack_profiles(&serde_json::to_vec(&duplicate).unwrap())
+                .unwrap_err()
+                .contains("commandIds")
         );
     }
 
@@ -3652,7 +4219,7 @@ mod tests {
             ("27410", "Fire", "Fire II JP"),
         ]);
         let by_id = build_report(&data, "27310").unwrap();
-        assert_eq!(by_id["schemaVersion"], 12);
+        assert_eq!(by_id["schemaVersion"], 13);
         assert_eq!(by_id["query"]["mode"], "id");
         assert_eq!(by_id["matches"].as_array().unwrap().len(), 1);
         assert_eq!(by_id["matches"][0]["damage"]["magnitude"], 950);

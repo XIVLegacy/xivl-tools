@@ -15,6 +15,7 @@ Run the binary from this checkout with Cargo:
 cargo run --locked -p xivl-cli -- inspect tests/fixtures/public/sedb/plain-container.bin
 cargo run --locked -p xivl-cli -- validate tests/fixtures/public/config/lng-words.bin --as config-lng
 cargo run --locked -p xivl-cli -- inspect-command Fire --catalog "C:\path\to\command_battle_params.csv"
+cargo run --locked -p xivl-cli -- inspect-command "Foul Bite" --catalog "C:\path\to\command_battle_params.csv" --monster-attack-profiles "C:\path\to\monster_attack_profiles.json"
 cargo run --locked -p xivl-cli -- inspect-command-loadout --slot-context "C:\path\to\command_slot_context.json"
 cargo run --locked -p xivl-cli -- inspect-command-loadout --slot-context "C:\path\to\command_slot_context.json" --trace 0 --format json
 cargo run --locked -p xivl-cli -- materialize-command-loadout --slot-context "C:\path\to\command_slot_context.json" --trace 0 --record-range 10:18 --output command-0137.bin --format json
@@ -49,9 +50,14 @@ Each match reports its effective level limits and parameter blends, or an
 explicit unresolved profile. Known paths outside the GameCommandBaseClass
 hierarchy report `not-applicable`. Legacy catalogs remain readable without class
 identity. Exact command-specific Lua results appear under
-`subclassGetterProfile` only when both the command id and class path match a
-promoted profile. The damage block preserves the catalog magnitude separately
-from its unresolved native scale and combination step. A separate
+`subclassGetterProfile` only when `--monster-attack-profiles` supplies a valid
+version-1 rule manifest and its exact class path matches the catalog row. The
+manifest's defaults and sparse command-id overrides are evaluated in that
+profile, and its source byte length, SHA-256, and profile identity are retained
+in the report; `subclassGetterProfile.input` also records the supplied profile
+file's byte length and SHA-256. Without the option the profile remains unavailable. The damage
+block preserves the catalog magnitude separately from its unresolved native
+scale and combination step. A separate
 [cost profile](command-cost-profiles.md) identifies selected
 HP/MP/TP getters and actor/runtime dependencies while retaining raw catalog
 costs. [Parameter getter profiles](command-parameter-profiles.md) identify the
