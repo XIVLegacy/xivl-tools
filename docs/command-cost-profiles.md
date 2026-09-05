@@ -69,8 +69,8 @@ The CLI records the supplied catalog's SHA-256 and trusts its class-path field.
 
 The CSV field mapping is defined by
 `xivl-client-data:tools/build_command_battle_params.py`, sha256
-`1c70a610648fc388a473f7370dfffeb9955310ad0caaf6e84dfae8ddc257d4da`:
-lines 146-153 emit the base HP default, basic-sheet MP/TP columns 114/115,
+`e37379579f6c2ee4d24e2962e195bc40baf8407820c5a0123415456bb5c23e93`:
+lines 191-198 emit the base HP default, basic-sheet MP/TP columns 114/115,
 and game-command-sheet parameter 3 column 53.
 
 Cost facts use these immutable source identities from extraction
@@ -95,7 +95,7 @@ Cost facts use these immutable source identities from extraction
 
 ## Report and verification contract
 
-JSON and YAML share report schema version 6. Legacy v1 CSV input is accepted
+JSON and YAML share report schema version 7. Legacy v1 CSV input is accepted
 with unresolved cost identity. No actor inputs, Lua evaluator, or native
 runtime capture are added by this profile.
 

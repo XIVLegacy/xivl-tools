@@ -60,6 +60,7 @@ const HEADER: &[&str] = &[
     "p4_tp_adjust",
     "effect_block_raw",
     "lua_class_path",
+    "compatibility_percent_by_skill",
 ];
 
 #[derive(Clone, Copy)]
@@ -160,8 +161,13 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
         && !headers
             .iter()
             .eq(HEADER[..HEADER.len() - 1].iter().copied())
+        && !headers
+            .iter()
+            .eq(HEADER[..HEADER.len() - 2].iter().copied())
     {
-        return Err("catalog header does not match command_battle_params.csv v1 or v2".to_owned());
+        return Err(
+            "catalog header does not match command_battle_params.csv v1, v2, or v3".to_owned(),
+        );
     }
 
     let numeric_query = query.parse::<u32>().ok();
@@ -193,6 +199,22 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
             return Err(format!("catalog contains duplicate command id {id}"));
         }
         parse_effect_fields(field(&record, "effect_block_raw"))?;
+        let compatibility =
+            parse_compatibility_values(optional_field(&record, "compatibility_percent_by_skill"))?;
+        if catalog_width == HEADER.len() {
+            let raw_key = field(&record, "compat_key");
+            let has_key = !raw_key.is_empty();
+            if has_key && raw_key.parse::<u32>().is_err() {
+                return Err(format!(
+                    "catalog row {row_count} has an invalid compatibility key"
+                ));
+            }
+            if has_key == compatibility.is_empty() {
+                return Err(format!(
+                    "catalog row {row_count} must provide compatibility values exactly when its key is present"
+                ));
+            }
+        }
 
         let growth = command_growth(&record, row_count)?;
         if growth.native_required {
@@ -210,7 +232,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
             }
         };
         if matched {
-            matches.push(command_document(&record, id)?);
+            matches.push(command_document(&record, id, &compatibility)?);
         }
     }
 
@@ -219,7 +241,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
     }
 
     Ok(json!({
-        "schemaVersion": 6,
+        "schemaVersion": 7,
         "kind": "xivl-command-formula-inputs",
         "source": {
             "byteLength": data.len(),
@@ -251,6 +273,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
             "compatibilityFactor": {
                 "whenRawAdjustIsZero": 1,
                 "otherwise": "1 - (1 - compatibilityByHand) * rawCompatibilityAdjust",
+                "matrixSelection": "compatibilityKey row, skillId column 8 + (skillId - 1), divided by 100 and capped at 1",
             },
             "tpFactor": {
                 "recoveredBaseImplementation": 1,
@@ -272,8 +295,12 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
     }))
 }
 
-fn command_document(record: &csv::StringRecord, id: u32) -> Result<Value, String> {
-    let class_path = record.get(HEADER.len() - 1).unwrap_or("");
+fn command_document(
+    record: &csv::StringRecord,
+    id: u32,
+    compatibility: &[i8],
+) -> Result<Value, String> {
+    let class_path = optional_field(record, "lua_class_path");
     let parameters: Vec<Value> = (1..=4)
         .map(|number| {
             let base = field(record, &format!("p{number}_base"));
@@ -299,6 +326,11 @@ fn command_document(record: &csv::StringRecord, id: u32) -> Result<Value, String
         },
         "levelAdjustmentProfile": level_adjustment_profile(class_path),
         "parameterProfile": parameter_profile(class_path),
+        "compatibilityProfile": compatibility_profile(
+            class_path,
+            field(record, "compat_key"),
+            compatibility,
+        )?,
         "description": {
             "english": field(record, "description_en"),
             "japanese": field(record, "description_jp"),
@@ -341,6 +373,69 @@ fn command_document(record: &csv::StringRecord, id: u32) -> Result<Value, String
         },
         "parameters": parameters,
         "rawEffectFields": parse_effect_fields(field(record, "effect_block_raw"))?,
+    }))
+}
+
+// Matrix selection and actor-dependent shortcuts: docs/command-compatibility-profiles.md.
+fn compatibility_profile(class_path: &str, key: &str, values: &[i8]) -> Result<Value, String> {
+    let Some(parents) = known_class_parents(class_path) else {
+        return Ok(json!({
+            "status": "unresolved",
+            "reason": if class_path.is_empty() { "missing-class-path" } else { "unrecognized-class-path" },
+        }));
+    };
+    if !parents.contains(&"GameCommandBaseClass") {
+        return Ok(json!({
+            "status": "not-applicable",
+            "reason": "outside-game-command-hierarchy",
+        }));
+    }
+    if values.is_empty() {
+        return Ok(json!({
+            "status": "unresolved",
+            "reason": "missing-compatibility-data",
+            "definedBy": "GameCommandBaseClass",
+        }));
+    }
+    let key = key
+        .parse::<u32>()
+        .map_err(|_| "compatibility key is not an unsigned integer".to_owned())?;
+    let skill_values: Vec<Value> = values
+        .iter()
+        .enumerate()
+        .map(|(index, percent)| {
+            let matrix_factor = f64::from(*percent) / 100.0;
+            json!({
+                "skillId": index + 1,
+                "percent": percent,
+                "matrixFactor": matrix_factor,
+                "cappedFactor": matrix_factor.min(1.0),
+            })
+        })
+        .collect();
+    Ok(json!({
+        "status": "resolved",
+        "scope": "lua-compatibility-input-selection",
+        "definedBy": "GameCommandBaseClass",
+        "matrix": {
+            "key": key,
+            "inputField": "compatibility_percent_by_skill",
+            "skillValues": skill_values,
+        },
+        "skillSelection": {
+            "handEquals2": "actor-sub-skill",
+            "otherwise": "actor-main-skill",
+        },
+        "shortcuts": [
+            { "condition": "selected-skill-id-is-zero", "factor": 0 },
+            { "condition": "selected-skill-matches-command-main-skill", "factor": 1 },
+            { "condition": "actor-is-selected-job-and-actor-main-skill-matches-command-main-skill", "factor": 1 },
+        ],
+        "fallback": "capped-matrix-factor",
+        "evaluation": {
+            "status": "actor-required",
+            "actorMethods": ["getStateMainSkill", "getStateMainSkillForSub", "isJob"],
+        },
     }))
 }
 
@@ -663,6 +758,43 @@ fn field<'a>(record: &'a csv::StringRecord, name: &str) -> &'a str {
     record.get(index).expect("validated catalog row width")
 }
 
+fn optional_field<'a>(record: &'a csv::StringRecord, name: &str) -> &'a str {
+    let index = HEADER
+        .iter()
+        .position(|candidate| *candidate == name)
+        .expect("internal catalog field name");
+    record.get(index).unwrap_or("")
+}
+
+fn parse_compatibility_values(raw: &str) -> Result<Vec<i8>, String> {
+    if raw.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut values = Vec::with_capacity(44);
+    for (index, component) in raw.split(';').enumerate() {
+        let expected_id = index + 1;
+        let Some((skill_id, percent)) = component.split_once('=') else {
+            return Err("compatibility values contain a field without '='".to_owned());
+        };
+        if skill_id.parse::<usize>().ok() != Some(expected_id) {
+            return Err(format!(
+                "compatibility values expected skill id {expected_id}"
+            ));
+        }
+        let percent = percent
+            .parse::<i8>()
+            .map_err(|_| format!("compatibility value for skill id {expected_id} is not s8"))?;
+        values.push(percent);
+    }
+    if values.len() != 44 {
+        return Err(format!(
+            "compatibility values contain {} skills; expected 44",
+            values.len()
+        ));
+    }
+    Ok(values)
+}
+
 fn parse_effect_fields(raw: &str) -> Result<Value, String> {
     let mut fields = Map::new();
     if raw.is_empty() {
@@ -749,6 +881,106 @@ mod tests {
 
     fn index(name: &str) -> usize {
         HEADER.iter().position(|field| *field == name).unwrap()
+    }
+
+    fn compatibility_values(value: i8) -> String {
+        (1..=44)
+            .map(|skill_id| format!("{skill_id}={value}"))
+            .collect::<Vec<_>>()
+            .join(";")
+    }
+
+    #[test]
+    fn joins_compatibility_matrix_without_actor_inference() {
+        let mut row = vec![String::new(); HEADER.len()];
+        row[index("id")] = "42".to_owned();
+        row[index("compat_key")] = "3".to_owned();
+        row[index("class_job")] = "23".to_owned();
+        row[index("lua_class_path")] = "/Command/Game/Magic/CmnAttackMagic".to_owned();
+        row[index("compatibility_percent_by_skill")] = (1..=44)
+            .map(|skill_id| format!("{skill_id}={}", if skill_id == 23 { 120 } else { 45 }))
+            .collect::<Vec<_>>()
+            .join(";");
+        let compatibility =
+            parse_compatibility_values(row[index("compatibility_percent_by_skill")].as_str())
+                .unwrap();
+        let command = command_document(&csv::StringRecord::from(row), 42, &compatibility).unwrap();
+        let profile = &command["compatibilityProfile"];
+        assert_eq!(profile["status"], "resolved");
+        assert_eq!(profile["definedBy"], "GameCommandBaseClass");
+        assert_eq!(profile["matrix"]["key"], 3);
+        assert_eq!(profile["matrix"]["skillValues"][0]["skillId"], 1);
+        assert_eq!(profile["matrix"]["skillValues"][0]["percent"], 45);
+        assert_eq!(profile["matrix"]["skillValues"][0]["matrixFactor"], 0.45);
+        assert_eq!(profile["matrix"]["skillValues"][22]["percent"], 120);
+        assert_eq!(profile["matrix"]["skillValues"][22]["matrixFactor"], 1.2);
+        assert_eq!(profile["matrix"]["skillValues"][22]["cappedFactor"], 1.0);
+        assert_eq!(profile["skillSelection"]["handEquals2"], "actor-sub-skill");
+        assert_eq!(profile["fallback"], "capped-matrix-factor");
+        assert_eq!(profile["evaluation"]["status"], "actor-required");
+    }
+
+    #[test]
+    fn validates_compatibility_shape_and_identity_boundaries() {
+        assert_eq!(parse_compatibility_values("").unwrap(), Vec::<i8>::new());
+        assert_eq!(
+            parse_compatibility_values(&compatibility_values(-8))
+                .unwrap()
+                .len(),
+            44
+        );
+        for (raw, message) in [
+            ("1=10;2", "without '='"),
+            ("2=10", "expected skill id 1"),
+            ("1=200", "is not s8"),
+            ("1=10", "expected 44"),
+        ] {
+            assert!(parse_compatibility_values(raw)
+                .unwrap_err()
+                .contains(message));
+        }
+        for path in ["", "/Unknown/CmnAbility"] {
+            let profile = compatibility_profile(path, "3", &[]).unwrap();
+            assert_eq!(profile["status"], "unresolved");
+        }
+        let values = parse_compatibility_values(&compatibility_values(100)).unwrap();
+        for path in [
+            "/Command/AutoAttackTargetChangeCommand",
+            "/Command/DebugInputCommand",
+            "/Command/Game/BonusPointCommand",
+            "/Command/ItemCommand",
+        ] {
+            let profile = compatibility_profile(path, "3", &values).unwrap();
+            assert_eq!(profile["status"], "not-applicable");
+            assert!(profile.get("matrix").is_none());
+        }
+        let profile = compatibility_profile("/Command/ChangeJobCommand", "3", &[]).unwrap();
+        assert_eq!(profile["reason"], "missing-compatibility-data");
+
+        for (key, values, message) in [
+            (
+                "bad",
+                compatibility_values(100),
+                "invalid compatibility key",
+            ),
+            ("3", String::new(), "exactly when its key is present"),
+            (
+                "",
+                compatibility_values(100),
+                "exactly when its key is present",
+            ),
+        ] {
+            let mut row = vec![String::new(); HEADER.len()];
+            row[index("id")] = "42".to_owned();
+            row[index("compat_key")] = key.to_owned();
+            row[index("compatibility_percent_by_skill")] = values;
+            let mut writer = csv::Writer::from_writer(Vec::new());
+            writer.write_record(HEADER).unwrap();
+            writer.write_record(row).unwrap();
+            assert!(build_report(&writer.into_inner().unwrap(), "42")
+                .unwrap_err()
+                .contains(message));
+        }
     }
 
     #[test]
@@ -868,7 +1100,7 @@ mod tests {
         ] {
             row[index(field)] = value.to_owned();
         }
-        let command = command_document(&csv::StringRecord::from(row), 28623).unwrap();
+        let command = command_document(&csv::StringRecord::from(row), 28623, &[]).unwrap();
         assert_eq!(command["costs"]["scope"], "catalog-inputs");
         assert_eq!(command["costs"]["hp"], 777);
         assert_eq!(command["costs"]["mp"], 23);
@@ -980,10 +1212,10 @@ mod tests {
         let data = catalog(&[("42", "Synthetic", "Example")]);
         let mut reader = csv::Reader::from_reader(data.as_slice());
         let mut legacy = csv::Writer::from_writer(Vec::new());
-        legacy.write_record(&HEADER[..HEADER.len() - 1]).unwrap();
+        legacy.write_record(&HEADER[..HEADER.len() - 2]).unwrap();
         for row in reader.records() {
             legacy
-                .write_record(row.unwrap().iter().take(HEADER.len() - 1))
+                .write_record(row.unwrap().iter().take(HEADER.len() - 2))
                 .unwrap();
         }
         let report = build_report(&legacy.into_inner().unwrap(), "42").unwrap();
@@ -995,6 +1227,22 @@ mod tests {
         assert_eq!(
             report["matches"][0]["levelAdjustmentProfile"]["reason"],
             "missing-class-path"
+        );
+        let data = catalog_with_class(
+            &[("42", "Synthetic", "Example")],
+            "/Command/Game/Magic/CmnAttackMagic",
+        );
+        let mut reader = csv::Reader::from_reader(data.as_slice());
+        let mut v2 = csv::Writer::from_writer(Vec::new());
+        v2.write_record(&HEADER[..HEADER.len() - 1]).unwrap();
+        for row in reader.records() {
+            v2.write_record(row.unwrap().iter().take(HEADER.len() - 1))
+                .unwrap();
+        }
+        let report = build_report(&v2.into_inner().unwrap(), "42").unwrap();
+        assert_eq!(
+            report["matches"][0]["compatibilityProfile"]["reason"],
+            "missing-compatibility-data"
         );
     }
 
@@ -1116,7 +1364,7 @@ mod tests {
             ("27410", "Fire", "Fire II JP"),
         ]);
         let by_id = build_report(&data, "27310").unwrap();
-        assert_eq!(by_id["schemaVersion"], 6);
+        assert_eq!(by_id["schemaVersion"], 7);
         assert_eq!(by_id["query"]["mode"], "id");
         assert_eq!(by_id["matches"].as_array().unwrap().len(), 1);
         assert_eq!(by_id["matches"][0]["damage"]["magnitude"], 950);

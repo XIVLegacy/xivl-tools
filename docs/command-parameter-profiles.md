@@ -34,7 +34,7 @@ target, rather than every invocation of a parameter getter.
 
 ## Report contract
 
-The JSON/YAML report schema is version 6. Each match's `parameterProfile`
+The JSON/YAML report schema is version 7. Each match's `parameterProfile`
 reports getter selection, not evaluated parameter values:
 
 - `status: resolved` and `definedBy: GameCommandBaseClass` identify the owner
@@ -74,8 +74,8 @@ level adjustment is at 1375-1433 in the same source.
 
 The CSV names and column mapping are defined by
 `xivl-client-data:tools/build_command_battle_params.py`, sha256
-`1c70a610648fc388a473f7370dfffeb9955310ad0caaf6e84dfae8ddc257d4da`,
-lines 60-66 and 151-154. These profiles promote method and input identities;
+`e37379579f6c2ee4d24e2962e195bc40baf8407820c5a0123415456bb5c23e93`,
+lines 63-68 and 196-199. These profiles promote method and input identities;
 they do not copy the extracted implementation or execute Lua.
 
 `cargo test --locked -p xivl-cli command_inspect` checks inherited owners and

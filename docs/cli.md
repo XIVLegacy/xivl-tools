@@ -40,7 +40,7 @@ groups, and the lossless native effect block. Each parameter is classified as
 absent, flat, or dependent on a native grow selector. The formula model records
 the base-class low- and high-level defaults, the 15-level high-side cap, the
 grow ratio expression, and the catalog-wide native-selector coverage. Command
-subclass profiles are selected by the v2 catalog's `lua_class_path` for the
+subclass profiles are selected by the catalog's `lua_class_path` for the
 mapped classes documented in [Command formula profiles](command-formula-profiles.md).
 Each match reports its effective level limits and parameter blends, or an
 explicit unresolved profile. Known paths outside the GameCommandBaseClass
@@ -50,6 +50,10 @@ HP/MP/TP getters and actor/runtime dependencies while retaining raw catalog
 costs. [Parameter getter profiles](command-parameter-profiles.md) identify the
 inherited getters and distinguish raw-input calls from actor/target-dependent
 calls and the unresolved non-live-target branch.
+Catalog v3 also supplies the selected compatibility matrix row. Its
+[compatibility profile](command-compatibility-profiles.md) exposes raw
+percentages, capped matrix factors, actor-dependent skill selection, and the
+recovered shortcut branches without choosing an actor-effective result.
 The command does not search a workspace, infer a
 catalog path, invent unresolved grow values, or present client prediction
 inputs as the server-authoritative combat formula.
