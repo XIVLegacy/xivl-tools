@@ -39,12 +39,6 @@ statuses.
 - [Source and data policy](docs/source-and-data-policy.md)
 - [Tooling and regeneration](tools/README.md)
 
-## Community
-
-Join the [project Discord](https://discord.gg/PxK5RJYQjm) for questions and
-community support. Use [Issues](https://github.com/XIVLegacy/xivl-tools/issues)
-to report bugs and durable research findings.
-
 ## Contributing
 
 Pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before you
