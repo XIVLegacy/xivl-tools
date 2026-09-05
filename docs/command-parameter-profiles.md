@@ -35,7 +35,7 @@ target, rather than every invocation of a parameter getter.
 
 ## Report contract
 
-The JSON/YAML report schema is version 8. Each match's `parameterProfile`
+The JSON/YAML report schema is version 9. Each match's `parameterProfile`
 reports getter selection, not evaluated parameter values:
 
 - `status: resolved` and `definedBy: GameCommandBaseClass` identify the owner
@@ -77,9 +77,19 @@ level adjustment is at 1375-1433 in the same source.
 
 No contextual call to any of the four getters appears in the complete frozen
 Lua corpus. Three subclass HP-cost methods call `getCommandParam3` with only
-the receiver and therefore take the raw-input path. The caller that supplies
-the actor, hand selector, and target remains native or dynamically dispatched;
-static Lua establishes the argument flow but not the runtime values.
+the receiver and therefore take the raw-input path. Separately,
+`GameCommandBaseClass.processCanFire` obtains omitted command hand context
+through `judgeHand`; callers can also supply it directly. The compatibility
+profile documents both paths. The corpus does not expose a direct call
+connecting either path to a parameter getter.
+
+In the same command path, `processCanFire` argument 1 is the actor, argument 4
+is hand context, and argument 6 is the target. A missing target defaults to the
+actor; a supplied target must be alive. The desktop command entry obtains the
+actor from `worldMaster._getMyPlayer()` and uses a live supplied target or the
+current target character. Later relation checks can replace that target with
+the actor. These facts describe command execution context; the absent direct
+Lua call edge prevents promoting them as a proven parameter-getter invocation.
 
 The CSV names and column mapping are defined by
 `xivl-client-data:tools/build_command_battle_params.py`, sha256

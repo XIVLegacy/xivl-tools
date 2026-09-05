@@ -241,7 +241,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
     }
 
     Ok(json!({
-        "schemaVersion": 8,
+        "schemaVersion": 9,
         "kind": "xivl-command-formula-inputs",
         "source": {
             "byteLength": data.len(),
@@ -327,6 +327,7 @@ fn command_document(
         "levelAdjustmentProfile": level_adjustment_profile(class_path),
         "parameterProfile": parameter_profile(class_path),
         "compatibilityProfile": compatibility_profile(
+            id,
             class_path,
             field(record, "compat_key"),
             field(record, "class_job"),
@@ -379,6 +380,7 @@ fn command_document(
 
 // Matrix selection and actor-dependent shortcuts: docs/command-compatibility-profiles.md.
 fn compatibility_profile(
+    command_id: u32,
     class_path: &str,
     key: &str,
     command_main_skill: &str,
@@ -440,6 +442,35 @@ fn compatibility_profile(
             "handEquals2": "actor-sub-skill",
             "otherwise": "actor-main-skill",
         },
+        "commandHandContext": {
+            "consumer": "GameCommandBaseClass.processCanFire-argument-4",
+            "relationshipToParameterGetter": "unresolved-no-direct-lua-call-edge",
+            "explicitValue": "caller-supplied",
+            "knownExplicitSources": [
+                "actor.getReadyCommand(...)-second-return",
+                "actor.getCustomCommand(...)-second-return",
+            ],
+            "defaultProducer": {
+                "definedBy": "GameCommandBaseClass.judgeHand",
+                "actionSlotEligible": command_uses_action_slot(command_id),
+                "eligibilityDefinedBy": "GameCommandBaseClass.isEnableEquipForPlayerActionSlot",
+                "eligibleLookup": {
+                    "method": "actor.searchCommandSlot(commandId, nil)",
+                    "customSlotRange": { "first": 1, "last": 30 },
+                    "slotOffset": "actor.charaWork.commandBorder + customSlotIndex",
+                    "commandSource": "actor.charaWork.command[slotOffset]",
+                    "matchedValue": "actor.charaWork.commandCategory[slotOffset]",
+                    "noMatch": "unavailable",
+                },
+                "actorWorkBindings": {
+                    "command": { "id": 3002, "path": "actor.charaWork.command" },
+                    "commandCategory": { "id": 3003, "path": "actor.charaWork.commandCategory" },
+                    "commandBorder": { "id": 3004, "path": "actor.charaWork.commandBorder" },
+                    "valueProducer": "unresolved",
+                },
+                "ineligibleValue": 0,
+            },
+        },
         "jobSkillRule": {
             "definedBy": "CharaBaseClass.isJob",
             "skillIds": [15, 16, 17, 18, 19, 26, 27],
@@ -451,9 +482,8 @@ fn compatibility_profile(
         ],
         "fallback": "capped-matrix-factor",
         "evaluation": {
-            "status": "runtime-capture-required",
-            "missingLink": "native-or-dynamic-caller-values-at-parameter-getter-entry",
-            "captureFields": [
+            "status": "context-dependent",
+            "requiredInputs": [
                 {
                     "field": "handSelector",
                     "source": "parameter-getter-argument-2",
@@ -467,14 +497,37 @@ fn compatibility_profile(
                     "field": "actorStateMainSkillForSub",
                     "source": "actor.charaWork.parameterSave.state_mainSkill[3]",
                     "valueType": "integer8",
-                },
-                {
-                    "field": "targetAlive",
-                    "source": "parameter-getter-argument-3._isAlive()",
+                    "condition": "hand-selector-equals-2",
                 },
             ],
         },
     }))
+}
+
+fn command_uses_action_slot(command_id: u32) -> bool {
+    if (26_000..=29_999).contains(&command_id) {
+        command_id != 29_497 && command_id != 29_501 && !(29_458..=29_464).contains(&command_id)
+    } else if (22_100..=22_499).contains(&command_id) {
+        !matches!(
+            command_id,
+            22_101
+                | 22_102
+                | 22_103
+                | 22_105
+                | 22_106
+                | 22_107
+                | 22_109
+                | 22_110
+                | 22_111
+                | 22_112
+                | 22_301
+                | 22_304
+                | 22_305
+                | 22_306
+        )
+    } else {
+        false
+    }
 }
 
 // Inherited getter selection and call modes: docs/command-parameter-profiles.md.
@@ -937,7 +990,7 @@ mod tests {
     #[test]
     fn joins_compatibility_matrix_without_actor_inference() {
         let mut row = vec![String::new(); HEADER.len()];
-        row[index("id")] = "42".to_owned();
+        row[index("id")] = "27346".to_owned();
         row[index("compat_key")] = "3".to_owned();
         row[index("class_job")] = "23".to_owned();
         row[index("lua_class_path")] = "/Command/Game/Magic/CmnAttackMagic".to_owned();
@@ -948,7 +1001,8 @@ mod tests {
         let compatibility =
             parse_compatibility_values(row[index("compatibility_percent_by_skill")].as_str())
                 .unwrap();
-        let command = command_document(&csv::StringRecord::from(row), 42, &compatibility).unwrap();
+        let command =
+            command_document(&csv::StringRecord::from(row), 27_346, &compatibility).unwrap();
         let profile = &command["compatibilityProfile"];
         assert_eq!(profile["status"], "resolved");
         assert_eq!(profile["definedBy"], "GameCommandBaseClass");
@@ -966,13 +1020,34 @@ mod tests {
         );
         assert_eq!(profile["skillSelection"]["handEquals2"], "actor-sub-skill");
         assert_eq!(
+            profile["commandHandContext"]["defaultProducer"]["actionSlotEligible"],
+            true
+        );
+        assert_eq!(
+            profile["commandHandContext"]["defaultProducer"]["eligibleLookup"]["matchedValue"],
+            "actor.charaWork.commandCategory[slotOffset]"
+        );
+        assert_eq!(
+            profile["commandHandContext"]["relationshipToParameterGetter"],
+            "unresolved-no-direct-lua-call-edge"
+        );
+        assert_eq!(
+            profile["commandHandContext"]["defaultProducer"]["actorWorkBindings"]
+                ["commandCategory"]["id"],
+            3003
+        );
+        assert_eq!(
+            profile["commandHandContext"]["defaultProducer"]["actorWorkBindings"]["valueProducer"],
+            "unresolved"
+        );
+        assert_eq!(
             profile["jobSkillRule"]["skillIds"],
             json!([15, 16, 17, 18, 19, 26, 27])
         );
         assert_eq!(profile["fallback"], "capped-matrix-factor");
-        assert_eq!(profile["evaluation"]["status"], "runtime-capture-required");
+        assert_eq!(profile["evaluation"]["status"], "context-dependent");
         assert_eq!(
-            profile["evaluation"]["captureFields"],
+            profile["evaluation"]["requiredInputs"],
             json!([
                 {
                     "field": "handSelector",
@@ -987,13 +1062,29 @@ mod tests {
                     "field": "actorStateMainSkillForSub",
                     "source": "actor.charaWork.parameterSave.state_mainSkill[3]",
                     "valueType": "integer8",
-                },
-                {
-                    "field": "targetAlive",
-                    "source": "parameter-getter-argument-3._isAlive()",
+                    "condition": "hand-selector-equals-2",
                 },
             ])
         );
+    }
+
+    #[test]
+    fn derives_action_slot_eligibility_from_command_id() {
+        for id in [22_100, 22_302, 22_499, 26_000, 29_457, 29_465, 29_999] {
+            assert!(
+                command_uses_action_slot(id),
+                "expected {id} to use an action slot"
+            );
+        }
+        for id in [
+            22_099, 22_101, 22_112, 22_301, 22_304, 22_306, 22_500, 25_999, 29_458, 29_464, 29_497,
+            29_501, 30_000,
+        ] {
+            assert!(
+                !command_uses_action_slot(id),
+                "expected {id} not to use an action slot"
+            );
+        }
     }
 
     #[test]
@@ -1016,7 +1107,7 @@ mod tests {
                 .contains(message));
         }
         for path in ["", "/Unknown/CmnAbility"] {
-            let profile = compatibility_profile(path, "3", "23", &[]).unwrap();
+            let profile = compatibility_profile(27_346, path, "3", "23", &[]).unwrap();
             assert_eq!(profile["status"], "unresolved");
         }
         let values = parse_compatibility_values(&compatibility_values(100)).unwrap();
@@ -1026,15 +1117,16 @@ mod tests {
             "/Command/Game/BonusPointCommand",
             "/Command/ItemCommand",
         ] {
-            let profile = compatibility_profile(path, "3", "23", &values).unwrap();
+            let profile = compatibility_profile(27_346, path, "3", "23", &values).unwrap();
             assert_eq!(profile["status"], "not-applicable");
             assert!(profile.get("matrix").is_none());
         }
-        let profile = compatibility_profile("/Command/ChangeJobCommand", "3", "23", &[]).unwrap();
+        let profile =
+            compatibility_profile(27_346, "/Command/ChangeJobCommand", "3", "23", &[]).unwrap();
         assert_eq!(profile["reason"], "missing-compatibility-data");
 
         assert!(
-            compatibility_profile("/Command/ChangeJobCommand", "3", "bad", &values,)
+            compatibility_profile(27_346, "/Command/ChangeJobCommand", "3", "bad", &values,)
                 .unwrap_err()
                 .contains("command main skill")
         );
@@ -1450,7 +1542,7 @@ mod tests {
             ("27410", "Fire", "Fire II JP"),
         ]);
         let by_id = build_report(&data, "27310").unwrap();
-        assert_eq!(by_id["schemaVersion"], 8);
+        assert_eq!(by_id["schemaVersion"], 9);
         assert_eq!(by_id["query"]["mode"], "id");
         assert_eq!(by_id["matches"].as_array().unwrap().len(), 1);
         assert_eq!(by_id["matches"][0]["damage"]["magnitude"], 950);

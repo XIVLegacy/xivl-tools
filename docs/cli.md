@@ -54,9 +54,10 @@ Catalog v3 also supplies the selected compatibility matrix row. Its
 [compatibility profile](command-compatibility-profiles.md) exposes raw
 percentages, capped matrix factors, actor-dependent skill selection, and the
 recovered shortcut branches without choosing an actor-effective result. It
-also identifies the parameter getter's hand argument and the three actor/hand
-fields needed to select an actor-effective branch, plus target liveness to
-prove the contextual path was entered.
+also identifies the parameter getter's hand argument and the separate command
+execution path that derives hand context from an action-slot category when the
+caller omits it. The report keeps their direct relationship unresolved because
+the Lua corpus contains no connecting call edge.
 The command does not search a workspace, infer a
 catalog path, invent unresolved grow values, or present client prediction
 inputs as the server-authoritative combat formula.
