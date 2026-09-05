@@ -169,9 +169,13 @@ indices, and values are derived from the separately cited
 the final bridge from that cache to Lua work binding 3003, the complete value
 domain, or the rule that would assign category 2.
 
+That 220-record promoted hash-catalog snapshot is independent of the optional
+command-slot context input. A newer explicit context manifest can therefore
+carry a different retained-corpus count without rewriting this cited snapshot.
+
 ## Input and verification contract
 
-JSON and YAML share report schema version 10. Catalog v1 lacks class identity;
+JSON and YAML share report schema version 11. Catalog v1 lacks class identity;
 catalog v2 has class identity without compatibility values; both remain
 readable with explicit unresolved profiles. Catalog v3 requires compatibility
 values exactly when its key is present. A present matrix must contain skill ids

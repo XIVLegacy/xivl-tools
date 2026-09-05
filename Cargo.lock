@@ -1011,6 +1011,7 @@ dependencies = [
  "csv",
  "jsonschema",
  "same-file",
+ "serde",
  "serde_json",
  "serde_yaml",
  "sha2",

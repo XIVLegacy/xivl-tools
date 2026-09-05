@@ -58,6 +58,13 @@ also identifies the parameter getter's hand argument and the separate command
 execution path that derives hand context from an action-slot category when the
 caller omits it. The report keeps their direct relationship unresolved because
 the Lua corpus contains no connecting call edge.
+Pass `--slot-context <command_slot_context.json>` to include the bounded,
+validated schema-1 command-slot observation manifest. The resulting
+`observedCommandSlotContext` block carries its source snapshots, derivation,
+coverage, unresolved notes, and only rows matching the command query; without
+the option the block reports that observations are unavailable. Validation
+checks the row digest, internal counts, and the supplied command catalog hash.
+The other source snapshots remain declarations carried by the manifest.
 The command does not search a workspace, infer a
 catalog path, invent unresolved grow values, or present client prediction
 inputs as the server-authoritative combat formula.

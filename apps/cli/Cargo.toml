@@ -15,6 +15,7 @@ path = "src/main.rs"
 xivl-formats.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
+serde.workspace = true
 jsonschema.workspace = true
 same-file.workspace = true
 csv.workspace = true

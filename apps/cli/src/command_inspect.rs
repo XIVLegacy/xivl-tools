@@ -1,8 +1,9 @@
 //! Agent-friendly queries over the explicit command battle-parameter catalog.
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io::{Read, Write};
 
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
 
@@ -10,6 +11,131 @@ use crate::Failure;
 
 const MAX_CATALOG_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_CATALOG_ROWS: usize = 100_000;
+const MAX_SLOT_CONTEXT_BYTES: u64 = 4 * 1024 * 1024;
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct SlotContextManifest {
+    schema_version: u32,
+    kind: String,
+    game_version: String,
+    status: String,
+    source_snapshots: SourceSnapshots,
+    derivation: Derivation,
+    coverage: Coverage,
+    rows_sha256: String,
+    rows: Vec<SlotContextRow>,
+    unresolved: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct SourceSnapshots {
+    captures: CaptureSnapshot,
+    client_structs: ClientStructSnapshot,
+    client_data: ClientDataSnapshot,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct CaptureSnapshot {
+    repository: String,
+    commit: String,
+    artifact: String,
+    sha256: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct ClientStructSnapshot {
+    repository: String,
+    generator_artifact: String,
+    generator_sha256: String,
+    hash_names_artifact: String,
+    hash_names_sha256: String,
+    actor_identity_artifact: String,
+    actor_identity_sha256: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct ClientDataSnapshot {
+    repository: String,
+    commit: String,
+    static_actor_artifact: String,
+    static_actor_sha256: String,
+    command_catalog_artifact: String,
+    command_catalog_sha256: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct Derivation {
+    carrier: String,
+    state_partition: Vec<String>,
+    state_order: String,
+    state_rule: String,
+    static_actor_test: String,
+    command_id_decode: String,
+    identity_boundary: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct Coverage {
+    command_records: u64,
+    nonzero_command_occurrences: u64,
+    unique_nonzero_command_actors: u64,
+    static_actor_prefix_hits: u64,
+    static_actor_catalog_hits: u64,
+    command_catalog_hits: u64,
+    category_records: u64,
+    category_hashes: u64,
+    category_value_distribution: Vec<CategoryValueDistribution>,
+    stateful_category_observations: u64,
+    commands_with_category_observations: u64,
+    category_writes_without_current_command: Vec<CategoryWriteSummary>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct CategoryValueDistribution {
+    value: u8,
+    occurrences: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct CategoryWriteSummary {
+    slot: u8,
+    occurrences: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct SlotContextRow {
+    actor_id_hex: String,
+    command_id: u32,
+    class_path: String,
+    name_english: String,
+    command_occurrences: u64,
+    slot_observations: Vec<SlotObservation>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct SlotObservation {
+    slot: u8,
+    command_occurrences: u64,
+    category_observations: Vec<CategoryObservation>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct CategoryObservation {
+    value: u8,
+    occurrences: u64,
+}
 
 const HEADER: &[&str] = &[
     "id",
@@ -69,10 +195,301 @@ enum OutputFormat {
     Json,
 }
 
+impl SlotContextManifest {
+    fn validate(&self) -> Result<(), String> {
+        if self.schema_version != 1 {
+            return Err(format!(
+                "slot context schemaVersion must be 1, got {}",
+                self.schema_version
+            ));
+        }
+        if self.kind != "xivl-command-slot-context" {
+            return Err(format!(
+                "slot context kind must be xivl-command-slot-context, got '{}'",
+                self.kind
+            ));
+        }
+        if self.game_version != "1.23b" {
+            return Err(format!(
+                "slot context gameVersion must be 1.23b, got '{}'",
+                self.game_version
+            ));
+        }
+        if self.rows.is_empty() {
+            return Err("slot context rows must not be empty".to_owned());
+        }
+        validate_coverage(&self.coverage)?;
+        let row_value = serde_json::to_value(&self.rows)
+            .map_err(|error| format!("cannot canonicalize slot context rows: {error}"))?;
+        let row_bytes = serde_json::to_vec(&row_value)
+            .map_err(|error| format!("cannot canonicalize slot context rows: {error}"))?;
+        if self.rows_sha256 != sha256(&row_bytes) {
+            return Err("slot context rowsSha256 does not match rows".to_owned());
+        }
+
+        let declared_categories: HashMap<u8, u128> = self
+            .coverage
+            .category_value_distribution
+            .iter()
+            .map(|entry| (entry.value, u128::from(entry.occurrences)))
+            .collect();
+        let mut observed_categories: HashMap<u8, u128> = HashMap::new();
+        let mut command_ids = HashSet::new();
+        let mut command_occurrences = 0_u128;
+        let mut category_observations = 0_u128;
+        let mut commands_with_categories = 0_u64;
+        for (row_index, row) in self.rows.iter().enumerate() {
+            let row_label = format!("slot context row {}", row_index + 1);
+            if row.command_id == 0 {
+                return Err(format!("{row_label} commandId must be nonzero"));
+            }
+            if !command_ids.insert(row.command_id) {
+                return Err(format!(
+                    "slot context contains duplicate command id {}",
+                    row.command_id
+                ));
+            }
+            if row.command_occurrences == 0 {
+                return Err(format!("{row_label} commandOccurrences must be nonzero"));
+            }
+            command_occurrences += u128::from(row.command_occurrences);
+            if !row.class_path.starts_with("/Command/") {
+                return Err(format!("{row_label} classPath must start with /Command/"));
+            }
+            let actor_id = parse_actor_id(&row.actor_id_hex)
+                .map_err(|error| format!("{row_label} actorIdHex {error}"))?;
+            if actor_id & 0xffff_0000 != 0xa0f0_0000 {
+                return Err(format!(
+                    "{row_label} actorIdHex must use static actor prefix 0xa0f00000"
+                ));
+            }
+            if actor_id & 0xffff != row.command_id {
+                return Err(format!(
+                    "{row_label} actorIdHex low16 does not match commandId {}",
+                    row.command_id
+                ));
+            }
+            if row.slot_observations.is_empty() {
+                return Err(format!("{row_label} slotObservations must not be empty"));
+            }
+            if row
+                .slot_observations
+                .iter()
+                .map(|observation| u128::from(observation.command_occurrences))
+                .sum::<u128>()
+                != u128::from(row.command_occurrences)
+            {
+                return Err(format!(
+                    "{row_label} slot commandOccurrences do not sum to commandOccurrences"
+                ));
+            }
+            let mut slots = HashSet::new();
+            let mut row_has_categories = false;
+            for (slot_index, observation) in row.slot_observations.iter().enumerate() {
+                let slot_label = format!("{row_label} slotObservations[{}]", slot_index);
+                validate_slot(observation.slot, &slot_label)?;
+                if !slots.insert(observation.slot) {
+                    return Err(format!(
+                        "{row_label} contains duplicate slot {}",
+                        observation.slot
+                    ));
+                }
+                if observation.command_occurrences == 0 {
+                    return Err(format!("{slot_label} commandOccurrences must be nonzero"));
+                }
+                let mut categories = HashSet::new();
+                for (category_index, category) in
+                    observation.category_observations.iter().enumerate()
+                {
+                    let category_label =
+                        format!("{slot_label} categoryObservations[{}]", category_index);
+                    if !categories.insert(category.value) {
+                        return Err(format!(
+                            "{slot_label} contains duplicate category value {}",
+                            category.value
+                        ));
+                    }
+                    if category.occurrences == 0 {
+                        return Err(format!("{category_label} occurrences must be nonzero"));
+                    }
+                    row_has_categories = true;
+                    category_observations += u128::from(category.occurrences);
+                    *observed_categories.entry(category.value).or_default() +=
+                        u128::from(category.occurrences);
+                }
+            }
+            commands_with_categories += u64::from(row_has_categories);
+        }
+        if self.coverage.unique_nonzero_command_actors != self.rows.len() as u64
+            || u128::from(self.coverage.nonzero_command_occurrences) != command_occurrences
+            || u128::from(self.coverage.stateful_category_observations) != category_observations
+            || self.coverage.commands_with_category_observations != commands_with_categories
+        {
+            return Err("slot context coverage does not match rows".to_owned());
+        }
+        if observed_categories.iter().any(|(value, occurrences)| {
+            declared_categories.get(value).copied().unwrap_or_default() < *occurrences
+        }) {
+            return Err(
+                "slot context row categories do not match categoryValueDistribution".to_owned(),
+            );
+        }
+        Ok(())
+    }
+
+    fn report_for_commands(
+        &self,
+        catalog_sha256: &str,
+        catalog_identities: &HashMap<u32, (String, String)>,
+    ) -> Result<Value, String> {
+        if self.source_snapshots.client_data.command_catalog_sha256 != catalog_sha256 {
+            return Err(
+                "slot context command catalog pin does not match the supplied catalog".to_owned(),
+            );
+        }
+        let matches: Vec<&SlotContextRow> = self
+            .rows
+            .iter()
+            .filter(|row| catalog_identities.contains_key(&row.command_id))
+            .collect();
+        for row in &matches {
+            let (name, class_path) = &catalog_identities[&row.command_id];
+            if &row.name_english != name || &row.class_path != class_path {
+                return Err(format!(
+                    "slot context identity for command {} does not match the supplied catalog",
+                    row.command_id
+                ));
+            }
+        }
+        Ok(json!({
+            "status": "available",
+            "schemaVersion": self.schema_version,
+            "kind": self.kind,
+            "gameVersion": self.game_version,
+            "manifestStatus": self.status,
+            "sourceSnapshots": self.source_snapshots,
+            "derivation": self.derivation,
+            "coverage": self.coverage,
+            "rowsSha256": self.rows_sha256,
+            "validation": {
+                "input": "bounded-canonical-json",
+                "rowsSha256": "matched",
+                "commandCatalogSha256": "matched",
+                "remainingSourceSnapshots": "manifest-declared-not-independently-verified",
+            },
+            "unresolved": self.unresolved,
+            "matches": matches,
+        }))
+    }
+}
+
+fn validate_coverage(coverage: &Coverage) -> Result<(), String> {
+    let counts = [
+        ("commandRecords", coverage.command_records),
+        (
+            "nonzeroCommandOccurrences",
+            coverage.nonzero_command_occurrences,
+        ),
+        (
+            "uniqueNonzeroCommandActors",
+            coverage.unique_nonzero_command_actors,
+        ),
+        ("staticActorPrefixHits", coverage.static_actor_prefix_hits),
+        ("staticActorCatalogHits", coverage.static_actor_catalog_hits),
+        ("commandCatalogHits", coverage.command_catalog_hits),
+        ("categoryRecords", coverage.category_records),
+        ("categoryHashes", coverage.category_hashes),
+        (
+            "statefulCategoryObservations",
+            coverage.stateful_category_observations,
+        ),
+        (
+            "commandsWithCategoryObservations",
+            coverage.commands_with_category_observations,
+        ),
+    ];
+    if let Some((label, _)) = counts.into_iter().find(|(_, value)| *value == 0) {
+        return Err(format!("slot context coverage {label} must be nonzero"));
+    }
+    if coverage.category_value_distribution.is_empty() {
+        return Err("slot context coverage categoryValueDistribution must not be empty".to_owned());
+    }
+    let mut values = HashSet::new();
+    for (index, distribution) in coverage.category_value_distribution.iter().enumerate() {
+        let label = format!("slot context coverage categoryValueDistribution[{index}]");
+        if !values.insert(distribution.value) {
+            return Err(format!(
+                "slot context coverage contains duplicate category value {}",
+                distribution.value
+            ));
+        }
+        if distribution.occurrences == 0 {
+            return Err(format!("{label} occurrences must be nonzero"));
+        }
+    }
+    let mut slots = HashSet::new();
+    for (index, summary) in coverage
+        .category_writes_without_current_command
+        .iter()
+        .enumerate()
+    {
+        let label = format!("slot context coverage categoryWritesWithoutCurrentCommand[{index}]");
+        validate_slot(summary.slot, &label)?;
+        if !slots.insert(summary.slot) {
+            return Err(format!(
+                "slot context coverage contains duplicate slot {}",
+                summary.slot
+            ));
+        }
+        if summary.occurrences == 0 {
+            return Err(format!("{label} occurrences must be nonzero"));
+        }
+    }
+    let distributed_categories = coverage
+        .category_value_distribution
+        .iter()
+        .map(|entry| u128::from(entry.occurrences))
+        .sum::<u128>();
+    let unjoined_categories = coverage
+        .category_writes_without_current_command
+        .iter()
+        .map(|entry| u128::from(entry.occurrences))
+        .sum::<u128>();
+    if distributed_categories != u128::from(coverage.category_records)
+        || u128::from(coverage.stateful_category_observations) + unjoined_categories
+            != u128::from(coverage.category_records)
+    {
+        return Err("slot context category coverage is inconsistent".to_owned());
+    }
+    Ok(())
+}
+
+fn validate_slot(slot: u8, label: &str) -> Result<(), String> {
+    if slot >= 64 {
+        return Err(format!("{label} slot must be in range 0..=63"));
+    }
+    Ok(())
+}
+
+fn parse_actor_id(value: &str) -> Result<u32, String> {
+    let digits = value
+        .strip_prefix("0x")
+        .ok_or_else(|| "must be a 0x-prefixed 8-digit hexadecimal value".to_owned())?;
+    if digits.len() != 8 || !digits.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err("must be a 0x-prefixed 8-digit hexadecimal value".to_owned());
+    }
+    u32::from_str_radix(digits, 16).map_err(|_| "is not a valid u32 hexadecimal value".to_owned())
+}
+
 pub(crate) fn run(arguments: &[String]) -> Result<(), Failure> {
-    let (query, catalog_path, format) = parse_arguments(arguments)?;
+    let (query, catalog_path, slot_context_path, format) = parse_arguments(arguments)?;
     let data = read_catalog(&catalog_path)?;
-    let report = build_report(&data, &query).map_err(Failure::usage)?;
+    let slot_context = slot_context_path
+        .as_deref()
+        .map(read_slot_context)
+        .transpose()?;
+    let report = build_report_with_slot_context(&data, &query, slot_context.as_ref())
+        .map_err(Failure::usage)?;
     let text = match format {
         OutputFormat::Yaml => serde_yaml::to_string(&report)
             .map_err(|error| Failure::usage(format!("cannot encode YAML report: {error}")))?,
@@ -88,7 +505,9 @@ pub(crate) fn run(arguments: &[String]) -> Result<(), Failure> {
         .map_err(|error| Failure::usage(format!("cannot write output: {error}")))
 }
 
-fn parse_arguments(arguments: &[String]) -> Result<(String, String, OutputFormat), Failure> {
+fn parse_arguments(
+    arguments: &[String],
+) -> Result<(String, String, Option<String>, OutputFormat), Failure> {
     let Some(query) = arguments.first() else {
         return Err(usage());
     };
@@ -97,6 +516,7 @@ fn parse_arguments(arguments: &[String]) -> Result<(String, String, OutputFormat
     }
 
     let mut catalog = None;
+    let mut slot_context = None;
     let mut format = OutputFormat::Yaml;
     let mut index = 1;
     while index < arguments.len() {
@@ -118,6 +538,15 @@ fn parse_arguments(arguments: &[String]) -> Result<(String, String, OutputFormat
                     _ => return Err(Failure::usage("--format must be yaml or json")),
                 };
             }
+            "--slot-context" => {
+                index += 1;
+                let Some(path) = arguments.get(index) else {
+                    return Err(usage());
+                };
+                if slot_context.replace(path.clone()).is_some() {
+                    return Err(Failure::usage("--slot-context may be supplied only once"));
+                }
+            }
             option => {
                 return Err(Failure::usage(format!(
                     "unknown inspect-command option '{option}'"
@@ -127,12 +556,12 @@ fn parse_arguments(arguments: &[String]) -> Result<(String, String, OutputFormat
         index += 1;
     }
     let catalog = catalog.ok_or_else(usage)?;
-    Ok((query.clone(), catalog, format))
+    Ok((query.clone(), catalog, slot_context, format))
 }
 
 fn usage() -> Failure {
     Failure::usage(
-        "usage: xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--format yaml|json]",
+        "usage: xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--slot-context <command_slot_context.json>] [--format yaml|json]",
     )
 }
 
@@ -151,7 +580,39 @@ fn read_catalog(path: &str) -> Result<Vec<u8>, Failure> {
     Ok(data)
 }
 
+fn read_slot_context(path: &str) -> Result<SlotContextManifest, Failure> {
+    let file = std::fs::File::open(path)
+        .map_err(|error| Failure::usage(format!("cannot read '{path}': {error}")))?;
+    let mut data = Vec::new();
+    file.take(MAX_SLOT_CONTEXT_BYTES + 1)
+        .read_to_end(&mut data)
+        .map_err(|error| Failure::usage(format!("cannot read '{path}': {error}")))?;
+    if data.len() as u64 > MAX_SLOT_CONTEXT_BYTES {
+        return Err(Failure::usage(format!(
+            "slot context is larger than the {MAX_SLOT_CONTEXT_BYTES}-byte limit"
+        )));
+    }
+    parse_slot_context(&data)
+        .map_err(|error| Failure::usage(format!("cannot parse slot context '{path}': {error}")))
+}
+
+fn parse_slot_context(data: &[u8]) -> Result<SlotContextManifest, String> {
+    let manifest = serde_json::from_slice::<SlotContextManifest>(data)
+        .map_err(|error| format!("invalid slot context JSON: {error}"))?;
+    manifest.validate()?;
+    Ok(manifest)
+}
+
+#[cfg(test)]
 fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
+    build_report_with_slot_context(data, query, None)
+}
+
+fn build_report_with_slot_context(
+    data: &[u8],
+    query: &str,
+    slot_context: Option<&SlotContextManifest>,
+) -> Result<Value, String> {
     let mut reader = csv::ReaderBuilder::new().from_reader(data);
     let headers = reader
         .headers()
@@ -173,6 +634,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
     let numeric_query = query.parse::<u32>().ok();
     let folded_query = query.to_lowercase();
     let mut ids = HashSet::new();
+    let mut matched_identities = HashMap::new();
     let mut matches = Vec::new();
     let mut row_count = 0_usize;
     let mut flat_command_count = 0_usize;
@@ -232,6 +694,13 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
             }
         };
         if matched {
+            matched_identities.insert(
+                id,
+                (
+                    field(&record, "name_en").to_owned(),
+                    optional_field(&record, "lua_class_path").to_owned(),
+                ),
+            );
             matches.push(command_document(&record, id, &compatibility)?);
         }
     }
@@ -240,12 +709,21 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
         return Err(format!("command query '{query}' did not match the catalog"));
     }
 
+    let catalog_sha256 = sha256(data);
+    let observed_command_slot_context = match slot_context {
+        Some(context) => context.report_for_commands(&catalog_sha256, &matched_identities)?,
+        None => json!({
+            "status": "unavailable",
+            "reason": "slot-context-input-not-supplied",
+        }),
+    };
+
     Ok(json!({
-        "schemaVersion": 10,
+        "schemaVersion": 11,
         "kind": "xivl-command-formula-inputs",
         "source": {
             "byteLength": data.len(),
-            "sha256": sha256(data),
+            "sha256": catalog_sha256,
             "catalogRows": row_count,
         },
         "query": {
@@ -291,6 +769,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
                 "complete-context parameter calls with non-live targets",
             ],
         },
+        "observedCommandSlotContext": observed_command_slot_context,
         "matches": matches,
     }))
 }
@@ -469,7 +948,8 @@ fn compatibility_profile(
                     "commandBorder": { "id": 3004, "path": "actor.charaWork.commandBorder" },
                     "valueProducer": "unresolved",
                     "matchingPropertyStreamObservations": {
-                        "status": "observed-partial",
+                        "status": "observed-partial-promoted-hash-catalog-snapshot",
+                        "sourceArtifact": "xivl-client-structs/manifests/gam_hash_names.json",
                         "direction": "server-to-client",
                         "opcode": "0x0137",
                         "propertyPathPattern": "charaWork.commandCategory[index]",
@@ -481,7 +961,7 @@ fn compatibility_profile(
                         "captureCount": 8,
                         "scenarioCount": 4,
                         "category2Observation": "not-observed-in-promoted-snapshot",
-                        "boundary": "observations do not establish the complete category domain, category assignment policy, or native binding-to-sync-cache bridge",
+                        "boundary": "this 220-record promoted snapshot is independent of the optional command-slot context input; observations do not establish the complete category domain, category assignment policy, or native binding-to-sync-cache bridge",
                     },
                 },
                 "ineligibleValue": 0,
@@ -964,6 +1444,8 @@ fn sha256(data: &[u8]) -> String {
 mod tests {
     use super::*;
 
+    type InvalidSlotContextCase = (&'static str, fn(&mut Value));
+
     fn catalog(rows: &[(&str, &str, &str)]) -> Vec<u8> {
         catalog_with_class(rows, "")
     }
@@ -1001,6 +1483,109 @@ mod tests {
             .map(|skill_id| format!("{skill_id}={value}"))
             .collect::<Vec<_>>()
             .join(";")
+    }
+
+    fn slot_context_fixture() -> SlotContextManifest {
+        let mut fixture = SlotContextManifest {
+            schema_version: 1,
+            kind: "xivl-command-slot-context".to_owned(),
+            game_version: "1.23b".to_owned(),
+            status: "qualified-static-actor-identity-partial-category-observation".to_owned(),
+            source_snapshots: SourceSnapshots {
+                captures: CaptureSnapshot {
+                    repository: "XIVLegacy/xivl-captures".to_owned(),
+                    commit: "capture-commit".to_owned(),
+                    artifact: "records.csv".to_owned(),
+                    sha256: "capture-sha".to_owned(),
+                },
+                client_structs: ClientStructSnapshot {
+                    repository: "XIVLegacy/xivl-client-structs".to_owned(),
+                    generator_artifact: "generator.py".to_owned(),
+                    generator_sha256: "generator-sha".to_owned(),
+                    hash_names_artifact: "hash-names.json".to_owned(),
+                    hash_names_sha256: "hash-names-sha".to_owned(),
+                    actor_identity_artifact: "identity.json#relationship".to_owned(),
+                    actor_identity_sha256: "identity-sha".to_owned(),
+                },
+                client_data: ClientDataSnapshot {
+                    repository: "XIVLegacy/xivl-client-data".to_owned(),
+                    commit: "data-commit".to_owned(),
+                    static_actor_artifact: "actors.json".to_owned(),
+                    static_actor_sha256: "actors-sha".to_owned(),
+                    command_catalog_artifact: "commands.csv".to_owned(),
+                    command_catalog_sha256: "commands-sha".to_owned(),
+                },
+            },
+            derivation: Derivation {
+                carrier: "s2c:0x0137".to_owned(),
+                state_partition: vec![
+                    "capture".to_owned(),
+                    "lane_index".to_owned(),
+                    "source_actor_id".to_owned(),
+                ],
+                state_order: "increasing record_index".to_owned(),
+                state_rule: "apply writes in order".to_owned(),
+                static_actor_test: "prefix".to_owned(),
+                command_id_decode: "low16".to_owned(),
+                identity_boundary: "qualified join".to_owned(),
+            },
+            coverage: Coverage {
+                command_records: 8,
+                nonzero_command_occurrences: 8,
+                unique_nonzero_command_actors: 1,
+                static_actor_prefix_hits: 1,
+                static_actor_catalog_hits: 1,
+                command_catalog_hits: 1,
+                category_records: 7,
+                category_hashes: 1,
+                category_value_distribution: vec![CategoryValueDistribution {
+                    value: 1,
+                    occurrences: 7,
+                }],
+                stateful_category_observations: 6,
+                commands_with_category_observations: 1,
+                category_writes_without_current_command: vec![CategoryWriteSummary {
+                    slot: 51,
+                    occurrences: 1,
+                }],
+            },
+            rows_sha256: String::new(),
+            rows: vec![SlotContextRow {
+                actor_id_hex: "0xa0f06a04".to_owned(),
+                command_id: 27140,
+                class_path: "/Command/Game/Ability/Ability".to_owned(),
+                name_english: "Sentinel".to_owned(),
+                command_occurrences: 8,
+                slot_observations: vec![
+                    SlotObservation {
+                        slot: 39,
+                        command_occurrences: 7,
+                        category_observations: vec![CategoryObservation {
+                            value: 1,
+                            occurrences: 6,
+                        }],
+                    },
+                    SlotObservation {
+                        slot: 43,
+                        command_occurrences: 1,
+                        category_observations: Vec::new(),
+                    },
+                ],
+            }],
+            unresolved: vec!["category 2 is not observed".to_owned()],
+        };
+        fixture.rows_sha256 =
+            sha256(&serde_json::to_vec(&serde_json::to_value(&fixture.rows).unwrap()).unwrap());
+        fixture
+    }
+
+    fn parsed_slot_context_fixture() -> SlotContextManifest {
+        let fixture = slot_context_fixture();
+        parse_slot_context(&serde_json::to_vec(&fixture).unwrap()).unwrap()
+    }
+
+    fn refresh_rows_sha256(value: &mut Value) {
+        value["rowsSha256"] = json!(sha256(&serde_json::to_vec(&value["rows"]).unwrap()));
     }
 
     #[test]
@@ -1066,7 +1651,8 @@ mod tests {
         assert_eq!(
             observations,
             &json!({
-                "status": "observed-partial",
+                "status": "observed-partial-promoted-hash-catalog-snapshot",
+                "sourceArtifact": "xivl-client-structs/manifests/gam_hash_names.json",
                 "direction": "server-to-client",
                 "opcode": "0x0137",
                 "propertyPathPattern": "charaWork.commandCategory[index]",
@@ -1078,7 +1664,7 @@ mod tests {
                 "captureCount": 8,
                 "scenarioCount": 4,
                 "category2Observation": "not-observed-in-promoted-snapshot",
-                "boundary": "observations do not establish the complete category domain, category assignment policy, or native binding-to-sync-cache bridge",
+                "boundary": "this 220-record promoted snapshot is independent of the optional command-slot context input; observations do not establish the complete category domain, category assignment policy, or native binding-to-sync-cache bridge",
             })
         );
         assert_eq!(
@@ -1583,7 +2169,7 @@ mod tests {
             ("27410", "Fire", "Fire II JP"),
         ]);
         let by_id = build_report(&data, "27310").unwrap();
-        assert_eq!(by_id["schemaVersion"], 10);
+        assert_eq!(by_id["schemaVersion"], 11);
         assert_eq!(by_id["query"]["mode"], "id");
         assert_eq!(by_id["matches"].as_array().unwrap().len(), 1);
         assert_eq!(by_id["matches"][0]["damage"]["magnitude"], 950);
@@ -1662,5 +2248,149 @@ mod tests {
         assert!(build_report(invalid.as_bytes(), "28602")
             .unwrap_err()
             .contains("invalid parameter 3 grow selector"));
+    }
+
+    #[test]
+    fn preserves_slot_context_in_json_and_yaml_reports() {
+        let data = catalog_with_class(
+            &[("27140", "Sentinel", "Sentinelle")],
+            "/Command/Game/Ability/Ability",
+        );
+        let mut context = parsed_slot_context_fixture();
+        context.source_snapshots.client_data.command_catalog_sha256 = sha256(&data);
+        let report = build_report_with_slot_context(&data, "27140", Some(&context)).unwrap();
+        for serialized in [
+            serde_json::to_string(&report).unwrap(),
+            serde_yaml::to_string(&report).unwrap(),
+        ] {
+            let report: Value = if serialized.starts_with('{') {
+                serde_json::from_str(&serialized).unwrap()
+            } else {
+                serde_yaml::from_str(&serialized).unwrap()
+            };
+            let observed = &report["observedCommandSlotContext"];
+            assert_eq!(observed["status"], "available");
+            assert_eq!(
+                observed["sourceSnapshots"]["captures"]["artifact"],
+                "records.csv"
+            );
+            assert_eq!(observed["derivation"]["carrier"], "s2c:0x0137");
+            assert_eq!(observed["coverage"]["commandRecords"], 8);
+            assert_eq!(observed["unresolved"][0], "category 2 is not observed");
+            assert_eq!(observed["matches"].as_array().unwrap().len(), 1);
+            assert_eq!(
+                observed["matches"][0]["slotObservations"]
+                    .as_array()
+                    .unwrap()
+                    .len(),
+                2
+            );
+            assert_eq!(observed["matches"][0]["slotObservations"][1]["slot"], 43);
+        }
+    }
+
+    #[test]
+    fn reports_missing_slot_context_observation_without_inference() {
+        let data = catalog(&[("27141", "Other", "Other")]);
+        let mut context = parsed_slot_context_fixture();
+        context.source_snapshots.client_data.command_catalog_sha256 = sha256(&data);
+        let report = build_report_with_slot_context(&data, "27141", Some(&context)).unwrap();
+        let observed = &report["observedCommandSlotContext"];
+        assert_eq!(observed["status"], "available");
+        assert!(observed["matches"].as_array().unwrap().is_empty());
+        assert_eq!(observed["coverage"]["commandRecords"], 8);
+
+        let report = build_report(&data, "27141").unwrap();
+        assert_eq!(
+            report["observedCommandSlotContext"]["status"],
+            "unavailable"
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_slot_context_schema_identity_and_shapes() {
+        let fixture = slot_context_fixture();
+        let encoded = |value: Value| serde_json::to_vec(&value).unwrap();
+        let valid = serde_json::to_value(&fixture).unwrap();
+        for (field, expected) in [("schemaVersion", 2), ("schemaVersion", 0)] {
+            let mut value = valid.clone();
+            value[field] = json!(expected);
+            assert!(parse_slot_context(&encoded(value))
+                .unwrap_err()
+                .contains("schemaVersion"));
+        }
+        let mut wrong_kind = valid.clone();
+        wrong_kind["kind"] = json!("wrong-kind");
+        assert!(parse_slot_context(&encoded(wrong_kind))
+            .unwrap_err()
+            .contains("kind"));
+        let mut wrong_digest = valid.clone();
+        wrong_digest["rows"][0]["nameEnglish"] = json!("Changed");
+        assert!(parse_slot_context(&encoded(wrong_digest))
+            .unwrap_err()
+            .contains("rowsSha256"));
+
+        let invalid_cases: &[InvalidSlotContextCase] = &[
+            ("duplicate command id", |value: &mut Value| {
+                value["rows"] = json!([value["rows"][0].clone(), value["rows"][0].clone()])
+            }),
+            ("malformed actor id", |value: &mut Value| {
+                value["rows"][0]["actorIdHex"] = json!("not-an-actor")
+            }),
+            ("low16 mismatch", |value: &mut Value| {
+                value["rows"][0]["actorIdHex"] = json!("0xa0f06a05")
+            }),
+            ("zero command count", |value: &mut Value| {
+                value["rows"][0]["commandOccurrences"] = json!(0)
+            }),
+            ("duplicate slot", |value: &mut Value| {
+                value["rows"][0]["slotObservations"][1]["slot"] = json!(39)
+            }),
+            ("bad slot", |value: &mut Value| {
+                value["rows"][0]["slotObservations"][0]["slot"] = json!(64)
+            }),
+            ("bad category", |value: &mut Value| {
+                value["rows"][0]["slotObservations"][0]["categoryObservations"][0]["occurrences"] =
+                    json!(0)
+            }),
+            ("undeclared category", |value: &mut Value| {
+                value["rows"][0]["slotObservations"][0]["categoryObservations"][0]["value"] =
+                    json!(2)
+            }),
+        ];
+        for (name, mutate) in invalid_cases {
+            let mut value = valid.clone();
+            mutate(&mut value);
+            refresh_rows_sha256(&mut value);
+            assert!(
+                parse_slot_context(&encoded(value)).is_err(),
+                "expected {name} to be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_slot_context_catalog_and_identity_mismatches() {
+        let data = catalog_with_class(
+            &[("27140", "Sentinel", "Sentinelle")],
+            "/Command/Game/Ability/Ability",
+        );
+        let context = parsed_slot_context_fixture();
+        assert!(
+            build_report_with_slot_context(&data, "27140", Some(&context))
+                .unwrap_err()
+                .contains("catalog pin")
+        );
+
+        let mut context = slot_context_fixture();
+        context.source_snapshots.client_data.command_catalog_sha256 = sha256(&data);
+        context.rows[0].class_path = "/Command/Game/Ability/Other".to_owned();
+        context.rows_sha256 =
+            sha256(&serde_json::to_vec(&serde_json::to_value(&context.rows).unwrap()).unwrap());
+        assert!(
+            build_report_with_slot_context(&data, "27140", Some(&context))
+                .unwrap_err()
+                .contains("identity")
+        );
     }
 }

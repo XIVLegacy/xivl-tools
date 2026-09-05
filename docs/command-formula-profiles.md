@@ -83,7 +83,7 @@ the corresponding getter from its declared ancestor.
 The v2 CSV header appends `lua_class_path` after `effect_block_raw`; v3 appends
 `compatibility_percent_by_skill`. All earlier columns retain their positions.
 Legacy v1 and v2 catalogs remain accepted with explicit unresolved profile
-fields where their inputs are absent. The JSON/YAML report schema is version 10,
+fields where their inputs are absent. The JSON/YAML report schema is version 11,
 including [compatibility profiles](command-compatibility-profiles.md). The CLI
 consumes the explicit input as supplied and records its SHA-256; it does not
 independently authenticate class-path values.

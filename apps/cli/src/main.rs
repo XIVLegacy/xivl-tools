@@ -28,7 +28,7 @@ xivl - Final Fantasy XIV 1.23b client file tools
 usage:
   xivl inspect <file> [--as <format>] [--columns <list>]
   xivl validate <file> [--as <format>] [--columns <list>]
-  xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--format yaml|json]
+  xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--slot-context <command_slot_context.json>] [--format yaml|json]
   xivl lua-path <path>
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
