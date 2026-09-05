@@ -143,8 +143,9 @@ The census used
 
 `charaWork.command`, `commandCategory`, and `commandBorder` are actor-work
 inputs. The Lua initialization binds them as work ids 3002, 3003, and 3004,
-but that binding establishes names and consumers rather than the producer that
-populates the arrays. The retained property catalog resolves 20
+but those numbers are local Lua work-binding keys rather than wire property
+identifiers. The binding establishes names and consumers rather than the
+producer that populates the arrays. The retained property catalog resolves 20
 `charaWork.commandCategory[index]` hashes and observes only value 1; it contains
 no value 2 observation. This comes from
 `xivl-client-structs:manifests/gam_hash_names.json`, sha256
@@ -153,9 +154,24 @@ Those observations establish property identities and sample values, not the
 producer or a universal category policy. The CLI therefore reports the exact
 known paths and does not invent a command category or default hand.
 
+The report also exposes matching property-stream observations. Server-to-client
+opcode `0x0137` carries one-byte values keyed by seed-0 backward MurmurHash2 of
+the complete canonical property path, including the ASCII array index suffix.
+The promoted manifest snapshot contains 220 category records across eight
+captures and four scenarios. They cover indices 0, 1, 32 through 48, and 51;
+every value is 1. This grammar and carrier come from
+`xivl-client-structs:manifests/property_stream_hash_catalog.json`, sha256
+`db3d50289dffe13c0210898dde0d1815e515ef9e04d7138dd43c4338a830d231`,
+at commit `aba1783bce8aee2ffca0ae91c7395ab2019d78ee`. The aggregate counts,
+indices, and values are derived from the separately cited
+`gam_hash_names.json` category entries. The `0x0137` path through
+`FUN_00775180` updates a dynamic sync cache. Retained evidence does not prove
+the final bridge from that cache to Lua work binding 3003, the complete value
+domain, or the rule that would assign category 2.
+
 ## Input and verification contract
 
-JSON and YAML share report schema version 9. Catalog v1 lacks class identity;
+JSON and YAML share report schema version 10. Catalog v1 lacks class identity;
 catalog v2 has class identity without compatibility values; both remain
 readable with explicit unresolved profiles. Catalog v3 requires compatibility
 values exactly when its key is present. A present matrix must contain skill ids

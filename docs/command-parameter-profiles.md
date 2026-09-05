@@ -35,7 +35,7 @@ target, rather than every invocation of a parameter getter.
 
 ## Report contract
 
-The JSON/YAML report schema is version 9. Each match's `parameterProfile`
+The JSON/YAML report schema is version 10. Each match's `parameterProfile`
 reports getter selection, not evaluated parameter values:
 
 - `status: resolved` and `definedBy: GameCommandBaseClass` identify the owner

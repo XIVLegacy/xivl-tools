@@ -241,7 +241,7 @@ fn build_report(data: &[u8], query: &str) -> Result<Value, String> {
     }
 
     Ok(json!({
-        "schemaVersion": 9,
+        "schemaVersion": 10,
         "kind": "xivl-command-formula-inputs",
         "source": {
             "byteLength": data.len(),
@@ -463,10 +463,26 @@ fn compatibility_profile(
                     "noMatch": "unavailable",
                 },
                 "actorWorkBindings": {
+                    "identifierScope": "local-lua-work-binding-key",
                     "command": { "id": 3002, "path": "actor.charaWork.command" },
                     "commandCategory": { "id": 3003, "path": "actor.charaWork.commandCategory" },
                     "commandBorder": { "id": 3004, "path": "actor.charaWork.commandBorder" },
                     "valueProducer": "unresolved",
+                    "matchingPropertyStreamObservations": {
+                        "status": "observed-partial",
+                        "direction": "server-to-client",
+                        "opcode": "0x0137",
+                        "propertyPathPattern": "charaWork.commandCategory[index]",
+                        "propertyHash": "seed-0 backward MurmurHash2 over the canonical property path",
+                        "valueWidthBytes": 1,
+                        "observedIndices": [0, 1, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 51],
+                        "observedValues": [1],
+                        "observedOccurrenceCount": 220,
+                        "captureCount": 8,
+                        "scenarioCount": 4,
+                        "category2Observation": "not-observed-in-promoted-snapshot",
+                        "boundary": "observations do not establish the complete category domain, category assignment policy, or native binding-to-sync-cache bridge",
+                    },
                 },
                 "ineligibleValue": 0,
             },
@@ -1037,8 +1053,33 @@ mod tests {
             3003
         );
         assert_eq!(
+            profile["commandHandContext"]["defaultProducer"]["actorWorkBindings"]
+                ["identifierScope"],
+            "local-lua-work-binding-key"
+        );
+        assert_eq!(
             profile["commandHandContext"]["defaultProducer"]["actorWorkBindings"]["valueProducer"],
             "unresolved"
+        );
+        let observations = &profile["commandHandContext"]["defaultProducer"]["actorWorkBindings"]
+            ["matchingPropertyStreamObservations"];
+        assert_eq!(
+            observations,
+            &json!({
+                "status": "observed-partial",
+                "direction": "server-to-client",
+                "opcode": "0x0137",
+                "propertyPathPattern": "charaWork.commandCategory[index]",
+                "propertyHash": "seed-0 backward MurmurHash2 over the canonical property path",
+                "valueWidthBytes": 1,
+                "observedIndices": [0, 1, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 51],
+                "observedValues": [1],
+                "observedOccurrenceCount": 220,
+                "captureCount": 8,
+                "scenarioCount": 4,
+                "category2Observation": "not-observed-in-promoted-snapshot",
+                "boundary": "observations do not establish the complete category domain, category assignment policy, or native binding-to-sync-cache bridge",
+            })
         );
         assert_eq!(
             profile["jobSkillRule"]["skillIds"],
@@ -1542,7 +1583,7 @@ mod tests {
             ("27410", "Fire", "Fire II JP"),
         ]);
         let by_id = build_report(&data, "27310").unwrap();
-        assert_eq!(by_id["schemaVersion"], 9);
+        assert_eq!(by_id["schemaVersion"], 10);
         assert_eq!(by_id["query"]["mode"], "id");
         assert_eq!(by_id["matches"].as_array().unwrap().len(), 1);
         assert_eq!(by_id["matches"][0]["damage"]["magnitude"], 950);

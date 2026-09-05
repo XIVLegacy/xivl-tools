@@ -95,7 +95,7 @@ Cost facts use these immutable source identities from extraction
 
 ## Report and verification contract
 
-JSON and YAML share report schema version 9. Legacy v1 CSV input is accepted
+JSON and YAML share report schema version 10. Legacy v1 CSV input is accepted
 with unresolved cost identity. This profile does not add an actor evaluator.
 
 `cargo test --locked -p xivl-cli command_inspect` exercises exact class and id
