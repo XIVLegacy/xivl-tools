@@ -48,7 +48,11 @@ mapped classes documented in [Command formula profiles](command-formula-profiles
 Each match reports its effective level limits and parameter blends, or an
 explicit unresolved profile. Known paths outside the GameCommandBaseClass
 hierarchy report `not-applicable`. Legacy catalogs remain readable without class
-identity. A separate [cost profile](command-cost-profiles.md) identifies selected
+identity. Exact command-specific Lua results appear under
+`subclassGetterProfile` only when both the command id and class path match a
+promoted profile. The damage block preserves the catalog magnitude separately
+from its unresolved native scale and combination step. A separate
+[cost profile](command-cost-profiles.md) identifies selected
 HP/MP/TP getters and actor/runtime dependencies while retaining raw catalog
 costs. [Parameter getter profiles](command-parameter-profiles.md) identify the
 inherited getters and distinguish raw-input calls from actor/target-dependent

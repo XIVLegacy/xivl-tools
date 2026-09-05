@@ -61,6 +61,43 @@ selected HP/MP/TP getters and their actor/runtime dependencies.
 [Parameter getter profiles](command-parameter-profiles.md) distinguish raw
 input calls from contextual adjustment and unresolved non-live-target calls.
 
+## Foul Bite subclass getters
+
+In catalog v3, command 23144 resolves to Foul Bite at
+`/Command/Game/WeaponSkill/MonsterAttackWeaponSkill`. The catalog source is
+`xivl-client-data:derived/command_battle_params.csv`, sha256
+`bc043bbd5558916a971de4d3a3a8dac5ec9d8ca36571bb534d0e964cd0b55d6a`.
+That subclass returns the following command-specific values:
+
+| Getter | Input | Result |
+|---|---:|---:|
+| `getCommandInformation` | selector 8 | 1 |
+| `getFrequency` | - | 1 |
+| `getRangeWidth` | - | 2 |
+| `getRangeRotate` | - | 0 |
+| `getCommandRangeHeight` | - | 10 |
+| `getPartsDamageAdjust` | - | 1, 1 |
+
+Other `getCommandInformation` selectors have no retained return in this
+subclass. The consumer and combination rule for `getPartsDamageAdjust` remain
+unresolved. These values therefore describe exact Lua getter results rather
+than a damage formula. They do not establish how the parts adjustment is
+consumed or any final damage amount.
+
+`subclassGetterProfile` exposes this row only when both command id 23144 and
+the exact class path match. Other commands report that no command-specific
+getter profile has been promoted. `damage.resolution` continues to mark the
+native magnitude scale and combination step unresolved.
+
+The source is
+`xivl-client-scripts:lua/scripts/command/game/weaponskill/monsterattackweaponskill.lua`,
+sha256 `d5b8e884aad2ca2cfe5cfa96cf5e029d975a32bb0bc1742873ded2f3a78b668e`.
+The `getCommandInformation` selector return is at lines 3324-3330. The other
+definitions are `getFrequency` lines 3333-3359, `getRangeWidth` lines 3362-3378,
+`getRangeRotate` lines 3381-3433, `getCommandRangeHeight` lines 3436-3450,
+and `getPartsDamageAdjust` lines 3453-3469. The command-23144 assignments are
+at lines 1125-1142.
+
 ## Identity and inheritance evidence
 
 The catalog producer joins command row ids to static-actor class paths.
@@ -83,13 +120,15 @@ the corresponding getter from its declared ancestor.
 The v2 CSV header appends `lua_class_path` after `effect_block_raw`; v3 appends
 `compatibility_percent_by_skill`. All earlier columns retain their positions.
 Legacy v1 and v2 catalogs remain accepted with explicit unresolved profile
-fields where their inputs are absent. The JSON/YAML report schema is version 11,
-including [compatibility profiles](command-compatibility-profiles.md). The CLI
+fields where their inputs are absent. The JSON/YAML report schema is version 12,
+including [compatibility profiles](command-compatibility-profiles.md) and exact
+command-specific Lua getter profiles. The CLI
 consumes the explicit input as supplied and records its SHA-256; it does not
 independently authenticate class-path values.
 
 `cargo test --locked -p xivl-cli command_inspect` checks the distinct getter
-overrides, inherited parameter 4, AncientMagic's overridden parameter 4,
-declared ancestry, non-applicable paths, unknown paths, and legacy input.
+overrides, inherited parameter 4, AncientMagic's overridden parameter 4, the
+exact Foul Bite subclass profile, declared ancestry, non-applicable paths,
+unknown paths, and legacy input.
 The producer's synthetic tests distinguish command-id joins from column-36
 joins. No decoded corpus bytes are embedded in CLI fixtures.

@@ -1954,7 +1954,7 @@ fn build_report_with_slot_context(
     };
 
     Ok(json!({
-        "schemaVersion": 11,
+        "schemaVersion": 12,
         "kind": "xivl-command-formula-inputs",
         "source": {
             "byteLength": data.len(),
@@ -2040,6 +2040,7 @@ fn command_document(
         },
         "levelAdjustmentProfile": level_adjustment_profile(class_path),
         "parameterProfile": parameter_profile(class_path),
+        "subclassGetterProfile": subclass_getter_profile(class_path, id),
         "compatibilityProfile": compatibility_profile(
             id,
             class_path,
@@ -2066,6 +2067,10 @@ fn command_document(
             "element": scalar(field(record, "dmg_elem")),
             "elementLabel": field(record, "dmg_elem_label"),
             "elementWeight": scalar(field(record, "dmg_elem_weight")),
+            "resolution": {
+                "status": "unresolved",
+                "reason": "native magnitude scale and combine step",
+            },
         },
         "costs": {
             "scope": "catalog-inputs",
@@ -2090,6 +2095,41 @@ fn command_document(
         "parameters": parameters,
         "rawEffectFields": parse_effect_fields(field(record, "effect_block_raw"))?,
     }))
+}
+
+// Exact command-specific Lua getter results: docs/command-formula-profiles.md.
+fn subclass_getter_profile(class_path: &str, command_id: u32) -> Value {
+    if class_path == "/Command/Game/WeaponSkill/MonsterAttackWeaponSkill" && command_id == 23_144 {
+        return json!({
+            "status": "resolved",
+            "scope": "retained-lua-command-specific-return-values",
+            "definedBy": "MonsterAttackWeaponSkill",
+            "getters": {
+                "getCommandInformation": {
+                    "selector": 8,
+                    "result": 1,
+                    "otherSelectors": "no-retained-return",
+                },
+                "getFrequency": 1,
+                "getRangeWidth": 2,
+                "getRangeRotate": 0,
+                "getCommandRangeHeight": 10,
+                "getPartsDamageAdjust": {
+                    "result": [1, 1],
+                    "consumer": "unresolved",
+                },
+            },
+        });
+    }
+
+    json!({
+        "status": "unavailable",
+        "reason": if class_path.is_empty() {
+            "missing-class-path"
+        } else {
+            "no-promoted-command-specific-getter-results"
+        },
+    })
 }
 
 // Matrix selection and actor-dependent shortcuts: docs/command-compatibility-profiles.md.
@@ -3450,6 +3490,51 @@ mod tests {
     }
 
     #[test]
+    fn exposes_foul_bite_subclass_getters_without_damage_inference() {
+        let path = "/Command/Game/WeaponSkill/MonsterAttackWeaponSkill";
+        let data = catalog_with_class(&[("23144", "Foul Bite", "Foul Bite JP")], path);
+        let report = build_report(&data, "23144").unwrap();
+        let command = &report["matches"][0];
+        let profile = &command["subclassGetterProfile"];
+
+        assert_eq!(profile["status"], "resolved");
+        assert_eq!(profile["definedBy"], "MonsterAttackWeaponSkill");
+        assert_eq!(profile["getters"]["getCommandInformation"]["selector"], 8);
+        assert_eq!(profile["getters"]["getCommandInformation"]["result"], 1);
+        assert_eq!(profile["getters"]["getFrequency"], 1);
+        assert_eq!(profile["getters"]["getRangeWidth"], 2);
+        assert_eq!(profile["getters"]["getRangeRotate"], 0);
+        assert_eq!(profile["getters"]["getCommandRangeHeight"], 10);
+        assert_eq!(
+            profile["getters"]["getPartsDamageAdjust"]["result"],
+            json!([1, 1])
+        );
+        assert_eq!(
+            profile["getters"]["getPartsDamageAdjust"]["consumer"],
+            "unresolved"
+        );
+        assert_eq!(command["damage"]["resolution"]["status"], "unresolved");
+        assert_eq!(command["damage"]["magnitude"], 950);
+
+        let wrong_id = catalog_with_class(&[("23145", "Other", "Other JP")], path);
+        let report = build_report(&wrong_id, "23145").unwrap();
+        assert_eq!(
+            report["matches"][0]["subclassGetterProfile"]["status"],
+            "unavailable"
+        );
+
+        let wrong_class = catalog_with_class(
+            &[("23144", "Foul Bite", "Foul Bite JP")],
+            "/Command/Game/WeaponSkill/AttackWeaponSkill",
+        );
+        let report = build_report(&wrong_class, "23144").unwrap();
+        assert_eq!(
+            report["matches"][0]["subclassGetterProfile"]["status"],
+            "unavailable"
+        );
+    }
+
+    #[test]
     fn resolves_remaining_level_overrides_and_preserves_getter_owners() {
         let ancient = level_adjustment_profile("/Command/Game/Magic/AncientMagic");
         assert_eq!(ancient["highLevelDistanceLimit"], 10);
@@ -3567,7 +3652,7 @@ mod tests {
             ("27410", "Fire", "Fire II JP"),
         ]);
         let by_id = build_report(&data, "27310").unwrap();
-        assert_eq!(by_id["schemaVersion"], 11);
+        assert_eq!(by_id["schemaVersion"], 12);
         assert_eq!(by_id["query"]["mode"], "id");
         assert_eq!(by_id["matches"].as_array().unwrap().len(), 1);
         assert_eq!(by_id["matches"][0]["damage"]["magnitude"], 950);
