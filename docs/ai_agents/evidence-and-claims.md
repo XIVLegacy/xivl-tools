@@ -24,10 +24,11 @@ something else, a count is unnecessary context: it tells the reader nothing they
 can act on, and it invites doubt when their own run differs by one. Keep what
 was found. Drop the size of the haystack.
 
-A hedge is the strongest tell. "approximately", "roughly", "about", or a
-leading "~" before a figure means the author had already decided the figure
-did not matter. Make it exact or cut it. Where an exact source exists, name
-that source instead of restating its number in prose.
+Use an exact value when the source establishes one. Preserve approximate
+observations and bounded estimates when they carry the claim, and state the
+measurement method, resolution, or unresolved boundary. Do not turn uncertain
+evidence into a precise value or remove it merely because it is approximate.
+Where the number is incidental, cite the source instead of repeating it.
 
 This governs prose the repository authors. A figure inside a quoted or
 transcribed source is source content and stays verbatim, hedge included.
@@ -49,7 +50,7 @@ promoted fact becomes locally owned and receives local tests.
 ## Self-containment
 
 A supported command never discovers a client install, fixture root, or sibling
-checkout from workspace layout. A path such as `../bahamut` is a forbidden
+checkout from workspace layout. A path such as `../consumer` is a forbidden
 default. An external research input must be supplied explicitly, must remain
 non-gating, and must not become a support claim.
 

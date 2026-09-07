@@ -7,17 +7,11 @@ belongs here, and what evidence supports it.
 Agent output is not retail evidence. Use [Evidence and claims](evidence-and-claims.md)
 when turning research, observations, or reports into a claim.
 
-## Tracked and local docs
+## Public contract
 
 `README.md`, the Markdown pages below `docs/`, and the pages in this policy
 shelf are tracked public documents. They stand on their own in a bare
 checkout and contain the durable project contract.
-
-`docs/ai_agents/local/` is the ignored maintainer island. It holds private
-process notes, research working material, and maintainer context. It is not
-public policy and is never a source for a user-facing claim. Do not link to it
-from tracked docs or code. Promote a durable fact into the tracked policy or
-technical document that owns it.
 
 ## Public documentation
 
@@ -38,4 +32,4 @@ Read these pages in order:
 2. [Comments and prose](comments-and-prose.md)
 
 The [documentation index](../README.md) provides entry points into the public
-documentation. The ignored maintainer island is outside the public tree.
+documentation.

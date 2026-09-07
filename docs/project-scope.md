@@ -4,12 +4,18 @@ XIVLegacy Tools owns clean-room tooling for Final Fantasy XIV 1.23b client
 file formats. The target is frozen. The [support matrix](support-matrix.md)
 defines the status vocabulary and promotion rules.
 
-## In scope
+## Current scope
 
 - reusable libraries for client file and container formats;
 - the `xivl` command line for inspection, validation, and extraction;
 - lossless export views and structural reports that do not publish private
-  client data;
+  client data.
+
+## Planned direction
+
+The following remain planned; the support matrix records implemented format
+operations and their evidence limits:
+
 - legacy patch parsing, verification, creation, and a self-hosted service
   component;
 - an optional resource explorer backed by the format libraries.
@@ -36,8 +42,8 @@ tools/             contract checks and maintenance scripts
 .github/           cross-platform contract and Rust CI
 ```
 
-Patch and export library crates and further front ends are outside the current
-scope.
+Separate patch and export library crates and further front ends are outside
+the current implementation scope.
 The [source and data policy](source-and-data-policy.md) defines the clean-room
 and self-containment boundaries.
 
