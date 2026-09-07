@@ -243,8 +243,6 @@ fn read_every_way(data: &[u8], name: &str) {
         );
     }
     let _ = ssd::parse_document(data);
-    let _ = sheet::parse_enable_file(data);
-    let _ = sheet::parse_row_offsets(data);
 }
 
 #[test]

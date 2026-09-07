@@ -6,7 +6,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
-use sha2::{Digest, Sha256};
+use xivl_formats::digest::sha256_hex;
 
 use crate::Failure;
 
@@ -380,7 +380,7 @@ impl SlotContextManifest {
             .map_err(|error| format!("cannot canonicalize slot context rows: {error}"))?;
         let row_bytes = serde_json::to_vec(&row_value)
             .map_err(|error| format!("cannot canonicalize slot context rows: {error}"))?;
-        if self.rows_sha256 != sha256(&row_bytes) {
+        if self.rows_sha256 != sha256_hex(&row_bytes) {
             return Err("slot context rowsSha256 does not match rows".to_owned());
         }
 
@@ -685,7 +685,7 @@ fn validate_write_corpus(
     }
     let writes_bytes = serde_json::to_vec(&corpus.writes)
         .map_err(|error| format!("cannot canonicalize writeCorpus writes: {error}"))?;
-    if corpus.writes_sha256 != sha256(&writes_bytes) {
+    if corpus.writes_sha256 != sha256_hex(&writes_bytes) {
         return Err("slot context writeCorpus writesSha256 does not match writes".to_owned());
     }
 
@@ -1521,7 +1521,7 @@ fn materialize_command_loadout(
         "streamLength": stream_size,
         "paddingLength": padding_size,
         "payloadSize": payload.len(),
-        "payloadSha256": sha256(&payload),
+        "payloadSha256": sha256_hex(&payload),
     });
     Ok(MaterializedCommandLoadout { report, payload })
 }
@@ -1828,7 +1828,7 @@ fn read_monster_attack_profiles(path: &str) -> Result<MonsterAttackProfilesManif
         ))
     })?;
     manifest.input_byte_length = data.len() as u64;
-    manifest.input_sha256 = sha256(&data);
+    manifest.input_sha256 = sha256_hex(&data);
     Ok(manifest)
 }
 
@@ -1893,7 +1893,7 @@ fn parse_monster_attack_profiles(data: &[u8]) -> Result<MonsterAttackProfilesMan
         .map_err(|error| format!("cannot canonicalize getterRules: {error}"))?;
     let canonical_getter_rules = serde_json::to_vec(&getter_rules)
         .map_err(|error| format!("cannot encode canonical getterRules: {error}"))?;
-    if sha256(&canonical_getter_rules) != manifest.getter_rules_sha256 {
+    if sha256_hex(&canonical_getter_rules) != manifest.getter_rules_sha256 {
         return Err("getterRulesSha256 does not match getterRules".to_owned());
     }
     Ok(manifest)
@@ -2295,7 +2295,7 @@ fn build_report_with_inputs(
         return Err(format!("command query '{query}' did not match the catalog"));
     }
 
-    let catalog_sha256 = sha256(data);
+    let catalog_sha256 = sha256_hex(data);
     let observed_command_slot_context = match slot_context {
         Some(context) => context.report_for_commands(&catalog_sha256, &matched_identities)?,
         None => json!({
@@ -3134,13 +3134,6 @@ fn scalar(raw: &str) -> Value {
     }
 }
 
-fn sha256(data: &[u8]) -> String {
-    Sha256::digest(data)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3282,7 +3275,7 @@ mod tests {
             unresolved: vec!["category 2 is not observed".to_owned()],
         };
         fixture.rows_sha256 =
-            sha256(&serde_json::to_vec(&serde_json::to_value(&fixture.rows).unwrap()).unwrap());
+            sha256_hex(&serde_json::to_vec(&serde_json::to_value(&fixture.rows).unwrap()).unwrap());
         fixture
     }
 
@@ -3306,7 +3299,7 @@ mod tests {
         ));
         let mut parsed = parse_monster_attack_profiles(encoded).unwrap();
         parsed.input_byte_length = encoded.len() as u64;
-        parsed.input_sha256 = sha256(encoded);
+        parsed.input_sha256 = sha256_hex(encoded);
         parsed
     }
 
@@ -3439,7 +3432,7 @@ mod tests {
         ));
         writes.push(synthetic_write(16, "set-category", Some(51), &[1], 3, None));
         writes.push(synthetic_write(17, "set-border", None, &[32], 5, None));
-        let writes_sha256 = sha256(&serde_json::to_vec(&writes).unwrap());
+        let writes_sha256 = sha256_hex(&serde_json::to_vec(&writes).unwrap());
         fixture.write_corpus = Some(WriteCorpus {
             scope: "observed-filtered-property-record-fragments".to_owned(),
             record_encoding: "valueWidth:u8 + propertyHash:u32le + value[valueWidth]".to_owned(),
@@ -3462,11 +3455,11 @@ mod tests {
     }
 
     fn refresh_rows_sha256(value: &mut Value) {
-        value["rowsSha256"] = json!(sha256(&serde_json::to_vec(&value["rows"]).unwrap()));
+        value["rowsSha256"] = json!(sha256_hex(&serde_json::to_vec(&value["rows"]).unwrap()));
     }
 
     fn refresh_writes_sha256(value: &mut Value) {
-        value["writeCorpus"]["writesSha256"] = json!(sha256(
+        value["writeCorpus"]["writesSha256"] = json!(sha256_hex(
             &serde_json::to_vec(&value["writeCorpus"]["writes"]).unwrap()
         ));
     }
@@ -4307,7 +4300,7 @@ mod tests {
             "/Command/Game/Ability/Ability",
         );
         let mut context = parsed_slot_context_fixture();
-        context.source_snapshots.client_data.command_catalog_sha256 = sha256(&data);
+        context.source_snapshots.client_data.command_catalog_sha256 = sha256_hex(&data);
         let report = build_report_with_slot_context(&data, "27140", Some(&context)).unwrap();
         for serialized in [
             serde_json::to_string(&report).unwrap(),
@@ -4368,7 +4361,7 @@ mod tests {
         assert_eq!(materialized.payload[0], 123);
         assert!(materialized.payload[124..].iter().all(|byte| *byte == 0));
         assert_eq!(
-            sha256(&materialized.payload),
+            sha256_hex(&materialized.payload),
             "9f1ceb8833cfb669d0a04d20fd3231465138146c6ddda19cb28ff5554974facd"
         );
         assert_eq!(materialized.report["syntheticProjection"], true);
@@ -4589,7 +4582,7 @@ mod tests {
     fn reports_missing_slot_context_observation_without_inference() {
         let data = catalog(&[("27141", "Other", "Other")]);
         let mut context = parsed_slot_context_fixture();
-        context.source_snapshots.client_data.command_catalog_sha256 = sha256(&data);
+        context.source_snapshots.client_data.command_catalog_sha256 = sha256_hex(&data);
         let report = build_report_with_slot_context(&data, "27141", Some(&context)).unwrap();
         let observed = &report["observedCommandSlotContext"];
         assert_eq!(observed["status"], "available");
@@ -4679,10 +4672,10 @@ mod tests {
         );
 
         let mut context = slot_context_fixture();
-        context.source_snapshots.client_data.command_catalog_sha256 = sha256(&data);
+        context.source_snapshots.client_data.command_catalog_sha256 = sha256_hex(&data);
         context.rows[0].class_path = "/Command/Game/Ability/Other".to_owned();
         context.rows_sha256 =
-            sha256(&serde_json::to_vec(&serde_json::to_value(&context.rows).unwrap()).unwrap());
+            sha256_hex(&serde_json::to_vec(&serde_json::to_value(&context.rows).unwrap()).unwrap());
         assert!(
             build_report_with_slot_context(&data, "27140", Some(&context))
                 .unwrap_err()
