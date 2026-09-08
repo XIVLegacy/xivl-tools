@@ -5,6 +5,7 @@ XIVLegacy Tools.
 
 | Document | Covers |
 |---|---|
+| [Repository style](style-guide.md) | Authored Rust, support tools, schemas, fixtures, and documentation |
 | [Project scope](project-scope.md) | Frozen target, owned work, exclusions, and workspace layout |
 | [Source and data policy](source-and-data-policy.md) | Public code, synthetic fixtures, private retail data, and user-written data |
 | [Support matrix](support-matrix.md) | The frozen target, status vocabulary, and promotion rules |

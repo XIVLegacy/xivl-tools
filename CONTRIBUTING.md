@@ -11,8 +11,9 @@ make sure CI is green before asking for review.
 
 Read the [project scope](docs/project-scope.md),
 [source and data policy](docs/source-and-data-policy.md), and
-[evidence rules](docs/ai_agents/evidence-and-claims.md) before changing a
-format claim or test boundary.
+[evidence rules](docs/ai_agents/evidence-and-claims.md), then follow the
+[repository style guide](docs/style-guide.md) before changing a format claim,
+tool, or test boundary.
 
 You own every submitted change, including AI-assisted work. Do not open a
 pull request for a diff you could not explain yourself: what each material
