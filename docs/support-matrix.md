@@ -7,8 +7,9 @@ support X" and the promotion record behind every claim.
 ## Home of the data
 
 `data/support-matrix.json`, validated by
-`schemas/support-matrix.schema.json`. This document defines the vocabulary and the promotion rules. It deliberately holds no per-format status, so the
-two cannot disagree.
+`schemas/support-matrix.schema.json`. This document defines the target,
+platforms, per-format statuses, vocabulary, and promotion rules. The contract
+checker validates both the matrix shape and its conformance coverage.
 
 Render the current matrix:
 
