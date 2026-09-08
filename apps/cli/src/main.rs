@@ -21,6 +21,7 @@ mod extract;
 mod resource_export;
 mod scan;
 mod verify_extract;
+mod zone_export;
 
 const USAGE: &str = "\
 xivl - Final Fantasy XIV 1.23b client file tools
@@ -38,6 +39,7 @@ usage:
   xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--as <format>] [--columns <list>]
   xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads]
   xivl verify-extraction <directory> [--source <file> | --catalog <catalog.json|catalog.jsonl> --root <directory>] [--report json]
+  xivl export-zones <client-root> --output <directory> [--layout <resource-id>]
   xivl --help
   xivl --version
 
@@ -64,6 +66,10 @@ extract-catalog plans and validates an explicit catalog selection before
 writing isolated per-resource outputs; it never has an implicit extract-all.
 verify-extraction checks an existing single or catalog extraction without
 writing or repairing it. Source replay is explicit and optional.
+
+export-zones reads only an explicitly supplied 1.23b client root and writes
+one flattened OBJ plus a versioned metadata sidecar per lyb layout, and one
+collection manifest. It does not compile navigation data or export textures.
 
 inspect-command queries an explicit command_battle_params.csv catalog by
 numeric id or exact case-insensitive English/Japanese name. It reports the
@@ -212,6 +218,11 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         Some("verify-extraction") => {
             let summary = verify_extract::run(&arguments[1..])?;
             println!("{}", summary.text);
+            Ok(())
+        }
+        Some("export-zones") => {
+            let summary = zone_export::run(&arguments[1..])?;
+            println!("exported {} zones to {}", summary.zones, summary.output);
             Ok(())
         }
         Some(other) => Err(Failure::usage(format!(

@@ -106,7 +106,9 @@ def fixture_path(root: pathlib.Path, source_path: str) -> pathlib.Path:
     resolved_root = root.resolve()
     resolved = (resolved_root / pathlib.Path(*relative.parts)).resolve(strict=False)
     if resolved_root not in resolved.parents:
-        raise SystemExit("freeze: fixture path escapes its root: {0}".format(source_path))
+        raise SystemExit(
+            "freeze: fixture path escapes its root: {0}".format(source_path)
+        )
     return resolved
 
 

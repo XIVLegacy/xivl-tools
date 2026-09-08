@@ -68,9 +68,13 @@ ESCAPE_WIDTH = {0xF0: 1, 0xF1: 1, 0xF2: 2}
 
 def resource_path(data_root: pathlib.Path, value: int) -> pathlib.Path:
     a, b, c, d = value.to_bytes(4, "big")
-    return data_root / "{0:02X}".format(a) / "{0:02X}".format(b) / "{0:02X}".format(
-        c
-    ) / "{0:02X}.DAT".format(d)
+    return (
+        data_root
+        / "{0:02X}".format(a)
+        / "{0:02X}".format(b)
+        / "{0:02X}".format(c)
+        / "{0:02X}.DAT".format(d)
+    )
 
 
 def resource_id(path: pathlib.Path) -> int:
@@ -258,14 +262,20 @@ def reachable_pass(data_root: pathlib.Path, masters: list[int]) -> None:
         # A master's sheets are references. A document whose sheets are
         # definitions is its own schema document.
         named = [
-            sheet.get("infofile") for sheet in root.findall("sheet") if sheet.get("infofile")
+            sheet.get("infofile")
+            for sheet in root.findall("sheet")
+            if sheet.get("infofile")
         ]
         if named:
             documents.extend(int(value) for value in named)
         else:
             documents.append(master)
 
-    print("documents given: {0}, schema documents to read: {1}".format(len(masters), len(documents)))
+    print(
+        "documents given: {0}, schema documents to read: {1}".format(
+            len(masters), len(documents)
+        )
+    )
 
     sheets = 0
     blocks = 0
@@ -287,8 +297,12 @@ def reachable_pass(data_root: pathlib.Path, masters: list[int]) -> None:
                 blocks += 1
                 begin = int(element.get("begin"))
                 raw = resource_path(data_root, int(element.text)).read_bytes()
-                offsets_raw = resource_path(data_root, int(element.get("offset"))).read_bytes()
-                enable_raw = resource_path(data_root, int(element.get("enable"))).read_bytes()
+                offsets_raw = resource_path(
+                    data_root, int(element.get("offset"))
+                ).read_bytes()
+                enable_raw = resource_path(
+                    data_root, int(element.get("enable"))
+                ).read_bytes()
 
                 offsets = [
                     int.from_bytes(offsets_raw[index : index + 4], "little")
@@ -315,7 +329,9 @@ def reachable_pass(data_root: pathlib.Path, masters: list[int]) -> None:
                             if position + 2 > len(raw):
                                 ok = False
                                 break
-                            length = int.from_bytes(raw[position : position + 2], "little")
+                            length = int.from_bytes(
+                                raw[position : position + 2], "little"
+                            )
                             position += 2 + length
                         elif column in REACHABLE_FIXED_WIDTH:
                             position += REACHABLE_FIXED_WIDTH[column]
@@ -346,7 +362,11 @@ def reachable_pass(data_root: pathlib.Path, masters: list[int]) -> None:
     print("sheets: {0}, file blocks: {1}".format(sheets, blocks))
     print("sheet languages: {0}".format(dict(languages)))
     print("column types declared: {0}".format(dict(column_types)))
-    print("rows walked: {0}, consuming their block exactly: {1}".format(rows_total, rows_exact))
+    print(
+        "rows walked: {0}, consuming their block exactly: {1}".format(
+            rows_total, rows_exact
+        )
+    )
     print(
         "blocks whose sequential decode reproduces the row-offset array: {0} of {1}".format(
             offsets_match, blocks
@@ -420,7 +440,11 @@ def sweep_pass(paths: list[pathlib.Path]) -> None:
             counters["text_utf8"], counters["text_not_utf8"]
         )
     )
-    print("strings with a control token that does not frame: {0}".format(tokens_not_framing))
+    print(
+        "strings with a control token that does not frame: {0}".format(
+            tokens_not_framing
+        )
+    )
     print(
         "strings rebuilt byte for byte from their text runs and tokens: {0}, failing: {1}".format(
             counters["round_trip"], counters["round_trip_failed"]
@@ -433,7 +457,11 @@ def sweep_pass(paths: list[pathlib.Path]) -> None:
     )
     print("  codes: {0}".format(sorted(counters["codes"].items())))
     print("  length escapes used: {0}".format(sorted(counters["escapes"].items())))
-    print("  length escapes not established: {0}".format(sorted(counters["unknown_escapes"].items())))
+    print(
+        "  length escapes not established: {0}".format(
+            sorted(counters["unknown_escapes"].items())
+        )
+    )
 
 
 def scrambled_pass(data_root: pathlib.Path, paths: list[pathlib.Path]) -> None:

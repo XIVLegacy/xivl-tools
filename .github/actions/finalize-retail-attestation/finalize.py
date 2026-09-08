@@ -20,7 +20,9 @@ def _contained_path(path: Path, root: Path, label: str) -> Path:
     return resolved
 
 
-def finalize(scratch_root: Path, staging_root: Path, runner_temp: Path, workspace: Path) -> None:
+def finalize(
+    scratch_root: Path, staging_root: Path, runner_temp: Path, workspace: Path
+) -> None:
     scratch = _contained_path(scratch_root, runner_temp, "scratch root")
     staging = _contained_path(staging_root, workspace, "staging root")
     if scratch_root.is_symlink():
@@ -41,7 +43,9 @@ def finalize(scratch_root: Path, staging_root: Path, runner_temp: Path, workspac
         or attestation.is_symlink()
         or not attestation.is_file()
     ):
-        raise RuntimeError("staging root must contain only the regular attestation file")
+        raise RuntimeError(
+            "staging root must contain only the regular attestation file"
+        )
 
 
 def parse_args() -> argparse.Namespace:

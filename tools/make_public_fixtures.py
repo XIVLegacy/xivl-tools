@@ -77,7 +77,9 @@ def sedb_header(
     return bytes(header)
 
 
-def res_extended(count: int, unknown_b: int, type_name: str, repeated: int | None = None) -> bytes:
+def res_extended(
+    count: int, unknown_b: int, type_name: str, repeated: int | None = None
+) -> bytes:
     """The RES extended header block at 0x30: count, unknownB, count, tag."""
     if repeated is None:
         repeated = count
@@ -327,12 +329,21 @@ def build_fixtures() -> dict[str, bytes]:
         return bytes(header) + data
 
     fixtures["gtex/tagged.bin"] = gtex(
-        pattern(40, 0x44), mip_levels=2, width=4, height=2,
-        data_base=0x28, surfaces=((0, 32), (32, 8))
+        pattern(40, 0x44),
+        mip_levels=2,
+        width=4,
+        height=2,
+        data_base=0x28,
+        surfaces=((0, 32), (32, 8)),
     )
     fixtures["gtex/trailing.bin"] = gtex(
-        pattern(48, 0x51), format_index=24, mip_levels=2, width=8, height=8,
-        data_base=0x28, surfaces=((0, 32), (40, 8))
+        pattern(48, 0x51),
+        format_index=24,
+        mip_levels=2,
+        width=8,
+        height=8,
+        data_base=0x28,
+        surfaces=((0, 32), (40, 8)),
     )
     fixtures["gtex/truncated-header.bin"] = b"GTEX" + pattern(10, 0x71)
     bad_gtex = bytearray(gtex(b"x"))
@@ -371,16 +382,11 @@ def build_fixtures() -> dict[str, bytes]:
     fixtures["staticactor/records.bin"] = staticactor
     fixtures["staticactor/bad-magic.bin"] = b"x" + staticactor[1:]
     fixtures["staticactor/truncated-header.bin"] = staticactor[:12]
-    fixtures["staticactor/count-bomb.bin"] = staticactor_san(
-        [], declared_count=100_001
-    )
-    fixtures["staticactor/missing-record.bin"] = staticactor_san(
+    fixtures["staticactor/count-bomb.bin"] = staticactor_san([], declared_count=100_001)
+    fixtures["staticactor/missing-record.bin"] = staticactor_san([], declared_count=1)
+    fixtures["staticactor/unterminated-record.bin"] = staticactor_san(
         [], declared_count=1
-    )
-    fixtures["staticactor/unterminated-record.bin"] = (
-        staticactor_san([], declared_count=1)
-        + bytes(byte ^ 0x73 for byte in struct.pack(">I", 9) + b"unfinished")
-    )
+    ) + bytes(byte ^ 0x73 for byte in struct.pack(">I", 9) + b"unfinished")
     one_record = staticactor_san([(7, b"/Synthetic/One")])
     fixtures["staticactor/trailing-partial-record.bin"] = one_record + b"\x01\x02"
     fixtures["staticactor/trailing-record.bin"] = staticactor_san(
@@ -428,7 +434,9 @@ def build_fixtures() -> dict[str, bytes]:
     bytecode = LUA51_HEADER + main
     fixtures["lpb/bytecode.bin"] = b"rlu\x0bBCOD" + bytecode
     fixtures["lpb/bytecode-xor.bin"] = (
-        b"rle\x0cBCOD" + struct.pack("<I", len(bytecode)) + b"?"
+        b"rle\x0cBCOD"
+        + struct.pack("<I", len(bytecode))
+        + b"?"
         + bytes(byte ^ 0x73 for byte in bytecode)
     )
     fixtures["lpb/bytecode-trailing.bin"] = b"rlu\x0bBCOD" + bytecode + b"!"
@@ -554,13 +562,15 @@ def build_fixtures() -> dict[str, bytes]:
     fixtures["sedb/bad-magic.bin"] = b"SEDX" + tag("txb") + bytes(0x18)
 
     # headerSize below the fixed fields. Expect header-too-small at 0x0E.
-    fixtures["sedb/header-too-small.bin"] = sedb_header("txb", 1, 0, 0x10, 0x20) + bytes(0x0C)
+    fixtures["sedb/header-too-small.bin"] = sedb_header(
+        "txb", 1, 0, 0x10, 0x20
+    ) + bytes(0x0C)
 
     # headerSize past the declared container. Expect
     # header-size-out-of-range at 0x0E.
-    fixtures["sedb/header-size-out-of-range.bin"] = (
-        sedb_header("txb", 1, 0, 0xFFFF, 0x20)[:0x20]
-    )
+    fixtures["sedb/header-size-out-of-range.bin"] = sedb_header(
+        "txb", 1, 0, 0xFFFF, 0x20
+    )[:0x20]
 
     # The 0x10 field points past the end of the input. Expect
     # declared-size-out-of-range at 0x10.
@@ -572,9 +582,9 @@ def build_fixtures() -> dict[str, bytes]:
     # the shape of the 145 retail mtb resources: not malformed, so the
     # parser falls back to the header extent, records the anomaly, and
     # reports the remainder as trailing bytes.
-    fixtures["sedb/declared-size-below-header.bin"] = sedb_header("mtb", 0x43, 0, 0x40, 0) + pattern(
-        0x20, 0x61
-    )
+    fixtures["sedb/declared-size-below-header.bin"] = sedb_header(
+        "mtb", 0x43, 0, 0x40, 0
+    ) + pattern(0x20, 0x61)
 
     # -- res -------------------------------------------------------------
     # A composite container with two subresources, a nested SEDB child, and
@@ -585,7 +595,9 @@ def build_fixtures() -> dict[str, bytes]:
     tail = b"F00\\synthetic\\name-table".ljust(0x20, b"\x00")
     assert len(tail) == 0x20
     two = (
-        sedb_header("RES ", 0xFA0, 0, RES_HEADER_SIZE, 0xC0, res_extended(2, 0x60, "brt"))
+        sedb_header(
+            "RES ", 0xFA0, 0, RES_HEADER_SIZE, 0xC0, res_extended(2, 0x60, "brt")
+        )
         + directory_entry(0, 0x00, 0x30, 2)
         + directory_entry(1, 0x40, 0x20, 0)
         + nested
@@ -599,7 +611,9 @@ def build_fixtures() -> dict[str, bytes]:
     # the file, the alignment slack the evidence document records. The
     # parser clamps it and reports the clamp. The case still succeeds.
     clamped = (
-        sedb_header("RES ", 0xFA0, 0, RES_HEADER_SIZE, 0x6A, res_extended(1, 0x50, "brt"))
+        sedb_header(
+            "RES ", 0xFA0, 0, RES_HEADER_SIZE, 0x6A, res_extended(1, 0x50, "brt")
+        )
         + directory_entry(0, 0x00, 0x30, 4)
         + pattern(0x1A, 0x51)
     )
@@ -609,7 +623,12 @@ def build_fixtures() -> dict[str, bytes]:
     # The two subresource counts disagree. Expect
     # subresource-count-mismatch at 0x38.
     fixtures["res/count-mismatch.bin"] = sedb_header(
-        "RES ", 0xFA0, 0, RES_HEADER_SIZE, 0x60, res_extended(2, 0x60, "brt", repeated=3)
+        "RES ",
+        0xFA0,
+        0,
+        RES_HEADER_SIZE,
+        0x60,
+        res_extended(2, 0x60, "brt", repeated=3),
     ) + bytes(0x20)
 
     # A directory that cannot fit in the container. Expect
@@ -620,7 +639,9 @@ def build_fixtures() -> dict[str, bytes]:
 
     # A RES container with a 0x30 header, too small to hold the extended
     # fields. Expect header-too-small at 0x0E.
-    fixtures["res/header-too-small.bin"] = sedb_header("RES ", 0xFA0, 0, 0x30, 0x60) + bytes(0x30)
+    fixtures["res/header-too-small.bin"] = sedb_header(
+        "RES ", 0xFA0, 0, 0x30, 0x60
+    ) + bytes(0x30)
 
     # -- resource-path ---------------------------------------------------
     fixtures["resource-path/ids.txt"] = (
@@ -729,9 +750,9 @@ def build_fixtures() -> dict[str, bytes]:
 
     # Twelve bytes: one whole record and half of another. Expect
     # trailing-partial-record at offset 8.
-    fixtures["sheet/enable-partial-record.bin"] = enable_records([(10000, 7)]) + struct.pack(
-        "<I", 11000
-    )
+    fixtures["sheet/enable-partial-record.bin"] = enable_records(
+        [(10000, 7)]
+    ) + struct.pack("<I", 11000)
 
     # A range naming no rows, then one starting inside its predecessor.
     # Both are reported as anomalies. Neither stops the parse.
@@ -756,10 +777,9 @@ def build_fixtures() -> dict[str, bytes]:
         + sheet_string("")
     )
     fixtures["sheet/strings-scrambled.bin"] = scrambled_strings
-    fixtures["sheet/strings-plain.bin"] = (
-        sheet_string("public fixture row one", scrambled=False)
-        + sheet_string(MULTIBYTE, scrambled=False)
-    )
+    fixtures["sheet/strings-plain.bin"] = sheet_string(
+        "public fixture row one", scrambled=False
+    ) + sheet_string(MULTIBYTE, scrambled=False)
 
     # A scrambled body whose last byte is not the key. Expect
     # malformed-sheet-string.
@@ -769,9 +789,9 @@ def build_fixtures() -> dict[str, bytes]:
 
     # A length prefix that runs past the end of the input. Expect
     # unexpected-end-of-input.
-    fixtures["sheet/string-truncated.bin"] = struct.pack("<H", 0x40) + bytes(
-        [SCRAMBLE_MARKER]
-    ) + pattern(6, 0x13)
+    fixtures["sheet/string-truncated.bin"] = (
+        struct.pack("<H", 0x40) + bytes([SCRAMBLE_MARKER]) + pattern(6, 0x13)
+    )
 
     # A truncated multi-byte sequence inside a decoded body. Expect
     # invalid-utf8.
@@ -809,7 +829,9 @@ def build_fixtures() -> dict[str, bytes]:
     # Two rows of str,s32,bool,float,u8. A string column is
     # self-delimiting and the rest are fixed width, so the column list
     # alone fixes where a row ends.
-    def typed_row(text: str, scrambled: bool, signed: int, flag: int, real: float, small: int) -> bytes:
+    def typed_row(
+        text: str, scrambled: bool, signed: int, flag: int, real: float, small: int
+    ) -> bytes:
         return (
             sheet_string(text, scrambled=scrambled)
             + struct.pack("<i", signed)
@@ -881,7 +903,9 @@ def build_fixtures() -> dict[str, bytes]:
         padding = (residue - len(document)) % 4
         document = xml_document(body.replace("</ssd>", " " * padding + "</ssd>"))
         assert len(document) % 4 == residue
-        fixtures["scrambled/residue-{0}.bin".format(residue)] = scramble_document(document)
+        fixtures["scrambled/residue-{0}.bin".format(residue)] = scramble_document(
+            document
+        )
 
     # The trailer byte removed. Expect missing-scramble-trailer: without it
     # the client's own reader hands the file on untouched, so calling it a
@@ -894,7 +918,9 @@ def build_fixtures() -> dict[str, bytes]:
 
     # A file that ends in the trailer and is not a document. Expect
     # bad-magic: the trailer alone is not a signature.
-    fixtures["scrambled/not-a-document.bin"] = pattern(48, 0x23) + bytes([SCRAMBLE_TRAILER])
+    fixtures["scrambled/not-a-document.bin"] = pattern(48, 0x23) + bytes(
+        [SCRAMBLE_TRAILER]
+    )
 
     # A decode that opens correctly and then runs into a truncated
     # multi-byte sequence. Expect invalid-utf8.
@@ -1035,7 +1061,9 @@ def build_fixtures() -> dict[str, bytes]:
     # A grid ending in a run shorter than a word. Nothing states a length
     # and nothing terminates it, so the leftover is unaccountable. Expect
     # trailing-partial-record at the offset the leftover starts.
-    fixtures["config/sys-partial-word.bin"] = struct.pack("<II", 0x20260801, 7) + b"\x01\x02"
+    fixtures["config/sys-partial-word.bin"] = (
+        struct.pack("<II", 0x20260801, 7) + b"\x01\x02"
+    )
     fixtures["config/lng-partial-word.bin"] = struct.pack("<I", 3) + b"\x09"
 
     # Less than the leading stamp. Expect unexpected-end-of-input.

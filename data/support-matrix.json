@@ -216,6 +216,20 @@
       ]
     },
     {
+      "id": "zone-geometry",
+      "name": "Zone layout and collision geometry",
+      "category": "world",
+      "phase": 4,
+      "read": "partial",
+      "write": "none",
+      "export": "partial",
+      "exportViews": [
+        "obj",
+        "json"
+      ],
+      "notes": "Reads the documented MapLayoutResourceData table and embedded lyb graph with exact dispatched node shapes, including bounded 0x0C InstanceObject child-range descriptors and canonical five-field UnitTree groups plus the one observed exact nine-field serializer variant, bounded RES -> wrb -> MDL -> MESH -> STMS model streams for source association, structurally valid WRB resources without mesh parts, exact four-byte subtype/chunk tags, exact single-descriptor index streams, bounded four-s16 position fields, PHB.GBD hull vertices and indices with the 0x80 geometry-header and 16-byte-trailer bounds, and CollisionBox unit primitives using retail col_cube diagonal/winding. The explicit export-zones command requires a client root and output directory, emits collision-only OBJ, preserves source index order, raw PHB surfaces, and separate raw CollisionBox classification words with box raw surface 0, uses deterministic collision-safe layout-ID suffixes for duplicate normalized names, and writes version-2 compact face-range metadata sidecars plus a collection manifest with client/exporter identity, selection, classifications, source node/block IDs, resource keys, complete placement transforms, and collision bounds. Authored tests use the documented retail framing and cover decoded vertices and indices, nested placement accumulation, OBJ indexing, compact range coverage and surface splitting, duplicate naming, exact tags, and source tracing. Server-coordinate LaySettings meaning, unrecognized payload variants, render-mesh export, textures, animations, and navigation compilation remain unresolved. Evidence: docs/formats/sedb-res.md and docs/formats/zone-geometry.md."
+    },
+    {
       "id": "lpb",
       "name": "LPB compiled script container",
       "category": "script",

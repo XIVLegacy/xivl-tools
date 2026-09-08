@@ -26,7 +26,9 @@ import sys
 
 MAGIC = b"SEDB"
 FIXED_HEADER_SIZE = 0x14
-RESOURCE_PATH = re.compile(r"^[0-9A-Fa-f]{2}/[0-9A-Fa-f]{2}/[0-9A-Fa-f]{2}/[0-9A-Fa-f]{2}\.DAT$")
+RESOURCE_PATH = re.compile(
+    r"^[0-9A-Fa-f]{2}/[0-9A-Fa-f]{2}/[0-9A-Fa-f]{2}/[0-9A-Fa-f]{2}\.DAT$"
+)
 
 
 def walk_resources(data_root: pathlib.Path):
@@ -70,7 +72,10 @@ def main() -> int:
 
     data_root = args.client_root / "data"
     if not data_root.is_dir():
-        print("census: no data directory under {0}".format(args.client_root), file=sys.stderr)
+        print(
+            "census: no data directory under {0}".format(args.client_root),
+            file=sys.stderr,
+        )
         return 2
 
     total = 0

@@ -42,9 +42,7 @@ FORBIDDEN_TRACKED_PREFIXES = (
 
 # A supported command must never resolve a sibling repository. These are
 # path shapes, so a prose mention of a repository name stays legal.
-SIBLING_PATH_PATTERN = re.compile(
-    r"(\.\./|\.\.\\)(bahamut|xivl-[a-z-]+)(?![a-z-])"
-)
+SIBLING_PATH_PATTERN = re.compile(r"(\.\./|\.\.\\)(bahamut|xivl-[a-z-]+)(?![a-z-])")
 
 # Files whose subject is the workspace relationship itself may name a
 # sibling path shape while explaining that it is forbidden.
@@ -62,7 +60,9 @@ BINARY_FIXTURE_SUFFIX = ".bin"
 
 
 def is_binary_fixture(name: str) -> bool:
-    return name.startswith(BINARY_FIXTURE_PREFIX) and name.endswith(BINARY_FIXTURE_SUFFIX)
+    return name.startswith(BINARY_FIXTURE_PREFIX) and name.endswith(
+        BINARY_FIXTURE_SUFFIX
+    )
 
 
 class Failure:
@@ -85,7 +85,11 @@ def tracked_files() -> list[str]:
         raise SystemExit("gate: git ls-files failed: {0}".format(result.stderr.strip()))
     # Validate the worktree contents, so an intentional tracked-file removal
     # can be checked before the change is staged.
-    return [line for line in result.stdout.splitlines() if line and (REPO_ROOT / line).is_file()]
+    return [
+        line
+        for line in result.stdout.splitlines()
+        if line and (REPO_ROOT / line).is_file()
+    ]
 
 
 def load_json(relative: str) -> object:
@@ -120,7 +124,9 @@ def check_data_boundary(files: list[str]) -> list[Failure]:
         for prefix in FORBIDDEN_TRACKED_PREFIXES:
             if name.startswith(prefix):
                 failures.append(
-                    Failure("data-boundary", "{0} is tracked under {1}".format(name, prefix))
+                    Failure(
+                        "data-boundary", "{0} is tracked under {1}".format(name, prefix)
+                    )
                 )
     return failures
 
@@ -153,7 +159,9 @@ def doc_links(relative: str, text: str) -> set[str]:
         target = raw.split("#", 1)[0]
         if not target or target.startswith(("http://", "https://")):
             continue
-        resolved = posixpath.normpath(posixpath.join(Path(relative).parent.as_posix(), target))
+        resolved = posixpath.normpath(
+            posixpath.join(Path(relative).parent.as_posix(), target)
+        )
         links.add(resolved)
     return links
 
@@ -165,11 +173,16 @@ def check_docs_index(files: list[str]) -> list[Failure]:
     if DOCS_INDEX not in tracked:
         return [Failure("docs-index", "{0} is missing".format(DOCS_INDEX))]
 
-    index_links = doc_links(DOCS_INDEX, (REPO_ROOT / DOCS_INDEX).read_text(encoding="utf-8"))
+    index_links = doc_links(
+        DOCS_INDEX, (REPO_ROOT / DOCS_INDEX).read_text(encoding="utf-8")
+    )
     for name in sorted(index_links):
         if name.startswith("docs/") and name.endswith(".md") and name not in tracked:
             failures.append(
-                Failure("docs-index", "{0} links to untracked document {1}".format(DOCS_INDEX, name))
+                Failure(
+                    "docs-index",
+                    "{0} links to untracked document {1}".format(DOCS_INDEX, name),
+                )
             )
 
     return failures
@@ -180,9 +193,13 @@ def validate_against(relative: str, schema_relative: str) -> list[Failure]:
     document = load_json(relative)
     validator = jsonschema.Draft202012Validator(schema)
     failures = []
-    for error in sorted(validator.iter_errors(document), key=lambda item: list(item.path)):
+    for error in sorted(
+        validator.iter_errors(document), key=lambda item: list(item.path)
+    ):
         pointer = "/" + "/".join(str(part) for part in error.path)
-        failures.append(Failure("schema", "{0}{1}: {2}".format(relative, pointer, error.message)))
+        failures.append(
+            Failure("schema", "{0}{1}: {2}".format(relative, pointer, error.message))
+        )
     return failures
 
 
@@ -199,7 +216,9 @@ def check_schemas(files: list[str]) -> list[Failure]:
     for relative in sorted(name for name in tracked if name.startswith(CASE_DIR + "/")):
         if not relative.endswith("/case.json"):
             continue
-        failures.extend(validate_against(relative, "schemas/conformance-case.schema.json"))
+        failures.extend(
+            validate_against(relative, "schemas/conformance-case.schema.json")
+        )
 
     return failures
 
@@ -226,10 +245,19 @@ def check_case_integrity(files: list[str], matrix: dict) -> list[Failure]:
         case_id = case.get("id")
         if case_id != directory.name:
             failures.append(
-                Failure("case", "{0}: id '{1}' does not match its directory".format(relative, case_id))
+                Failure(
+                    "case",
+                    "{0}: id '{1}' does not match its directory".format(
+                        relative, case_id
+                    ),
+                )
             )
         if case_id in seen_ids:
-            failures.append(Failure("case", "{0}: duplicate case id '{1}'".format(relative, case_id)))
+            failures.append(
+                Failure(
+                    "case", "{0}: duplicate case id '{1}'".format(relative, case_id)
+                )
+            )
         seen_ids.add(case_id)
 
         if case.get("formatId") not in format_ids:
@@ -247,7 +275,10 @@ def check_case_integrity(files: list[str], matrix: dict) -> list[Failure]:
             value = fixture.get("path")
             if value and value not in tracked:
                 failures.append(
-                    Failure("case", "{0}: fixture '{1}' is not tracked".format(relative, value))
+                    Failure(
+                        "case",
+                        "{0}: fixture '{1}' is not tracked".format(relative, value),
+                    )
                 )
         elif fixture.get("kind") == "private":
             value = fixture.get("fixtureId")
@@ -266,7 +297,12 @@ def check_case_integrity(files: list[str], matrix: dict) -> list[Failure]:
             output_relative = (directory / expected).as_posix()
             if output_relative not in tracked:
                 failures.append(
-                    Failure("case", "{0}: expected output '{1}' is not tracked".format(relative, expected))
+                    Failure(
+                        "case",
+                        "{0}: expected output '{1}' is not tracked".format(
+                            relative, expected
+                        ),
+                    )
                 )
 
     return failures
@@ -280,12 +316,18 @@ def check_matrix_coverage(files: list[str], matrix: dict) -> list[Failure]:
     public_covered = set()
     private_covered = set()
     for _, case in read_cases(files):
-        target = public_covered if case["fixture"]["kind"] == "public" else private_covered
+        target = (
+            public_covered if case["fixture"]["kind"] == "public" else private_covered
+        )
         target.add(case["formatId"])
 
     for entry in matrix["formats"]:
         statuses = {key: entry[key] for key in ("read", "write", "export")}
-        claimed = {key: value for key, value in statuses.items() if value in ("supported", "verified")}
+        claimed = {
+            key: value
+            for key, value in statuses.items()
+            if value in ("supported", "verified")
+        }
         if not claimed:
             continue
         if entry["id"] not in public_covered:

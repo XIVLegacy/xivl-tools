@@ -31,7 +31,10 @@ class ExternalPathTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             for source_path in ("../outside.bin", "dir/../../outside.bin", "/abs.bin"):
-                with self.subTest(source_path=source_path), self.assertRaises(SystemExit):
+                with (
+                    self.subTest(source_path=source_path),
+                    self.assertRaises(SystemExit),
+                ):
                     freeze.fixture_path(root, source_path)
 
     def test_resolves_a_canonical_manifest_path_under_its_root(self) -> None:

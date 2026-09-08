@@ -8,6 +8,7 @@ defines the status vocabulary and promotion rules.
 
 - reusable libraries for client file and container formats;
 - the `xivl` command line for inspection, validation, and extraction;
+- deterministic world-geometry export to OBJ and versioned JSON metadata;
 - lossless export views and structural reports that do not publish private
   client data.
 
@@ -23,7 +24,7 @@ operations and their evidence limits:
 ## Out of scope
 
 - server runtime, database, and operations;
-- mesh, collision, and navigation compilation;
+- navigation compilation;
 - ownership of protocol, client ABI, decoded static data, and retail
   observation evidence;
 - process attachment, injection, and hooking.

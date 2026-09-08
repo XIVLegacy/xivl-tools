@@ -85,7 +85,9 @@ def utf16_runs(data: bytes) -> list[tuple[int, int]]:
 
 def census(config_root: pathlib.Path) -> dict[str, bytes]:
     print("configuration files under the supplied root")
-    print("  {0:<12} {1:>7} {2:>7} {3:>9}".format("file", "bytes", "words", "remainder"))
+    print(
+        "  {0:<12} {1:>7} {2:>7} {3:>9}".format("file", "bytes", "words", "remainder")
+    )
     contents = {}
     for name, _ in FILES:
         path = config_root / name
@@ -117,10 +119,13 @@ def grid_pass(contents: dict[str, bytes]) -> None:
             continue
         body = data[WORD_SIZE:] if stamped else data
         words = [
-            struct.unpack_from("<I", body, offset)[0] for offset in range(0, len(body), WORD_SIZE)
+            struct.unpack_from("<I", body, offset)[0]
+            for offset in range(0, len(body), WORD_SIZE)
         ]
         zero = sum(1 for word in words if word == 0)
-        stamp = "0x{0:08X}".format(struct.unpack_from("<I", data)[0]) if stamped else "-"
+        stamp = (
+            "0x{0:08X}".format(struct.unpack_from("<I", data)[0]) if stamped else "-"
+        )
         print(
             "  {0:<12} {1:>10} {2:>7} {3:>9} {4:>8}".format(
                 name, stamp, len(words), zero, len(words) - zero
@@ -131,7 +136,9 @@ def grid_pass(contents: dict[str, bytes]) -> None:
 def run_pass(contents: dict[str, bytes]) -> None:
     print("")
     print("printable runs of {0} units or more, both encodings".format(MIN_RUN_UNITS))
-    print("  {0:<12} {1:<8} {2:>8} {3:>7}".format("file", "encoding", "offset", "units"))
+    print(
+        "  {0:<12} {1:<8} {2:>8} {3:>7}".format("file", "encoding", "offset", "units")
+    )
     for name, _ in FILES:
         data = contents.get(name)
         if data is None:
@@ -171,7 +178,8 @@ def stamp_pass(client_root: pathlib.Path, contents: dict[str, bytes]) -> None:
     for path in executables:
         image = path.read_bytes()
         counts = "".join(
-            "{0:>16}".format(image.count(struct.pack("<I", value))) for value in stamps.values()
+            "{0:>16}".format(image.count(struct.pack("<I", value)))
+            for value in stamps.values()
         )
         print("  {0:<20}{1}".format(path.name, counts))
     print("")
@@ -203,7 +211,9 @@ def main() -> int:
         raise SystemExit("census: {0} is not a directory".format(args.config_root))
     contents = census(args.config_root)
     if not contents:
-        raise SystemExit("census: no configuration file under {0}".format(args.config_root))
+        raise SystemExit(
+            "census: no configuration file under {0}".format(args.config_root)
+        )
     grid_pass(contents)
     run_pass(contents)
     if args.client_root is not None:

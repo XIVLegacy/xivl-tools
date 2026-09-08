@@ -199,16 +199,12 @@ def fetch_retail_input(
     ):
         raise RetailInputError("retail-input blob identity failed")
     try:
-        data = base64.b64decode(
-            "".join(blob_doc["content"].split()), validate=True
-        )
+        data = base64.b64decode("".join(blob_doc["content"].split()), validate=True)
     except (ValueError, binascii.Error) as exc:
         raise RetailInputError("retail-input blob encoding failed") from exc
     if len(data) != size:
         raise RetailInputError("retail-input decoded size failed")
-    git_digest = hashlib.sha1(
-        f"blob {len(data)}\0".encode("ascii") + data
-    ).hexdigest()
+    git_digest = hashlib.sha1(f"blob {len(data)}\0".encode("ascii") + data).hexdigest()
     if git_digest != blob_sha:
         raise RetailInputError("retail-input Git blob identity failed")
     if hashlib.sha256(data).hexdigest() != sha256:

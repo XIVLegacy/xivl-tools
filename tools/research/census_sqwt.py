@@ -111,9 +111,21 @@ def container_pass(containers: list[pathlib.Path]) -> None:
             if printable(data[len(data) - wide :]):
                 wide_printable += 1
     print("")
-    print("containers carrying the 8-byte signature {0} of {1}".format(reserved_zero, len(containers)))
-    print("plaintext tail is text, 8-byte blocks    {0} of {1}".format(tail_printable, tail_total))
-    print("plaintext tail is text, 16-byte blocks   {0} of {1}".format(wide_printable, wide_total))
+    print(
+        "containers carrying the 8-byte signature {0} of {1}".format(
+            reserved_zero, len(containers)
+        )
+    )
+    print(
+        "plaintext tail is text, 8-byte blocks    {0} of {1}".format(
+            tail_printable, tail_total
+        )
+    )
+    print(
+        "plaintext tail is text, 16-byte blocks   {0} of {1}".format(
+            wide_printable, wide_total
+        )
+    )
     print("body length modulo 8")
     for remainder in range(BLOCK_SIZE):
         print("  {0}  {1}".format(remainder, remainders[remainder]))
@@ -142,8 +154,16 @@ def key_pass(containers: list[pathlib.Path]) -> None:
     print("  shared by two different names    {0}".format(shared))
     print("distinct base names                {0}".format(len(name_to_first)))
     print("distinct first blocks              {0}".format(len(first_to_names)))
-    print("  first blocks naming two names    {0}".format(sum(1 for v in first_to_names.values() if len(v) > 1)))
-    print("  names with two first blocks      {0}".format(sum(1 for v in name_to_first.values() if len(v) > 1)))
+    print(
+        "  first blocks naming two names    {0}".format(
+            sum(1 for v in first_to_names.values() if len(v) > 1)
+        )
+    )
+    print(
+        "  names with two first blocks      {0}".format(
+            sum(1 for v in name_to_first.values() if len(v) > 1)
+        )
+    )
 
 
 def decode_pass(containers: list[pathlib.Path]) -> list[tuple[pathlib.Path, str]]:
@@ -213,7 +233,11 @@ def grammar_pass(decoded: list[tuple[pathlib.Path, str]]) -> None:
         print("  {0:<24} {1}".format(name, count))
     print("distinct element names             {0}".format(len(elements)))
     print("distinct attribute names           {0}".format(len(attributes)))
-    print("  of those, namespace qualified    {0}".format(sum(1 for name in attributes if ":" in name)))
+    print(
+        "  of those, namespace qualified    {0}".format(
+            sum(1 for name in attributes if ":" in name)
+        )
+    )
     print("documents using a construct beyond the reader's base grammar")
     for name in (
         "comment",
