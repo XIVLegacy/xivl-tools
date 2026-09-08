@@ -605,7 +605,8 @@ fn verify_source(document: &Value, path: &Path, bytes: &[u8]) -> Result<(), Fail
     if integer(source, "size")? != bytes.len() as u64 {
         return Err(fail("stale-source-size", path.display().to_string()));
     }
-    if string(source, "sha256")? != sha256_hex(bytes) {
+    let digest = sha256_hex(bytes);
+    if string(source, "sha256")? != digest {
         return Err(fail("stale-source-sha256", path.display().to_string()));
     }
     let file_name = path
@@ -624,6 +625,7 @@ fn verify_source(document: &Value, path: &Path, bytes: &[u8]) -> Result<(), Fail
     let replay = plan_bytes(
         &path.display().to_string(),
         bytes,
+        &digest,
         DocumentFormat::Json,
         materialize,
         &inspect_arguments,
