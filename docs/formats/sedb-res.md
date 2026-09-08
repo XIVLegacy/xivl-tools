@@ -206,3 +206,20 @@ means the directory does not define independent exact payload spans. Inspection
 continues to report those anomalies, but materialization fails with
 `ambiguous-payload-span` before any output is created. The exporter does not
 choose an owner, merge spans, trim declarations, or infer payload semantics.
+
+## PHB.GBD collision payload
+
+The zone exporter reads the documented PHB collision geometry independently of
+the RES reader. A `PHB.GBD` chunk starts at file offset `0xC0`. Its 16-byte
+chunk header contains a little-endian `payloadEnd` at chunk offset `0x08`,
+relative to the chunk start; the resource must end at `chunk + payloadEnd +
+0x10`, leaving the documented 16-byte trailer. The parser bounds every
+vertex, triangle, and surface array by `chunk + payloadEnd`, rejects geometry
+offsets before the documented `0x80` header, and rejects an array that would
+exceed that end.
+Within the GBD payload, vertex offset/count are at `0x38`/`0x3C`, declared
+minimum bounds are three floats at `0x40`, declared maximum bounds are three
+floats at `0x50`, and triangle offset/count are at `0x60`/`0x64`. The exporter
+preserves those declared bounds and records decoded bounds and counts once in
+the metadata collision-resource table. A declared-versus-decoded bounds
+mismatch is recorded as evidence; it is not silently substituted or rejected.

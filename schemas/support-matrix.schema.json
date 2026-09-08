@@ -75,7 +75,7 @@
           "exportViews": {
             "type": "array",
             "minItems": 1,
-            "items": { "enum": ["json", "csv", "dds", "png", "gltf", "xml", "lua", "text", "binary"] }
+            "items": { "enum": ["json", "csv", "dds", "png", "gltf", "obj", "xml", "lua", "text", "binary"] }
           },
           "notes": { "type": "string", "minLength": 1 }
         }

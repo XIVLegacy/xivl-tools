@@ -15,6 +15,7 @@ repository makes.
 - [Static-actor SAN records](formats/staticactor-san.md)
 - [Lua paths, LPB wrappers, and Lua 5.1](formats/lua-lpb.md)
 - [GTEX fields and PWIB segments](formats/gtex-pwib.md)
+- [Zone geometry export](formats/zone-geometry.md)
 
 ## How a fact gets here
 

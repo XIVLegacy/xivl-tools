@@ -14,6 +14,7 @@ XIVLegacy Tools.
 | [DAT catalog and resource extraction](resource-extraction.md) | Catalog and extraction schemas, status fields, payload references, and output boundaries |
 | [Format evidence](format-evidence.md) | Index of byte-layout evidence and retail citations |
 | [SEDB, RES, and resource paths](formats/sedb-res.md) | Resource paths and container layouts |
+| [Zone geometry export](formats/zone-geometry.md) | MapLayout/lyb placement, PHB collision OBJ, and versioned sidecars |
 | [SSD documents, sheets, and scrambled XML](formats/ssd-sheet.md) | Sheet documents, rows, strings, and XML containers |
 | [SQEX containers](formats/sqex.md) | Widget container decoding and corpus results |
 | [Configuration files](formats/configuration.md) | Structural reads and byte-exact round trips |

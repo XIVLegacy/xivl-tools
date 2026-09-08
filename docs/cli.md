@@ -26,6 +26,7 @@ cargo run --locked -p xivl-cli -- catalog "C:\path\to\FINAL FANTASY XIV" --outpu
 cargo run --locked -p xivl-cli -- extract-resource tests/fixtures/public/lpb/raw.bin --output resource
 cargo run --locked -p xivl-cli -- extract-catalog catalog/catalog.json --root "C:\path\to\FINAL FANTASY XIV" --output selected --id 0x12345678
 cargo run --locked -p xivl-cli -- verify-extraction selected --catalog catalog/catalog.json --root "C:\path\to\FINAL FANTASY XIV"
+cargo run --locked -p xivl-cli -- export-zones "C:\path\to\FINAL FANTASY XIV" --output zones
 ```
 
 `inspect` reports the structure the reader found: the format ID, input length,
@@ -194,6 +195,21 @@ semantic relationships, inventories every member, and rejects missing or extra
 files and directories, unsafe or case-colliding paths, symbolic links, Windows
 reparse points, hardlink aliases, digest or size changes, span errors, and
 incorrect aggregate totals.
+
+`export-zones` requires both an explicit client root and an explicit absent or
+empty output directory. It discovers documented `MapLayoutResourceData`
+resources below `data/`, resolves their `bhp` collision and optional `brt`
+model resource IDs through the DAT mapping, and preflights all payloads before
+writing collision-only `zones/<zone-name>.obj`, matching versioned metadata
+sidecars, and `manifest.json`. Add `--layout 0xAABBCCDD` to export one layout.
+The output preserves source triangle order and raw collision attributes; it
+does not emit render meshes, textures, animations, or navigation data. Metadata
+uses compact contiguous face ranges plus a placement table carrying source
+layout node/block IDs, resource keys, render/collision classifications, the
+complete transform chain, and world matrix; the collection manifest records
+the 1.23b client/exporter identity and layout selection. Unique normalized zone
+names use their plain output base; duplicate names use a deterministic
+`<name>-<8hex-layout-id>` suffix, with both names recorded in the manifest.
 
 Internal verification needs only the extraction directory. Add `--source` for
 a single-resource extraction to re-read the original source and reproduce its
