@@ -16,6 +16,9 @@ Keep source and evidence identifiers verbatim, including their dates. Compress
 other survivors to about one line at the use site. Move a longer contract to a
 public declaration or a documentation page and leave a short pointer.
 
+Comment length and punctuation are style guidelines. Clarity, correctness,
+source quotations, licensing, and provenance justify exceptions.
+
 Generated comments are generated output. Preserve them exactly or change the
 owning generator and regenerate. JSON Schema descriptions are validation
 metadata, not a place for branch history or agent narration.

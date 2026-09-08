@@ -38,14 +38,17 @@ transcribed source is source content and stays verbatim, hedge included.
 A fact promoted from another repository uses this form:
 
 ```text
-repository-name:path/to/file, sha256 <digest>
+repository-name:path/to/file
 ```
 
-The sha256 is mandatory and identifies the exact source-file bytes inspected
-during promotion. Commit hashes and date pins are not citations: repository
-histories are rewritten before publication, and dated "as of" claims rot.
-Branch names, working-tree paths, and sibling paths are not citations. The
-promoted fact becomes locally owned and receives local tests.
+Add a row, symbol, or section locator when useful. Record an immutable revision
+or digest when the claim depends on exact version or byte identity, using the
+relevant provenance or checksum record when one exists. Ordinary documentation
+citation does not require a hash. Commit hashes and date pins are not default
+citation requirements: repository histories are rewritten before publication,
+and dated "as of" claims rot. Branch names, working-tree paths, and sibling
+paths are not citations. The promoted fact becomes locally owned and receives
+local tests when an implementation behavior is claimed.
 
 ## Self-containment
 

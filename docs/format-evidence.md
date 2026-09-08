@@ -23,9 +23,10 @@ repository makes.
   becomes a claim only when retail evidence establishes it
   (`docs/source-and-data-policy.md`).
 - A fact established in another repository is promoted with a
-  `repository:path, sha256 <digest>` citation naming the exact source file
-  by its byte content, plus a local test. This repository owns the promoted
-  copy. There is no automated freshness promise.
+  `repository:path` citation naming the source file. Record an immutable
+  revision or digest when exact version or byte identity matters, and add a
+  local test when behavior is claimed. This repository owns the promoted copy.
+  There is no automated freshness promise.
 - Observation dates in a citation are reference data and are kept verbatim.
   They identify the client revision the reading was taken from.
 - A field this project has not resolved is named as unresolved and its
