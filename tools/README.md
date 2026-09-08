@@ -3,6 +3,14 @@
 Use these maintenance tools to run the contract checks, regenerate public
 fixtures, freeze private fixture snapshots, and perform optional research.
 
+Ruff 0.15.21 is the formatter and linter for authored Python tools and shared
+actions. Check the tree with:
+
+```powershell
+ruff format --check tools .github/actions
+ruff check --no-cache tools .github/actions
+```
+
 ## Routine maintenance
 
 - `validate_repo.py` - the public repository boundary check. It pins the tracked

@@ -46,6 +46,8 @@ citations, confidence, and provenance.
 - Prefer `pathlib.Path`, explicit text encodings, and specific failure paths.
 - Keep support scripts orchestration-focused; format behavior belongs in Rust
   unless the tool contract explicitly says otherwise.
+- Use Ruff 0.15.21 as the Python formatter and linter. Run `ruff format` and
+  `ruff check --no-cache tools .github/actions` for authored Python changes.
 
 ## Schemas and fixtures
 
