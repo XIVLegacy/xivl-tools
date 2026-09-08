@@ -128,8 +128,7 @@ def check_boundary(paths: list[str], errors: list[str]) -> None:
                     )
 
     ignore_text = (
-        (ROOT / ".gitignore").read_text(encoding="utf-8")
-        .replace("\r\n", "\n")
+        (ROOT / ".gitignore").read_text(encoding="utf-8").replace("\r\n", "\n")
     )
     ignore_lines = set(ignore_text.split("\n"))
     for required in sorted(REQUIRED_AGENT_TOOLING_IGNORE_LINES):
@@ -185,7 +184,12 @@ def main() -> int:
         check_boundary(paths, errors)
         json_count = check_json(paths, errors)
         fixture_count = check_private_manifest(errors)
-    except (OSError, subprocess.SubprocessError, UnicodeError, json.JSONDecodeError) as exc:
+    except (
+        OSError,
+        subprocess.SubprocessError,
+        UnicodeError,
+        json.JSONDecodeError,
+    ) as exc:
         print(f"repository boundary FAILED: {exc}", file=sys.stderr)
         return 1
 

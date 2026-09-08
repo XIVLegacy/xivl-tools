@@ -129,7 +129,10 @@ class FetchActionTests(unittest.TestCase):
         mutations.append(wrong_content)
 
         for documents in mutations:
-            with self.subTest(documents=documents), tempfile.TemporaryDirectory() as temp:
+            with (
+                self.subTest(documents=documents),
+                tempfile.TemporaryDirectory() as temp,
+            ):
                 output = Path(temp) / "input.bin"
                 with self.assertRaises(fetch.RetailInputError):
                     self.run_fetch(documents, output, Path(temp))
