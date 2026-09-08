@@ -1014,7 +1014,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "sha2",
  "xivl-formats",
 ]
 
@@ -1023,7 +1022,6 @@ name = "xivl-conformance"
 version = "0.1.0"
 dependencies = [
  "serde_json",
- "sha2",
  "xivl-formats",
 ]
 

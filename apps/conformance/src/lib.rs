@@ -17,7 +17,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
-use sha2::{Digest, Sha256};
+use xivl_formats::digest::sha256_hex;
 use xivl_formats::{
     inspect_named_bytes_as, lua_path_document, resource_path_listing, to_canonical_json,
     validate_named_bytes_as, ErrorKind, FormatError, InspectAs,
@@ -375,7 +375,7 @@ fn resolve_private(
             entry.size
         ));
     }
-    let digest = hex(&Sha256::digest(&bytes));
+    let digest = sha256_hex(&bytes);
     if digest != entry.sha256 {
         // The claim was established against a specific file, and this is
         // not that file. Failing loudly is the whole point of the hash.
@@ -508,14 +508,6 @@ fn first_difference(expected: &Value, produced: &Value) -> String {
         }
     }
     walk(expected, produced, "").unwrap_or_else(|| "documents differ".to_string())
-}
-
-fn hex(bytes: &[u8]) -> String {
-    let mut text = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        text.push_str(&format!("{byte:02x}"));
-    }
-    text
 }
 
 #[cfg(test)]

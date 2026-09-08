@@ -183,6 +183,7 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
         let plan = plan_bytes(
             &source.display().to_string(),
             &data,
+            &digest,
             format,
             materialize,
             &[],
@@ -826,6 +827,11 @@ mod tests {
         for resource in resources {
             let directory = first.join(resource["outputDirectory"].as_str().unwrap());
             assert!(directory.join("extraction.yaml").is_file());
+            let extraction: Value = serde_yaml::from_str(
+                &fs::read_to_string(directory.join("extraction.yaml")).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(extraction["source"]["sha256"], sha256_hex(bytes));
             assert!(directory.join("payloads").is_dir());
         }
 

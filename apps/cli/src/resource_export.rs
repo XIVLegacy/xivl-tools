@@ -100,6 +100,7 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
     let planned = plan_bytes(
         input,
         &data,
+        &sha256_hex(&data),
         format,
         materialize_payloads,
         &inspect_arguments,
@@ -113,9 +114,11 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
     })
 }
 
+/// The caller must compute `source_sha256` from the same `data` slice.
 pub(crate) fn plan_bytes(
     input: &str,
     data: &[u8],
+    source_sha256: &str,
     format: DocumentFormat,
     materialize_payloads: bool,
     inspect_arguments: &[String],
@@ -191,7 +194,7 @@ pub(crate) fn plan_bytes(
         "source": {
             "fileName": name,
             "resourceId": resource_id,
-            "sha256": sha256_hex(data),
+            "sha256": source_sha256,
             "size": data.len() as u64,
         },
         "tool": {
@@ -524,6 +527,10 @@ mod tests {
         let document: Value = serde_yaml::from_str(&yaml).unwrap();
         assert_eq!(document["schemaVersion"], EXTRACTION_SCHEMA_VERSION);
         assert_eq!(document["format"]["id"], "lpb");
+        assert_eq!(
+            document["source"]["sha256"],
+            sha256_hex(&fs::read(&source).unwrap())
+        );
         assert_eq!(document["payloads"][0]["path"], "payloads/decoded.luac");
         assert!(output.join("payloads/decoded.luac").is_file());
         assert!(!yaml.contains("base64"));

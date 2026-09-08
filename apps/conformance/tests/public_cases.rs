@@ -24,7 +24,7 @@ fn default_options() -> Options {
 }
 
 #[test]
-fn every_public_case_passes_with_no_fixture_root() {
+fn public_cases_pass_and_private_cases_explain_skips_without_a_fixture_root() {
     let report = run(&default_options()).expect("the runner reads this checkout");
     let failures: Vec<String> = report
         .results
@@ -40,26 +40,10 @@ fn every_public_case_passes_with_no_fixture_root() {
         "expected the committed public cases to run, got {} passed",
         report.passed()
     );
-}
 
-#[test]
-fn a_run_that_selects_nothing_is_visibly_empty_rather_than_quietly_green() {
-    let options = Options {
-        cases: vec!["no-such-case".into()],
-        ..default_options()
-    };
-    let report = run(&options).expect("the runner reads this checkout");
-    assert_eq!(report.results.len(), 0);
-    assert_eq!(report.passed(), 0);
-    assert!(!report.is_success());
-}
-
-#[test]
-fn every_private_case_reports_a_skip_reason_without_a_fixture_root() {
     // Options::default() carries no fixture root, which is the state CI
     // runs in: the retail bytes are the owner's and are not in this
     // checkout. Every private case must say so rather than pass silently.
-    let report = run(&default_options()).expect("the runner reads this checkout");
     let mut skipped = 0;
     for result in &report.results {
         if let Outcome::Skipped(reason) = &result.outcome {
@@ -75,6 +59,18 @@ fn every_private_case_reports_a_skip_reason_without_a_fixture_root() {
         skipped >= 6,
         "expected the committed private cases to report themselves skipped, got {skipped}"
     );
+}
+
+#[test]
+fn a_run_that_selects_nothing_is_visibly_empty_rather_than_quietly_green() {
+    let options = Options {
+        cases: vec!["no-such-case".into()],
+        ..default_options()
+    };
+    let report = run(&options).expect("the runner reads this checkout");
+    assert_eq!(report.results.len(), 0);
+    assert_eq!(report.passed(), 0);
+    assert!(!report.is_success());
 }
 
 #[test]

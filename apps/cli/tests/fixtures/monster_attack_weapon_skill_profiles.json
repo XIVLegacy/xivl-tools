@@ -1,0 +1,268 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "extraction": "2012.09.19.0001",
+  "classPath": "/Command/Game/WeaponSkill/MonsterAttackWeaponSkill",
+  "parentPath": "/Command/Game/WeaponSkill/WeaponSkillBaseClass",
+  "getterRulesSha256": "446bb12571d90c6a5095feb49ed9f5056c2ccee84f902204e70ec985833e25f2",
+  "source": {
+    "script": "lua/scripts/command/game/weaponskill/monsterattackweaponskill.lua",
+    "sha256": "d5b8e884aad2ca2cfe5cfa96cf5e029d975a32bb0bc1742873ded2f3a78b668e",
+    "bytes": 59652,
+    "lineCount": 3469,
+    "manifest": "manifests/scripts.json"
+  },
+  "summary": {
+    "getterCount": 6,
+    "overrideGroupCount": 12,
+    "overrideCommandCount": 57
+  },
+  "getterRules": {
+    "getCommandInformation": {
+      "default": 1,
+      "selector": 8,
+      "otherSelectors": "nil",
+      "overrides": [
+        {
+          "commandIds": [
+            23014,
+            23015,
+            23016,
+            23017,
+            23018,
+            23019,
+            23020,
+            23071,
+            23072,
+            23081,
+            23082,
+            23094,
+            23116,
+            23140,
+            23150,
+            23157,
+            23160,
+            23161,
+            23162,
+            23163,
+            23164,
+            23165,
+            23190,
+            23204,
+            23205,
+            23206,
+            23208,
+            23236,
+            23237,
+            23259,
+            23260,
+            23261,
+            23263,
+            23269,
+            23294,
+            23299,
+            23313,
+            23315,
+            23322,
+            23344,
+            23345,
+            23396,
+            23403,
+            23423,
+            23438
+          ],
+          "result": -1,
+          "sourceLines": [
+            45,
+            63,
+            81,
+            99,
+            117,
+            135,
+            153,
+            513,
+            531,
+            639,
+            657,
+            783,
+            855,
+            1107,
+            1215,
+            1251,
+            1287,
+            1305,
+            1323,
+            1341,
+            1359,
+            1377,
+            1539,
+            1593,
+            1611,
+            1629,
+            1773,
+            1791,
+            1881,
+            1899,
+            1917,
+            1935,
+            1971,
+            1989,
+            2349,
+            2421,
+            2565,
+            2601,
+            2709,
+            2763,
+            2781,
+            3231,
+            3267,
+            3321
+          ]
+        }
+      ],
+      "definitionLine": 11
+    },
+    "getFrequency": {
+      "default": 1,
+      "overrides": [
+        {
+          "commandIds": [
+            23486
+          ],
+          "result": 2,
+          "sourceLines": [
+            3345
+          ]
+        },
+        {
+          "commandIds": [
+            23490
+          ],
+          "result": 3,
+          "sourceLines": [
+            3340
+          ]
+        },
+        {
+          "commandIds": [
+            23614
+          ],
+          "result": 6,
+          "sourceLines": [
+            3350
+          ]
+        }
+      ],
+      "definitionLine": 3333
+    },
+    "getRangeWidth": {
+      "default": 2,
+      "overrides": [
+        {
+          "commandIds": [
+            23297,
+            23479
+          ],
+          "result": 4,
+          "sourceLines": [
+            3367,
+            3370
+          ]
+        }
+      ],
+      "definitionLine": 3362
+    },
+    "getRangeRotate": {
+      "default": 0,
+      "overrides": [
+        {
+          "commandIds": [
+            23164
+          ],
+          "result": 90,
+          "sourceLines": [
+            3411
+          ]
+        },
+        {
+          "commandIds": [
+            23165
+          ],
+          "result": 270,
+          "sourceLines": [
+            3417
+          ]
+        },
+        {
+          "commandIds": [
+            23458
+          ],
+          "result": 45,
+          "sourceLines": [
+            3405
+          ]
+        },
+        {
+          "commandIds": [
+            23460
+          ],
+          "result": 315,
+          "sourceLines": [
+            3423
+          ]
+        },
+        {
+          "commandIds": [
+            23464
+          ],
+          "result": 180,
+          "sourceLines": [
+            3399
+          ]
+        }
+      ],
+      "definitionLine": 3381
+    },
+    "getCommandRangeHeight": {
+      "default": 10,
+      "overrides": [
+        {
+          "commandIds": [
+            23224
+          ],
+          "result": 30,
+          "sourceLines": [
+            3441
+          ]
+        }
+      ],
+      "definitionLine": 3436
+    },
+    "getPartsDamageAdjust": {
+      "default": [
+        1,
+        1
+      ],
+      "returnArity": 2,
+      "overrides": [
+        {
+          "commandIds": [
+            23114
+          ],
+          "result": [
+            1,
+            0
+          ],
+          "sourceLines": [
+            3458
+          ]
+        }
+      ],
+      "definitionLine": 3453
+    }
+  },
+  "unresolved": [
+    "getCommandInformation returns nil when its selector is not 8.",
+    "getPartsDamageAdjust's pair consumer and combination rule are unresolved."
+  ]
+}

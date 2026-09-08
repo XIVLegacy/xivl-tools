@@ -16,9 +16,10 @@ enforces its mechanical rules.
   decision, an entry in `NOTICE`, and full compliance with the upstream
   terms.
 - A fact needed from a sibling repository is promoted here with a
-  mandatory, immutable `repository:path, sha256 <digest>` citation, a local
-  test, and local ownership thereafter. No sibling checkout, package,
-  release, CI artifact, or cross-repository freshness check is added.
+  `repository:path` citation, an immutable revision or digest when exact
+  version or byte identity matters, a local test when behavior is claimed, and
+  local ownership thereafter. No sibling checkout, package, release, CI
+  artifact, or cross-repository freshness check is added.
 
 ## Public data
 
