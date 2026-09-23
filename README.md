@@ -39,11 +39,6 @@ statuses.
 - [Source and data policy](docs/source-and-data-policy.md)
 - [Tooling and regeneration](tools/README.md)
 
-## Contributing
-
-Pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before you
-open one.
-
 ## License
 
 <a href="LICENSE"><img src="https://www.gnu.org/graphics/agplv3-155x51.png" alt="GNU AGPLv3 logo"></a>
