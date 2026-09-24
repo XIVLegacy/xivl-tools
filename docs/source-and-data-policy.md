@@ -12,9 +12,9 @@ enforces its mechanical rules.
 - A published byte layout or field name from an external project is a lead
   until it is independently established against retail 1.23b data. Only
   then may it become a claim in the support matrix.
-- Reuse of external code needs a permitting license, explicit owner
-  decision, an entry in `NOTICE`, and full compliance with the upstream
-  terms.
+- Reuse of external code needs a license that permits it, explicit owner
+  approval, and full compliance with upstream terms, including any required
+  copyright and license notices.
 - A fact needed from a sibling repository is promoted here with a
   `repository:path` citation, an immutable revision or digest when exact
   version or byte identity matters, a local test when behavior is claimed, and

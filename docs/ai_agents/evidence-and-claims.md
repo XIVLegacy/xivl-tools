@@ -57,9 +57,9 @@ checkout from workspace layout. A path such as `../consumer` is a forbidden
 default. An external research input must be supplied explicitly, must remain
 non-gating, and must not become a support claim.
 
-External source code is not copied, translated line by line, or vendored.
-Reuse needs a compatible license, explicit owner approval, and an attribution
-record in `NOTICE`.
+External source code is not copied, translated line by line, or vendored. See
+the [source and data policy](../source-and-data-policy.md) for rules on
+proposed reuse.
 
 ## Data boundary
 

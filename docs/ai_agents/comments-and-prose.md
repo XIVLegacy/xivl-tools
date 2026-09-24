@@ -30,8 +30,9 @@ When a comment is arguable, keep one concise line and flag the decision in
 review notes. Do not silently delete a format fact or a policy rationale that
 prevents a reader from violating the data boundary.
 
-Reference project names stay out of code comments and generated artifacts.
-Attribution lives in `NOTICE`.
+Keep reference project names out of ordinary code comments and generated
+artifacts. Preserve any required attribution in the source or distribution
+materials specified by the applicable license.
 
 ## Authored public prose
 
