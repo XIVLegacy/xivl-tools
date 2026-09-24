@@ -43,7 +43,7 @@ statuses.
 
 <a href="LICENSE"><img src="https://www.gnu.org/graphics/agplv3-155x51.png" alt="GNU AGPLv3 logo"></a>
 
-Copyright (C) 2026 XIVLegacy Dev Team. Original work created by this project
-uses the [GNU AGPL version 3 or later](LICENSE). This project is unaffiliated
-with and unendorsed by the publisher. All trademarks belong to their
-respective owners.
+Original work created by this project uses the
+[GNU AGPL version 3 or later](LICENSE). This project is unaffiliated with
+and unendorsed by the publisher. All trademarks belong to their respective
+owners.
