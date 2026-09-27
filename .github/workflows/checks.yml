@@ -60,8 +60,11 @@ jobs:
               test -n "${EVENT_SHA}"
               if test -z "${EVENT_BEFORE}" || test "${EVENT_BEFORE}" = "0000000000000000000000000000000000000000"; then
                 git diff-tree --check --root -m -r "${EVENT_SHA}"
-              else
+              elif git cat-file -e "${EVENT_BEFORE}^{commit}" 2>/dev/null; then
                 git diff --check "${EVENT_BEFORE}" "${EVENT_SHA}"
+              else
+                echo "previous revision is unavailable; checking the pushed revision"
+                git diff-tree --check --root -m -r "${EVENT_SHA}"
               fi
               ;;
             workflow_dispatch)
