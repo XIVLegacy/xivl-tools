@@ -230,7 +230,9 @@ pub fn parse(data: &[u8], kind: ConfigKind) -> Result<ConfigFile> {
         value: u32::from_le_bytes([data[0], data[1], data[2], data[3]]),
     });
     let words = data[stamp_length..]
-        .chunks_exact(WORD_SIZE)
+        .as_chunks::<WORD_SIZE>()
+        .0
+        .iter()
         .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
         .collect();
     Ok(ConfigFile {

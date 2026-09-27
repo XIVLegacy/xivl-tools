@@ -888,7 +888,9 @@ impl Parser<'_> {
         }
         let bytes = self.reader.take(length)?;
         let words: Vec<u32> = bytes
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|word| u32::from_le_bytes([word[0], word[1], word[2], word[3]]))
             .collect();
         let mut decoded = Vec::with_capacity(capacity);

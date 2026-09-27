@@ -850,7 +850,7 @@ fn append_phb(
                 .iter()
                 .map(|vertex| world.transform_point(*vertex)),
         );
-        for (triangle_index, triangle) in hull.indices.chunks_exact(3).enumerate() {
+        for (triangle_index, triangle) in hull.indices.as_chunks::<3>().0.iter().enumerate() {
             output.faces.push(OutputFace {
                 indices: [base + triangle[0], base + triangle[1], base + triangle[2]],
                 source: SourceFace {

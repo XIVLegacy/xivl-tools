@@ -126,7 +126,7 @@ impl Blowfish {
     }
 
     fn map_blocks(&self, buffer: &mut [u8], step: impl Fn(&Self, u32, u32) -> (u32, u32)) {
-        for block in buffer.chunks_exact_mut(BLOCK_SIZE) {
+        for block in buffer.as_chunks_mut::<BLOCK_SIZE>().0 {
             let left = u32::from_le_bytes([block[0], block[1], block[2], block[3]]);
             let right = u32::from_le_bytes([block[4], block[5], block[6], block[7]]);
             let (left, right) = step(self, left, right);
