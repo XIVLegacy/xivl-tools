@@ -1043,7 +1043,7 @@ fn parse_lyb_payload(
         return Err(zone_error(0x10, "lyb graph offsets are outside payload"));
     }
     let object_count = (node_table - object_list) / 4;
-    if object_count > MAX_RECORDS as usize || (node_table - object_list) % 4 != 0 {
+    if object_count > MAX_RECORDS as usize || !(node_table - object_list).is_multiple_of(4) {
         return Err(zone_error(0x14, "lyb object list is invalid"));
     }
     let mut objects = Vec::with_capacity(object_count);
@@ -1053,7 +1053,7 @@ fn parse_lyb_payload(
     let first_fields = u32_at(payload, node_table + 4)? as usize;
     if first_fields < node_table
         || first_fields > payload.len()
-        || (first_fields - node_table) % 16 != 0
+        || !(first_fields - node_table).is_multiple_of(16)
     {
         return Err(zone_error(
             node_table as u64 + 4,
@@ -1078,7 +1078,7 @@ fn parse_lyb_payload(
             .ok_or_else(|| zone_error(field_list as u64, "lyb field list overflows"))?;
         if field_list
             .checked_add(field_bytes)
-            .map_or(true, |end| end > payload.len())
+            .is_none_or(|end| end > payload.len())
         {
             return Err(zone_error(
                 field_list as u64,
@@ -1651,7 +1651,7 @@ fn parse_mesh_chunk(
             let field_offset = position.0 as usize;
             if field_offset
                 .checked_add(8)
-                .map_or(true, |end| end > stride as usize)
+                .is_none_or(|end| end > stride as usize)
             {
                 return Err(zone_error(
                     0,

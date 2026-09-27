@@ -73,8 +73,7 @@ No texture or index-buffer interpretation is claimed.
 
 ## Retail parity
 
-a complete install census of client build
-`2012.09.19.0001` found:
+A complete install census of client build `2012.09.19.0001` found:
 
 - 21,161 GTEX files, with no zero or out-of-file data bases. Observed data
   bases were 32, 48, 64, and 96.

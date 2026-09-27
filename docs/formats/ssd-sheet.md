@@ -3,8 +3,7 @@
 [Documentation index](../README.md) | [Format evidence index](../format-evidence.md)
 
 source: retail FFXIV 1.23b client install (game.ver 2012.09.19.0001,
-patch.ver 1.23b) over all 140180 resource files under
-`data/`. Reproduce with:
+patch.ver 1.23b) over all 140180 resource files under `data/`. Reproduce with:
 
 ```bash
 python tools/research/census_sheet_stack.py --client-root <install>
@@ -281,8 +280,7 @@ cases whose expected outputs hold no decoded text and no column values.
 ## The scrambled XML container
 
 source: retail FFXIV 1.23b client install (game.ver 2012.09.19.0001,
-patch.ver 1.23b) over all 140180 resource files under
-`data/`. Reproduce with:
+patch.ver 1.23b) over all 140180 resource files under `data/`. Reproduce with:
 
 ```bash
 python tools/research/census_sheet_stack.py --client-root <install>

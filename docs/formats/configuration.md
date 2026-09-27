@@ -73,7 +73,7 @@ it names the `screenshots/` folder stored beside the file.
 ## What the leading word is
 
 Both leading words read as dates - 2012-04-19 and 2010-02-11 - and neither
-is this install's. The file was written in 2026 and the client is
+is this install's. The file was written after the client build and the client is
 game.ver 2012.09.19.0001, which is later than either, so the word is not a
 save timestamp. What it is, is compiled in:
 

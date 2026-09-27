@@ -112,8 +112,7 @@ reads past the input and never drops the entry.
 ## First-hand retail observation
 
 source: retail FFXIV 1.23b client install (game.ver 2012.09.19.0001,
-patch.ver 1.23b) over all 140180 resource files under
-`data/`. Reproduce with:
+patch.ver 1.23b) over all 140180 resource files under `data/`. Reproduce with:
 
 ```bash
 python tools/research/census_sedb.py --client-root <install>

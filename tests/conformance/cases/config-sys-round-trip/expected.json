@@ -6,7 +6,7 @@
     },
     {
       "encodedLength": 96,
-      "encodedSha256": "0fec665f4bcea6f4353c35682f8673b7a1730170198a69d879b755f03fc320c7",
+      "encodedSha256": "aa50305da4d257d709dba309d7e9081b21131a522c2e6549a56e4e7828129815",
       "name": "round-trip",
       "status": "pass"
     }
@@ -17,5 +17,5 @@
   },
   "operation": "validate",
   "schemaVersion": 1,
-  "sha256": "0fec665f4bcea6f4353c35682f8673b7a1730170198a69d879b755f03fc320c7"
+  "sha256": "aa50305da4d257d709dba309d7e9081b21131a522c2e6549a56e4e7828129815"
 }

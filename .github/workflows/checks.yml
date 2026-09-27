@@ -101,6 +101,25 @@ jobs:
       - name: Check public fixtures
         run: python tools/make_public_fixtures.py --check
 
+  minimum-rust:
+    name: Minimum Rust
+    needs: [boundary, contract]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install declared minimum Rust
+        run: |
+          version="$(python -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["package"]["rust-version"])')"
+          rustup toolchain install "$version" --profile minimal
+          rustup default "$version"
+      - name: Test locked workspace
+        run: cargo test --workspace --locked
+
   rust:
     name: ${{ format('Rust Checks ({0})', matrix.os) }}
     needs: [boundary, contract]

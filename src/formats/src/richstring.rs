@@ -638,7 +638,7 @@ mod tests {
 
         // The scaled form: 0xF1 then one byte, times 256.
         let mut scaled = vec![TOKEN_START, 0x08, 0xF1, 0x01];
-        scaled.extend(std::iter::repeat(0x41u8).take(256));
+        scaled.extend(std::iter::repeat_n(0x41u8, 256));
         scaled.push(TOKEN_END);
         let rich = parse(&scaled);
         assert_eq!(rich.tokens().count(), 1);

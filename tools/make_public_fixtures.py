@@ -1018,12 +1018,11 @@ def build_fixtures() -> dict[str, bytes]:
 
     # -- the configuration files -----------------------------------------
     # The shapes come from docs/formats/configuration.md; every value is this
-    # project's own. The stamps are authored
-    # date-shaped words rather than the client's two constants, because the
-    # reader does not test the stamp and a fixture should not read as a
-    # copy of one.
+    # project's own. The stamps are deterministic synthetic words rather than
+    # the client's constants, because the reader does not test the stamp and a
+    # fixture should not read as a copy of one.
     fixtures["config/sys-grid.bin"] = (
-        struct.pack("<I", 0x20260801)
+        struct.pack("<I", 0x13579BDF)
         + struct.pack("<III", 1, 0, 0x02D0)
         + utf16_field("Synthetic Font", 32)
         + utf16_field("synthetic\\path", 32)
@@ -1037,7 +1036,7 @@ def build_fixtures() -> dict[str, bytes]:
     # purpose - the identifier reads as eight printable UTF-16 units and the
     # mapping as twelve printable bytes, and neither is text.
     fixtures["config/pad-grid.bin"] = (
-        struct.pack("<I", 0x20260802)
+        struct.pack("<I", 0x2468ACE0)
         + b"\xa1\x41\xa2\x42\xa3\x43\xa4\x44\xa5\x45\xa6\x46"
         + b"TEST"
         + struct.pack("<I", 2)
@@ -1062,7 +1061,7 @@ def build_fixtures() -> dict[str, bytes]:
     # and nothing terminates it, so the leftover is unaccountable. Expect
     # trailing-partial-record at the offset the leftover starts.
     fixtures["config/sys-partial-word.bin"] = (
-        struct.pack("<II", 0x20260801, 7) + b"\x01\x02"
+        struct.pack("<II", 0x13579BDF, 7) + b"\x01\x02"
     )
     fixtures["config/lng-partial-word.bin"] = struct.pack("<I", 3) + b"\x09"
 

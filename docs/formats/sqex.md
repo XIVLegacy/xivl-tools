@@ -3,8 +3,7 @@
 [Documentation index](../README.md) | [Format evidence index](../format-evidence.md)
 
 source: retail FFXIV 1.23b client install (game.ver 2012.09.19.0001,
-patch.ver 1.23b) over all 1524 files under
-`client/sqwt/`. Reproduce with:
+patch.ver 1.23b) over all 1524 files under `client/sqwt/`. Reproduce with:
 
 ```bash
 python tools/research/census_sqwt.py --client-root <install>
