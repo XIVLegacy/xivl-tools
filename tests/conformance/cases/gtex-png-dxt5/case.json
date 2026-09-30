@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-png-dxt5",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/dds-dxt5.bin"
+  },
+  "arguments": ["--as", "gtex", "--preview-png"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Top-mip PNG preview decodes the authored DXT5 color and alpha blocks."
+}

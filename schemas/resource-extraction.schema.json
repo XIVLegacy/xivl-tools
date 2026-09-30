@@ -67,7 +67,10 @@
           "sourceSpan": { "$ref": "#/$defs/sourceSpan" },
           "container": { "$ref": "#/$defs/containerRelationship" },
           "entry": { "$ref": "#/$defs/entryRelationship" },
-          "dds": { "$ref": "#/$defs/ddsArtifact" }
+          "dds": { "$ref": "#/$defs/ddsArtifact" },
+          "png": { "$ref": "#/$defs/pngArtifact" },
+          "rgbaSha256": { "$ref": "#/$defs/sha256" },
+          "sourceSha256": { "$ref": "#/$defs/sha256" }
         }
       }
     }
@@ -110,7 +113,7 @@
       "required": ["path", "kind"],
       "properties": {
         "path": { "type": "string", "minLength": 1 },
-        "kind": { "enum": ["payload", "subresource", "unknown-gap", "gtex-encoded-surface"] },
+          "kind": { "enum": ["payload", "subresource", "unknown-gap", "gtex-encoded-surface", "gtex-top-mip-png-preview"] },
         "face": { "type": "integer", "minimum": 0 },
         "mipLevel": { "type": "integer", "minimum": 0 },
         "gtexFormat": { "$ref": "#/$defs/gtexFormat" },
@@ -168,6 +171,20 @@
             }
           }
         }
+      }
+    },
+    "pngArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "width", "height", "mipLevel", "sourceSpan", "sourceSha256", "rgbaSha256"],
+      "properties": {
+        "format": { "$ref": "#/$defs/gtexFormat" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "mipLevel": { "const": 0 },
+        "sourceSpan": { "$ref": "#/$defs/sourceSpan" },
+        "sourceSha256": { "$ref": "#/$defs/sha256" },
+        "rgbaSha256": { "$ref": "#/$defs/sha256" }
       }
     }
   }

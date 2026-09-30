@@ -32,6 +32,7 @@ pub mod sheet;
 pub mod sqwt;
 pub mod ssd;
 pub mod staticactor;
+pub mod texture_preview;
 pub mod xml;
 pub mod zone;
 

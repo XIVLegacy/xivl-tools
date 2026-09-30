@@ -48,7 +48,7 @@ textures with flags zero and depth one. Cube, volume, nonzero flags, missing
 tables, and unmapped indices remain inspectable but are explicitly unsupported
 for materialization. Bit 2 still has no stable semantic name. Offset `0x1c`
 is not a fixed header field: with the retail table base of 24 it is entry 0's
-size dword. PNG conversion remains unsupported.
+size dword. The decoded PNG preview boundary is described below.
 
 ## PWIB contract
 
@@ -198,3 +198,83 @@ cover extraction, accounting, refusals, verification, and source replay;
 public conformance expectations contain only metadata, spans, counts, and
 digests. GTEX read and export remain `partial`. No retail DDS parity or GPU
 compatibility is claimed.
+
+## Decoded top-mip PNG preview
+
+`extract-resource` and selected `extract-catalog` extraction accept
+`--preview-png` to write `payloads/preview.png`. The preview contains mip 0
+only. It can accompany separate raw surfaces and the DDS texture view.
+Omitting the option preserves the ordinary extraction outputs.
+
+A PNG preview is decoded image data. Lossless resource export claims apply
+to the encoded raw surfaces and DDS mip bytes. The preview discards lower
+mips and the encoded representation. GTEX read and export remain `partial`.
+
+### Pixel conversion
+
+The loader-backed format assignments in the DDS section above establish
+the source pixel layouts. Preview decoding follows these primary definitions:
+
+- Microsoft's [D3DFORMAT definition](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dformat).
+- Microsoft's [opaque and 1-bit alpha textures](https://learn.microsoft.com/en-us/windows/win32/direct3d9/opaque-and-1-bit-alpha-textures).
+- Microsoft's [textures with alpha channels](https://learn.microsoft.com/en-us/windows/win32/direct3d9/textures-with-alpha-channels).
+- The [PNG specification](https://www.w3.org/TR/png-3/).
+
+Output samples are 8-bit red, green, blue, alpha in row order from the top
+left. A8R8G8B8 source bytes are blue, green, red, alpha and are reordered
+without changing sample values. Alpha is retained, including RGB samples
+whose alpha is zero.
+
+DXT blocks and their texels are read in row order. Endpoints and packed
+selectors are little-endian. RGB565 endpoints contain red in bits 11-15,
+green in bits 5-10, and blue in bits 0-4. The preview expands a 5-bit sample
+`v` as `(v << 3) | (v >> 2)` and a 6-bit sample as
+`(v << 2) | (v >> 4)`. These explicit integer conversion rules define the
+preview's sample values without claiming GPU-identical rounding.
+
+For DXT1, unsigned endpoint `c0 > c1` selects four opaque colors. Selectors
+0 and 1 choose the expanded endpoints. Per channel, selectors 2 and 3 use
+`floor((2*c0 + c1 + 1)/3)` and `floor((c0 + 2*c1 + 1)/3)`.
+When `c0 <= c1`, selector 2 uses `floor((c0 + c1)/2)` and selector 3
+produces RGBA `(0, 0, 0, 0)`. All other DXT1 colors have alpha 255.
+
+DXT5 always uses the four-color rule, regardless of endpoint ordering.
+Its two 8-bit alpha endpoints precede a 48-bit field of sixteen 3-bit
+selectors. Alpha selectors 0 and 1 choose endpoints `a0` and `a1`.
+For `a0 > a1`, selectors `i = 2..7` use
+`floor(((8-i)*a0 + (i-1)*a1 + 3)/7)`. Otherwise selectors `i = 2..5`
+use `floor(((6-i)*a0 + (i-1)*a1 + 2)/5)`, selector 6 is zero, and
+selector 7 is 255. DXT5 RGB samples remain unchanged when alpha is zero.
+
+Each compressed surface supplies `ceil(width/4) * ceil(height/4)` complete
+blocks. Texels beyond the logical width or height are cropped, allowing
+partial blocks at image edges and images smaller than 4 by 4.
+
+PNG stores unassociated alpha. Preview generation performs no alpha
+multiplication or division and makes no inference about client
+premultiplication or color space. No sRGB, gamma, chromaticity, or color
+profile chunks are emitted. A viewer may apply its own display defaults.
+
+### Bounds and verification
+
+The preview accepts the same table-bearing 2D GTEX subset as DDS: indices
+4, 24, and 26, flags zero, depth one, nonzero dimensions and mips, and a mip
+count within the dimension-derived chain. The parser validates all surface
+spans before preview generation. Only the validated top-mip span is decoded.
+Preview generation checks dimension, block, row, and allocation arithmetic
+and limits the RGBA buffer to 64 MiB (67108864 bytes). Unsupported or
+oversized requests fail before extraction output is created. Every resource
+selected in a preview batch must satisfy this boundary.
+
+The preview is an 8-bit RGBA, noninterlaced PNG. Its bytes are included in
+manifest output accounting. The manifest records the source format, mip,
+encoded span and digest, dimensions, and decoded RGBA digest. Verification
+checks file inventory, PNG structure, dimensions, decoded samples, and
+agreement with the GTEX table metadata. Source replay decodes the validated
+span again and compares the complete generated PNG exactly.
+
+Authored pixel oracles cover channel order, both DXT1 modes, DXT5 color and
+alpha interpolation, transparency, rounding, and partial-block edges.
+Synthetic extraction tests cover resource and catalog requests, coexistence
+with raw and DDS artifacts, accounting, refusals, and missing or altered
+previews. No retail preview parity or GPU compatibility is claimed.

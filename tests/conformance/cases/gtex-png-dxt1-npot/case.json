@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-png-dxt1-npot",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/dds-dxt1-npot.bin"
+  },
+  "arguments": ["--as", "gtex", "--preview-png"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Top-mip PNG preview decodes a non-power-of-two DXT1 surface and crops complete blocks to the logical dimensions."
+}

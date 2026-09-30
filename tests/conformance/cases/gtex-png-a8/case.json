@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-png-a8",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/tagged.bin"
+  },
+  "arguments": ["--as", "gtex", "--preview-png"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Top-mip PNG preview decodes the authored A8R8G8B8 GTEX surface as canonical RGBA."
+}

@@ -118,6 +118,12 @@ separate raw surfaces. It requires table-bearing 2D GTEX with flags zero,
 depth one, mapped A8R8G8B8/DXT1/DXT5 pixels, and valid dimensions and mip
 count. See the [DDS contract](formats/gtex-pwib.md#lossless-dds-texture-view).
 
+Add `--preview-png` to either extraction command for a decoded mip-0 image
+at `payloads/preview.png`. It accepts the same GTEX subset, with a 64 MiB
+decoded RGBA limit, and can accompany raw surfaces and DDS. PNG is a
+preview rather than a lossless resource view. See the
+[pixel conversion contract](formats/gtex-pwib.md#decoded-top-mip-png-preview).
+
 For several resources, first make a catalog and then name each selection:
 
 ```powershell
@@ -139,6 +145,8 @@ Use `extract-resource` for original named SQEX widget files.
 
 With `--export-dds`, every selected entry must be an eligible GTEX texture.
 DDS output is included in the same output limits and atomic batch workflow.
+With `--preview-png`, every selected entry must also satisfy the preview
+boundary. Preview bytes count toward the same output limit.
 
 ## Verify an extraction
 

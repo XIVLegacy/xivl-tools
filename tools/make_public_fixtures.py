@@ -376,6 +376,44 @@ def build_fixtures() -> dict[str, bytes]:
         height=3,
         surfaces=((0, 16),),
     )
+
+    # Compact block fixtures exercise both DXT1 color modes and DXT5 alpha
+    # interpolation branches. The bytes are authored test vectors, not
+    # client data.
+    def dxt1_block(c0: int, c1: int, selectors: int) -> bytes:
+        return struct.pack("<HHI", c0, c1, selectors)
+
+    def dxt5_block(
+        a0: int, a1: int, alpha_selectors: int, c0: int, c1: int, color_selectors: int
+    ) -> bytes:
+        return (
+            bytes([a0, a1])
+            + alpha_selectors.to_bytes(6, "little")
+            + struct.pack("<HHI", c0, c1, color_selectors)
+        )
+
+    fixtures["gtex/png-dxt1-four-color.bin"] = gtex(
+        dxt1_block(0xF800, 0x001F, 0xE4E4E4E4),
+        format_index=24,
+        width=4,
+        height=4,
+        surfaces=((0, 8),),
+    )
+    fixtures["gtex/png-dxt1-three-color.bin"] = gtex(
+        dxt1_block(0x001F, 0xF800, 0xE4E4E4E4),
+        format_index=24,
+        width=4,
+        height=4,
+        surfaces=((0, 8),),
+    )
+    fixtures["gtex/png-dxt5-alpha-branches.bin"] = gtex(
+        dxt5_block(255, 0, 0xFAC688, 0xF800, 0x001F, 0xE4E4E4E4)
+        + dxt5_block(17, 17, 0xFAC688, 0x07E0, 0x0000, 0xE4E4E4E4),
+        format_index=26,
+        width=8,
+        height=4,
+        surfaces=((0, 32),),
+    )
     fixtures["gtex/dds-unsupported-flags.bin"] = gtex(
         pattern(128, 0x9A),
         flags=2,

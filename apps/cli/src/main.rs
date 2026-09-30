@@ -36,8 +36,8 @@ usage:
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
   xivl catalog <game-or-resource-directory> --output <directory> [--format json|jsonl]
-  xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--export-dds] [--as <format>] [--columns <list>]
-  xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads] [--export-dds]
+  xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--export-dds] [--preview-png] [--as <format>] [--columns <list>]
+  xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads] [--export-dds] [--preview-png]
   xivl verify-extraction <directory> [--source <file> | --catalog <catalog.json|catalog.jsonl> --root <directory>] [--report json]
   xivl export-zones <client-root> --output <directory> [--layout <resource-id>]
   xivl --help
@@ -63,7 +63,8 @@ schema-versioned YAML document by default, or JSON, and keeps decoded opaque
 payloads in separate files. SQEX widgets and scrambled XML automatically
 write their exact decoded document to payloads/decoded.xml. --materialize-payloads
 explicitly writes exact direct-root SEDB/RES payload spans when their
-boundaries are unambiguous.
+boundaries are unambiguous. --preview-png writes a deterministic top-mip
+RGBA PNG for eligible GTEX textures.
 extract-catalog plans and validates an explicit catalog selection before
 writing isolated per-resource outputs; it never has an implicit extract-all.
 verify-extraction checks an existing single or catalog extraction without

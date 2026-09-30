@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-png-excess-mips",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/dds-excess-mips.bin"
+  },
+  "arguments": ["--as", "gtex", "--preview-png"],
+  "expect": {"outcome": "parse-error", "errorKind": "unsupported-gtex-preview"},
+  "notes": "PNG preview checks the geometric maximum mip count before output."
+}

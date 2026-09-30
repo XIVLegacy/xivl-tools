@@ -69,6 +69,14 @@ raw-surface coexistence, catalog extraction, accounting, and verification
 with and without source replay. See the
 [DDS contract](formats/gtex-pwib.md#lossless-dds-texture-view).
 
+GTEX `extract` cases with `--preview-png` exercise decoded top-mip previews.
+Reports retain source spans, dimensions, format metadata, and encoded,
+decoded RGBA, and PNG digests. Expected reports contain no pixel arrays.
+Small authored pixel oracles separately check A8R8G8B8 channel order, both
+DXT1 modes, DXT5 alpha behavior, and partial-block cropping. CLI tests
+exercise both extraction commands and verification failures. See the
+[preview contract](formats/gtex-pwib.md#decoded-top-mip-png-preview).
+
 ## Case outcomes
 
 A case expects `ok` with an expected output document, or `parse-error` with

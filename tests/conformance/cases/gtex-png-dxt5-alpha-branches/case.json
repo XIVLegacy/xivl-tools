@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-png-dxt5-alpha-branches",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/png-dxt5-alpha-branches.bin"
+  },
+  "arguments": ["--as", "gtex", "--preview-png"],
+  "expect": {"outcome": "ok", "output": "expected.json"},
+  "notes": "Literal DXT5 blocks exercise interpolated and six-entry alpha modes."
+}

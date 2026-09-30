@@ -81,6 +81,12 @@ pub enum ErrorKind {
     InvalidDdsHeader,
     /// A DDS pixel format is outside the legacy formats this crate exports.
     UnsupportedDdsFormat,
+    /// A GTEX texture is outside the bounded top-mip PNG preview subset.
+    UnsupportedGtexPreview,
+    /// A GTEX top-mip PNG preview cannot be decoded from its encoded surface.
+    InvalidGtexPreview,
+    /// PNG encoding failed after a valid RGBA preview was decoded.
+    PngEncodingFailed,
 }
 
 impl ErrorKind {
@@ -117,6 +123,9 @@ impl ErrorKind {
             ErrorKind::MissingContainerName => "missing-container-name",
             ErrorKind::InvalidDdsHeader => "invalid-dds-header",
             ErrorKind::UnsupportedDdsFormat => "unsupported-dds-format",
+            ErrorKind::UnsupportedGtexPreview => "unsupported-gtex-preview",
+            ErrorKind::InvalidGtexPreview => "invalid-gtex-preview",
+            ErrorKind::PngEncodingFailed => "png-encoding-failed",
         }
     }
 }

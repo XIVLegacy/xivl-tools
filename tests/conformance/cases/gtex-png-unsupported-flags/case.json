@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-png-unsupported-flags",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/dds-unsupported-flags.bin"
+  },
+  "arguments": ["--as", "gtex", "--preview-png"],
+  "expect": {"outcome": "parse-error", "errorKind": "unsupported-gtex-preview"},
+  "notes": "PNG preview refuses the same non-2D GTEX subset as DDS materialization."
+}

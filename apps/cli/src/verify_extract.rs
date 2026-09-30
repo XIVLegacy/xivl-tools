@@ -10,13 +10,14 @@ use serde_json::{json, Value};
 use xivl_formats::dds::{self, DdsPixelFormat};
 use xivl_formats::digest::sha256_hex;
 use xivl_formats::gtex_pwib;
+use xivl_formats::texture_preview;
 use xivl_formats::{extract_lpb, parse_dat_path};
 
 use crate::batch_extract::{
     normalize_relative_path, parse_catalog, reject_link_if_present, secure_root, secure_source,
     CatalogEntry,
 };
-use crate::resource_export::{plan_bytes, DocumentFormat};
+use crate::resource_export::{plan_bytes, plan_bytes_options, DocumentFormat};
 use crate::{read_capped, Failure};
 
 const SINGLE_SCHEMA: &str = include_str!("../../../schemas/resource-extraction.schema.json");
@@ -374,6 +375,7 @@ fn verify_single(
     let recorded_source_size = integer(object(&document, "source")?, "size")?;
     let payloads = array(&document, "payloads")?;
     let mut dds_count = 0usize;
+    let mut png_count = 0usize;
     for payload in payloads {
         let role = string(payload, "role")?;
         let path = string(payload, "path")?;
@@ -388,11 +390,28 @@ fn verify_single(
                 .checked_add(1)
                 .ok_or_else(|| fail("dds-artifact-contract", "DDS artifact count overflow"))?;
         }
+        let is_png_role = role == "gtex-top-mip-png-preview";
+        let has_png_metadata = payload.get("png").is_some();
+        let is_png_path = path == "payloads/preview.png";
+        if is_png_role || has_png_metadata || is_png_path {
+            if !is_png_role || !has_png_metadata || !is_png_path {
+                return Err(fail("png-artifact-contract", format!("payload {path}")));
+            }
+            png_count = png_count
+                .checked_add(1)
+                .ok_or_else(|| fail("png-artifact-contract", "PNG artifact count overflow"))?;
+        }
     }
     if dds_count > 1 {
         return Err(fail(
             "duplicate-dds-artifact",
             "DDS export has one texture artifact per extraction",
+        ));
+    }
+    if png_count > 1 {
+        return Err(fail(
+            "duplicate-png-artifact",
+            "PNG preview has one texture artifact per extraction",
         ));
     }
     if let Some((source_path, source_bytes)) = source {
@@ -428,20 +447,26 @@ fn verify_single(
         if string(payload, "role")? == "gtex-dds-texture" {
             verify_dds_payload(payload, file, &document, index, recorded_source_size)?;
         }
+        if string(payload, "role")? == "gtex-top-mip-png-preview" {
+            verify_png_payload(payload, file, &document, index, recorded_source_size)?;
+        }
         output_bytes = checked_add(output_bytes, file.size, "output-byte-overflow")?;
         expected_files.insert(full);
         expected_directories.insert(join_relative(prefix, "payloads"));
         if let Some(entry_path) = verify_payload_relationship(payload, &document, index)? {
-            if !entry_paths.insert(entry_path.clone()) {
-                return Err(fail("duplicate-entry-relationship", entry_path));
+            let derived_preview = string(payload, "role")? == "gtex-top-mip-png-preview";
+            if !derived_preview {
+                if !entry_paths.insert(entry_path.clone()) {
+                    return Err(fail("duplicate-entry-relationship", entry_path));
+                }
+                let span = object(payload, "sourceSpan")?;
+                let start = integer(span, "offset")?;
+                let end = integer(span, "endExclusive")?;
+                if end > recorded_source_size {
+                    return Err(fail("payload-span-out-of-range", string(payload, "path")?));
+                }
+                source_spans.push((start, end, string(payload, "path")?.to_string()));
             }
-            let span = object(payload, "sourceSpan")?;
-            let start = integer(span, "offset")?;
-            let end = integer(span, "endExclusive")?;
-            if end > recorded_source_size {
-                return Err(fail("payload-span-out-of-range", string(payload, "path")?));
-            }
-            source_spans.push((start, end, string(payload, "path")?.to_string()));
         }
         if let Some((_, source_bytes)) = source {
             replay_payload(payload, file, source_bytes, &document)?;
@@ -490,7 +515,8 @@ fn verify_payload_relationship(
     let offset = integer(span, "offset")?;
     let length = integer(span, "length")?;
     let end = checked_add(offset, length, "payload-span-overflow")?;
-    if integer(span, "endExclusive")? != end || integer(payload, "size")? != length {
+    let preview = string(payload, "role")? == "gtex-top-mip-png-preview";
+    if integer(span, "endExclusive")? != end || (!preview && integer(payload, "size")? != length) {
         return Err(fail("payload-span-mismatch", format!("payload {index}")));
     }
     if string(payload, "role")? == "gtex-encoded-surface" {
@@ -632,77 +658,19 @@ fn verify_dds_payload(
     {
         return Err(fail("dds-gtex-eligibility", format!("payload {index}")));
     }
-    let input_length = integer(object(parsed, "input")?, "length")?;
-    if input_length != source_size {
-        return Err(fail(
+    let geometry = verify_gtex_geometry(parsed, index, source_size, "dds")?;
+    let input_length = geometry.input_length;
+    let width = u64::from(geometry.width);
+    let height = u64::from(geometry.height);
+    let mip_levels = u64::try_from(geometry.mip_levels).map_err(|_| {
+        fail(
             "dds-gtex-layout",
-            format!("payload {index}: parsed input length differs from source size"),
-        ));
-    }
-    let data_base_record = object(parsed, "dataBase")?;
-    let data_base = integer(data_base_record, "value")?;
-    if data_base < 0x18 || data_base > input_length {
-        return Err(fail(
-            "dds-gtex-layout",
-            format!("payload {index}: data base is outside the bounded input"),
-        ));
-    }
-    let data_base_span = object(data_base_record, "span")?;
-    if integer(data_base_span, "offset")? != 0x14 || integer(data_base_span, "length")? != 4 {
-        return Err(fail(
-            "dds-gtex-layout",
-            format!("payload {index}: data base field span is inconsistent"),
-        ));
-    }
-    let header_span = object(object(parsed, "header")?, "span")?;
-    if integer(header_span, "offset")? != 0 || integer(header_span, "length")? != data_base {
-        return Err(fail(
-            "dds-gtex-layout",
-            format!("payload {index}: header span is inconsistent"),
-        ));
-    }
-    let data_region_span = object(object(parsed, "dataRegion")?, "span")?;
-    if integer(data_region_span, "offset")? != data_base
-        || integer(data_region_span, "length")? != input_length - data_base
-    {
-        return Err(fail(
-            "dds-gtex-layout",
-            format!("payload {index}: data region span is inconsistent"),
-        ));
-    }
+            format!("payload {index}: mip count does not fit this platform"),
+        )
+    })?;
+    let canonical = geometry.canonical;
     let offset_table = object(parsed, "offsetTable")?;
-    let table_base_record = object(offset_table, "base")?;
-    let table_base = integer(table_base_record, "value")?;
-    if table_base < 0x18 || table_base > data_base {
-        return Err(fail(
-            "dds-gtex-layout",
-            format!("payload {index}: offset table base is outside the header"),
-        ));
-    }
-    let table_base_span = object(table_base_record, "span")?;
-    if integer(table_base_span, "offset")? != 0x10 || integer(table_base_span, "length")? != 4 {
-        return Err(fail(
-            "dds-gtex-layout",
-            format!("payload {index}: offset table base field span is inconsistent"),
-        ));
-    }
-    if integer(offset_table, "entryStride")? != 8 {
-        return Err(fail(
-            "dds-gtex-layout",
-            format!("payload {index}: offset table stride is not eight"),
-        ));
-    }
     let texture = object(parsed, "texture")?;
-    if string(texture, "kind")? != "2d"
-        || integer(object(texture, "flags")?, "value")? != 0
-        || integer(object(texture, "depth")?, "value")? != 1
-        || integer(object(object(parsed, "offsetTable")?, "base")?, "value")? == 0
-    {
-        return Err(fail("dds-gtex-eligibility", format!("payload {index}")));
-    }
-    let width = integer(object(texture, "width")?, "value")?;
-    let height = integer(object(texture, "height")?, "value")?;
-    let mip_levels = integer(object(texture, "mipLevels")?, "value")?;
     if image.width as u64 != width
         || image.height as u64 != height
         || image.mip_levels as u64 != mip_levels
@@ -712,30 +680,11 @@ fn verify_dds_payload(
     {
         return Err(fail("dds-metadata-mismatch", format!("payload {index}")));
     }
-    let format_index = integer(object(texture, "formatIndex")?, "value")?;
-    let canonical = u8::try_from(format_index)
-        .ok()
-        .and_then(gtex_pwib::gtex_format)
-        .ok_or_else(|| fail("dds-format-mismatch", format!("payload {index}")))?;
-    let expected_format = object(object(texture, "formatIndex")?, "mapping")?;
     let format_index_value = object(texture, "formatIndex")?
         .get("value")
         .ok_or_else(|| fail("manifest-semantic-error", "formatIndex value is missing"))?;
     let recorded_format = object(dds_record, "format")?;
-    let mapping_block_ok = match (canonical.block_bytes, expected_format.get("blockBytes")) {
-        (Some(expected), Some(value)) => value.as_u64() == Some(u64::from(expected)),
-        (None, Some(Value::Null)) => true,
-        _ => false,
-    };
     if recorded_format.get("clientIndex") != Some(format_index_value)
-        || recorded_format.get("d3dName") != expected_format.get("d3dName")
-        || recorded_format.get("d3dValue") != expected_format.get("d3dValue")
-        || expected_format.get("d3dName").and_then(Value::as_str) != Some(canonical.d3d_name)
-        || expected_format.get("d3dValue").and_then(Value::as_u64)
-            != Some(u64::from(canonical.d3d_value))
-        || expected_format.get("bitsPerPixel").and_then(Value::as_u64)
-            != Some(u64::from(canonical.bits_per_pixel))
-        || !mapping_block_ok
         || recorded_format.get("d3dName").and_then(Value::as_str) != Some(canonical.d3d_name)
         || recorded_format.get("d3dValue").and_then(Value::as_u64)
             != Some(u64::from(canonical.d3d_value))
@@ -771,23 +720,6 @@ fn verify_dds_payload(
     if entries.len() != image.mips.len() || entries.len() != mip_count {
         return Err(fail("dds-mip-count-mismatch", format!("payload {index}")));
     }
-    let table_length = u64::try_from(entries.len())
-        .ok()
-        .and_then(|length| length.checked_mul(8))
-        .ok_or_else(|| {
-            fail(
-                "dds-gtex-layout",
-                format!("payload {index}: table length overflows"),
-            )
-        })?;
-    let table_end = checked_add(table_base, table_length, "dds-gtex-table-overflow")?;
-    if table_end > data_base {
-        return Err(fail(
-            "dds-gtex-layout",
-            format!("payload {index}: offset table exceeds data base"),
-        ));
-    }
-    let mut previous_source_end = None;
     for (mip, (record, layout)) in mips.iter().zip(&image.mips).enumerate() {
         let entry = entries.get(mip).ok_or_else(|| {
             fail(
@@ -795,35 +727,6 @@ fn verify_dds_payload(
                 format!("payload {index} mip {mip}"),
             )
         })?;
-        let mip_offset = u64::try_from(mip)
-            .ok()
-            .and_then(|mip| mip.checked_mul(8))
-            .ok_or_else(|| {
-                fail(
-                    "dds-gtex-layout",
-                    format!("payload {index}: table offset overflows"),
-                )
-            })?;
-        let offset_field = object(entry, "offsetField")?;
-        let size_field = object(entry, "sizeField")?;
-        let offset_field_span = object(offset_field, "span")?;
-        let size_field_span = object(size_field, "span")?;
-        if integer(offset_field_span, "offset")?
-            != checked_add(table_base, mip_offset, "dds-gtex-table-overflow")?
-            || integer(offset_field_span, "length")? != 4
-            || integer(size_field_span, "offset")?
-                != checked_add(
-                    table_base,
-                    checked_add(mip_offset, 4, "dds-gtex-table-overflow")?,
-                    "dds-gtex-table-overflow",
-                )?
-            || integer(size_field_span, "length")? != 4
-        {
-            return Err(fail(
-                "dds-gtex-layout",
-                format!("payload {index} mip {mip}: table field spans are inconsistent"),
-            ));
-        }
         if integer(entry, "index")? != mip as u64
             || integer(entry, "face")? != 0
             || integer(entry, "mipLevel")? != mip as u64
@@ -839,35 +742,18 @@ fn verify_dds_payload(
         let source_span = object(record, "sourceSpan")?;
         let dds_span = object(record, "ddsSpan")?;
         let expected_source = object(object(entry, "source")?, "span")?;
-        let relative_offset = integer(offset_field, "value")?;
-        let declared_size = integer(size_field, "value")?;
-        let calculated_size = integer(entry, "calculatedSize")?;
-        let expected_source_offset = checked_add(
-            data_base,
-            relative_offset,
-            "dds-gtex-source-offset-overflow",
-        )?;
         let expected_source_end = checked_add(
             integer(expected_source, "offset")?,
             integer(expected_source, "length")?,
             "dds-source-span-overflow",
         )?;
         let source_length = integer(expected_source, "length")?;
-        if integer(expected_source, "offset")? != expected_source_offset
-            || source_length != layout.span.length
-            || declared_size != calculated_size
-            || declared_size != source_length
-            || declared_size != layout.span.length
-            || expected_source_offset < data_base
-            || previous_source_end.is_some_and(|end| expected_source_offset < end)
-            || expected_source_end > input_length
-        {
+        if source_length != layout.span.length || expected_source_end > input_length {
             return Err(fail(
                 "dds-gtex-layout",
                 format!("payload {index} mip {mip}: source table geometry is inconsistent"),
             ));
         }
-        previous_source_end = Some(expected_source_end);
         if source_span.get("offset") != expected_source.get("offset")
             || source_span.get("length") != expected_source.get("length")
             || integer(source_span, "length")? != layout.span.length
@@ -929,6 +815,414 @@ fn verify_dds_payload(
     Ok(())
 }
 
+#[derive(Clone, Copy)]
+struct GtexGeometry {
+    input_length: u64,
+    width: u32,
+    height: u32,
+    mip_levels: usize,
+    canonical: gtex_pwib::GtexFormat,
+}
+
+fn gtex_error(prefix: &str, kind: &str, index: usize, detail: impl std::fmt::Display) -> Failure {
+    let code = format!("{prefix}-{kind}");
+    fail(&code, format!("payload {index}: {detail}"))
+}
+
+fn verify_gtex_geometry(
+    parsed: &Value,
+    index: usize,
+    source_size: u64,
+    prefix: &str,
+) -> Result<GtexGeometry, Failure> {
+    let input_length = integer(object(parsed, "input")?, "length")?;
+    if input_length != source_size {
+        return Err(gtex_error(
+            prefix,
+            "gtex-layout",
+            index,
+            "parsed input length differs from source size",
+        ));
+    }
+    let data_base_record = object(parsed, "dataBase")?;
+    let data_base = integer(data_base_record, "value")?;
+    if data_base < 0x18 || data_base > source_size {
+        return Err(gtex_error(
+            prefix,
+            "gtex-layout",
+            index,
+            "invalid data base",
+        ));
+    }
+    let data_base_span = object(data_base_record, "span")?;
+    if integer(data_base_span, "offset")? != 0x14 || integer(data_base_span, "length")? != 4 {
+        return Err(gtex_error(
+            prefix,
+            "gtex-layout",
+            index,
+            "invalid data base span",
+        ));
+    }
+    let header_span = object(object(parsed, "header")?, "span")?;
+    if integer(header_span, "offset")? != 0 || integer(header_span, "length")? != data_base {
+        return Err(gtex_error(
+            prefix,
+            "gtex-layout",
+            index,
+            "invalid header span",
+        ));
+    }
+    let data_region_span = object(object(parsed, "dataRegion")?, "span")?;
+    let data_region_length = source_size.checked_sub(data_base).ok_or_else(|| {
+        gtex_error(
+            prefix,
+            "gtex-layout",
+            index,
+            "data base exceeds source size",
+        )
+    })?;
+    if integer(data_region_span, "offset")? != data_base
+        || integer(data_region_span, "length")? != data_region_length
+    {
+        return Err(gtex_error(
+            prefix,
+            "gtex-layout",
+            index,
+            "invalid data region span",
+        ));
+    }
+
+    let texture = object(parsed, "texture")?;
+    if string(texture, "kind")? != "2d"
+        || integer(object(texture, "flags")?, "value")? != 0
+        || integer(object(texture, "depth")?, "value")? != 1
+    {
+        return Err(gtex_error(
+            prefix,
+            "gtex-eligibility",
+            index,
+            "unsupported texture shape",
+        ));
+    }
+    let width_value = integer(object(texture, "width")?, "value")?;
+    let height_value = integer(object(texture, "height")?, "value")?;
+    let mip_levels_value = integer(object(texture, "mipLevels")?, "value")?;
+    if width_value == 0
+        || height_value == 0
+        || width_value > u64::from(u16::MAX)
+        || height_value > u64::from(u16::MAX)
+        || mip_levels_value == 0
+        || mip_levels_value > u64::from(u8::MAX)
+    {
+        return Err(gtex_error(
+            prefix,
+            "gtex-eligibility",
+            index,
+            "invalid dimensions or mip count",
+        ));
+    }
+    let width = u32::try_from(width_value).map_err(|_| {
+        gtex_error(
+            prefix,
+            "gtex-eligibility",
+            index,
+            "width does not fit GTEX field",
+        )
+    })?;
+    let height = u32::try_from(height_value).map_err(|_| {
+        gtex_error(
+            prefix,
+            "gtex-eligibility",
+            index,
+            "height does not fit GTEX field",
+        )
+    })?;
+    let mip_levels_value = u8::try_from(mip_levels_value).map_err(|_| {
+        gtex_error(
+            prefix,
+            "gtex-eligibility",
+            index,
+            "mip count does not fit GTEX field",
+        )
+    })?;
+    let mip_levels = usize::from(mip_levels_value);
+    if u32::from(mip_levels_value) > dds::max_mip_levels(width, height) {
+        return Err(gtex_error(
+            prefix,
+            "gtex-eligibility",
+            index,
+            "mip count exceeds geometric maximum",
+        ));
+    }
+
+    let offset_table = object(parsed, "offsetTable")?;
+    let table_base_record = object(offset_table, "base")?;
+    let table_base = integer(table_base_record, "value")?;
+    if table_base < 0x18 || table_base > data_base || integer(offset_table, "entryStride")? != 8 {
+        return Err(gtex_error(
+            prefix,
+            "gtex-layout",
+            index,
+            "invalid offset table",
+        ));
+    }
+    let table_base_span = object(table_base_record, "span")?;
+    if integer(table_base_span, "offset")? != 0x10 || integer(table_base_span, "length")? != 4 {
+        return Err(gtex_error(
+            prefix,
+            "gtex-layout",
+            index,
+            "invalid offset table span",
+        ));
+    }
+    let entries = array(offset_table, "entries")?;
+    if entries.len() != mip_levels {
+        return Err(gtex_error(
+            prefix,
+            "gtex-layout",
+            index,
+            "table entry count mismatch",
+        ));
+    }
+    let format_record = object(texture, "formatIndex")?;
+    let format_index = integer(format_record, "value")?;
+    let canonical = u8::try_from(format_index)
+        .ok()
+        .and_then(gtex_pwib::gtex_format)
+        .ok_or_else(|| gtex_error(prefix, "gtex-eligibility", index, "unmapped format"))?;
+    let mapping = object(format_record, "mapping")?;
+    let mapping_block_ok = match (canonical.block_bytes, mapping.get("blockBytes")) {
+        (Some(expected), Some(value)) => value.as_u64() == Some(u64::from(expected)),
+        (None, Some(Value::Null)) => true,
+        _ => false,
+    };
+    if mapping.get("d3dName").and_then(Value::as_str) != Some(canonical.d3d_name)
+        || mapping.get("d3dValue").and_then(Value::as_u64) != Some(u64::from(canonical.d3d_value))
+        || mapping.get("bitsPerPixel").and_then(Value::as_u64)
+            != Some(u64::from(canonical.bits_per_pixel))
+        || !mapping_block_ok
+    {
+        return Err(gtex_error(
+            prefix,
+            "format-mismatch",
+            index,
+            "format mapping is not canonical",
+        ));
+    }
+
+    let table_length = u64::try_from(mip_levels)
+        .ok()
+        .and_then(|count| count.checked_mul(8))
+        .ok_or_else(|| gtex_error(prefix, "gtex-layout", index, "table length overflows"))?;
+    let table_end = table_base
+        .checked_add(table_length)
+        .ok_or_else(|| gtex_error(prefix, "gtex-layout", index, "offset table end overflows"))?;
+    if table_end > data_base {
+        return Err(gtex_error(
+            prefix,
+            "gtex-layout",
+            index,
+            "table exceeds data base",
+        ));
+    }
+
+    let mut previous_end = data_base;
+    for (mip, entry) in entries.iter().enumerate() {
+        let mip_offset = u64::try_from(mip)
+            .ok()
+            .and_then(|value| value.checked_mul(8))
+            .ok_or_else(|| gtex_error(prefix, "gtex-layout", index, "table offset overflows"))?;
+        let entry_offset = table_base.checked_add(mip_offset).ok_or_else(|| {
+            gtex_error(prefix, "gtex-layout", index, "table entry offset overflows")
+        })?;
+        let size_offset = entry_offset.checked_add(4).ok_or_else(|| {
+            gtex_error(prefix, "gtex-layout", index, "table size offset overflows")
+        })?;
+        let offset_field = object(entry, "offsetField")?;
+        let size_field = object(entry, "sizeField")?;
+        let offset_field_span = object(offset_field, "span")?;
+        let size_field_span = object(size_field, "span")?;
+        if integer(offset_field_span, "offset")? != entry_offset
+            || integer(offset_field_span, "length")? != 4
+            || integer(size_field_span, "offset")? != size_offset
+            || integer(size_field_span, "length")? != 4
+        {
+            return Err(gtex_error(
+                prefix,
+                "gtex-layout",
+                index,
+                format!("mip {mip}: table field spans are inconsistent"),
+            ));
+        }
+        let mip_u64 = u64::try_from(mip)
+            .map_err(|_| gtex_error(prefix, "gtex-layout", index, "mip index does not fit"))?;
+        if integer(entry, "index")? != mip_u64
+            || integer(entry, "face")? != 0
+            || integer(entry, "mipLevel")? != mip_u64
+        {
+            return Err(gtex_error(
+                prefix,
+                "gtex-layout",
+                index,
+                format!("mip {mip}: invalid table order"),
+            ));
+        }
+        let mip_shift = u32::try_from(mip)
+            .map_err(|_| gtex_error(prefix, "gtex-layout", index, "mip shift does not fit"))?;
+        let mip_width = width.checked_shr(mip_shift).unwrap_or(0).max(1);
+        let mip_height = height.checked_shr(mip_shift).unwrap_or(0).max(1);
+        let calculated = if let Some(block_bytes) = canonical.block_bytes {
+            u64::from(mip_width.div_ceil(4))
+                .checked_mul(u64::from(mip_height.div_ceil(4)))
+                .and_then(|value| value.checked_mul(u64::from(block_bytes)))
+                .ok_or_else(|| gtex_error(prefix, "gtex-layout", index, "mip size overflows"))?
+        } else {
+            u64::from(mip_width)
+                .checked_mul(u64::from(mip_height))
+                .and_then(|value| value.checked_mul(4))
+                .ok_or_else(|| gtex_error(prefix, "gtex-layout", index, "mip size overflows"))?
+        };
+        let declared = integer(size_field, "value")?;
+        let calculated_record = integer(entry, "calculatedSize")?;
+        let source = object(entry, "source")?;
+        let source_span = object(source, "span")?;
+        let source_offset = data_base
+            .checked_add(integer(offset_field, "value")?)
+            .ok_or_else(|| {
+                gtex_error(
+                    prefix,
+                    "gtex-layout",
+                    index,
+                    format!("mip {mip}: source offset overflows"),
+                )
+            })?;
+        let source_end = source_offset.checked_add(calculated).ok_or_else(|| {
+            gtex_error(
+                prefix,
+                "gtex-layout",
+                index,
+                format!("mip {mip}: source span overflows"),
+            )
+        })?;
+        if declared != calculated
+            || calculated_record != calculated
+            || integer(source_span, "offset")? != source_offset
+            || integer(source_span, "length")? != calculated
+            || source_offset < previous_end
+            || source_end > source_size
+        {
+            return Err(gtex_error(
+                prefix,
+                "gtex-layout",
+                index,
+                format!("mip {mip}: source geometry mismatch"),
+            ));
+        }
+        previous_end = source_end;
+    }
+    Ok(GtexGeometry {
+        input_length,
+        width,
+        height,
+        mip_levels,
+        canonical,
+    })
+}
+
+fn verify_png_payload(
+    payload: &Value,
+    file: &FileRecord,
+    document: &Value,
+    index: usize,
+    source_size: u64,
+) -> Result<(), Failure> {
+    if string(payload, "path")? != "payloads/preview.png"
+        || string(payload, "role")? != "gtex-top-mip-png-preview"
+    {
+        return Err(fail("png-artifact-contract", format!("payload {index}")));
+    }
+    let png_record = object(payload, "png")?;
+    let bytes =
+        fs::read(&file.path).map_err(|error| fail("payload-read-failed", error.to_string()))?;
+    let decoded = texture_preview::decode_png_rgba(&bytes)
+        .map_err(|error| fail("png-payload-invalid", format!("payload {index}: {error}")))?;
+    let canonical = texture_preview::encode_png_rgba(decoded.width, decoded.height, &decoded.rgba)
+        .map_err(|error| fail("png-payload-invalid", format!("payload {index}: {error}")))?;
+    if canonical != bytes {
+        return Err(fail(
+            "png-payload-noncanonical",
+            format!("payload {index}: PNG has metadata, interlace, or trailing bytes"),
+        ));
+    }
+    let rgba_sha256 = sha256_hex(&decoded.rgba);
+    if string(png_record, "rgbaSha256")? != rgba_sha256
+        || decoded.width as u64 != integer(png_record, "width")?
+        || decoded.height as u64 != integer(png_record, "height")?
+        || integer(png_record, "mipLevel")? != 0
+    {
+        return Err(fail("png-metadata-mismatch", format!("payload {index}")));
+    }
+    let parsed = object(document, "parsed")?;
+    if string(object(document, "format")?, "id")? != "gtex"
+        || string(parsed, "format")? != "gtex"
+        || string(object(parsed, "surfaceMaterialization")?, "status")? != "supported"
+    {
+        return Err(fail("png-gtex-eligibility", format!("payload {index}")));
+    }
+    let geometry = verify_gtex_geometry(parsed, index, source_size, "png")?;
+    let texture = object(parsed, "texture")?;
+    if decoded.width != geometry.width || decoded.height != geometry.height {
+        return Err(fail("png-metadata-mismatch", format!("payload {index}")));
+    }
+    let format_index_value = object(texture, "formatIndex")?
+        .get("value")
+        .ok_or_else(|| fail("manifest-semantic-error", "formatIndex value is missing"))?;
+    let canonical_format = geometry.canonical;
+    let expected_format = object(object(texture, "formatIndex")?, "mapping")?;
+    let recorded_format = object(png_record, "format")?;
+    if recorded_format.get("clientIndex") != Some(format_index_value)
+        || recorded_format.get("d3dName") != expected_format.get("d3dName")
+        || recorded_format.get("d3dValue") != expected_format.get("d3dValue")
+        || expected_format.get("d3dName").and_then(Value::as_str) != Some(canonical_format.d3d_name)
+        || expected_format.get("d3dValue").and_then(Value::as_u64)
+            != Some(u64::from(canonical_format.d3d_value))
+    {
+        return Err(fail("png-format-mismatch", format!("payload {index}")));
+    }
+    let source_span = object(png_record, "sourceSpan")?;
+    let source_end = checked_add(
+        integer(source_span, "offset")?,
+        integer(source_span, "length")?,
+        "png-source-span-overflow",
+    )?;
+    if integer(source_span, "offset")? >= source_size
+        || source_end > source_size
+        || integer(source_span, "endExclusive")? != source_end
+    {
+        return Err(fail("png-source-span-mismatch", format!("payload {index}")));
+    }
+    let parsed_entry = parsed
+        .pointer("/offsetTable/entries/0")
+        .ok_or_else(|| fail("png-source-entry-missing", format!("payload {index}")))?;
+    let expected_source = object(parsed_entry, "source")?;
+    if source_span.get("offset")
+        != expected_source
+            .get("span")
+            .and_then(|value| value.get("offset"))
+        || source_span.get("length")
+            != expected_source
+                .get("span")
+                .and_then(|value| value.get("length"))
+        || string(png_record, "sourceSha256")? != string(expected_source, "sha256")?
+    {
+        return Err(fail(
+            "png-source-entry-mismatch",
+            format!("payload {index}"),
+        ));
+    }
+    Ok(())
+}
+
 fn replay_payload(
     payload: &Value,
     file: &FileRecord,
@@ -951,6 +1245,26 @@ fn replay_payload(
         let expected = replay
             .artifact_bytes("payloads/texture.dds")
             .ok_or_else(|| fail("payload-replay-unsupported", "DDS artifact missing"))?;
+        if expected != bytes {
+            return Err(fail("payload-replay-mismatch", string(payload, "path")?));
+        }
+        return Ok(());
+    }
+    if string(payload, "role")? == "gtex-top-mip-png-preview" {
+        let source_name = string(object(document, "source")?, "fileName")?;
+        let replay = plan_bytes_options(
+            source_name,
+            source,
+            string(object(document, "source")?, "sha256")?,
+            DocumentFormat::Json,
+            false,
+            false,
+            true,
+            &["--as".into(), "gtex".into()],
+        )?;
+        let expected = replay
+            .artifact_bytes("payloads/preview.png")
+            .ok_or_else(|| fail("payload-replay-unsupported", "PNG preview artifact missing"))?;
         if expected != bytes {
             return Err(fail("payload-replay-mismatch", string(payload, "path")?));
         }
@@ -1016,13 +1330,17 @@ fn verify_source(document: &Value, path: &Path, bytes: &[u8]) -> Result<(), Fail
     let export_dds = array(document, "payloads")?
         .iter()
         .any(|payload| payload.get("role").and_then(Value::as_str) == Some("gtex-dds-texture"));
-    let replay = plan_bytes(
+    let preview_png = array(document, "payloads")?.iter().any(|payload| {
+        payload.get("role").and_then(Value::as_str) == Some("gtex-top-mip-png-preview")
+    });
+    let replay = plan_bytes_options(
         &path.display().to_string(),
         bytes,
         string(source, "sha256")?,
         DocumentFormat::Json,
         materialize,
         export_dds,
+        preview_png,
         &inspect_arguments,
     )?;
     if replay.format_id() != format {
@@ -1085,6 +1403,12 @@ fn verify_batch(
         Some(value) => value
             .as_bool()
             .ok_or_else(|| fail("manifest-semantic-error", "exportDds is not a boolean"))?,
+    };
+    let preview_png = match document.get("previewPng") {
+        None => false,
+        Some(value) => value
+            .as_bool()
+            .ok_or_else(|| fail("manifest-semantic-error", "previewPng is not a boolean"))?,
     };
     let replay = match (&options.catalog, &options.root) {
         (Some(catalog), Some(root)) => Some(load_replay(catalog, root, &document)?),
@@ -1156,6 +1480,12 @@ fn verify_batch(
             .any(|payload| payload.get("role").and_then(Value::as_str) == Some("gtex-dds-texture"));
         if nested_export_dds != export_dds {
             return Err(fail("batch-dds-selection-mismatch", directory));
+        }
+        let nested_preview_png = array(&nested.document, "payloads")?.iter().any(|payload| {
+            payload.get("role").and_then(Value::as_str) == Some("gtex-top-mip-png-preview")
+        });
+        if nested_preview_png != preview_png {
+            return Err(fail("batch-png-selection-mismatch", directory));
         }
         let nested_source = object(&nested.document, "source")?;
         if string(resource, "sourcePath")?.rsplit('/').next()
@@ -1691,6 +2021,133 @@ mod tests {
         (work, source, output)
     }
 
+    fn gtex_png_fixture(name: &str) -> (PathBuf, PathBuf, PathBuf) {
+        let work = temp_root(name);
+        fs::create_dir_all(&work).unwrap();
+        let source = work.join("texture.DAT");
+        fs::write(
+            &source,
+            include_bytes!("../../../tests/fixtures/public/gtex/tagged.bin"),
+        )
+        .unwrap();
+        let output = work.join("output");
+        crate::resource_export::run(&[
+            source.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--preview-png".into(),
+        ])
+        .unwrap();
+        (work, source, output)
+    }
+
+    #[test]
+    fn rejects_changed_missing_and_metadata_mismatched_png_previews() {
+        let (work, source, output) = gtex_png_fixture("png-verifier-mutations");
+        let original = manifest(&output);
+        let preview_path = output.join("payloads/preview.png");
+        let preview_index = original["payloads"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .position(|payload| payload["role"] == "gtex-top-mip-png-preview")
+            .unwrap();
+        let original_bytes = fs::read(&preview_path).unwrap();
+        let mut altered = fs::read(&preview_path).unwrap();
+        *altered.last_mut().unwrap() ^= 1;
+        fs::write(&preview_path, &altered).unwrap();
+        assert!(run(&verify_arguments(&output, None))
+            .unwrap_err()
+            .message
+            .contains("payload-sha256-mismatch"));
+        fs::write(&preview_path, original_bytes).unwrap();
+        let mut changed = original.clone();
+        changed["payloads"][preview_index]["png"]["rgbaSha256"] =
+            json!("0000000000000000000000000000000000000000000000000000000000000000");
+        write_manifest(&output, &changed);
+        assert!(run(&verify_arguments(&output, None))
+            .unwrap_err()
+            .message
+            .contains("png-metadata-mismatch"));
+        write_manifest(&output, &original);
+        fs::remove_file(&preview_path).unwrap();
+        assert!(run(&verify_arguments(&output, None))
+            .unwrap_err()
+            .message
+            .contains("missing-file"));
+        assert!(run(&verify_arguments(&output, Some(&source))).is_err());
+        fs::remove_dir_all(work).unwrap();
+    }
+
+    #[test]
+    fn rejects_malformed_png_source_geometry_without_panicking() {
+        let (work, _, output) = gtex_png_fixture("png-geometry-mutations");
+        let original = manifest(&output);
+        type Mutation = (&'static str, fn(&mut Value), &'static str);
+        let cases: [Mutation; 6] = [
+            (
+                "mapping block bytes",
+                |document: &mut Value| {
+                    document["parsed"]["texture"]["formatIndex"]["mapping"]["blockBytes"] =
+                        json!(99);
+                },
+                "png-format-mismatch",
+            ),
+            (
+                "offset field span length",
+                |document: &mut Value| {
+                    document["parsed"]["offsetTable"]["entries"][0]["offsetField"]["span"]
+                        ["length"] = json!(0);
+                },
+                "png-gtex-layout",
+            ),
+            (
+                "size field span length",
+                |document: &mut Value| {
+                    document["parsed"]["offsetTable"]["entries"][0]["sizeField"]["span"]
+                        ["length"] = json!(0);
+                },
+                "png-gtex-layout",
+            ),
+            (
+                "oversized dimensions",
+                |document: &mut Value| {
+                    document["parsed"]["texture"]["width"] = json!({"value": u64::from(u32::MAX)});
+                    document["parsed"]["texture"]["height"] = json!({"value": u64::from(u32::MAX)});
+                },
+                "png-gtex-eligibility",
+            ),
+            (
+                "size field value",
+                |document: &mut Value| {
+                    document["parsed"]["offsetTable"]["entries"][0]["sizeField"]["value"] =
+                        json!(1);
+                },
+                "png-gtex-layout",
+            ),
+            (
+                "preview source offset",
+                |document: &mut Value| {
+                    document["payloads"][0]["png"]["sourceSpan"]["offset"] = json!(1);
+                },
+                "png-source-span-mismatch",
+            ),
+        ];
+        for (name, mutate, expected) in cases {
+            let mut changed = original.clone();
+            mutate(&mut changed);
+            write_manifest(&output, &changed);
+            let error = run(&verify_arguments(&output, None)).unwrap_err();
+            assert!(
+                error.message.contains(expected),
+                "{name}: {}",
+                error.message
+            );
+        }
+        write_manifest(&output, &original);
+        fs::remove_dir_all(work).unwrap();
+    }
+
     #[test]
     fn rejects_inconsistent_dds_metadata_and_artifacts_without_source() {
         let (work, _, output) = gtex_dds_fixture("dds-verifier-mutations");
@@ -1852,6 +2309,29 @@ mod tests {
             "--output".into(),
             output.display().to_string(),
             "--export-dds".into(),
+        ])
+        .unwrap();
+        assert!(run(&verify_arguments(&output, None)).is_ok());
+        assert!(run(&verify_arguments(&output, Some(&source))).is_ok());
+        fs::remove_dir_all(work).unwrap();
+    }
+
+    #[test]
+    fn verifies_gapped_png_with_and_without_source() {
+        let work = temp_root("png-gapped-verification");
+        fs::create_dir_all(&work).unwrap();
+        let source = work.join("texture.DAT");
+        fs::write(
+            &source,
+            include_bytes!("../../../tests/fixtures/public/gtex/dds-dxt1-gapped.bin"),
+        )
+        .unwrap();
+        let output = work.join("output");
+        crate::resource_export::run(&[
+            source.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--preview-png".into(),
         ])
         .unwrap();
         assert!(run(&verify_arguments(&output, None)).is_ok());

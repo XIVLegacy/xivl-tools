@@ -8,6 +8,7 @@ use xivl_formats::dds;
 use xivl_formats::digest::sha256_hex;
 use xivl_formats::gtex_pwib::{self, TaggedResource, TaggedResourceKind};
 use xivl_formats::sedb::{self, EntryBody};
+use xivl_formats::texture_preview;
 use xivl_formats::{
     extract_lpb, inspect_named_bytes_as, parse_dat_path, to_canonical_json, InspectAs,
 };
@@ -45,13 +46,14 @@ pub(crate) struct PlannedExtraction {
 pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
     let Some(input) = arguments.first() else {
         return Err(Failure::usage(
-            "usage: xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--export-dds] [--as <format>] [--columns <list>]",
+            "usage: xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--export-dds] [--preview-png] [--as <format>] [--columns <list>]",
         ));
     };
     let mut output = None;
     let mut format = DocumentFormat::Yaml;
     let mut materialize_payloads = false;
     let mut export_dds = false;
+    let mut preview_png = false;
     let mut inspect_arguments = Vec::new();
     let mut index = 1;
     while index < arguments.len() {
@@ -90,6 +92,13 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
                 export_dds = true;
                 index += 1;
             }
+            "--preview-png" => {
+                if preview_png {
+                    return Err(Failure::usage("--preview-png was supplied more than once"));
+                }
+                preview_png = true;
+                index += 1;
+            }
             "--as" | "--columns" if index + 1 < arguments.len() => {
                 inspect_arguments.push(arguments[index].clone());
                 inspect_arguments.push(arguments[index + 1].clone());
@@ -108,13 +117,14 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
     reject_link_if_present(output_path, "output")?;
     require_empty_output(output_path)?;
     let data = read_capped(input)?;
-    let planned = plan_bytes(
+    let planned = plan_bytes_options(
         input,
         &data,
         &sha256_hex(&data),
         format,
         materialize_payloads,
         export_dds,
+        preview_png,
         &inspect_arguments,
     )?;
     planned.write_to(output_path)?;
@@ -134,6 +144,29 @@ pub(crate) fn plan_bytes(
     format: DocumentFormat,
     materialize_payloads: bool,
     export_dds: bool,
+    inspect_arguments: &[String],
+) -> Result<PlannedExtraction, Failure> {
+    plan_bytes_options(
+        input,
+        data,
+        source_sha256,
+        format,
+        materialize_payloads,
+        export_dds,
+        false,
+        inspect_arguments,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn plan_bytes_options(
+    input: &str,
+    data: &[u8],
+    source_sha256: &str,
+    format: DocumentFormat,
+    materialize_payloads: bool,
+    export_dds: bool,
+    preview_png: bool,
     inspect_arguments: &[String],
 ) -> Result<PlannedExtraction, Failure> {
     let selected = if inspect_arguments.is_empty() {
@@ -225,6 +258,14 @@ pub(crate) fn plan_bytes(
             )));
         }
         artifacts.push(gtex_dds_payload(data, input)?);
+    }
+    if preview_png {
+        if parsed_format != "gtex" {
+            return Err(Failure::usage(format!(
+                "--preview-png applies only to GTEX input, not '{parsed_format}'"
+            )));
+        }
+        artifacts.push(gtex_png_payload(data, input)?);
     }
     let payloads: Vec<Value> = artifacts
         .iter()
@@ -558,6 +599,46 @@ fn gtex_dds_payload(data: &[u8], input: &str) -> Result<PayloadArtifact, Failure
         }),
         path,
         bytes: export.bytes,
+    })
+}
+
+fn gtex_png_payload(data: &[u8], input: &str) -> Result<PayloadArtifact, Failure> {
+    let TaggedResource::Gtex(gtex) = gtex_pwib::parse(data, TaggedResourceKind::Gtex)
+        .map_err(|error| Failure::parse(format!("{input}: {error}")))?
+    else {
+        unreachable!("the requested parser returns GTEX");
+    };
+    let preview = texture_preview::export_gtex_top_mip_png(data, &gtex)
+        .map_err(|error| Failure::parse(format!("{input}: {error}")))?;
+    let path = "payloads/preview.png".to_string();
+    let source_end = preview.source_span.offset + preview.source_span.length;
+    let format = json!({
+        "clientIndex": preview.format.index,
+        "d3dName": preview.format.d3d_name,
+        "d3dValue": preview.format.d3d_value,
+    });
+    Ok(PayloadArtifact {
+        manifest: json!({
+            "path": path,
+            "png": {
+                "format": format,
+                "height": preview.height,
+                "mipLevel": preview.mip_level,
+                "rgbaSha256": preview.rgba_sha256,
+                "sourceSha256": preview.source_sha256,
+                "sourceSpan": {
+                    "endExclusive": source_end,
+                    "length": preview.source_span.length,
+                    "offset": preview.source_span.offset,
+                },
+                "width": preview.width,
+            },
+            "role": "gtex-top-mip-png-preview",
+            "sha256": sha256_hex(&preview.bytes),
+            "size": preview.bytes.len() as u64,
+        }),
+        path,
+        bytes: preview.bytes,
     })
 }
 
@@ -994,6 +1075,42 @@ mod tests {
                 &fs::read(&source).unwrap()[start..end]
             );
         }
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn previews_top_mip_and_coexists_with_raw_and_dds_payloads() {
+        let root = temp_root("gtex-png-option");
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("texture.DAT");
+        fs::write(
+            &source,
+            include_bytes!("../../../tests/fixtures/public/gtex/tagged.bin"),
+        )
+        .unwrap();
+        let output = root.join("out");
+        run(&[
+            source.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--materialize-payloads".into(),
+            "--export-dds".into(),
+            "--preview-png".into(),
+        ])
+        .unwrap();
+        let document = yaml_document(&output);
+        let payloads = document["payloads"].as_array().unwrap();
+        assert_eq!(payloads.len(), 4);
+        let preview = payloads
+            .iter()
+            .find(|payload| payload["role"] == "gtex-top-mip-png-preview")
+            .unwrap();
+        assert_eq!(preview["path"], "payloads/preview.png");
+        assert_eq!(preview["png"]["width"], 4);
+        assert_eq!(preview["png"]["height"], 2);
+        assert_eq!(preview["png"]["mipLevel"], 0);
+        assert!(output.join("payloads/preview.png").is_file());
+        assert!(output.join("payloads/texture.dds").is_file());
         fs::remove_dir_all(root).unwrap();
     }
 

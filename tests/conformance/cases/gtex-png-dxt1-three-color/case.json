@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-png-dxt1-three-color",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/png-dxt1-three-color.bin"
+  },
+  "arguments": ["--as", "gtex", "--preview-png"],
+  "expect": {"outcome": "ok", "output": "expected.json"},
+  "notes": "Literal DXT1 three-color selectors exercise the transparent fourth color."
+}

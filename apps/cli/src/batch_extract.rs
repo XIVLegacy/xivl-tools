@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 use xivl_formats::digest::sha256_hex;
 use xivl_formats::{parse_dat_path, parse_resource_id, to_canonical_json};
 
-use crate::resource_export::{plan_bytes, DocumentFormat, PlannedExtraction};
+use crate::resource_export::{DocumentFormat, PlannedExtraction};
 use crate::scan::require_empty_output;
 use crate::{read_capped, Failure};
 
@@ -59,6 +59,7 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
     let mut format = DocumentFormat::Yaml;
     let mut materialize_payloads = false;
     let mut export_dds = false;
+    let mut preview_png = false;
     let mut index = 1;
     while index < arguments.len() {
         match arguments[index].as_str() {
@@ -114,6 +115,13 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
                     return Err(batch_error("duplicate-option: --export-dds"));
                 }
                 export_dds = true;
+                index += 1;
+            }
+            "--preview-png" => {
+                if preview_png {
+                    return Err(batch_error("duplicate-option: --preview-png"));
+                }
+                preview_png = true;
                 index += 1;
             }
             option => return Err(batch_error(format!("unknown-option: '{option}'"))),
@@ -194,13 +202,20 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
                 entry.detected_format
             )));
         }
-        let plan = plan_bytes(
+        if preview_png && entry.detected_format != "gtex" {
+            return Err(batch_error(format!(
+                "--preview-png applies only to GTEX input, not '{}'",
+                entry.detected_format
+            )));
+        }
+        let plan = crate::resource_export::plan_bytes_options(
             &source.display().to_string(),
             &data,
             &digest,
             format,
             materialize,
             export_dds,
+            preview_png,
             &[],
         )?;
         if plan.format_id() != entry.detected_format {
@@ -244,6 +259,7 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
         max_output_bytes,
         materialize_payloads,
         export_dds,
+        preview_png,
     )?;
     if output_bytes > max_output_bytes {
         return Err(batch_error(format!(
@@ -341,7 +357,7 @@ fn write_batch_atomically(
 }
 
 fn usage() -> &'static str {
-    "usage: xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads] [--export-dds]"
+    "usage: xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads] [--export-dds] [--preview-png]"
 }
 
 fn batch_error(message: impl Into<String>) -> Failure {
@@ -657,6 +673,7 @@ fn render_batch(
     max_output_bytes: u64,
     materialize_payloads: bool,
     export_dds: bool,
+    preview_png: bool,
 ) -> Result<(&'static str, String, u64), Failure> {
     let resources: Vec<Value> = planned
         .iter()
@@ -711,6 +728,12 @@ fn render_batch(
                 .as_object_mut()
                 .expect("batch document is an object")
                 .insert("exportDds".to_string(), json!(true));
+        }
+        if preview_png {
+            document
+                .as_object_mut()
+                .expect("batch document is an object")
+                .insert("previewPng".to_string(), json!(true));
         }
         let text = match format {
             DocumentFormat::Yaml => serde_yaml::to_string(&document)
@@ -933,6 +956,53 @@ mod tests {
             json!(nested_manifest_size + decoded_size)
         );
         assert_eq!(batch["totals"]["outputBytes"], summary.output_bytes);
+        let verification = crate::verify_extract::run(&[
+            output.display().to_string(),
+            "--catalog".into(),
+            catalog.display().to_string(),
+            "--root".into(),
+            root.display().to_string(),
+        ])
+        .unwrap();
+        assert!(verification.text.contains("catalog sources replayed"));
+        fs::remove_dir_all(work).unwrap();
+    }
+
+    #[test]
+    fn selected_gtex_resource_exports_png_preview_and_accounts_it() {
+        let work = temp_root("gtex-png");
+        let root = work.join("install");
+        fs::create_dir_all(&root).unwrap();
+        let bytes = include_bytes!("../../../tests/fixtures/public/gtex/tagged.bin");
+        let relative = "data/12/34/56/78.DAT";
+        create_resource(&root, relative, bytes);
+        let catalog = work.join("catalog.json");
+        write_catalog(
+            &catalog,
+            vec![row(relative, Some("0x12345678"), bytes, "gtex", "parsed")],
+        );
+        let output = work.join("output");
+        let mut arguments = base_arguments(&catalog, &root, &output);
+        arguments.extend([
+            "--id".into(),
+            "0x12345678".into(),
+            "--materialize-payloads".into(),
+            "--preview-png".into(),
+        ]);
+        let summary = run(&arguments).unwrap();
+        let batch: Value =
+            serde_yaml::from_str(&fs::read_to_string(&summary.output).unwrap()).unwrap();
+        assert_eq!(batch["previewPng"], true);
+        let directory = output.join(batch["resources"][0]["outputDirectory"].as_str().unwrap());
+        let extraction: Value =
+            serde_yaml::from_str(&fs::read_to_string(directory.join("extraction.yaml")).unwrap())
+                .unwrap();
+        assert!(extraction["payloads"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|payload| payload["role"] == "gtex-top-mip-png-preview"));
+        assert!(directory.join("payloads/preview.png").is_file());
         let verification = crate::verify_extract::run(&[
             output.display().to_string(),
             "--catalog".into(),

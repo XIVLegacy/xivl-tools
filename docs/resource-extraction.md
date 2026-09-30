@@ -129,6 +129,20 @@ bytes count toward extraction output totals. See the
 [GTEX DDS contract](formats/gtex-pwib.md#lossless-dds-texture-view) for the
 exact supported boundary and pixel-byte evidence.
 
+Add `--preview-png` for a decoded image of the top mip:
+
+```powershell
+cargo run --locked -p xivl-cli -- extract-resource texture.DAT --output texture --preview-png
+```
+
+The deterministic `payloads/preview.png` artifact is included in output
+accounting and may accompany raw surfaces and DDS. Its manifest records the
+encoded top-mip span and digest, source format, dimensions, and decoded RGBA
+digest. Preview requests use the eligible GTEX boundary and a 64 MiB RGBA
+allocation limit. See the
+[PNG preview contract](formats/gtex-pwib.md#decoded-top-mip-png-preview) for
+channel, interpolation, alpha, and partial-block rules.
+
 Container payloads use deterministic names containing the entry ordinal, role, source
 offset and length, and a SHA-256 prefix. The manifest keeps the full digest and
 the source span. Nested SEDB data stays inside its one direct parent payload;
@@ -190,6 +204,10 @@ Every selected resource in a DDS request must be eligible. An unsupported
 selection or an output limit failure refuses the complete batch before
 publication. Omitting the option preserves ordinary extraction behavior.
 
+`--preview-png` is also available on `extract-catalog`. Every selection
+must satisfy the preview boundary. For both texture options, planning
+includes artifact bytes in the output limit before the batch is published.
+
 ## Verify extraction output
 
 `xivl verify-extraction <directory>` auto-detects exactly one root manifest:
@@ -210,6 +228,10 @@ For DDS artifacts, verification also checks the legacy header, every mip's
 layout and digest, and metadata relationships to the parsed GTEX table.
 Source replay regenerates and compares the complete DDS file, including its
 header and exact encoded mip bytes.
+
+For PNG previews, verification checks PNG structure and decoded RGBA
+identity, dimensions, the top-mip metadata, and the GTEX source-table
+relationships. Source replay regenerates and compares the complete preview.
 
 For a batch, it performs the same checks for every isolated resource and also
 checks the top-level records, ordinals, catalog indexes, paths, formats, byte

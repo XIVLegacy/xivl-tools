@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-png-dxt1-four-color",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/png-dxt1-four-color.bin"
+  },
+  "arguments": ["--as", "gtex", "--preview-png"],
+  "expect": {"outcome": "ok", "output": "expected.json"},
+  "notes": "Literal DXT1 four-color selectors exercise rounded RGB565 interpolation."
+}

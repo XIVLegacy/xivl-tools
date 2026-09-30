@@ -178,9 +178,12 @@ fn run_case(
         "inspect" | "validate" | "extract" => {
             let arguments = case_arguments(case);
             let export_dds = arguments.iter().any(|argument| argument == "--export-dds");
+            let preview_png = arguments.iter().any(|argument| argument == "--preview-png");
             let inspect_arguments: Vec<String> = arguments
                 .iter()
-                .filter(|argument| argument.as_str() != "--export-dds")
+                .filter(|argument| {
+                    argument.as_str() != "--export-dds" && argument.as_str() != "--preview-png"
+                })
                 .cloned()
                 .collect();
             match InspectAs::from_arguments(&inspect_arguments) {
@@ -190,6 +193,8 @@ fn run_case(
                     } else if operation == "extract" {
                         if export_dds {
                             dds_export_document(&input, &name, &how)
+                        } else if preview_png {
+                            png_preview_document(&input, &name, &how)
                         } else {
                             let is_document =
                                 matches!(&how, InspectAs::Sqwt | InspectAs::ScrambledXml)
@@ -247,6 +252,56 @@ fn run_case(
         ("parse-error", Err(error)) => compare_error(&expect, &error),
         (other, _) => Outcome::Failed(format!("unknown expected outcome '{other}'")),
     }
+}
+
+fn png_preview_document(input: &[u8], name: &str, how: &InspectAs) -> Result<Value, FormatError> {
+    if !matches!(how, InspectAs::Gtex | InspectAs::Auto) {
+        return Err(FormatError::new(
+            ErrorKind::UnsupportedGtexPreview,
+            0,
+            "PNG preview requires a GTEX input",
+        ));
+    }
+    inspect_named_bytes_as(input, name, how)?;
+    let parsed =
+        xivl_formats::gtex_pwib::parse(input, xivl_formats::gtex_pwib::TaggedResourceKind::Gtex)?;
+    let xivl_formats::gtex_pwib::TaggedResource::Gtex(gtex) = parsed else {
+        unreachable!("GTEX parser returns GTEX");
+    };
+    let preview = xivl_formats::texture_preview::export_gtex_top_mip_png(input, &gtex)?;
+    Ok(json!({
+        "format": "gtex",
+        "height": preview.height,
+        "mipLevel": preview.mip_level,
+        "operation": "extract",
+        "png": {
+            "format": {
+                "clientIndex": preview.format.index,
+                "d3dName": preview.format.d3d_name,
+                "d3dValue": preview.format.d3d_value,
+            },
+            "height": preview.height,
+            "mipLevel": preview.mip_level,
+            "rgbaSha256": preview.rgba_sha256,
+            "sourceSha256": preview.source_sha256,
+            "sourceSpan": preview.source_span.to_json(),
+            "width": preview.width,
+        },
+        "path": "payloads/preview.png",
+        "role": "gtex-top-mip-png-preview",
+        "sha256": sha256_hex(&preview.bytes),
+        "size": preview.bytes.len() as u64,
+        "texture": {
+            "format": {
+                "clientIndex": preview.format.index,
+                "d3dName": preview.format.d3d_name,
+                "d3dValue": preview.format.d3d_value,
+            },
+            "height": preview.height,
+            "width": preview.width,
+        },
+        "width": preview.width,
+    }))
 }
 
 fn dds_export_document(input: &[u8], name: &str, how: &InspectAs) -> Result<Value, FormatError> {
