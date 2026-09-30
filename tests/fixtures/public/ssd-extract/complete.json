@@ -1,0 +1,82 @@
+{
+  "format": "ssd-extract",
+  "resources": [
+    {
+      "file": "complete-document-a.bin",
+      "id": "0x12000001"
+    },
+    {
+      "file": "complete-document-b.bin",
+      "id": "0x12000002"
+    },
+    {
+      "file": "complete-unrelated-xml.bin",
+      "id": "0x12000003"
+    },
+    {
+      "file": "complete-main-a.bin",
+      "id": "0x12000010"
+    },
+    {
+      "file": "complete-main-enable-a.bin",
+      "id": "0x1200002A"
+    },
+    {
+      "file": "complete-main-offset-a.bin",
+      "id": "0x120000F0"
+    },
+    {
+      "file": "complete-adjacent-decoy.bin",
+      "id": "0x12000011"
+    },
+    {
+      "file": "complete-main-b.bin",
+      "id": "0x12000013"
+    },
+    {
+      "file": "complete-main-enable-b.bin",
+      "id": "0x1200002D"
+    },
+    {
+      "file": "complete-main-offset-b.bin",
+      "id": "0x120000F3"
+    },
+    {
+      "file": "complete-other.bin",
+      "id": "0x12000016"
+    },
+    {
+      "file": "complete-other-enable.bin",
+      "id": "0x12000031"
+    },
+    {
+      "file": "complete-other-offset.bin",
+      "id": "0x120000A1"
+    },
+    {
+      "file": "complete-independent.bin",
+      "id": "0x13000009"
+    },
+    {
+      "file": "complete-independent-enable.bin",
+      "id": "0x13000044"
+    },
+    {
+      "file": "complete-independent-offset.bin",
+      "id": "0x130000E1"
+    },
+    {
+      "file": "complete-missing.bin",
+      "id": "0x1300000C"
+    },
+    {
+      "file": "complete-missing-enable.bin",
+      "id": "0x13000047"
+    },
+    {
+      "file": "complete-missing-offset.bin",
+      "id": "0x130000E4"
+    }
+  ],
+  "schemaVersion": 1
+}

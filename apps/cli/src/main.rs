@@ -12,12 +12,12 @@
 use std::io::{Read, Write};
 use std::process::ExitCode;
 
+use xivl_cli::extract;
 use xivl_formats::{extract_lpb, lua_path_document};
 use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_bytes_as, InspectAs};
 
 mod batch_extract;
 mod command_inspect;
-mod extract;
 mod resource_export;
 mod scan;
 mod verify_extract;
@@ -146,6 +146,15 @@ fn main() -> ExitCode {
 struct Failure {
     message: String,
     code: u8,
+}
+
+impl From<xivl_cli::ExtractFailure> for Failure {
+    fn from(failure: xivl_cli::ExtractFailure) -> Self {
+        Self {
+            message: failure.message().to_string(),
+            code: failure.code(),
+        }
+    }
 }
 
 impl Failure {

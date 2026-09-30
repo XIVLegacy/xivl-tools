@@ -17,6 +17,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use serde_json::{json, Value};
+use xivl_cli::ExtractFailure;
 use xivl_formats::digest::sha256_hex;
 use xivl_formats::{
     inspect_named_bytes_as, lua_path_document, resource_path_listing, to_canonical_json,
@@ -164,6 +165,9 @@ fn run_case(
     directory: &Path,
     manifest: &BTreeMap<String, PrivateFixture>,
 ) -> Outcome {
+    if string_field(case.get("fixture").unwrap_or(&Value::Null), "kind") == "public-tree" {
+        return run_public_tree_case(options, case, directory);
+    }
     // The fixture's own base name travels with its bytes: it is the key of
     // the SQEX container, so a case that renamed its fixture would be
     // reading a different file.
@@ -252,6 +256,225 @@ fn run_case(
         ("parse-error", Err(error)) => compare_error(&expect, &error),
         (other, _) => Outcome::Failed(format!("unknown expected outcome '{other}'")),
     }
+}
+
+fn run_public_tree_case(options: &Options, case: &Value, directory: &Path) -> Outcome {
+    if string_field(case, "operation") != "extract-directory" {
+        return Outcome::Failed("public-tree fixtures require extract-directory".into());
+    }
+    let fixture = case.get("fixture").cloned().unwrap_or(Value::Null);
+    if !case_arguments(case).is_empty() {
+        return Outcome::Failed("extract-directory does not accept arguments".into());
+    }
+    let relative = string_field(&fixture, "path");
+    let descriptor_path = options.repo_root.join(&relative);
+    let descriptor = match read_json(&descriptor_path) {
+        Ok(value) => value,
+        Err(error) => return Outcome::Failed(format!("cannot read public tree: {error}")),
+    };
+    let scratch = match make_tree_scratch() {
+        Ok(path) => path,
+        Err(reason) => return Outcome::Failed(reason),
+    };
+    let result = materialize_tree(
+        &descriptor,
+        descriptor_path.parent().unwrap_or(Path::new(".")),
+        &scratch,
+    )
+    .map_err(TreeRunError::Setup)
+    .and_then(|()| {
+        let game = scratch.join("game");
+        let output = scratch.join("output");
+        xivl_cli::extract::extract_directory(&game, &output)
+            .map_err(TreeRunError::Extract)
+            .and_then(|summary| {
+                directory_extract_document(&summary, &output).map_err(TreeRunError::Output)
+            })
+    });
+    let _ = std::fs::remove_dir_all(&scratch);
+
+    let expect = case.get("expect").cloned().unwrap_or(Value::Null);
+    let expected_outcome = string_field(&expect, "outcome");
+    match (expected_outcome.as_str(), result) {
+        ("ok", Ok(document)) => compare_expected(options, directory, &expect, document),
+        ("ok", Err(error)) => Outcome::Failed(format!(
+            "expected success, got {}",
+            tree_error_message(&error)
+        )),
+        ("parse-error", Ok(_)) => Outcome::Failed(format!(
+            "expected error kind '{}', the tree extracted cleanly",
+            string_field(&expect, "errorKind")
+        )),
+        ("parse-error", Err(TreeRunError::Extract(failure))) => {
+            let wanted = string_field(&expect, "errorKind");
+            if !failure.kind().is_parse() {
+                return Outcome::Failed("expected parse error, got setup or I/O failure".into());
+            }
+            if expect.get("errorOffset").is_some() {
+                return Outcome::Failed(
+                    "extract-directory errors do not expose errorOffset".into(),
+                );
+            }
+            if wanted == failure.kind().as_str() {
+                Outcome::Passed
+            } else {
+                Outcome::Failed(format!(
+                    "expected error kind '{wanted}', got '{}'",
+                    failure.kind().as_str()
+                ))
+            }
+        }
+        ("parse-error", Err(error)) => Outcome::Failed(format!(
+            "expected parse error, got {}",
+            tree_error_message(&error)
+        )),
+        (other, _) => Outcome::Failed(format!("unknown expected outcome '{other}'")),
+    }
+}
+
+enum TreeRunError {
+    Setup(String),
+    Extract(ExtractFailure),
+    Output(String),
+}
+
+fn tree_error_message(error: &TreeRunError) -> String {
+    match error {
+        TreeRunError::Setup(reason) => format!("setup failure: {reason}"),
+        TreeRunError::Extract(failure) => failure.kind().as_str().to_string(),
+        TreeRunError::Output(reason) => format!("output failure: {reason}"),
+    }
+}
+
+fn make_tree_scratch() -> Result<PathBuf, String> {
+    let base = std::env::temp_dir();
+    let process = std::process::id();
+    for index in 0..100u32 {
+        let candidate = base.join(format!("xivl-conformance-ssd-{process}-{index}"));
+        match std::fs::create_dir(&candidate) {
+            Ok(()) => return Ok(candidate),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(_) => return Err("cannot create conformance tree scratch".into()),
+        }
+    }
+    Err("cannot allocate conformance tree scratch".into())
+}
+
+fn materialize_tree(descriptor: &Value, fixture_root: &Path, scratch: &Path) -> Result<(), String> {
+    let descriptor = descriptor
+        .as_object()
+        .ok_or_else(|| "invalid ssd-extract tree descriptor".to_string())?;
+    if descriptor.len() != 3
+        || !descriptor.contains_key("schemaVersion")
+        || !descriptor.contains_key("format")
+        || !descriptor.contains_key("resources")
+        || descriptor.get("schemaVersion").and_then(Value::as_u64) != Some(1)
+        || descriptor.get("format").and_then(Value::as_str) != Some("ssd-extract")
+    {
+        return Err("invalid ssd-extract tree descriptor".into());
+    }
+    let resources = descriptor
+        .get("resources")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "invalid ssd-extract tree resources".to_string())?;
+    if resources.is_empty() {
+        return Err("invalid ssd-extract tree resources".into());
+    }
+    let mut ids = std::collections::BTreeSet::new();
+    let mut files = std::collections::BTreeSet::new();
+    for resource in resources {
+        let resource = resource
+            .as_object()
+            .ok_or_else(|| "invalid ssd-extract resource".to_string())?;
+        if resource.len() != 2 || !resource.contains_key("id") || !resource.contains_key("file") {
+            return Err("invalid ssd-extract resource properties".into());
+        }
+        let id_text = resource
+            .get("id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "invalid ssd-extract resource id".to_string())?;
+        let id = xivl_formats::parse_resource_id(id_text, 0)
+            .map_err(|_| "invalid ssd-extract resource id".to_string())?;
+        if !ids.insert(id.value()) {
+            return Err("duplicate ssd-extract resource id".into());
+        }
+        let source = resource
+            .get("file")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "invalid ssd-extract resource fixture path".to_string())?;
+        let canonical_source = source
+            .split('/')
+            .filter(|component| !component.is_empty() && *component != ".")
+            .collect::<Vec<_>>()
+            .join("/");
+        if !is_tree_fixture_path(source) || !files.insert(canonical_source) {
+            return Err("invalid ssd-extract resource fixture path".into());
+        }
+        let source_path = Path::new(source);
+        let bytes = read_capped(&fixture_root.join(source_path))
+            .map_err(|_| "cannot read ssd-extract resource fixture".to_string())?;
+        let destination = scratch.join("game").join(id.dat_path());
+        if let Some(parent) = destination.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|_| "cannot create ssd-extract resource directory".to_string())?;
+        }
+        std::fs::write(destination, bytes)
+            .map_err(|_| "cannot materialize ssd-extract resource".to_string())?;
+    }
+    Ok(())
+}
+
+fn is_tree_fixture_path(source: &str) -> bool {
+    !source.is_empty()
+        && source.ends_with(".bin")
+        && source.chars().all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '.' | '/' | '_' | '-')
+        })
+        && !source.starts_with('/')
+        && !source.split('/').any(|component| component == "..")
+}
+
+fn directory_extract_document(
+    summary: &xivl_cli::extract::ExtractSummary,
+    output: &Path,
+) -> Result<Value, String> {
+    let mut files = Vec::new();
+    let entries = std::fs::read_dir(output)
+        .map_err(|error| format!("cannot inventory extraction output: {error}"))?;
+    for entry in entries {
+        let path = entry
+            .map_err(|error| format!("cannot inspect extraction output: {error}"))?
+            .path();
+        let metadata = std::fs::metadata(&path)
+            .map_err(|error| format!("cannot inspect extraction output: {error}"))?;
+        if !metadata.is_file() || path.extension().and_then(|value| value.to_str()) != Some("csv") {
+            continue;
+        }
+        let bytes = std::fs::read(&path)
+            .map_err(|error| format!("cannot read extraction output: {error}"))?;
+        files.push(json!({
+            "path": path.file_name().and_then(|value| value.to_str()).unwrap_or_default(),
+            "sha256": sha256_hex(&bytes),
+            "size": bytes.len() as u64,
+        }));
+    }
+    if summary.files != files.len() {
+        return Err("extraction summary/file count mismatch".into());
+    }
+    files.sort_by(|left, right| left["path"].as_str().cmp(&right["path"].as_str()));
+    Ok(json!({
+        "format": "ssd-sheet",
+        "files": files,
+        "operation": "extract-directory",
+        "summary": {
+            "absentBlocks": summary.absent_blocks,
+            "conflictingValues": summary.conflicting_values,
+            "documents": summary.documents,
+            "files": summary.files,
+            "missingTrailingValues": summary.missing_trailing_values,
+            "rows": summary.rows,
+        },
+    }))
 }
 
 fn png_preview_document(input: &[u8], name: &str, how: &InspectAs) -> Result<Value, FormatError> {
@@ -789,5 +1012,66 @@ mod tests {
             Outcome::Failed(reason) => assert!(reason.contains("unknown"), "{reason}"),
             other => panic!("an unimplemented operation must fail, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn tree_materialization_rejects_boundary_paths_and_shape_drift() {
+        let scratch = make_tree_scratch().unwrap();
+        let invalid_paths = [
+            "C:README.bin",
+            "/tmp/README.bin",
+            "../README.bin",
+            "nested\\README.bin",
+            "README.txt",
+        ];
+        for source in invalid_paths {
+            let descriptor = json!({
+                "schemaVersion": 1,
+                "format": "ssd-extract",
+                "resources": [{"id": "0x14000001", "file": source}],
+            });
+            let error = materialize_tree(&descriptor, Path::new("missing"), &scratch).unwrap_err();
+            assert!(error.contains("fixture path"), "{source}: {error}");
+            assert!(!scratch.join("game").exists(), "{source}: {error}");
+        }
+
+        let bool_version = json!({
+            "schemaVersion": true,
+            "format": "ssd-extract",
+            "resources": [],
+        });
+        assert!(materialize_tree(&bool_version, Path::new("missing"), &scratch).is_err());
+
+        let extra_root = json!({
+            "schemaVersion": 1,
+            "format": "ssd-extract",
+            "resources": [],
+            "root": "C:/outside",
+        });
+        assert!(materialize_tree(&extra_root, Path::new("missing"), &scratch).is_err());
+
+        let fixture_root = scratch.join("fixtures");
+        std::fs::create_dir_all(&fixture_root).unwrap();
+        std::fs::write(fixture_root.join("a.bin"), [0u8]).unwrap();
+        let duplicate_id = json!({
+            "schemaVersion": 1,
+            "format": "ssd-extract",
+            "resources": [
+                {"id": "0X14000001", "file": "a.bin"},
+                {"id": "14000001", "file": "a.bin"},
+            ],
+        });
+        assert!(materialize_tree(&duplicate_id, &fixture_root, &scratch).is_err());
+
+        let duplicate_file = json!({
+            "schemaVersion": 1,
+            "format": "ssd-extract",
+            "resources": [
+                {"id": "14000001", "file": "a.bin"},
+                {"id": "14000002", "file": "./a.bin"},
+            ],
+        });
+        assert!(materialize_tree(&duplicate_file, &fixture_root, &scratch).is_err());
+        std::fs::remove_dir_all(scratch).unwrap();
     }
 }

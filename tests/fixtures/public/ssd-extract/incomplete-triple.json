@@ -1,0 +1,18 @@
+{
+  "format": "ssd-extract",
+  "resources": [
+    {
+      "file": "incomplete-triple-document.bin",
+      "id": "0x14000001"
+    },
+    {
+      "file": "incomplete-data.bin",
+      "id": "0x14000010"
+    },
+    {
+      "file": "incomplete-offset.bin",
+      "id": "0x14000030"
+    }
+  ],
+  "schemaVersion": 1
+}

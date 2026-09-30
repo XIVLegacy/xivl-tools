@@ -1,0 +1,2 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ssd version="0.1"><sheet name="synthetic/bad" mode="client" column_max="3" column_count="3" cache="0" type="all" infofile=""><type><param>mystery</param><param>u8</param><param>bool</param></type><index><param>0</param><param>1</param><param>2</param></index><block count="1"><file begin="400" count="1" offset="335544368" enable="335544352">335544336</file></block></sheet></ssd>

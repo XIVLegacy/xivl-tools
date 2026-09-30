@@ -1,0 +1,22 @@
+{
+  "format": "ssd-extract",
+  "resources": [
+    {
+      "file": "partial-final-string-document.bin",
+      "id": "0x14000001"
+    },
+    {
+      "file": "partial-string-data.bin",
+      "id": "0x14000010"
+    },
+    {
+      "file": "partial-string-enable.bin",
+      "id": "0x14000020"
+    },
+    {
+      "file": "partial-string-offset.bin",
+      "id": "0x14000030"
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -11,6 +11,10 @@ repository.workspace = true
 name = "xivl"
 path = "src/main.rs"
 
+[lib]
+name = "xivl_cli"
+path = "src/lib.rs"
+
 [dependencies]
 xivl-formats.workspace = true
 serde_json.workspace = true

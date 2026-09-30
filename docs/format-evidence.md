@@ -54,11 +54,16 @@ Specifically not handled:
   support claim. The `inspect` document is a structural report, not an export: it
   carries spans, counts, and digests, never payload bytes.
 
-The `partial` read status for `ssd-sheet` covers the schema document, the
-data stack, binary16 values, the bounded `xtx/quest` trailing omission, and
-install-root linking. It remains partial because the new paths do not yet
-have public conformance coverage for their full malformed-input space.
-Specifically not handled:
+The `supported` read and export statuses for `ssd-sheet` cover the schema
+document, the data stack, binary16 values, the bounded `xtx/quest` trailing omission, and
+install-root linking. Public whole-directory cases exercise explicit links,
+sparse rows, absent triples, missing trailing values, duplicate logical
+cells, and malformed resource sets. Authored CSV oracles check the same
+generated trees, while normalized reports retain only counts and digests.
+The frozen-target census and output comparison are recorded in the
+[SSD contract](formats/ssd-sheet.md#static-sheet-csv-export).
+These statuses do not establish private conformance parity. Outside the
+accepted format boundary:
 
 - any column type beyond the ten the 1.23b documents declare. A type with
   no width established against retail data is refused with
@@ -67,13 +72,13 @@ Specifically not handled:
   documents names a type outside it;
 - the meaning of `mode`, `cache`, and `type`. They remain verbatim
   attributes. The exporter does use `column_max`, `column_count`, and
-  `index` to assemble the CSV view;
-- preservation of absent block contents. The frozen install omits all three
-  resources for 195 Chinese definitions, so the exporter reports and skips
-  them. Direct cataloging and the comparison corpus both confirm the payloads
-  are absent rather than reachable through another path;
-- complete public conformance coverage of linking across a whole document, missing
-  trailing values, duplicate logical cells, and malformed resource sets.
+  `index` to assemble the CSV view.
+
+The frozen install omits all three resources for 195 Chinese definitions.
+The exporter counts and skips wholly absent triples, retaining their
+declared columns in the CSV header. A partially present triple fails.
+Direct cataloging and the comparison corpus both confirm that the complete
+triples are absent rather than reachable through another path.
 
 The `partial` read status for `rich-string` covers framing, the 26-code
 vocabulary, and payload expressions. It remains partial because the full

@@ -1,0 +1,10 @@
+{
+  "format": "ssd-extract",
+  "resources": [
+    {
+      "file": "malformed-xml-document.bin",
+      "id": "0x14000001"
+    }
+  ],
+  "schemaVersion": 1
+}

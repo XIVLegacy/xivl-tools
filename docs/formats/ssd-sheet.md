@@ -560,8 +560,9 @@ columns are unique to those Chinese definitions. The corpus therefore did not
 recover, synthesize, or bundle the absent strings. The declarations name an
 unshipped optional language payload, not a resource-resolution fallback the
 exporter missed.
-The retail resource-resolution result is complete, but public malformed-input
-conformance is still required to move export beyond `partial`.
+Wholly absent triples are counted and skipped. Their declared columns remain
+in the CSV header. If only part of a triple exists, extraction fails rather
+than synthesizing rows or substituting neighboring resource ids.
 
 The output filename set, two header rows, and per-file row counts match the
 803-file comparison corpus.
@@ -584,5 +585,43 @@ opening brackets in text are escaped. A rich token is
 `[@name:<exact-token-hex>]`, preserving its framing and payload exactly.
 Finite floats use a decimal that round-trips to the same value. NaNs keep
 their raw bits. When two definitions supply different values for the same
-logical cell, the first remains readable and each alternate is appended as
-`[@duplicate:<UTF-8-hex>]`. The exporter reports the conflict count.
+logical cell, the first remains readable and each distinct alternate is
+appended as `[@duplicate:<UTF-8-hex>]`. Each distinct alternate authored
+value contributes one conflict; repeats of the first value or a recorded
+alternate do not. Missing values use `[@missing]` and do not contribute
+conflicts. Repeated missing values add no further marker. When an authored
+empty string and a missing value share a cell, `[@duplicate:]` makes the
+empty string explicit alongside `[@missing]`; their order follows the
+first occurrence of each state. Missing trailing values are counted per
+omitted occurrence, independently of merged-cell markers.
+
+### Public extraction coverage
+
+Generated synthetic DAT trees exercise the whole-directory extraction
+implementation with explicit nonadjacent links, multiple sheets and
+independent documents, sparse enabled rows, wholly absent and incomplete
+triples, one missing final string, and conflicting duplicate logical cells.
+Literal CSV oracles check authored values, headers, sparse row identifiers,
+`[@missing]` and `[@duplicate:...]` markers, summary counts, and repeat-run
+determinism. Normalized conformance reports retain only output metadata,
+counts, SHA-256 digests, and errors.
+
+Malformed linked sets fail for inconsistent column mappings, row-offset
+counts or lengths, enable-row membership, partial row values, and invalid
+SSD documents. Low-level enable and row-offset readers continue to report
+their structural anomalies; directory extraction refuses anomalous linked
+resources. It does not broaden the XML or column vocabulary.
+
+The directory exporter requires exactly the declared number of row-offset
+entries, matching data length and enabled row membership. Enable ranges
+must lie within their block before their rows are enumerated. Column
+indexes must be unique, match the type list, and fit the declared width.
+The CSV view limits that width to 4096 columns before allocating the table.
+This is an export allocation limit, not a new SSD field interpretation.
+Mixed master/reference and definition documents are refused; ordinary
+master lists and unrelated XML resources do not produce CSV files.
+
+SSD read and CSV export are `supported` for the documented frozen-target
+boundary. These authored cases do not establish a `verified` claim or add
+private extraction parity. See [conformance tests](../conformance-tests.md)
+for the directory fixture and report contract.

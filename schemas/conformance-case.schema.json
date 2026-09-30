@@ -10,7 +10,7 @@
     "id": { "$ref": "#/$defs/id" },
     "formatId": { "$ref": "#/$defs/id" },
     "operation": {
-      "enum": ["inspect", "validate", "extract", "resource-path", "lua-path"]
+      "enum": ["inspect", "validate", "extract", "extract-directory", "resource-path", "lua-path"]
     },
     "fixture": {
       "oneOf": [
@@ -33,6 +33,19 @@
           "properties": {
             "kind": { "const": "private" },
             "fixtureId": { "$ref": "#/$defs/id" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "format", "path"],
+          "properties": {
+            "kind": { "const": "public-tree" },
+            "format": { "const": "ssd-extract" },
+            "path": {
+              "type": "string",
+              "pattern": "^tests/fixtures/public/ssd-extract/[A-Za-z0-9._/-]+\\.json$"
+            }
           }
         }
       ]
@@ -77,6 +90,26 @@
     },
     "notes": { "type": "string", "minLength": 1 }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "operation": { "const": "extract-directory" } } },
+      "then": {
+        "properties": {
+          "formatId": { "const": "ssd-sheet" },
+          "fixture": {
+            "type": "object",
+            "required": ["kind", "format"],
+            "properties": {
+              "kind": { "const": "public-tree" },
+              "format": { "const": "ssd-extract" }
+            }
+          },
+          "arguments": { "maxItems": 0 },
+          "expect": { "not": { "required": ["errorOffset"] } }
+        }
+      }
+    }
+  ],
   "$defs": {
     "id": {
       "type": "string",

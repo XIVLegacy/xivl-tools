@@ -1,0 +1,22 @@
+{
+  "format": "ssd-extract",
+  "resources": [
+    {
+      "file": "unknown-type-document.bin",
+      "id": "0x14000001"
+    },
+    {
+      "file": "type-data.bin",
+      "id": "0x14000010"
+    },
+    {
+      "file": "type-enable.bin",
+      "id": "0x14000020"
+    },
+    {
+      "file": "type-offset.bin",
+      "id": "0x14000030"
+    }
+  ],
+  "schemaVersion": 1
+}

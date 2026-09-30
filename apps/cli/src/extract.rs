@@ -9,7 +9,7 @@ use xivl_formats::sheet::{parse_enable_file, parse_row_offsets};
 use xivl_formats::ssd::{self, SheetBody};
 use xivl_formats::{parse_row_span, scrambled, CsvTable, ResourceId};
 
-use crate::Failure;
+use crate::{ExtractFailure as Failure, ExtractFailureKind};
 
 #[derive(Debug, Default)]
 pub struct ExtractSummary {
@@ -20,6 +20,8 @@ pub struct ExtractSummary {
     pub absent_blocks: usize,
     pub conflicting_values: usize,
 }
+
+const MAX_EXPORT_COLUMNS: usize = 4096;
 
 pub fn run(arguments: &[String]) -> Result<ExtractSummary, Failure> {
     let Some(game) = arguments.first() else {
@@ -44,27 +46,35 @@ pub fn run(arguments: &[String]) -> Result<ExtractSummary, Failure> {
     extract(Path::new(game), Path::new(&output))
 }
 
+/// Run the directory exporter without parsing command-line arguments.
+///
+/// The conformance runner uses this narrow entry point so it exercises the
+/// same exporter as the CLI without starting a second process.
+pub fn extract_directory(game: &Path, output: &Path) -> Result<ExtractSummary, Failure> {
+    extract(game, output)
+}
+
 fn extract(game: &Path, output: &Path) -> Result<ExtractSummary, Failure> {
     let data_root = game.join("data");
     if !data_root.is_dir() {
-        return Err(Failure::usage(format!(
+        return Err(Failure::io(format!(
             "'{}' has no data directory",
             game.display()
         )));
     }
     if output.is_dir()
         && fs::read_dir(output)
-            .map_err(|error| Failure::usage(error.to_string()))?
+            .map_err(|error| Failure::io(error.to_string()))?
             .next()
             .is_some()
     {
-        return Err(Failure::usage(format!(
+        return Err(Failure::io(format!(
             "output directory '{}' is not empty",
             output.display()
         )));
     }
     fs::create_dir_all(output).map_err(|error| {
-        Failure::usage(format!(
+        Failure::io(format!(
             "cannot create output directory '{}': {error}",
             output.display()
         ))
@@ -79,8 +89,18 @@ fn extract(game: &Path, output: &Path) -> Result<ExtractSummary, Failure> {
         let Some(document) = read_ssd_candidate(&path)? else {
             continue;
         };
-        if document.format_id() == "ssd-sheet" {
-            definitions.push((path, document));
+        match document.format_id() {
+            "ssd-sheet" => definitions.push((path, document)),
+            "ssd-mixed" => {
+                return Err(Failure::semantic(
+                    ExtractFailureKind::InvalidAttributeValue,
+                    format!(
+                        "{}: mixed SSD master and sheet definitions are unsupported",
+                        path.display()
+                    ),
+                ));
+            }
+            _ => {}
         }
     }
 
@@ -105,13 +125,40 @@ fn extract(game: &Path, output: &Path) -> Result<ExtractSummary, Failure> {
                 continue;
             };
             let declared_width = attribute_u32(sheet, "column_max", &source)? as usize;
+            if declared_width > MAX_EXPORT_COLUMNS {
+                return Err(Failure::semantic(
+                    ExtractFailureKind::InvalidAttributeValue,
+                    format!("{}: declared column width {declared_width} exceeds export limit {MAX_EXPORT_COLUMNS}", source.display()),
+                ));
+            }
             let declared_count = attribute_u32(sheet, "column_count", &source)? as usize;
             if declared_count != columns.len() {
-                return Err(Failure::parse(format!(
-                    "{}: sheet declares {declared_count} columns but lists {} types",
-                    source.display(),
-                    columns.len()
-                )));
+                return Err(Failure::semantic(
+                    ExtractFailureKind::InvalidAttributeValue,
+                    format!(
+                        "{}: sheet declares {declared_count} columns but lists {} types",
+                        source.display(),
+                        columns.len()
+                    ),
+                ));
+            }
+            let mut seen_indexes = BTreeSet::new();
+            for &column_index in index {
+                if column_index as usize >= declared_width {
+                    return Err(Failure::semantic(ExtractFailureKind::InvalidAttributeValue, format!(
+                        "{}: column index {column_index} is outside declared width {declared_width}",
+                        source.display()
+                    )));
+                }
+                if !seen_indexes.insert(column_index) {
+                    return Err(Failure::semantic(
+                        ExtractFailureKind::InvalidAttributeValue,
+                        format!(
+                            "{}: column index {column_index} is repeated",
+                            source.display()
+                        ),
+                    ));
+                }
             }
             table.ensure_width(declared_width);
             table
@@ -126,10 +173,13 @@ fn extract(game: &Path, output: &Path) -> Result<ExtractSummary, Failure> {
                     continue;
                 }
                 if present.iter().any(|value| !value) {
-                    return Err(Failure::parse(format!(
-                        "{}: block has only some of its data, enable, and offset resources",
-                        source.display()
-                    )));
+                    return Err(Failure::semantic(
+                        ExtractFailureKind::IncompleteResourceTriple,
+                        format!(
+                            "{}: block has only some of its data, enable, and offset resources",
+                            source.display()
+                        ),
+                    ));
                 }
                 let data = read_resource(game, block.data)?;
                 let enable = read_resource(game, block.enable)?;
@@ -138,30 +188,99 @@ fn extract(game: &Path, output: &Path) -> Result<ExtractSummary, Failure> {
                     .map_err(|error| resource_failure(block.enable, error))?;
                 let offsets = parse_row_offsets(&offsets_data)
                     .map_err(|error| resource_failure(block.offsets, error))?;
-                if offsets.slot_count() > block.count as usize {
-                    return Err(Failure::parse(format!(
-                        "{}: block declares {} slots but its offset file has {} entries",
-                        source.display(),
-                        block.count,
-                        offsets.slot_count()
-                    )));
+                if !enable.anomalies.is_empty() {
+                    return Err(Failure::semantic(
+                        ExtractFailureKind::InvalidResourceStructure,
+                        format!(
+                            "{}: enable file contains structural anomalies",
+                            source.display()
+                        ),
+                    ));
+                }
+                if !offsets.anomalies.is_empty() {
+                    return Err(Failure::semantic(
+                        ExtractFailureKind::InvalidResourceStructure,
+                        format!(
+                            "{}: row-offset file contains structural anomalies",
+                            source.display()
+                        ),
+                    ));
+                }
+                if offsets.slot_count() != block.count as usize {
+                    return Err(Failure::semantic(
+                        ExtractFailureKind::OffsetCountMismatch,
+                        format!(
+                            "{}: block declares {} slots but its offset file has {} entries",
+                            source.display(),
+                            block.count,
+                            offsets.slot_count()
+                        ),
+                    ));
                 }
                 if offsets.data_length() != data.len() as u64 {
-                    return Err(Failure::parse(format!(
-                        "{}: data length {} disagrees with final row offset {}",
-                        source.display(),
-                        data.len(),
-                        offsets.data_length()
-                    )));
+                    return Err(Failure::semantic(
+                        ExtractFailureKind::OffsetDataLengthMismatch,
+                        format!(
+                            "{}: data length {} disagrees with final row offset {}",
+                            source.display(),
+                            data.len(),
+                            offsets.data_length()
+                        ),
+                    ));
+                }
+                for range in &enable.ranges {
+                    let end = u64::from(range.first_row)
+                        .checked_add(u64::from(range.count))
+                        .ok_or_else(|| {
+                            Failure::semantic(
+                                ExtractFailureKind::InvalidResourceStructure,
+                                format!(
+                                    "{}: enable range overflows row-id space",
+                                    block.enable.dat_path()
+                                ),
+                            )
+                        })?;
+                    let block_end = u64::from(block.begin)
+                        .checked_add(u64::from(block.count))
+                        .ok_or_else(|| {
+                            Failure::semantic(
+                                ExtractFailureKind::InvalidResourceStructure,
+                                format!("{}: block range overflows row-id space", source.display()),
+                            )
+                        })?;
+                    if u64::from(range.first_row) < u64::from(block.begin) || end > block_end {
+                        return Err(Failure::semantic(
+                            ExtractFailureKind::InvalidResourceStructure,
+                            format!(
+                                "{}: enable range lies outside block row range",
+                                source.display()
+                            ),
+                        ));
+                    }
+                }
+                if enable
+                    .ranges
+                    .iter()
+                    .map(|range| u64::from(range.count))
+                    .sum::<u64>()
+                    > u64::from(block.count)
+                {
+                    return Err(Failure::semantic(
+                        ExtractFailureKind::InvalidResourceStructure,
+                        format!("{}: enable ranges contain too many rows", source.display()),
+                    ));
                 }
                 let mut enabled = BTreeSet::new();
                 for range in &enable.ranges {
                     for offset in 0..range.count {
                         let row_id = range.first_row.checked_add(offset).ok_or_else(|| {
-                            Failure::parse(format!(
-                                "{}: enable range exceeds the u32 row-id space",
-                                block.enable.dat_path()
-                            ))
+                            Failure::semantic(
+                                ExtractFailureKind::InvalidResourceStructure,
+                                format!(
+                                    "{}: enable range exceeds the u32 row-id space",
+                                    block.enable.dat_path()
+                                ),
+                            )
                         })?;
                         enabled.insert(row_id);
                     }
@@ -171,10 +290,13 @@ fn extract(game: &Path, output: &Path) -> Result<ExtractSummary, Failure> {
                     stored.insert(row_id(block.begin, row.index, &source)?);
                 }
                 if enabled != stored {
-                    return Err(Failure::parse(format!(
-                        "{}: enable and row-offset resources name different rows",
-                        source.display()
-                    )));
+                    return Err(Failure::semantic(
+                        ExtractFailureKind::EnableRowMismatch,
+                        format!(
+                            "{}: enable and row-offset resources name different rows",
+                            source.display()
+                        ),
+                    ));
                 }
 
                 for row in &offsets.rows {
@@ -195,7 +317,7 @@ fn extract(game: &Path, output: &Path) -> Result<ExtractSummary, Failure> {
 
         let destination = output.join(file_name);
         fs::write(&destination, table.render()).map_err(|error| {
-            Failure::usage(format!("cannot write '{}': {error}", destination.display()))
+            Failure::io(format!("cannot write '{}': {error}", destination.display()))
         })?;
         summary.documents += 1;
         summary.files += 1;
@@ -206,17 +328,17 @@ fn extract(game: &Path, output: &Path) -> Result<ExtractSummary, Failure> {
 
 fn collect_dat_paths(directory: &Path, output: &mut Vec<PathBuf>) -> Result<(), Failure> {
     let entries = fs::read_dir(directory).map_err(|error| {
-        Failure::usage(format!(
+        Failure::io(format!(
             "cannot read directory '{}': {error}",
             directory.display()
         ))
     })?;
     for entry in entries {
-        let entry = entry.map_err(|error| Failure::usage(error.to_string()))?;
+        let entry = entry.map_err(|error| Failure::io(error.to_string()))?;
         let path = entry.path();
         let kind = entry
             .file_type()
-            .map_err(|error| Failure::usage(error.to_string()))?;
+            .map_err(|error| Failure::io(error.to_string()))?;
         if kind.is_dir() {
             collect_dat_paths(&path, output)?;
         } else if path
@@ -267,9 +389,10 @@ fn read_ssd_candidate(path: &Path) -> Result<Option<ssd::SsdDocument>, Failure> 
         decoded = value.document;
         decoded.as_slice()
     };
+    let looks_like_ssd = has_ssd_root(document_bytes);
     match ssd::parse_document(document_bytes) {
         Ok(document) => Ok(Some(document)),
-        Err(error) if !plain => Err(parse_failure(path, error)),
+        Err(error) if !plain || looks_like_ssd => Err(parse_failure(path, error)),
         Err(_) => Ok(None),
     }
 }
@@ -293,16 +416,19 @@ fn attribute_u32(sheet: &ssd::Sheet, name: &str, source: &Path) -> Result<u32, F
         .iter()
         .find(|attribute| attribute.name == name)
         .ok_or_else(|| {
-            Failure::parse(format!(
-                "{}: sheet has no {name} attribute",
-                source.display()
-            ))
+            Failure::semantic(
+                ExtractFailureKind::InvalidAttributeValue,
+                format!("{}: sheet has no {name} attribute", source.display()),
+            )
         })?;
     attribute.value.parse().map_err(|_| {
-        Failure::parse(format!(
-            "{}: sheet {name} attribute is not an unsigned integer",
-            source.display()
-        ))
+        Failure::semantic(
+            ExtractFailureKind::InvalidAttributeValue,
+            format!(
+                "{}: sheet {name} attribute is not an unsigned integer",
+                source.display()
+            ),
+        )
     })
 }
 
@@ -311,10 +437,10 @@ fn row_id(begin: u32, index: u64, source: &Path) -> Result<u32, Failure> {
         .checked_add(index)
         .and_then(|value| u32::try_from(value).ok())
         .ok_or_else(|| {
-            Failure::parse(format!(
-                "{}: block row id exceeds the u32 range",
-                source.display()
-            ))
+            Failure::semantic(
+                ExtractFailureKind::RowIdOverflow,
+                format!("{}: block row id exceeds the u32 range", source.display()),
+            )
         })
 }
 
@@ -347,15 +473,35 @@ fn unique_name(base: &str, used: &mut BTreeSet<String>) -> String {
 }
 
 fn read_failure(path: &Path, error: &std::io::Error) -> Failure {
-    Failure::usage(format!("cannot read '{}': {error}", path.display()))
+    Failure::io(format!("cannot read '{}': {error}", path.display()))
 }
 
 fn parse_failure(path: &Path, error: xivl_formats::FormatError) -> Failure {
-    Failure::parse(format!("{}: {error}", path.display()))
+    let message = format!("{}: {error}", path.display());
+    Failure::format(error, message)
 }
 
 fn resource_failure(id: ResourceId, error: xivl_formats::FormatError) -> Failure {
-    Failure::parse(format!("{}: {error}", id.dat_path()))
+    let message = format!("{}: {error}", id.dat_path());
+    Failure::format(error, message)
+}
+
+fn has_ssd_root(bytes: &[u8]) -> bool {
+    let mut body = bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(bytes);
+    if body.starts_with(b"<?xml") {
+        let Some(end) = body.windows(2).position(|window| window == b"?>") else {
+            return false;
+        };
+        body = &body[end + 2..];
+    }
+    while body.first().is_some_and(|byte| byte.is_ascii_whitespace()) {
+        body = &body[1..];
+    }
+    let Some(rest) = body.strip_prefix(b"<ssd") else {
+        return false;
+    };
+    rest.first()
+        .is_none_or(|byte| byte.is_ascii_whitespace() || *byte == b'>' || *byte == b'/')
 }
 
 #[cfg(test)]
@@ -368,5 +514,75 @@ mod tests {
         assert_eq!(safe_name("xtx/quest"), "xtx_quest");
         assert_eq!(unique_name("Sheet", &mut used), "Sheet.csv");
         assert_eq!(unique_name("sheet", &mut used), "sheet(2).csv");
+    }
+
+    #[test]
+    fn directory_extract_is_lossless_and_deterministic() {
+        let root = unique_test_directory();
+        let game = root.join("game");
+        let first = root.join("first");
+        let second = root.join("second");
+        let descriptor_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/public/ssd-extract/complete.json");
+        let descriptor: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&descriptor_path).unwrap()).unwrap();
+        for resource in descriptor["resources"].as_array().unwrap() {
+            let id = xivl_formats::parse_resource_id(resource["id"].as_str().unwrap(), 0).unwrap();
+            let bytes = std::fs::read(
+                descriptor_path
+                    .parent()
+                    .unwrap()
+                    .join(resource["file"].as_str().unwrap()),
+            )
+            .unwrap();
+            let path = game.join(id.dat_path());
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, bytes).unwrap();
+        }
+
+        let summary = extract(&game, &first).unwrap();
+        assert_eq!(summary.documents, 2);
+        assert_eq!(summary.files, 2);
+        assert_eq!(summary.rows, 5);
+        assert_eq!(summary.missing_trailing_values, 1);
+        assert_eq!(summary.absent_blocks, 1);
+        assert_eq!(summary.conflicting_values, 2);
+        let expected = " ,0,1,2\n ,str,u8,bool\n100,alpha,7,true\n102,beta[@duplicate:42455441],9[@duplicate:3130],false\n200,solo,1,true\n";
+        assert_eq!(
+            std::fs::read_to_string(first.join("synthetic_main.csv")).unwrap(),
+            expected
+        );
+        assert_eq!(
+            std::fs::read_to_string(first.join("independent.csv")).unwrap(),
+            " ,0,1,2\n ,str,s32,str\n300,independent,5,final\n301,missing,6,[@missing]\n"
+        );
+
+        let repeat = extract(&game, &second).unwrap();
+        assert_eq!(summary.files, repeat.files);
+        assert_eq!(summary.documents, repeat.documents);
+        assert_eq!(
+            std::fs::read(first.join("synthetic_main.csv")).unwrap(),
+            std::fs::read(second.join("synthetic_main.csv")).unwrap()
+        );
+        assert_eq!(
+            std::fs::read(first.join("independent.csv")).unwrap(),
+            std::fs::read(second.join("independent.csv")).unwrap()
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    fn unique_test_directory() -> PathBuf {
+        for index in 0..1000 {
+            let candidate = std::env::temp_dir().join(format!(
+                "xivl-cli-ssd-extract-test-{}-{index}",
+                std::process::id()
+            ));
+            match std::fs::create_dir(&candidate) {
+                Ok(()) => return candidate,
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => panic!("cannot create test directory: {error}"),
+            }
+        }
+        panic!("cannot allocate test directory")
     }
 }

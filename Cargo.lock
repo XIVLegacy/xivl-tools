@@ -1096,6 +1096,7 @@ name = "xivl-conformance"
 version = "0.1.0"
 dependencies = [
  "serde_json",
+ "xivl-cli",
  "xivl-formats",
 ]
 

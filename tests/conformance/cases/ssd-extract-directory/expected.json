@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "independent.csv",
+      "sha256": "defe3877077b9c563f26f623db6bb34d362d13b29b1dcc7351e82396cd07147f",
+      "size": 71
+    },
+    {
+      "path": "synthetic_main.csv",
+      "sha256": "2d110e2788bb461ed5966847b5c950625230cfbd737523e0e0d7e00192549052",
+      "size": 110
+    }
+  ],
+  "format": "ssd-sheet",
+  "operation": "extract-directory",
+  "summary": {
+    "absentBlocks": 1,
+    "conflictingValues": 2,
+    "documents": 2,
+    "files": 2,
+    "missingTrailingValues": 1,
+    "rows": 5
+  }
+}

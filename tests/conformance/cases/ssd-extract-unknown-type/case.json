@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "ssd-extract-unknown-type",
+  "formatId": "ssd-sheet",
+  "operation": "extract-directory",
+  "fixture": {
+    "kind": "public-tree",
+    "format": "ssd-extract",
+    "path": "tests/fixtures/public/ssd-extract/unknown-type.json"
+  },
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unknown-column-type"
+  },
+  "notes": "An unestablished column type is refused rather than assigned an invented width."
+}

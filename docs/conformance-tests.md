@@ -77,6 +77,27 @@ DXT1 modes, DXT5 alpha behavior, and partial-block cropping. CLI tests
 exercise both extraction commands and verification failures. See the
 [preview contract](formats/gtex-pwib.md#decoded-top-mip-png-preview).
 
+`extract-directory` exercises the production whole-directory `extract`
+implementation for `ssd-sheet`. Its `public-tree` fixture names a generated
+JSON descriptor with `format: "ssd-extract"`, `schemaVersion: 1`, and a
+`resources` list. Each resource records an explicit hexadecimal `id` and
+the relative `file` of an authored `.bin` fixture. The runner materializes
+those bytes at their resource-ID DAT paths in an isolated test directory.
+No client install or previously built CLI executable is required.
+
+Directory reports contain output filenames, byte counts, SHA-256 digests,
+and the extraction summary. They contain no CSV cells. Separate literal
+CSV assertions check the generated trees' values, missing and duplicate
+markers, sparse rows, and deterministic repeat extraction. Malformed sets
+exercise incomplete resource triples, schema mappings, row offsets,
+enable ranges, and row decoding. See the
+[SSD CSV contract](formats/ssd-sheet.md#static-sheet-csv-export).
+
+Directory cases accept no extra arguments and pin a typed extraction error
+kind instead of `errorOffset`: the operation spans several independently
+addressed resources. Fixture setup and output I/O failures cannot satisfy
+a `parse-error` expectation.
+
 ## Case outcomes
 
 A case expects `ok` with an expected output document, or `parse-error` with

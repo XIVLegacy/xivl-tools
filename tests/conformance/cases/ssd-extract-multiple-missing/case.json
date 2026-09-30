@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "ssd-extract-multiple-missing",
+  "formatId": "ssd-sheet",
+  "operation": "extract-directory",
+  "fixture": {
+    "kind": "public-tree",
+    "format": "ssd-extract",
+    "path": "tests/fixtures/public/ssd-extract/multiple-missing.json"
+  },
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-end-of-input"
+  },
+  "notes": "Only one documented final column may be omitted from a row."
+}

@@ -1,0 +1,22 @@
+{
+  "format": "ssd-extract",
+  "resources": [
+    {
+      "file": "offset-length-document.bin",
+      "id": "0x14000001"
+    },
+    {
+      "file": "length-data.bin",
+      "id": "0x14000010"
+    },
+    {
+      "file": "length-enable.bin",
+      "id": "0x14000020"
+    },
+    {
+      "file": "length-offset.bin",
+      "id": "0x14000030"
+    }
+  ],
+  "schemaVersion": 1
+}

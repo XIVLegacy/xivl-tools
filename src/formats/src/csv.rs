@@ -1,11 +1,17 @@
 //! Lossless CSV views for SSD sheet values.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
 use crate::error::{ErrorKind, FormatError, Result};
 use crate::sheet::{self, ColumnType, ColumnValue};
 use crate::InspectAs;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum LogicalValue {
+    Missing,
+    Present(String),
+}
 
 /// One merged sheet table. Definitions place their columns at the indexes
 /// declared by the SSD document, so language variants share one row.
@@ -13,6 +19,9 @@ use crate::InspectAs;
 pub struct CsvTable {
     pub columns: Vec<Option<ColumnType>>,
     pub rows: BTreeMap<u32, Vec<Option<String>>>,
+    /// Values seen per cell, kept separately so duplicate markers do not
+    /// become part of the next comparison.
+    logical_values: BTreeMap<(u32, usize), BTreeSet<LogicalValue>>,
 }
 
 impl CsvTable {
@@ -86,28 +95,51 @@ impl CsvTable {
         row.resize(self.columns.len(), None);
         let mut conflicts = 0;
         for (&index, value) in indexes.iter().zip(values) {
+            let slot = &mut row[index as usize];
+            let logical = self
+                .logical_values
+                .entry((row_id, index as usize))
+                .or_default();
+            if logical.is_empty() {
+                if let Some(existing) = slot.as_ref() {
+                    logical.insert(LogicalValue::Present(existing.clone()));
+                }
+            }
             let Some(value) = value else {
-                let slot = &mut row[index as usize];
-                if let Some(existing) = slot {
-                    existing.push_str("[@missing]");
-                } else {
-                    *slot = Some("[@missing]".into());
+                if !logical.contains(&LogicalValue::Missing) {
+                    if let Some(existing) = slot {
+                        if existing.is_empty() {
+                            // Keep an authored empty value visible when a
+                            // missing value shares its cell.
+                            existing.push_str("[@duplicate:]");
+                        }
+                        existing.push_str("[@missing]");
+                    } else {
+                        *slot = Some("[@missing]".into());
+                    }
+                    logical.insert(LogicalValue::Missing);
                 }
                 continue;
             };
             let text = value_text(&value);
-            let slot = &mut row[index as usize];
-            if let Some(existing) = slot {
-                if *existing != text {
+            let logical_value = LogicalValue::Present(text.clone());
+            if !logical.contains(&logical_value) {
+                let has_other_present = logical.iter().any(
+                    |entry| matches!(entry, LogicalValue::Present(existing) if existing != &text),
+                );
+                if has_other_present {
                     conflicts += 1;
+                }
+                if let Some(existing) = slot {
                     existing.push_str("[@duplicate:");
                     for byte in text.as_bytes() {
                         let _ = write!(existing, "{byte:02X}");
                     }
                     existing.push(']');
+                } else {
+                    *slot = Some(text.clone());
                 }
-            } else {
-                *slot = Some(text);
+                logical.insert(logical_value);
             }
         }
         Ok(conflicts)
@@ -145,8 +177,8 @@ impl CsvTable {
 }
 
 /// Read exactly one row span. Missing trailing values are represented as
-/// empty cells. This is the bounded anomaly used by the 1.23b Chinese
-/// `xtx/quest` blocks.
+/// `None` for the caller; `CsvTable` renders them as `[@missing]`. This is
+/// the bounded anomaly used by the 1.23b Chinese `xtx/quest` blocks.
 pub fn parse_row_span(data: &[u8], columns: &[ColumnType]) -> Result<Vec<Option<ColumnValue>>> {
     let shortest = columns.len().saturating_sub(1).max(1);
     for count in (shortest..=columns.len()).rev() {
@@ -273,7 +305,7 @@ mod tests {
     }
 
     #[test]
-    fn a_missing_trailing_column_is_an_explicit_empty_value() {
+    fn an_omitted_trailing_column_is_an_explicit_missing_value() {
         let data = [1u8, 2u8];
         let columns = [
             ColumnType::Unsigned8,
@@ -302,6 +334,8 @@ mod tests {
         };
         assert_eq!(table.insert_row(1, &[0], value(7)).unwrap(), 0);
         assert_eq!(table.insert_row(1, &[0], value(8)).unwrap(), 1);
+        assert_eq!(table.insert_row(1, &[0], value(7)).unwrap(), 0);
+        assert_eq!(table.insert_row(1, &[0], value(8)).unwrap(), 0);
         assert_eq!(table.render(), " ,0\n ,u8\n1,7[@duplicate:38]\n");
     }
 
@@ -310,7 +344,75 @@ mod tests {
         let mut table = CsvTable::default();
         table.insert_columns(&[0], &[ColumnType::Text]).unwrap();
         table.insert_row(1, &[0], vec![None]).unwrap();
+        table.insert_row(1, &[0], vec![None]).unwrap();
         assert_eq!(table.render(), " ,0\n ,str\n1,[@missing]\n");
+    }
+
+    #[test]
+    fn missing_and_empty_render_as_distinct_lossless_states() {
+        let empty = || parse_row_span(&[1, 0, 0], &[ColumnType::Text]).unwrap();
+
+        let mut value_then_missing = CsvTable::default();
+        value_then_missing
+            .insert_columns(&[0], &[ColumnType::Unsigned8])
+            .unwrap();
+        let value = || {
+            vec![Some(ColumnValue::Unsigned8 {
+                span: crate::Span::new(0, 1),
+                value: 7,
+            })]
+        };
+        assert_eq!(value_then_missing.insert_row(1, &[0], value()).unwrap(), 0);
+        assert_eq!(
+            value_then_missing.insert_row(1, &[0], vec![None]).unwrap(),
+            0
+        );
+        assert_eq!(
+            value_then_missing.insert_row(1, &[0], vec![None]).unwrap(),
+            0
+        );
+        assert_eq!(value_then_missing.render(), " ,0\n ,u8\n1,7[@missing]\n");
+
+        let mut empty_then_missing = CsvTable::default();
+        empty_then_missing
+            .insert_columns(&[0], &[ColumnType::Text])
+            .unwrap();
+        assert_eq!(empty_then_missing.insert_row(1, &[0], empty()).unwrap(), 0);
+        assert_eq!(
+            empty_then_missing.insert_row(1, &[0], vec![None]).unwrap(),
+            0
+        );
+        assert_eq!(
+            empty_then_missing.insert_row(1, &[0], vec![None]).unwrap(),
+            0
+        );
+        assert_eq!(
+            empty_then_missing.render(),
+            " ,0\n ,str\n1,[@duplicate:][@missing]\n"
+        );
+
+        let mut missing_then_empty = CsvTable::default();
+        missing_then_empty
+            .insert_columns(&[0], &[ColumnType::Text])
+            .unwrap();
+        assert_eq!(
+            missing_then_empty.insert_row(1, &[0], vec![None]).unwrap(),
+            0
+        );
+        assert_eq!(missing_then_empty.insert_row(1, &[0], empty()).unwrap(), 0);
+        assert_eq!(missing_then_empty.insert_row(1, &[0], empty()).unwrap(), 0);
+        assert_eq!(
+            missing_then_empty.render(),
+            " ,0\n ,str\n1,[@missing][@duplicate:]\n"
+        );
+
+        let mut missing_only = CsvTable::default();
+        missing_only
+            .insert_columns(&[0], &[ColumnType::Text])
+            .unwrap();
+        assert_eq!(missing_only.insert_row(1, &[0], vec![None]).unwrap(), 0);
+        assert_eq!(missing_only.insert_row(1, &[0], vec![None]).unwrap(), 0);
+        assert_eq!(missing_only.render(), " ,0\n ,str\n1,[@missing]\n");
     }
 
     #[test]

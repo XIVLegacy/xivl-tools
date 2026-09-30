@@ -231,6 +231,135 @@ def read_cases(files: list[str]) -> list[tuple[str, dict]]:
     return cases
 
 
+def check_public_tree_descriptor(
+    case_relative: str, fixture: dict, tracked: set[str]
+) -> list[Failure]:
+    """Validate the generated resource tree consumed by the directory runner."""
+    relative = fixture.get("path", "")
+    try:
+        descriptor = load_json(relative)
+    except (OSError, json.JSONDecodeError) as error:
+        return [
+            Failure(
+                "case", "{0}: invalid tree descriptor: {1}".format(case_relative, error)
+            )
+        ]
+    failures = []
+    if not isinstance(descriptor, dict):
+        return [
+            Failure("case", "{0}: tree descriptor must be an object".format(relative))
+        ]
+    if set(descriptor) != {"schemaVersion", "format", "resources"}:
+        failures.append(
+            Failure(
+                "case",
+                "{0}: tree descriptor has unexpected root properties".format(relative),
+            )
+        )
+    schema_version = descriptor.get("schemaVersion")
+    if (
+        not isinstance(schema_version, int)
+        or isinstance(schema_version, bool)
+        or schema_version != 1
+        or descriptor.get("format") != "ssd-extract"
+    ):
+        failures.append(
+            Failure("case", "{0}: invalid ssd-extract tree descriptor".format(relative))
+        )
+        return failures
+    resources = descriptor.get("resources")
+    if not isinstance(resources, list) or not resources:
+        failures.append(
+            Failure("case", "{0}: tree resources must be non-empty".format(relative))
+        )
+        return failures
+    seen_ids = set()
+    seen_files = set()
+    parent = Path(relative).parent
+    for index, resource in enumerate(resources):
+        if not isinstance(resource, dict):
+            failures.append(
+                Failure(
+                    "case", "{0}: resource {1} is not an object".format(relative, index)
+                )
+            )
+            continue
+        if set(resource) != {"id", "file"}:
+            failures.append(
+                Failure(
+                    "case",
+                    "{0}: resource {1} has unexpected properties".format(
+                        relative, index
+                    ),
+                )
+            )
+        resource_id = resource.get("id")
+        if not isinstance(resource_id, str) or not re.fullmatch(
+            r"(?:0[xX])?[0-9A-Fa-f]{8}", resource_id
+        ):
+            failures.append(
+                Failure(
+                    "case",
+                    "{0}: resource {1} has an invalid id".format(relative, index),
+                )
+            )
+        else:
+            canonical_id = int(
+                resource_id[2:] if resource_id[:2].lower() == "0x" else resource_id, 16
+            )
+            if canonical_id in seen_ids:
+                failures.append(
+                    Failure(
+                        "case",
+                        "{0}: duplicate resource id '{1}'".format(
+                            relative, resource_id
+                        ),
+                    )
+                )
+            else:
+                seen_ids.add(canonical_id)
+        resource_file = resource.get("file")
+        if (
+            not isinstance(resource_file, str)
+            or not re.fullmatch(r"[A-Za-z0-9._/-]+\.bin", resource_file)
+            or ".." in Path(resource_file).parts
+            or Path(resource_file).is_absolute()
+            or resource_file.startswith(("/", "\\"))
+            or ":" in resource_file
+        ):
+            failures.append(
+                Failure(
+                    "case",
+                    "{0}: resource {1} has an unsafe fixture file".format(
+                        relative, index
+                    ),
+                )
+            )
+            continue
+        resolved = (parent / Path(resource_file)).as_posix()
+        if resolved in seen_files:
+            failures.append(
+                Failure(
+                    "case",
+                    "{0}: duplicate resource fixture '{1}'".format(
+                        relative, resource_file
+                    ),
+                )
+            )
+        else:
+            seen_files.add(resolved)
+        if resolved not in tracked:
+            failures.append(
+                Failure(
+                    "case",
+                    "{0}: resource fixture '{1}' is not tracked".format(
+                        relative, resolved
+                    ),
+                )
+            )
+    return failures
+
+
 def check_case_integrity(files: list[str], matrix: dict) -> list[Failure]:
     failures = []
     tracked = set(files)
@@ -280,6 +409,53 @@ def check_case_integrity(files: list[str], matrix: dict) -> list[Failure]:
                         "{0}: fixture '{1}' is not tracked".format(relative, value),
                     )
                 )
+        elif fixture.get("kind") == "public-tree":
+            if case.get("operation") != "extract-directory":
+                failures.append(
+                    Failure(
+                        "case",
+                        "{0}: public-tree fixtures require extract-directory".format(
+                            relative
+                        ),
+                    )
+                )
+            value = fixture.get("path")
+            if value and value not in tracked:
+                failures.append(
+                    Failure(
+                        "case",
+                        "{0}: fixture '{1}' is not tracked".format(relative, value),
+                    )
+                )
+            elif value:
+                failures.extend(
+                    check_public_tree_descriptor(relative, fixture, tracked)
+                )
+            if case.get("formatId") != "ssd-sheet":
+                failures.append(
+                    Failure(
+                        "case",
+                        "{0}: public-tree extract must use ssd-sheet".format(relative),
+                    )
+                )
+            if case.get("arguments"):
+                failures.append(
+                    Failure(
+                        "case",
+                        "{0}: extract-directory does not accept arguments".format(
+                            relative
+                        ),
+                    )
+                )
+            if "errorOffset" in case.get("expect", {}):
+                failures.append(
+                    Failure(
+                        "case",
+                        "{0}: extract-directory does not accept errorOffset".format(
+                            relative
+                        ),
+                    )
+                )
         elif fixture.get("kind") == "private":
             value = fixture.get("fixtureId")
             if value and value not in fixture_ids:
@@ -316,9 +492,13 @@ def check_matrix_coverage(files: list[str], matrix: dict) -> list[Failure]:
     public_covered = set()
     private_covered = set()
     for _, case in read_cases(files):
-        target = (
-            public_covered if case["fixture"]["kind"] == "public" else private_covered
-        )
+        kind = case["fixture"]["kind"]
+        if kind in ("public", "public-tree"):
+            target = public_covered
+        elif kind == "private":
+            target = private_covered
+        else:
+            continue
         target.add(case["formatId"])
 
     for entry in matrix["formats"]:

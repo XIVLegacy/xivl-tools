@@ -180,6 +180,9 @@ The command checks the data, enable, and row-offset resources that belong to
 each sheet. Missing blocks, missing trailing values, and conflicting duplicate
 cells are counted in the final summary. Rich-string control tokens remain
 reversible markers. The output directory must be absent or empty.
+The CSV view accepts at most 4096 declared columns and rejects inconsistent
+linked resources. See the [SSD contract](formats/ssd-sheet.md#static-sheet-csv-export)
+for the exact boundary and public extraction coverage.
 
 ## Export zone collision geometry
 

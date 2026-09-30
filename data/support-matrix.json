@@ -117,14 +117,14 @@
       "name": "SSD sheet info and data",
       "category": "sheet",
       "phase": 1,
-      "read": "partial",
+      "read": "supported",
       "write": "planned",
-      "export": "partial",
+      "export": "supported",
       "exportViews": [
         "json",
         "csv"
       ],
-      "notes": "Read covers the schema document, enable-driven row offsets, all ten retail column types, IEEE-754 binary16, rich strings, and the Chinese xtx/quest trailing-column omission. The game-directory CLI discovered and exported 803 definition documents from retail 1.23b without a master list or third-party binary. Public CSV cases cover binary16 and exact rich-token preservation, moving export from planned to partial. It remains partial because public conformance does not yet cover whole-document resource linking, absent block triples, trailing omissions, duplicate logical cells, and their malformed forms. Retail output matched the reference corpus's 803 names, header shapes, and row counts. Direct cataloging confirmed that all 585 resources of 195 absent Chinese block triples are unshipped, and the comparison corpus leaves their unique columns empty. The export also retains 639 explicit missing markers and reports 57 conflicting duplicates. Write-back still needs round-trip fixtures. Evidence: docs/formats/ssd-sheet.md."
+      "notes": "Supported read and CSV export cover the schema document, enable-driven row offsets, all ten retail column types, IEEE-754 binary16, rich strings, and the Chinese xtx/quest trailing-column omission. Public whole-directory cases and literal generated-tree CSV oracles cover explicit nonadjacent resource links, sparse rows, complete versus incomplete absent triples, trailing omissions, duplicate logical cells, determinism, and malformed linked sets. Standalone CSV cases cover binary16 and exact rich-token preservation. The recorded game-directory run discovered and exported 803 definition documents from retail 1.23b without a master list or third-party binary, matching the reference corpus's names, header shapes, and row counts. Direct cataloging confirmed that all 585 resources of 195 absent Chinese block triples are unshipped, and the comparison corpus leaves their unique columns empty. The recorded export retained 639 explicit missing markers and reported 57 conflicting duplicates. These public cases do not add private extraction parity. Write-back still needs round-trip fixtures. Evidence: docs/formats/ssd-sheet.md."
     },
     {
       "id": "enable-file",
