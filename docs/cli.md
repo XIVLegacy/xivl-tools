@@ -94,6 +94,8 @@ For one file, use `extract-resource`:
 ```powershell
 cargo run --locked -p xivl-cli -- extract-resource resource.DAT --output resource
 cargo run --locked -p xivl-cli -- extract-resource resource.DAT --output resource --materialize-payloads
+cargo run --locked -p xivl-cli -- extract-resource Widget.form --output widget --as sqwt
+cargo run --locked -p xivl-cli -- extract-resource scrambled.DAT --output document --as scrambled-xml
 ```
 
 The default output is a schema-versioned `extraction.yaml` (use
@@ -102,6 +104,12 @@ separate payload files. The optional `--materialize-payloads` flag writes
 exact direct payload spans only where the format contract allows it, currently
 SEDB, RES, and the supported GTEX boundary. It refuses ambiguous or unsupported
 payload layouts rather than choosing an owner for the bytes.
+
+SQEX widget and scrambled-XML inputs automatically produce
+`payloads/decoded.xml`, preserving the exact decoder output, including BOMs
+and document formatting. Keep the original SQEX basename, case, and suffix:
+they determine the decode key and are recorded for verification. See the
+[extraction contract](resource-extraction.md#extract-one-resource).
 
 For several resources, first make a catalog and then name each selection:
 
@@ -118,6 +126,9 @@ size and SHA-256, current format detection, and output limits before writing.
 The defaults are 32 resources, 64 MiB of source bytes, and 128 MiB of output
 bytes. Use `--max-resources`, `--max-source-bytes`, and `--max-output-bytes`
 to set different positive limits.
+
+Selected scrambled-XML DAT entries also emit their decoded documents.
+Use `extract-resource` for original named SQEX widget files.
 
 ## Verify an extraction
 

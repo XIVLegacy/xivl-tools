@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sqwt/window.bin"
+  },
+  "formatId": "sqwt",
+  "id": "sqwt-export-window",
+  "notes": "Exports the exact decoded document under the fixture basename key.",
+  "operation": "extract",
+  "schemaVersion": 1
+}

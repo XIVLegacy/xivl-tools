@@ -11,6 +11,7 @@ use xivl_formats::{
     extract_lpb, inspect_named_bytes_as, parse_dat_path, to_canonical_json, InspectAs,
 };
 
+use crate::batch_extract::reject_link_if_present;
 use crate::scan::{collect_anomalies, detect, read_support, require_empty_output};
 use crate::{base_name, read_capped, Failure, EXIT_PARSE_FAILURE};
 
@@ -95,6 +96,7 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
     let output =
         output.ok_or_else(|| Failure::usage("extract-resource requires --output <directory>"))?;
     let output_path = Path::new(&output);
+    reject_link_if_present(output_path, "output")?;
     require_empty_output(output_path)?;
     let data = read_capped(input)?;
     let planned = plan_bytes(
@@ -165,16 +167,44 @@ pub(crate) fn plan_bytes(
         .and_then(Value::as_str)
         .unwrap_or("unknown")
         .to_string();
+    if parsed_format == "sqwt" || parsed_format == "scrambled-xml" {
+        let decoded = match parsed_format.as_str() {
+            "sqwt" => {
+                xivl_formats::sqwt::decode(data, name)
+                    .map_err(|error| Failure::parse(format!("{input}: {error}")))?
+                    .document
+            }
+            "scrambled-xml" => {
+                xivl_formats::scrambled::decode(data)
+                    .map_err(|error| Failure::parse(format!("{input}: {error}")))?
+                    .document
+            }
+            _ => unreachable!("document format was checked above"),
+        };
+        let path = "payloads/decoded.xml".to_string();
+        artifacts.push(PayloadArtifact {
+            manifest: json!({
+                "path": path,
+                "role": "decoded-xml-document",
+                "sha256": sha256_hex(&decoded),
+                "size": decoded.len() as u64,
+            }),
+            path,
+            bytes: decoded,
+        });
+    }
     if materialize_payloads {
-        if !matches!(parsed_format.as_str(), "sedb" | "res" | "gtex") {
-            return Err(Failure::usage(format!(
-                "--materialize-payloads applies only to SEDB/RES/GTEX input, not '{parsed_format}'"
-            )));
-        }
-        if parsed_format == "gtex" {
-            artifacts.extend(gtex_surface_payloads(data, input)?);
-        } else {
-            artifacts.extend(container_payloads(data, input)?);
+        match parsed_format.as_str() {
+            // Decoded documents are always materialized. The flag controls
+            // direct container spans, which these formats do not expose.
+            "sqwt" | "scrambled-xml" => {}
+            "gtex" => artifacts.extend(gtex_surface_payloads(data, input)?),
+            "sedb" | "res" => artifacts.extend(container_payloads(data, input)?),
+            other => {
+                return Err(Failure::usage(format!(
+                    "--materialize-payloads applies only to SEDB/RES/GTEX/SQWT/scrambled-xml input, not '{other}'"
+                )))
+            }
         }
     }
     let payloads: Vec<Value> = artifacts
@@ -552,6 +582,149 @@ mod tests {
             fs::read(output.join("payloads/decoded.luac")).unwrap(),
             fs::read(second_output.join("payloads/decoded.luac")).unwrap()
         );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn writes_exact_decoded_documents_for_sqwt_and_scrambled_inputs() {
+        let root = temp_root("decoded-documents");
+        fs::create_dir_all(&root).unwrap();
+        let cases = [
+            (
+                "window.bin",
+                include_bytes!("../../../tests/fixtures/public/sqwt/window.bin").as_slice(),
+                "sqwt",
+            ),
+            (
+                "dictionary.bin",
+                include_bytes!("../../../tests/fixtures/public/sqwt/dictionary.bin").as_slice(),
+                "sqwt",
+            ),
+            (
+                "aligned.bin",
+                include_bytes!("../../../tests/fixtures/public/sqwt/aligned.bin").as_slice(),
+                "sqwt",
+            ),
+            (
+                "byte-order-mark.bin",
+                include_bytes!("../../../tests/fixtures/public/sqwt/byte-order-mark.bin")
+                    .as_slice(),
+                "sqwt",
+            ),
+            (
+                "residue-0.bin",
+                include_bytes!("../../../tests/fixtures/public/scrambled/residue-0.bin").as_slice(),
+                "scrambled-xml",
+            ),
+            (
+                "residue-1.bin",
+                include_bytes!("../../../tests/fixtures/public/scrambled/residue-1.bin").as_slice(),
+                "scrambled-xml",
+            ),
+            (
+                "residue-2.bin",
+                include_bytes!("../../../tests/fixtures/public/scrambled/residue-2.bin").as_slice(),
+                "scrambled-xml",
+            ),
+            (
+                "residue-3.bin",
+                include_bytes!("../../../tests/fixtures/public/scrambled/residue-3.bin").as_slice(),
+                "scrambled-xml",
+            ),
+        ];
+        for (name, bytes, format) in cases {
+            let source = root.join(name);
+            fs::write(&source, bytes).unwrap();
+            let output = root.join(format!("out-{name}"));
+            run(&[
+                source.display().to_string(),
+                "--output".into(),
+                output.display().to_string(),
+                "--as".into(),
+                format.into(),
+            ])
+            .unwrap();
+            let document: Value =
+                serde_yaml::from_str(&fs::read_to_string(output.join("extraction.yaml")).unwrap())
+                    .unwrap();
+            assert_eq!(document["format"]["id"], format);
+            assert_eq!(document["source"]["fileName"], name);
+            assert_eq!(document["payloads"][0]["path"], "payloads/decoded.xml");
+            assert_eq!(document["payloads"][0]["role"], "decoded-xml-document");
+            let decoded = if format == "sqwt" {
+                xivl_formats::sqwt::decode(bytes, name).unwrap().document
+            } else {
+                xivl_formats::scrambled::decode(bytes).unwrap().document
+            };
+            assert_eq!(
+                fs::read(output.join("payloads/decoded.xml")).unwrap(),
+                decoded
+            );
+            assert_eq!(document["payloads"][0]["sha256"], sha256_hex(&decoded));
+        }
+
+        let first = root.join("out-deterministic-first");
+        let second = root.join("out-deterministic-second");
+        for output in [&first, &second] {
+            run(&[
+                root.join("window.bin").display().to_string(),
+                "--output".into(),
+                output.display().to_string(),
+                "--as".into(),
+                "sqwt".into(),
+            ])
+            .unwrap();
+        }
+        assert_eq!(
+            fs::read(first.join("extraction.yaml")).unwrap(),
+            fs::read(second.join("extraction.yaml")).unwrap()
+        );
+        assert_eq!(
+            fs::read(first.join("payloads/decoded.xml")).unwrap(),
+            fs::read(second.join("payloads/decoded.xml")).unwrap()
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn decoded_document_export_refuses_malformed_or_renamed_inputs_before_output() {
+        let root = temp_root("decoded-document-errors");
+        fs::create_dir_all(&root).unwrap();
+        for (name, bytes, format, expected) in [
+            (
+                "cdata.bin",
+                include_bytes!("../../../tests/fixtures/public/sqwt/cdata.bin").as_slice(),
+                "sqwt",
+                "unsupported-xml-construct",
+            ),
+            (
+                "malformed-xml.bin",
+                include_bytes!("../../../tests/fixtures/public/scrambled/malformed-xml.bin")
+                    .as_slice(),
+                "scrambled-xml",
+                "malformed-xml",
+            ),
+            (
+                "wrong-name.bin",
+                include_bytes!("../../../tests/fixtures/public/sqwt/wrong-name.bin").as_slice(),
+                "sqwt",
+                "invalid-utf8",
+            ),
+        ] {
+            let source = root.join(name);
+            fs::write(&source, bytes).unwrap();
+            let output = root.join(format!("out-{name}"));
+            let error = run(&[
+                source.display().to_string(),
+                "--output".into(),
+                output.display().to_string(),
+                "--as".into(),
+                format.into(),
+            ])
+            .unwrap_err();
+            assert!(error.message.contains(expected), "{}", error.message);
+            assert!(!output.exists());
+        }
         fs::remove_dir_all(root).unwrap();
     }
 

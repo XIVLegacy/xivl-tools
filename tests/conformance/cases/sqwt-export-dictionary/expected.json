@@ -1,0 +1,9 @@
+{
+  "format": "sqwt",
+  "keyName": "dictionary.bin",
+  "operation": "extract",
+  "path": "payloads/decoded.xml",
+  "role": "decoded-xml-document",
+  "sha256": "5520d27455bdd752650480e62288ad174ade24d75784271c106aeabc332d40f3",
+  "size": 193
+}

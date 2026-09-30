@@ -1,0 +1,20 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "errorKind": "malformed-xml",
+    "errorOffset": 91,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/malformed-xml.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-export-malformed-xml",
+  "notes": "Malformed decoded XML is rejected before an export identity is produced.",
+  "operation": "extract",
+  "schemaVersion": 1
+}

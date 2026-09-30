@@ -1,0 +1,9 @@
+{
+  "format": "sqwt",
+  "keyName": "window.bin",
+  "operation": "extract",
+  "path": "payloads/decoded.xml",
+  "role": "decoded-xml-document",
+  "sha256": "4d6c2d0b6cda94c34626e4c106a9a6ecd7c90064bacbe82dde54d0820798f2bd",
+  "size": 243
+}

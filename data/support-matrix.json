@@ -80,11 +80,11 @@
       "phase": 1,
       "read": "verified",
       "write": "none",
-      "export": "planned",
+      "export": "supported",
       "exportViews": [
         "binary"
       ],
-      "notes": "The container the client's UI resources are stored in: an eight-byte signature, then a body whose whole 64-bit blocks are enciphered under a key that is the file's own base name, with a final run shorter than a block left in the clear. The cipher is the published Blowfish algorithm with its block halves read as little-endian words, which is the part established against retail data rather than taken from the specification. Read completely: all 1155 SQEX containers in the install decipher to UTF-8 widget documents, re-enciphering reproduces every input byte, and the reading reports the container plus a census of the document's shape rather than its content. Public cases cover both tail cases, a byte order mark, the two constructs the widget profile adds, and seven malformed inputs; eight private cases cover all six suffixes against retail 1.23b. Not claimed: the widget markup's meaning, entity expansion, writing, and the GTEX and SPKL files stored beside these containers. Evidence: docs/formats/sqex.md."
+      "notes": "The container the client's UI resources are stored in: an eight-byte signature, then a body whose whole 64-bit blocks are enciphered under a key that is the file's own base name, with a final run shorter than a block left in the clear. The cipher is the published Blowfish algorithm with its block halves read as little-endian words, which is the part established against retail data rather than taken from the specification. Read completely: all 1155 SQEX containers in the install decipher to UTF-8 widget documents, re-enciphering reproduces every input byte, and the reading reports the container plus a census of the document's shape rather than its content. Public read cases cover both tail cases, a byte order mark, the two constructs the widget profile adds, and seven malformed inputs; eight private read cases cover all six suffixes against retail 1.23b. Supported export writes exact decoded document bytes through extract-resource with the original basename key, deterministic payload manifests, and exact source replay. Public extract cases and CLI tests cover byte preservation, tail boundaries, filename keying, malformed inputs, determinism, and verification failures. Export has no private-case parity claim. Not claimed: the widget markup's meaning, entity expansion, writing, and the GTEX and SPKL files stored beside these containers. Evidence: docs/formats/sqex.md."
     },
     {
       "id": "scrambled-xml",
@@ -93,11 +93,11 @@
       "phase": 1,
       "read": "verified",
       "write": "none",
-      "export": "planned",
+      "export": "supported",
       "exportViews": [
         "xml"
       ],
-      "notes": "An XML document behind a one-byte trailer, a partial byte reversal, and a two-key word cipher. Recognition is the decode itself, not the trailer byte: two resources in the install end in it and are not documents. The first word key is derived from the encoded length and the second is recovered from the document's own known opening, so nothing is stored and nothing is guessed. Read completely: all 799 scrambled resources in the install decode to well-formed UTF-8 XML, and a decoded document is handed to the same reader a plaintext one gets. Public cases cover both document kinds, all four encoded-length residues, and five malformed inputs; private cases cover all four residues against retail 1.23b, recorded by span, key, digest, and name census rather than by content. Evidence: docs/formats/ssd-sheet.md."
+      "notes": "An XML document behind a one-byte trailer, a partial byte reversal, and a two-key word cipher. Recognition is the decode itself, not the trailer byte: two resources in the install end in it and are not documents. The first word key is derived from the encoded length and the second is recovered from the document's own known opening, so nothing is stored and nothing is guessed. Read completely: all 799 scrambled resources in the install decode to well-formed UTF-8 XML, and a decoded document is handed to the same reader a plaintext one gets. Public read cases cover both document kinds, all four encoded-length residues, and five malformed inputs; private read cases cover all four residues against retail 1.23b, recorded by span, key, digest, and name census rather than by content. Supported export writes exact decoded document bytes through extract-resource and selected extract-catalog entries, with deterministic payload manifests, output accounting, and exact source replay. Public extract cases and CLI tests cover byte preservation, all four residues, malformed inputs, determinism, catalog extraction, and verification failures. Export has no private-case parity claim. Evidence: docs/formats/ssd-sheet.md."
     },
     {
       "id": "ssd-master",

@@ -420,6 +420,30 @@ xivl inspect <file> --as ssd             799 documents parsed
 
 0 panics in both passes.
 
+### Decoded-document export
+
+`extract-resource <file> --output <directory> --as scrambled-xml` writes
+the decoder's exact document bytes to `payloads/decoded.xml`. Detection can
+also select this reader automatically. The export preserves the BOM,
+declaration, whitespace, and every accepted document byte without XML
+reserialization. The container trailer is excluded from the decoded file.
+
+Selected scrambled-XML DAT entries use the same export through
+`extract-catalog`. The decoded file's size contributes to batch output
+accounting. The manifest records the relative payload path, role, size, and
+SHA-256, while the parsed report remains structural. Verification checks
+exact membership and digests; source replay decodes again and compares the
+document byte for byte.
+
+The `supported` export claim covers the existing reader's accepted boundary,
+with public synthetic extraction cases and CLI tests for exact bytes, all
+encoded-length residues, malformed inputs, deterministic output, catalog
+extraction, and verification failures. The `verified` read claim is separate:
+private read cases do not establish private export parity.
+
+See [resource extraction](../resource-extraction.md) for the workflow and
+manifest contract.
+
 ### What the documents say
 
 The 799 decoded documents plus the 7 plaintext ones are 806 documents

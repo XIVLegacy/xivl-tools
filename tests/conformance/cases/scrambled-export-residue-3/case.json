@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/residue-3.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-export-residue-3",
+  "notes": "Exports a scrambled document with a three-byte residue.",
+  "operation": "extract",
+  "schemaVersion": 1
+}

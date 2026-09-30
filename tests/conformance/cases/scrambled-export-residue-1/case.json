@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/residue-1.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-export-residue-1",
+  "notes": "Exports the residue that requires final-byte correction.",
+  "operation": "extract",
+  "schemaVersion": 1
+}

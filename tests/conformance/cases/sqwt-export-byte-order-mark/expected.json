@@ -1,0 +1,9 @@
+{
+  "format": "sqwt",
+  "keyName": "byte-order-mark.bin",
+  "operation": "extract",
+  "path": "payloads/decoded.xml",
+  "role": "decoded-xml-document",
+  "sha256": "136f867f93028163e8aad8d7442b40092896b1013bb4b89f94f974398bdedd49",
+  "size": 36
+}

@@ -16,7 +16,7 @@ use std::collections::BTreeMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use serde_json::Value;
+use serde_json::{json, Value};
 use xivl_formats::digest::sha256_hex;
 use xivl_formats::{
     inspect_named_bytes_as, lua_path_document, resource_path_listing, to_canonical_json,
@@ -181,7 +181,18 @@ fn run_case(
                     if operation == "inspect" {
                         inspect_named_bytes_as(&input, &name, &how)
                     } else if operation == "extract" {
-                        xivl_formats::export_sheet_data(&input, &how)
+                        let is_document = matches!(&how, InspectAs::Sqwt | InspectAs::ScrambledXml)
+                            || matches!(
+                                &how,
+                                InspectAs::Auto
+                                    if xivl_formats::sqwt::has_signature(&input)
+                                        || xivl_formats::scrambled::has_signature(&input)
+                            );
+                        if is_document {
+                            decoded_document_export(&input, &name, &how)
+                        } else {
+                            xivl_formats::export_sheet_data(&input, &how)
+                        }
                     } else {
                         validate_named_bytes_as(&input, &name, &how)
                     }
@@ -224,6 +235,46 @@ fn run_case(
         ("parse-error", Err(error)) => compare_error(&expect, &error),
         (other, _) => Outcome::Failed(format!("unknown expected outcome '{other}'")),
     }
+}
+
+/// Report the safe, normalized identity of a decoded XML export. The
+/// document bytes themselves stay in the CLI extraction payload; a public
+/// conformance expectation records only the path, role, length, and digest.
+fn decoded_document_export(
+    input: &[u8],
+    name: &str,
+    how: &InspectAs,
+) -> Result<Value, FormatError> {
+    let format = match how {
+        InspectAs::Sqwt => "sqwt",
+        InspectAs::ScrambledXml => "scrambled-xml",
+        InspectAs::Auto if xivl_formats::sqwt::has_signature(input) => "sqwt",
+        InspectAs::Auto if xivl_formats::scrambled::has_signature(input) => "scrambled-xml",
+        _ => {
+            return Err(FormatError::new(
+                ErrorKind::BadMagic,
+                0,
+                "decoded document export requires a SQEX or scrambled-XML input",
+            ))
+        }
+    };
+    // Match the CLI's accepted reader boundary before exposing an export
+    // identity, including XML grammar and the SQEX filename key.
+    inspect_named_bytes_as(input, name, how)?;
+    let decoded = match format {
+        "sqwt" => xivl_formats::sqwt::decode(input, name)?.document,
+        "scrambled-xml" => xivl_formats::scrambled::decode(input)?.document,
+        _ => unreachable!("format was selected above"),
+    };
+    Ok(json!({
+        "format": format,
+        "keyName": if format == "sqwt" { Value::String(name.to_string()) } else { Value::Null },
+        "operation": "extract",
+        "path": "payloads/decoded.xml",
+        "role": "decoded-xml-document",
+        "sha256": sha256_hex(&decoded),
+        "size": decoded.len() as u64,
+    }))
 }
 
 fn compare_expected(

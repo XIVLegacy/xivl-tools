@@ -865,6 +865,63 @@ mod tests {
     }
 
     #[test]
+    fn selected_scrambled_resource_exports_decoded_document_and_counts_it() {
+        let work = temp_root("scrambled-document");
+        let root = work.join("install");
+        fs::create_dir_all(&root).unwrap();
+        let bytes = include_bytes!("../../../tests/fixtures/public/scrambled/residue-1.bin");
+        create_resource(&root, "data/12/34/56/78.DAT", bytes);
+        let catalog = work.join("catalog.json");
+        write_catalog(
+            &catalog,
+            vec![row(
+                "data/12/34/56/78.DAT",
+                Some("0x12345678"),
+                bytes,
+                "scrambled-xml",
+                "parsed",
+            )],
+        );
+        let output = work.join("selected");
+        let mut arguments = base_arguments(&catalog, &root, &output);
+        arguments.extend(["--id".into(), "0x12345678".into()]);
+        let summary = run(&arguments).unwrap();
+        let batch: Value =
+            serde_yaml::from_str(&fs::read_to_string(&summary.output).unwrap()).unwrap();
+        let resource = &batch["resources"][0];
+        let directory = output.join(resource["outputDirectory"].as_str().unwrap());
+        let extraction: Value =
+            serde_yaml::from_str(&fs::read_to_string(directory.join("extraction.yaml")).unwrap())
+                .unwrap();
+        assert_eq!(extraction["payloads"][0]["path"], "payloads/decoded.xml");
+        assert_eq!(
+            fs::read(directory.join("payloads/decoded.xml")).unwrap(),
+            xivl_formats::scrambled::decode(bytes).unwrap().document
+        );
+        let nested_manifest_size = fs::metadata(directory.join("extraction.yaml"))
+            .unwrap()
+            .len();
+        let decoded_size = fs::metadata(directory.join("payloads/decoded.xml"))
+            .unwrap()
+            .len();
+        assert_eq!(
+            resource["outputBytes"],
+            json!(nested_manifest_size + decoded_size)
+        );
+        assert_eq!(batch["totals"]["outputBytes"], summary.output_bytes);
+        let verification = crate::verify_extract::run(&[
+            output.display().to_string(),
+            "--catalog".into(),
+            catalog.display().to_string(),
+            "--root".into(),
+            root.display().to_string(),
+        ])
+        .unwrap();
+        assert!(verification.text.contains("catalog sources replayed"));
+        fs::remove_dir_all(work).unwrap();
+    }
+
+    #[test]
     fn selection_and_catalog_ambiguities_are_refused() {
         let work = temp_root("selection-errors");
         let root = work.join("root");

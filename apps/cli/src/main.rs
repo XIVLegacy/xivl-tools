@@ -60,8 +60,10 @@ lossless CSV view per definition document.
 catalog inventories DAT resources without changing them. It records known,
 malformed, and unknown formats without guessing. extract-resource writes a
 schema-versioned YAML document by default, or JSON, and keeps decoded opaque
-payloads in separate files. --materialize-payloads explicitly writes exact
-direct-root SEDB/RES payload spans when their boundaries are unambiguous.
+payloads in separate files. SQEX widgets and scrambled XML automatically
+write their exact decoded document to payloads/decoded.xml. --materialize-payloads
+explicitly writes exact direct-root SEDB/RES payload spans when their
+boundaries are unambiguous.
 extract-catalog plans and validates an explicit catalog selection before
 writing isolated per-resource outputs; it never has an implicit extract-all.
 verify-extraction checks an existing single or catalog extraction without

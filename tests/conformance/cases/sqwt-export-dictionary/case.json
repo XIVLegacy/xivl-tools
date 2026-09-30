@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sqwt/dictionary.bin"
+  },
+  "formatId": "sqwt",
+  "id": "sqwt-export-dictionary",
+  "notes": "Exports a widget document containing comments and verbatim ampersand runs.",
+  "operation": "extract",
+  "schemaVersion": 1
+}

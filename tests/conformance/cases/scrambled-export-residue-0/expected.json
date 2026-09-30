@@ -1,0 +1,9 @@
+{
+  "format": "scrambled-xml",
+  "keyName": null,
+  "operation": "extract",
+  "path": "payloads/decoded.xml",
+  "role": "decoded-xml-document",
+  "sha256": "4791fed19cc393854de18fde240205ba85d6994c55383238d5d91839a6ff6442",
+  "size": 72
+}

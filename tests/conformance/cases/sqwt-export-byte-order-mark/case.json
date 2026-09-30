@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sqwt/byte-order-mark.bin"
+  },
+  "formatId": "sqwt",
+  "id": "sqwt-export-byte-order-mark",
+  "notes": "The decoded payload retains its leading byte order mark.",
+  "operation": "extract",
+  "schemaVersion": 1
+}

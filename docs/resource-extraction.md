@@ -42,9 +42,9 @@ cargo run --locked -p xivl-cli -- verify-extraction selected `
 
 The catalog is a single `catalog.json` or `catalog.jsonl` file. A selected
 output contains one directory per resource and an `extraction.yaml` or
-`extraction.json` manifest in each directory. Payloads, when explicitly
-materialized, live in separate files under that resource directory and are
-referenced by the manifest.
+`extraction.json` manifest in each directory. Decoded documents and other
+materialized payloads live in separate files under that resource directory
+and are referenced by the manifest.
 
 ## Catalog files
 
@@ -91,6 +91,23 @@ identity, tool version, format and parse status, the inspection report,
 anomalies, and references to separate payload files. Large or opaque payloads
 are never embedded as base64.
 
+SQEX widget and scrambled-XML extraction writes the exact decoded document to
+`payloads/decoded.xml` automatically. The existing decoders supply the bytes;
+the writer preserves BOMs, whitespace, comments, and markup without
+reserializing XML. The manifest records the payload's relative path, role,
+size, and SHA-256, without embedding decoded text.
+
+SQEX uses the input basename, including its case and suffix, as its key.
+Extract the original named file and retain that name for source replay:
+
+```powershell
+cargo run --locked -p xivl-cli -- extract-resource Widget.form --output widget --as sqwt
+cargo run --locked -p xivl-cli -- verify-extraction widget --source Widget.form
+```
+
+The manifest records `source.fileName` and the parser's key name. This
+workflow does not assign DAT resource ids to named widget files.
+
 LPB extraction writes the decoded Lua 5.1 chunk to
 `payloads/decoded.luac`. The manifest records only its relative path, role,
 size, and digest. For SEDB and RES files, add `--materialize-payloads` to
@@ -98,7 +115,7 @@ write exact direct-root payload entries. GTEX materialization is limited to
 the supported table-bearing 2D boundary; PWIB and unsupported GTEX variants
 remain metadata-only.
 
-The writer uses deterministic names containing the entry ordinal, role, source
+Container payloads use deterministic names containing the entry ordinal, role, source
 offset and length, and a SHA-256 prefix. The manifest keeps the full digest and
 the source span. Nested SEDB data stays inside its one direct parent payload;
 it is linked from the manifest rather than written a second time. Empty spans
@@ -143,6 +160,10 @@ The batch is prepared in a same-parent staging directory and published by
 rename only after every resource and the batch manifest succeed. A failed or
 refused batch does not appear at the requested output path.
 
+Selected scrambled-XML DAT entries produce the same exact decoded document
+as `extract-resource`, included in aggregate output accounting. SQEX widgets
+use the named-file workflow above; cataloging walks DAT files.
+
 ## Verify extraction output
 
 `xivl verify-extraction <directory>` auto-detects exactly one root manifest:
@@ -154,8 +175,10 @@ For a single-resource extraction it verifies every declared payload's path,
 regular-file identity, size, SHA-256, source-span arithmetic, and parsed
 container relationship. Exact directory membership is required, so missing or
 unlisted files fail. Add `--source <file>` to check source name, resource id,
-size, digest, parsed structure, materialization plan, source slices, and LPB
-decoding against the original file.
+size, digest, parsed structure, materialization plan, source slices, and
+decoded outputs against the original file. For SQEX and scrambled XML, replay
+runs the decoder and compares the output bytes exactly. SQEX replay uses the
+recorded basename and requires the supplied source to retain that name.
 
 For a batch, it performs the same checks for every isolated resource and also
 checks the top-level records, ordinals, catalog indexes, paths, formats, byte

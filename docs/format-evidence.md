@@ -121,6 +121,13 @@ of the document inside it. Specifically not handled:
   is the name, so a renamed file is unreadable, and the reading reports the
   name it used rather than guessing at another.
 
+The `supported` export statuses for `sqwt` and `scrambled-xml` cover the exact
+decoded document bytes accepted by those readers. Public synthetic extract
+cases and CLI tests exercise preservation and verification through the
+[resource extraction contract](resource-extraction.md). Export does not
+interpret widget or SSD content, and the existing private read cases do not
+establish a `verified` export claim.
+
 The `partial` read statuses for `config-sys`, `config-pad`, `config-lng`, and `config-rgn` cover the shape and nothing above it:
 
 - no field's meaning. A word is carried with its offset and its value and

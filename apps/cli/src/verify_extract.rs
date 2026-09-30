@@ -372,7 +372,7 @@ fn verify_single(
     let recorded_source_size = integer(object(&document, "source")?, "size")?;
     let payloads = array(&document, "payloads")?;
     if let Some((source_path, source_bytes)) = source {
-        verify_source(&document, source_path, source_bytes)?;
+        verify_source_identity(&document, source_path, source_bytes)?;
     }
     for (index, payload) in payloads.iter().enumerate() {
         let relative = string(payload, "path")?;
@@ -417,8 +417,11 @@ fn verify_single(
             source_spans.push((start, end, string(payload, "path")?.to_string()));
         }
         if let Some((_, source_bytes)) = source {
-            replay_payload(payload, file, source_bytes)?;
+            replay_payload(payload, file, source_bytes, &document)?;
         }
+    }
+    if let Some((source_path, source_bytes)) = source {
+        verify_source(&document, source_path, source_bytes)?;
     }
     source_spans.sort();
     for pair in source_spans.windows(2) {
@@ -578,7 +581,12 @@ fn verify_payload_relationship(
     Ok(Some(entry_path.to_string()))
 }
 
-fn replay_payload(payload: &Value, file: &FileRecord, source: &[u8]) -> Result<(), Failure> {
+fn replay_payload(
+    payload: &Value,
+    file: &FileRecord,
+    source: &[u8],
+    document: &Value,
+) -> Result<(), Failure> {
     let bytes =
         fs::read(&file.path).map_err(|error| fail("payload-read-failed", error.to_string()))?;
     if let Some(span) = payload.get("sourceSpan") {
@@ -590,10 +598,39 @@ fn replay_payload(payload: &Value, file: &FileRecord, source: &[u8]) -> Result<(
         if source.get(start..end) != Some(bytes.as_slice()) {
             return Err(fail("payload-replay-mismatch", string(payload, "path")?));
         }
-    } else if string(payload, "role")? == "decoded-lua-5.1-chunk" {
-        let decoded =
-            extract_lpb(source).map_err(|error| fail("source-replay-failed", error.to_string()))?;
-        if decoded.decoded != bytes {
+    } else {
+        let role = string(payload, "role")?;
+        let expected = match role {
+            "decoded-lua-5.1-chunk" => {
+                extract_lpb(source)
+                    .map_err(|error| fail("source-replay-failed", error.to_string()))?
+                    .decoded
+            }
+            "decoded-xml-document" => {
+                let format = string(object(document, "format")?, "id")?;
+                match format {
+                    "sqwt" => {
+                        let name = string(object(document, "source")?, "fileName")?;
+                        xivl_formats::sqwt::decode(source, name)
+                            .map_err(|error| fail("source-replay-failed", error.to_string()))?
+                            .document
+                    }
+                    "scrambled-xml" => {
+                        xivl_formats::scrambled::decode(source)
+                            .map_err(|error| fail("source-replay-failed", error.to_string()))?
+                            .document
+                    }
+                    other => {
+                        return Err(fail(
+                            "payload-replay-unsupported",
+                            format!("decoded XML payload under format '{other}'"),
+                        ))
+                    }
+                }
+            }
+            _ => return Ok(()),
+        };
+        if expected != bytes {
             return Err(fail("payload-replay-mismatch", string(payload, "path")?));
         }
     }
@@ -602,20 +639,6 @@ fn replay_payload(payload: &Value, file: &FileRecord, source: &[u8]) -> Result<(
 
 fn verify_source(document: &Value, path: &Path, bytes: &[u8]) -> Result<(), Failure> {
     let source = object(document, "source")?;
-    if integer(source, "size")? != bytes.len() as u64 {
-        return Err(fail("stale-source-size", path.display().to_string()));
-    }
-    let digest = sha256_hex(bytes);
-    if string(source, "sha256")? != digest {
-        return Err(fail("stale-source-sha256", path.display().to_string()));
-    }
-    let file_name = path
-        .file_name()
-        .and_then(|value| value.to_str())
-        .ok_or_else(|| fail("source-name-invalid", path.display().to_string()))?;
-    if string(source, "fileName")? != file_name {
-        return Err(fail("stale-source-name", path.display().to_string()));
-    }
     let format = string(object(document, "format")?, "id")?;
     let inspect_format = if format == "res" { "sedb" } else { format };
     let inspect_arguments = ["--as".to_string(), inspect_format.to_string()];
@@ -625,7 +648,7 @@ fn verify_source(document: &Value, path: &Path, bytes: &[u8]) -> Result<(), Fail
     let replay = plan_bytes(
         &path.display().to_string(),
         bytes,
-        &digest,
+        string(source, "sha256")?,
         DocumentFormat::Json,
         materialize,
         &inspect_arguments,
@@ -651,6 +674,25 @@ fn verify_source(document: &Value, path: &Path, bytes: &[u8]) -> Result<(), Fail
         if recorded_id != Some(id.to_hex().as_str()) {
             return Err(fail("stale-source-resource-id", path.display().to_string()));
         }
+    }
+    Ok(())
+}
+
+fn verify_source_identity(document: &Value, path: &Path, bytes: &[u8]) -> Result<(), Failure> {
+    let source = object(document, "source")?;
+    if integer(source, "size")? != bytes.len() as u64 {
+        return Err(fail("stale-source-size", path.display().to_string()));
+    }
+    let digest = sha256_hex(bytes);
+    if string(source, "sha256")? != digest {
+        return Err(fail("stale-source-sha256", path.display().to_string()));
+    }
+    let file_name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| fail("source-name-invalid", path.display().to_string()))?;
+    if string(source, "fileName")? != file_name {
+        return Err(fail("stale-source-name", path.display().to_string()));
     }
     Ok(())
 }
@@ -999,6 +1041,73 @@ mod tests {
                 .map(|(path, file)| (path, (&file.sha256, file.size)))
                 .collect::<Vec<_>>()
         );
+        fs::remove_dir_all(work).unwrap();
+    }
+
+    #[test]
+    fn replays_decoded_xml_exactly_and_uses_the_recorded_sqwt_name() {
+        let work = temp_root("decoded-document-replay");
+        fs::create_dir_all(&work).unwrap();
+        let source = work.join("window.bin");
+        fs::write(
+            &source,
+            include_bytes!("../../../tests/fixtures/public/sqwt/window.bin"),
+        )
+        .unwrap();
+        let output = work.join("output");
+        crate::resource_export::run(&[
+            source.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--as".into(),
+            "sqwt".into(),
+        ])
+        .unwrap();
+        assert!(run(&verify_arguments(&output, Some(&source))).is_ok());
+
+        let renamed = work.join("renamed.bin");
+        fs::copy(&source, &renamed).unwrap();
+        assert!(run(&verify_arguments(&output, Some(&renamed)))
+            .unwrap_err()
+            .message
+            .contains("stale-source-name"));
+
+        let mut changed = manifest(&output);
+        let payload_path = changed["payloads"][0]["path"].as_str().unwrap().to_string();
+        let mut payload = fs::read(output.join(&payload_path)).unwrap();
+        payload[0] ^= 1;
+        fs::write(output.join(&payload_path), &payload).unwrap();
+        changed["payloads"][0]["sha256"] = json!(sha256_hex(&payload));
+        write_manifest(&output, &changed);
+        assert!(run(&verify_arguments(&output, Some(&source)))
+            .unwrap_err()
+            .message
+            .contains("payload-replay-mismatch"));
+        fs::remove_dir_all(work).unwrap();
+    }
+
+    #[test]
+    fn replays_scrambled_decoded_xml_without_the_trailer() {
+        let work = temp_root("scrambled-document-replay");
+        fs::create_dir_all(&work).unwrap();
+        let source = work.join("residue-1.bin");
+        fs::write(
+            &source,
+            include_bytes!("../../../tests/fixtures/public/scrambled/residue-1.bin"),
+        )
+        .unwrap();
+        let output = work.join("output");
+        crate::resource_export::run(&[
+            source.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--as".into(),
+            "scrambled-xml".into(),
+        ])
+        .unwrap();
+        assert!(run(&verify_arguments(&output, Some(&source))).is_ok());
+        let payload = fs::read(output.join("payloads/decoded.xml")).unwrap();
+        assert!(!payload.ends_with(&[xivl_formats::scrambled::TRAILER]));
         fs::remove_dir_all(work).unwrap();
     }
 

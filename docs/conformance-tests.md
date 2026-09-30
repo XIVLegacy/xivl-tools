@@ -51,9 +51,15 @@ therefore an ordinary `ok` case whose expected output names the checks and
 their results, and a writer that stopped round-tripping fails it rather
 than quietly passing an `inspect` case that never wrote anything.
 
-`extract` exercises the lossless CSV view for a public `sheet-data` fixture
-using the same `--as` and `--columns` arguments as the CLI reader. Private
-fixtures whose root was not supplied are skipped with a reason.
+`extract` exercises the lossless CSV view for a `sheet-data` fixture using
+the same `--as` and `--columns` arguments as the CLI reader. For `sqwt` and
+`scrambled-xml`, it checks the exact decoded-document export contract using
+the existing decoders, with normalized structural facts, output length, and
+SHA-256 rather than decoded text. SQEX uses the fixture's basename as its
+key. CLI tests separately exercise file materialization, manifests, catalog
+selection, output accounting, destination protection, and verification
+failures. Private fixtures whose root was not supplied are skipped with a
+reason.
 
 ## Case outcomes
 

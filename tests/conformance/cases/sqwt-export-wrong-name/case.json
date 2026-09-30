@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "sqwt"
+  ],
+  "expect": {
+    "errorKind": "invalid-utf8",
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/sqwt/wrong-name.bin"
+  },
+  "formatId": "sqwt",
+  "id": "sqwt-export-wrong-name",
+  "notes": "The fixture is encrypted under another basename and cannot be exported under its stored name.",
+  "operation": "extract",
+  "schemaVersion": 1
+}

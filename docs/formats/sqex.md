@@ -174,6 +174,29 @@ xivl inspect <file> --as sqwt   1155 of 1155 containers read
 The 369 are the 207 GTEX, the 160 SPKL, and the two plain CSS documents.
 0 panics.
 
+## Decoded-document export
+
+`extract-resource <named-file> --output <directory> --as sqwt` writes the
+decoder's exact document bytes to `payloads/decoded.xml`. It preserves BOMs,
+whitespace, comments, ampersand runs, and the clear partial-block tail. It
+does not serialize the widget parser's census back into XML.
+
+The extraction manifest records the source basename and decoded payload
+size and SHA-256. `verify-extraction` checks the file inventory and digests;
+with `--source <named-file>`, it also checks the recorded name and replays
+the decoder to compare the exact document bytes. Use the original filename,
+including case and suffix, because it supplies the cipher key.
+
+The `supported` export claim covers the decoded document within the existing
+reader's accepted boundary. Public synthetic extraction cases and CLI tests
+exercise exact bytes, filename keying, tails, malformed inputs, deterministic
+output, and verification failures. Private read cases establish the separate
+`verified` read claim; they do not verify the export operation. Export has no
+recorded private-case parity claim.
+
+See [resource extraction](../resource-extraction.md) for output protection,
+manifest relationships, and the named-file workflow.
+
 ## Out of scope
 
 - the GTEX and SPKL files stored beside these containers are out of
