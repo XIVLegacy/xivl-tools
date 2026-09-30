@@ -1,0 +1,132 @@
+{
+  "format": "gtex",
+  "mipLevels": 8,
+  "mips": [
+    {
+      "ddsSpan": {
+        "length": 8192,
+        "offset": 128
+      },
+      "height": 128,
+      "mipLevel": 0,
+      "sha256": "fb155ff391db3bca25bfc79734d6ebaba2b20991acc4123ca05cdfa96f3bc534",
+      "sourceSpan": {
+        "length": 8192,
+        "offset": 88
+      },
+      "width": 128
+    },
+    {
+      "ddsSpan": {
+        "length": 2048,
+        "offset": 8320
+      },
+      "height": 64,
+      "mipLevel": 1,
+      "sha256": "014fc36c7af0e65039936a3eef732b52fd1bf99f4a567e0c52ca79b438a8a649",
+      "sourceSpan": {
+        "length": 2048,
+        "offset": 8280
+      },
+      "width": 64
+    },
+    {
+      "ddsSpan": {
+        "length": 512,
+        "offset": 10368
+      },
+      "height": 32,
+      "mipLevel": 2,
+      "sha256": "6e39b8212293f29b276afc4e9578f5e8a8faa4f10f5cf83b6826c5b7295f9e0b",
+      "sourceSpan": {
+        "length": 512,
+        "offset": 10328
+      },
+      "width": 32
+    },
+    {
+      "ddsSpan": {
+        "length": 128,
+        "offset": 10880
+      },
+      "height": 16,
+      "mipLevel": 3,
+      "sha256": "dc5a4fde9ca27ca2c856599c596597cde07000fcd9ec5dd49d65f3c36618f6c2",
+      "sourceSpan": {
+        "length": 128,
+        "offset": 10840
+      },
+      "width": 16
+    },
+    {
+      "ddsSpan": {
+        "length": 32,
+        "offset": 11008
+      },
+      "height": 8,
+      "mipLevel": 4,
+      "sha256": "ab5f8b5cb9435354c7b58603592d5faf081e17ceb05f7a7c67f4b666f12ca457",
+      "sourceSpan": {
+        "length": 32,
+        "offset": 10968
+      },
+      "width": 8
+    },
+    {
+      "ddsSpan": {
+        "length": 8,
+        "offset": 11040
+      },
+      "height": 4,
+      "mipLevel": 5,
+      "sha256": "6dd5b66ffc5617707d8e7592b7d53d946ec34de48365db09e9be87508fd129c1",
+      "sourceSpan": {
+        "length": 8,
+        "offset": 11000
+      },
+      "width": 4
+    },
+    {
+      "ddsSpan": {
+        "length": 8,
+        "offset": 11048
+      },
+      "height": 2,
+      "mipLevel": 6,
+      "sha256": "87c9bb5de79ffe9998adfee4835829014e170901f6e23b2378a17cc7c06055a5",
+      "sourceSpan": {
+        "length": 8,
+        "offset": 11016
+      },
+      "width": 2
+    },
+    {
+      "ddsSpan": {
+        "length": 8,
+        "offset": 11056
+      },
+      "height": 1,
+      "mipLevel": 7,
+      "sha256": "4abde5c4a7b20597c4cc4920c87b513af3619e3105f268d27d14906a0e753cd4",
+      "sourceSpan": {
+        "length": 8,
+        "offset": 11032
+      },
+      "width": 1
+    }
+  ],
+  "operation": "extract",
+  "path": "payloads/texture.dds",
+  "role": "gtex-dds-texture",
+  "sha256": "14ec18656ded02d1a1c5c574bd29d00ef7b492820261bfb1c637d0f058451a93",
+  "size": 11064,
+  "texture": {
+    "format": {
+      "clientIndex": 24,
+      "d3dName": "D3DFMT_DXT1",
+      "d3dValue": 827611204
+    },
+    "height": 128,
+    "width": 128
+  }
+}

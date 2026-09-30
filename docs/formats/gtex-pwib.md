@@ -48,7 +48,7 @@ textures with flags zero and depth one. Cube, volume, nonzero flags, missing
 tables, and unmapped indices remain inspectable but are explicitly unsupported
 for materialization. Bit 2 still has no stable semantic name. Offset `0x1c`
 is not a fixed header field: with the retail table base of 24 it is entry 0's
-size dword. DDS/PNG conversion remains unsupported.
+size dword. PNG conversion remains unsupported.
 
 ## PWIB contract
 
@@ -112,5 +112,89 @@ shape against the four retail resources without retaining recoverable bytes.
 With `--materialize-payloads`, supported GTEX inputs produce one deterministic
 `gtex-encoded-surface` artifact per table entry. Each manifest records the
 face, mip, format mapping, source span, and digest; verification checks both
-the artifact and source replay. PWIB remains metadata-only. DDS/PNG conversion
-is not supported.
+the artifact and source replay. PWIB remains metadata-only.
+
+## Lossless DDS texture view
+
+`extract-resource` and selected `extract-catalog` extraction accept
+`--export-dds` to write one `payloads/texture.dds` file containing every
+encoded mip. GTEX extraction remains metadata-only by default.
+`--materialize-payloads` still writes separate raw surfaces and can be used
+alongside DDS export. This is a texture view, not a GTEX round-trip writer:
+GTEX headers, unknown fields, and gaps remain in the inspection report and
+are excluded from the DDS file.
+
+### Pixel-byte compatibility
+
+The pinned loader finding above establishes the source pointer at
+`0x00432500` as the blob's data base plus the table's per-surface offset.
+The upload loop at `0x00431e20` passes that pointer through `0x00431080` to
+a D3DX load-from-memory call. Creation and upload use the same client
+D3DFORMAT table. The source-format assignments establish the pixel-byte
+layout. Only GTEX header and table fields use big-endian decoding; pixel
+bytes retain their D3DFORMAT layout.
+
+Microsoft's [D3DFORMAT definition](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dformat)
+defines A8R8G8B8 memory order as blue, green, red, alpha. Its
+[DDS programming guide](https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dx-graphics-dds-pguide)
+lists matching legacy masks and DXT FourCCs. Together with the loader's
+source-format assignments, these establish the following byte-preserving
+views:
+
+| GTEX index | Source format | Legacy DDS pixel format |
+|---:|---|---|
+| 4 | `D3DFMT_A8R8G8B8` | 32-bit RGB with alpha; R `0x00ff0000`, G `0x0000ff00`, B `0x000000ff`, A `0xff000000` |
+| 24 | `D3DFMT_DXT1` | FourCC `DXT1`, 8 bytes per 4 by 4 block |
+| 26 | `D3DFMT_DXT5` | FourCC `DXT5`, 16 bytes per 4 by 4 block |
+
+Export copies the source bytes without decoding, recompression, channel
+swapping, or inferred color-space changes. Legacy DDS does not introduce a
+color-space claim for these GTEX resources.
+
+### Header and mip layout
+
+The writer follows Microsoft's standard definitions:
+
+- [DDS programming guide](https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dx-graphics-dds-pguide).
+- [DDS_HEADER](https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header).
+- [DDS_PIXELFORMAT](https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-pixelformat).
+- [DDS texture layout](https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-file-layout-for-textures).
+
+The file starts with `DDS ` and a little-endian 124-byte legacy header,
+including a 32-byte pixel-format structure. Unused fields are zero. The
+header records width, height, and the supplied mip count. Uncompressed
+textures use row pitch `width * 4` and `DDSD_PITCH`; DXT textures use the
+top-level encoded surface size and `DDSD_LINEARSIZE`. Every file sets the
+required dimension, pixel-format, and texture-capability flags. Multiple
+mips also set `DDSD_MIPMAPCOUNT`, `DDSCAPS_MIPMAP`, and `DDSCAPS_COMPLEX`.
+No DX10 extension is emitted.
+
+Surface bytes follow the header in increasing logical mip order, with no
+GTEX gap bytes between them. Each manifest explains the mapping from a
+source surface span to its DDS output span and digest. Source replay
+regenerates and compares the entire DDS, including the header. Verification
+without a source also checks the header, mip layout, digests, and agreement
+between the DDS metadata and the parsed GTEX report.
+
+### Supported boundary and evidence limits
+
+DDS export requires a mapped, table-bearing 2D texture with flags zero,
+depth one, nonzero dimensions, and a nonzero mip count. The count cannot
+exceed `1 + floor(log2(max(width, height)))`: each successive level halves
+the dimensions, clamping to one, and the chain ends at 1 by 1. A partial
+chain is retained as supplied; export does not generate missing levels.
+The mip geometry follows Microsoft's
+[mipmap description](https://learn.microsoft.com/en-us/windows/win32/direct3d9/texture-filtering-with-mipmaps).
+The DDS file boundary does not impose GPU-specific texture-size limits.
+
+Cube, volume, nonzero flags, missing tables, unmapped indices, invalid
+dimensions, and excess mip counts are refused before extraction output is
+created. In a DDS batch request, every selected resource must be eligible.
+
+Authored tests check the legacy header fields against standard offsets and
+values, exact encoded-byte preservation for all three mappings, multiple
+mips, and the documented layout with gaps between mip spans. CLI tests
+cover extraction, accounting, refusals, verification, and source replay;
+public conformance expectations contain only metadata, spans, counts, and
+digests. GTEX read and export remain `partial`. No retail DDS parity or GPU
+compatibility is claimed.

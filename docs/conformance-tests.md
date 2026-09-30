@@ -61,6 +61,14 @@ selection, output accounting, destination protection, and verification
 failures. Private fixtures whose root was not supplied are skipped with a
 reason.
 
+For `gtex`, `extract` with `--export-dds` exercises the DDS texture view.
+Reports retain header metadata, mip source and output spans, counts, and SHA-256 digests rather
+than encoded pixels. Authored tests check header fields independently
+against Microsoft's DDS definitions. CLI tests cover opt-in DDS output,
+raw-surface coexistence, catalog extraction, accounting, and verification
+with and without source replay. See the
+[DDS contract](formats/gtex-pwib.md#lossless-dds-texture-view).
+
 ## Case outcomes
 
 A case expects `ok` with an expected output document, or `parse-error` with

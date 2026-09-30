@@ -35,6 +35,7 @@
       }
     },
     "materializePayloads": { "type": "boolean" },
+    "exportDds": { "type": "boolean" },
     "resources": {
       "type": "array",
       "minItems": 1,

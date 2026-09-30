@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-dds-zero-dimensions",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/dds-zero-dimensions.bin"
+  },
+  "arguments": ["--as", "gtex", "--export-dds"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unsupported-dds-format"
+  },
+  "notes": "DDS export requires nonzero GTEX dimensions."
+}

@@ -58,6 +58,7 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
     let mut max_output_bytes = DEFAULT_MAX_OUTPUT_BYTES;
     let mut format = DocumentFormat::Yaml;
     let mut materialize_payloads = false;
+    let mut export_dds = false;
     let mut index = 1;
     while index < arguments.len() {
         match arguments[index].as_str() {
@@ -106,6 +107,13 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
                     return Err(batch_error("duplicate-option: --materialize-payloads"));
                 }
                 materialize_payloads = true;
+                index += 1;
+            }
+            "--export-dds" => {
+                if export_dds {
+                    return Err(batch_error("duplicate-option: --export-dds"));
+                }
+                export_dds = true;
                 index += 1;
             }
             option => return Err(batch_error(format!("unknown-option: '{option}'"))),
@@ -180,12 +188,19 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
         }
         let materialize = materialize_payloads
             && matches!(entry.detected_format.as_str(), "sedb" | "res" | "gtex");
+        if export_dds && entry.detected_format != "gtex" {
+            return Err(batch_error(format!(
+                "--export-dds applies only to GTEX input, not '{}'",
+                entry.detected_format
+            )));
+        }
         let plan = plan_bytes(
             &source.display().to_string(),
             &data,
             &digest,
             format,
             materialize,
+            export_dds,
             &[],
         )?;
         if plan.format_id() != entry.detected_format {
@@ -228,6 +243,7 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
         max_source_bytes,
         max_output_bytes,
         materialize_payloads,
+        export_dds,
     )?;
     if output_bytes > max_output_bytes {
         return Err(batch_error(format!(
@@ -325,7 +341,7 @@ fn write_batch_atomically(
 }
 
 fn usage() -> &'static str {
-    "usage: xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads]"
+    "usage: xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads] [--export-dds]"
 }
 
 fn batch_error(message: impl Into<String>) -> Failure {
@@ -640,6 +656,7 @@ fn render_batch(
     max_source_bytes: u64,
     max_output_bytes: u64,
     materialize_payloads: bool,
+    export_dds: bool,
 ) -> Result<(&'static str, String, u64), Failure> {
     let resources: Vec<Value> = planned
         .iter()
@@ -665,7 +682,7 @@ fn render_batch(
     };
     let mut aggregate_output_bytes = resource_output_bytes;
     for _ in 0..8 {
-        let document = json!({
+        let mut document = json!({
             "catalog": {
                 "fileName": crate::base_name(catalog_path),
                 "sha256": sha256_hex(catalog_bytes),
@@ -689,6 +706,12 @@ fn render_batch(
                 "sourceBytes": source_bytes,
             },
         });
+        if export_dds {
+            document
+                .as_object_mut()
+                .expect("batch document is an object")
+                .insert("exportDds".to_string(), json!(true));
+        }
         let text = match format {
             DocumentFormat::Yaml => serde_yaml::to_string(&document)
                 .map_err(|error| batch_error(format!("batch-yaml-render-failed: {error}")))?,
@@ -817,6 +840,7 @@ mod tests {
         assert_eq!(summary.resources, 2);
         let batch: Value =
             serde_yaml::from_str(&fs::read_to_string(&summary.output).unwrap()).unwrap();
+        assert!(batch.get("exportDds").is_none());
         let resources = batch["resources"].as_array().unwrap();
         assert_eq!(resources[0]["sourcePath"], "data/12/34/56/78.DAT");
         assert_eq!(resources[1]["sourcePath"], "data/12/34/56/79.DAT");

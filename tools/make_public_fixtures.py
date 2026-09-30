@@ -345,6 +345,61 @@ def build_fixtures() -> dict[str, bytes]:
         data_base=0x28,
         surfaces=((0, 32), (40, 8)),
     )
+    # Every legacy DDS mapping is covered by an authored, table-bearing 2D
+    # texture. The DXT1 chain keeps the two documented eight-byte gaps after
+    # eight-byte tail mips; those gaps are excluded from the DDS payload.
+    dxt1_sizes = (8192, 2048, 512, 128, 32, 8, 8, 8)
+    dxt1_offsets = (0, 8192, 10240, 10752, 10880, 10912, 10928, 10944)
+    dxt1_end = dxt1_offsets[-1] + dxt1_sizes[-1]
+    fixtures["gtex/dds-dxt1-gapped.bin"] = gtex(
+        pattern(dxt1_end, 0x83),
+        format_index=24,
+        mip_levels=8,
+        width=128,
+        height=128,
+        data_base=0x58,
+        surfaces=tuple(zip(dxt1_offsets, dxt1_sizes)),
+    )
+    fixtures["gtex/dds-dxt5.bin"] = gtex(
+        pattern(80, 0x91),
+        format_index=26,
+        mip_levels=2,
+        width=8,
+        height=8,
+        data_base=0x28,
+        surfaces=((0, 64), (64, 16)),
+    )
+    fixtures["gtex/dds-dxt1-npot.bin"] = gtex(
+        pattern(16, 0x96),
+        format_index=24,
+        width=5,
+        height=3,
+        surfaces=((0, 16),),
+    )
+    fixtures["gtex/dds-unsupported-flags.bin"] = gtex(
+        pattern(128, 0x9A),
+        flags=2,
+        depth=2,
+        surfaces=((0, 128),),
+    )
+    fixtures["gtex/dds-zero-dimensions.bin"] = gtex(
+        pattern(16, 0xA1),
+        width=0,
+        surfaces=((0, 16),),
+    )
+    fixtures["gtex/dds-excess-mips.bin"] = gtex(
+        pattern(88, 0xA8),
+        mip_levels=4,
+        width=4,
+        height=4,
+        data_base=0x38,
+        surfaces=((0, 64), (64, 16), (80, 4), (84, 4)),
+    )
+    fixtures["gtex/dds-unmapped-format.bin"] = gtex(
+        pattern(16, 0xB2),
+        format_index=3,
+        surfaces=((0, 16),),
+    )
     fixtures["gtex/truncated-header.bin"] = b"GTEX" + pattern(10, 0x71)
     bad_gtex = bytearray(gtex(b"x"))
     bad_gtex[0x14:0x18] = struct.pack(">I", len(bad_gtex) + 1)

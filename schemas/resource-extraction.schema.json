@@ -66,7 +66,8 @@
           "sha256": { "$ref": "#/$defs/sha256" },
           "sourceSpan": { "$ref": "#/$defs/sourceSpan" },
           "container": { "$ref": "#/$defs/containerRelationship" },
-          "entry": { "$ref": "#/$defs/entryRelationship" }
+          "entry": { "$ref": "#/$defs/entryRelationship" },
+          "dds": { "$ref": "#/$defs/ddsArtifact" }
         }
       }
     }
@@ -138,6 +139,35 @@
         "format": { "enum": ["sedb", "res"] },
         "subtype": { "type": "string" },
         "span": { "$ref": "#/$defs/span" }
+      }
+    },
+    "ddsArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "headerSpan", "width", "height", "mipLevels", "mips"],
+      "properties": {
+        "format": { "$ref": "#/$defs/gtexFormat" },
+        "headerSpan": { "$ref": "#/$defs/span" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "mipLevels": { "type": "integer", "minimum": 1 },
+        "mips": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["mipLevel", "width", "height", "sourceSpan", "ddsSpan", "sha256"],
+            "properties": {
+              "mipLevel": { "type": "integer", "minimum": 0 },
+              "width": { "type": "integer", "minimum": 1 },
+              "height": { "type": "integer", "minimum": 1 },
+              "sourceSpan": { "$ref": "#/$defs/sourceSpan" },
+              "ddsSpan": { "$ref": "#/$defs/sourceSpan" },
+              "sha256": { "$ref": "#/$defs/sha256" }
+            }
+          }
+        }
       }
     }
   }

@@ -77,6 +77,10 @@ pub enum ErrorKind {
     /// A container whose key is its own file name was handed bytes without
     /// a name. Nothing in the bytes supplies one.
     MissingContainerName,
+    /// A legacy DDS header is malformed or inconsistent with its payload.
+    InvalidDdsHeader,
+    /// A DDS pixel format is outside the legacy formats this crate exports.
+    UnsupportedDdsFormat,
 }
 
 impl ErrorKind {
@@ -111,6 +115,8 @@ impl ErrorKind {
             ErrorKind::UnknownColumnType => "unknown-column-type",
             ErrorKind::MissingScrambleTrailer => "missing-scramble-trailer",
             ErrorKind::MissingContainerName => "missing-container-name",
+            ErrorKind::InvalidDdsHeader => "invalid-dds-header",
+            ErrorKind::UnsupportedDdsFormat => "unsupported-dds-format",
         }
     }
 }

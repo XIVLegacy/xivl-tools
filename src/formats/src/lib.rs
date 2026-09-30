@@ -14,6 +14,7 @@ pub mod anomaly;
 pub mod blowfish;
 pub mod config;
 pub mod csv;
+pub mod dds;
 pub mod digest;
 pub mod error;
 pub mod gtex_pwib;

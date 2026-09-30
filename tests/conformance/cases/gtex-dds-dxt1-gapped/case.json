@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-dds-dxt1-gapped",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/dds-dxt1-gapped.bin"
+  },
+  "arguments": ["--as", "gtex", "--export-dds"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "The authored eight-mip DXT1 chain carries two eight-byte source gaps excluded from DDS."
+}

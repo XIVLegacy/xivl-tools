@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-dds-dxt5",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/dds-dxt5.bin"
+  },
+  "arguments": ["--as", "gtex", "--export-dds"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "DXT5 legacy DDS export preserves both authored mip payloads."
+}

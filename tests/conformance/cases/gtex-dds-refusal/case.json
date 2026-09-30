@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-dds-refusal",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/dds-unsupported-flags.bin"
+  },
+  "arguments": ["--as", "gtex", "--export-dds"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unsupported-dds-format"
+  },
+  "notes": "DDS export retains the GTEX materialization boundary for volume textures."
+}

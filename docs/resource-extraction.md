@@ -115,6 +115,20 @@ write exact direct-root payload entries. GTEX materialization is limited to
 the supported table-bearing 2D boundary; PWIB and unsupported GTEX variants
 remain metadata-only.
 
+For an eligible GTEX texture, add `--export-dds` to write all encoded mip
+levels in one `payloads/texture.dds` file:
+
+```powershell
+cargo run --locked -p xivl-cli -- extract-resource texture.DAT --output texture --export-dds
+```
+
+DDS export is opt-in and may be combined with `--materialize-payloads` to
+retain the separate raw surfaces. The manifest records texture format and
+dimensions plus each mip's source span, DDS output span, and digest. DDS
+bytes count toward extraction output totals. See the
+[GTEX DDS contract](formats/gtex-pwib.md#lossless-dds-texture-view) for the
+exact supported boundary and pixel-byte evidence.
+
 Container payloads use deterministic names containing the entry ordinal, role, source
 offset and length, and a SHA-256 prefix. The manifest keeps the full digest and
 the source span. Nested SEDB data stays inside its one direct parent payload;
@@ -164,6 +178,18 @@ Selected scrambled-XML DAT entries produce the same exact decoded document
 as `extract-resource`, included in aggregate output accounting. SQEX widgets
 use the named-file workflow above; cataloging walks DAT files.
 
+To export selected GTEX textures as DDS, add `--export-dds`:
+
+```powershell
+cargo run --locked -p xivl-cli -- extract-catalog catalog/catalog.json `
+  --root "C:\path\to\FINAL FANTASY XIV" `
+  --output textures --id 0x12345678 --export-dds
+```
+
+Every selected resource in a DDS request must be eligible. An unsupported
+selection or an output limit failure refuses the complete batch before
+publication. Omitting the option preserves ordinary extraction behavior.
+
 ## Verify extraction output
 
 `xivl verify-extraction <directory>` auto-detects exactly one root manifest:
@@ -179,6 +205,11 @@ size, digest, parsed structure, materialization plan, source slices, and
 decoded outputs against the original file. For SQEX and scrambled XML, replay
 runs the decoder and compares the output bytes exactly. SQEX replay uses the
 recorded basename and requires the supplied source to retain that name.
+
+For DDS artifacts, verification also checks the legacy header, every mip's
+layout and digest, and metadata relationships to the parsed GTEX table.
+Source replay regenerates and compares the complete DDS file, including its
+header and exact encoded mip bytes.
 
 For a batch, it performs the same checks for every isolated resource and also
 checks the top-level records, ordinals, catalog indexes, paths, formats, byte

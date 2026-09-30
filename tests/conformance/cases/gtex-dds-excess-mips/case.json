@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-dds-excess-mips",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/dds-excess-mips.bin"
+  },
+  "arguments": ["--as", "gtex", "--export-dds"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unsupported-dds-format"
+  },
+  "notes": "DDS export rejects mip counts beyond the dimension-derived chain."
+}

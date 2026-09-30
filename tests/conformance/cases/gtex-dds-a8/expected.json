@@ -1,0 +1,48 @@
+{
+  "format": "gtex",
+  "mipLevels": 2,
+  "mips": [
+    {
+      "ddsSpan": {
+        "length": 32,
+        "offset": 128
+      },
+      "height": 2,
+      "mipLevel": 0,
+      "sha256": "175c6281fc6ce5ecb08f4b05e243f0f8f7c6bf66fa77b15a47e6129e69cb11cc",
+      "sourceSpan": {
+        "length": 32,
+        "offset": 40
+      },
+      "width": 4
+    },
+    {
+      "ddsSpan": {
+        "length": 8,
+        "offset": 160
+      },
+      "height": 1,
+      "mipLevel": 1,
+      "sha256": "a01a9f40c64a8eb5e3400a498854795911c98e45292d119f9eaaebd00320d50c",
+      "sourceSpan": {
+        "length": 8,
+        "offset": 72
+      },
+      "width": 2
+    }
+  ],
+  "operation": "extract",
+  "path": "payloads/texture.dds",
+  "role": "gtex-dds-texture",
+  "sha256": "fa8c0094f28b658e2da7d24b9c1bb6bcf1cdb9bd4394220bac07b0773b180a12",
+  "size": 168,
+  "texture": {
+    "format": {
+      "clientIndex": 4,
+      "d3dName": "D3DFMT_A8R8G8B8",
+      "d3dValue": 21
+    },
+    "height": 2,
+    "width": 4
+  }
+}

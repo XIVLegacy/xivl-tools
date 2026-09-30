@@ -176,22 +176,34 @@ fn run_case(
     let operation = string_field(case, "operation");
     let produced = match operation.as_str() {
         "inspect" | "validate" | "extract" => {
-            match InspectAs::from_arguments(&case_arguments(case)) {
+            let arguments = case_arguments(case);
+            let export_dds = arguments.iter().any(|argument| argument == "--export-dds");
+            let inspect_arguments: Vec<String> = arguments
+                .iter()
+                .filter(|argument| argument.as_str() != "--export-dds")
+                .cloned()
+                .collect();
+            match InspectAs::from_arguments(&inspect_arguments) {
                 Ok(how) => {
                     if operation == "inspect" {
                         inspect_named_bytes_as(&input, &name, &how)
                     } else if operation == "extract" {
-                        let is_document = matches!(&how, InspectAs::Sqwt | InspectAs::ScrambledXml)
-                            || matches!(
-                                &how,
-                                InspectAs::Auto
-                                    if xivl_formats::sqwt::has_signature(&input)
-                                        || xivl_formats::scrambled::has_signature(&input)
-                            );
-                        if is_document {
-                            decoded_document_export(&input, &name, &how)
+                        if export_dds {
+                            dds_export_document(&input, &name, &how)
                         } else {
-                            xivl_formats::export_sheet_data(&input, &how)
+                            let is_document =
+                                matches!(&how, InspectAs::Sqwt | InspectAs::ScrambledXml)
+                                    || matches!(
+                                        &how,
+                                        InspectAs::Auto
+                                            if xivl_formats::sqwt::has_signature(&input)
+                                                || xivl_formats::scrambled::has_signature(&input)
+                                    );
+                            if is_document {
+                                decoded_document_export(&input, &name, &how)
+                            } else {
+                                xivl_formats::export_sheet_data(&input, &how)
+                            }
                         }
                     } else {
                         validate_named_bytes_as(&input, &name, &how)
@@ -235,6 +247,49 @@ fn run_case(
         ("parse-error", Err(error)) => compare_error(&expect, &error),
         (other, _) => Outcome::Failed(format!("unknown expected outcome '{other}'")),
     }
+}
+
+fn dds_export_document(input: &[u8], name: &str, how: &InspectAs) -> Result<Value, FormatError> {
+    if !matches!(how, InspectAs::Gtex | InspectAs::Auto) {
+        return Err(FormatError::new(
+            ErrorKind::UnsupportedDdsFormat,
+            0,
+            "DDS export requires a GTEX input",
+        ));
+    }
+    inspect_named_bytes_as(input, name, how)?;
+    let parsed =
+        xivl_formats::gtex_pwib::parse(input, xivl_formats::gtex_pwib::TaggedResourceKind::Gtex)?;
+    let xivl_formats::gtex_pwib::TaggedResource::Gtex(gtex) = parsed else {
+        unreachable!("GTEX parser returns GTEX");
+    };
+    let export = xivl_formats::dds::export_gtex(input, &gtex)?;
+    Ok(json!({
+        "format": "gtex",
+        "mipLevels": export.mip_levels,
+        "mips": export.mips.iter().map(|mip| json!({
+            "ddsSpan": mip.dds_span.to_json(),
+            "height": mip.height,
+            "mipLevel": mip.mip_level,
+            "sha256": mip.sha256,
+            "sourceSpan": mip.source_span.to_json(),
+            "width": mip.width,
+        })).collect::<Vec<_>>(),
+        "operation": "extract",
+        "path": "payloads/texture.dds",
+        "role": "gtex-dds-texture",
+        "sha256": sha256_hex(&export.bytes),
+        "size": export.bytes.len() as u64,
+        "texture": {
+            "format": {
+                "clientIndex": export.format.index,
+                "d3dName": export.format.d3d_name,
+                "d3dValue": export.format.d3d_value,
+            },
+            "height": export.height,
+            "width": export.width,
+        },
+    }))
 }
 
 /// Report the safe, normalized identity of a decoded XML export. The

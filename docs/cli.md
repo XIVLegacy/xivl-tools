@@ -111,6 +111,13 @@ and document formatting. Keep the original SQEX basename, case, and suffix:
 they determine the decode key and are recorded for verification. See the
 [extraction contract](resource-extraction.md#extract-one-resource).
 
+Use `--export-dds` for an eligible GTEX texture to write all its encoded
+mips to `payloads/texture.dds`. The option is available on `extract-resource`
+and `extract-catalog`, and can be combined with `--materialize-payloads` for
+separate raw surfaces. It requires table-bearing 2D GTEX with flags zero,
+depth one, mapped A8R8G8B8/DXT1/DXT5 pixels, and valid dimensions and mip
+count. See the [DDS contract](formats/gtex-pwib.md#lossless-dds-texture-view).
+
 For several resources, first make a catalog and then name each selection:
 
 ```powershell
@@ -129,6 +136,9 @@ to set different positive limits.
 
 Selected scrambled-XML DAT entries also emit their decoded documents.
 Use `extract-resource` for original named SQEX widget files.
+
+With `--export-dds`, every selected entry must be an eligible GTEX texture.
+DDS output is included in the same output limits and atomic batch workflow.
 
 ## Verify an extraction
 

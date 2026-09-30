@@ -4,6 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use serde_json::{json, Value};
+use xivl_formats::dds;
 use xivl_formats::digest::sha256_hex;
 use xivl_formats::gtex_pwib::{self, TaggedResource, TaggedResourceKind};
 use xivl_formats::sedb::{self, EntryBody};
@@ -44,12 +45,13 @@ pub(crate) struct PlannedExtraction {
 pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
     let Some(input) = arguments.first() else {
         return Err(Failure::usage(
-            "usage: xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--as <format>] [--columns <list>]",
+            "usage: xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--export-dds] [--as <format>] [--columns <list>]",
         ));
     };
     let mut output = None;
     let mut format = DocumentFormat::Yaml;
     let mut materialize_payloads = false;
+    let mut export_dds = false;
     let mut inspect_arguments = Vec::new();
     let mut index = 1;
     while index < arguments.len() {
@@ -81,6 +83,13 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
                 materialize_payloads = true;
                 index += 1;
             }
+            "--export-dds" => {
+                if export_dds {
+                    return Err(Failure::usage("--export-dds was supplied more than once"));
+                }
+                export_dds = true;
+                index += 1;
+            }
             "--as" | "--columns" if index + 1 < arguments.len() => {
                 inspect_arguments.push(arguments[index].clone());
                 inspect_arguments.push(arguments[index + 1].clone());
@@ -105,6 +114,7 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
         &sha256_hex(&data),
         format,
         materialize_payloads,
+        export_dds,
         &inspect_arguments,
     )?;
     planned.write_to(output_path)?;
@@ -123,6 +133,7 @@ pub(crate) fn plan_bytes(
     source_sha256: &str,
     format: DocumentFormat,
     materialize_payloads: bool,
+    export_dds: bool,
     inspect_arguments: &[String],
 ) -> Result<PlannedExtraction, Failure> {
     let selected = if inspect_arguments.is_empty() {
@@ -207,6 +218,14 @@ pub(crate) fn plan_bytes(
             }
         }
     }
+    if export_dds {
+        if parsed_format != "gtex" {
+            return Err(Failure::usage(format!(
+                "--export-dds applies only to GTEX input, not '{parsed_format}'"
+            )));
+        }
+        artifacts.push(gtex_dds_payload(data, input)?);
+    }
     let payloads: Vec<Value> = artifacts
         .iter()
         .map(|artifact| artifact.manifest.clone())
@@ -262,6 +281,13 @@ impl PlannedExtraction {
 
     pub(crate) fn format_id(&self) -> &str {
         &self.format_id
+    }
+
+    pub(crate) fn artifact_bytes(&self, path: &str) -> Option<&[u8]> {
+        self.artifacts
+            .iter()
+            .find(|artifact| artifact.path == path)
+            .map(|artifact| artifact.bytes.as_slice())
     }
 
     pub(crate) fn output_bytes(&self) -> Result<u64, Failure> {
@@ -478,6 +504,61 @@ fn gtex_surface_payloads(data: &[u8], input: &str) -> Result<Vec<PayloadArtifact
             })
         })
         .collect()
+}
+
+fn gtex_dds_payload(data: &[u8], input: &str) -> Result<PayloadArtifact, Failure> {
+    let TaggedResource::Gtex(gtex) = gtex_pwib::parse(data, TaggedResourceKind::Gtex)
+        .map_err(|error| Failure::parse(format!("{input}: {error}")))?
+    else {
+        unreachable!("the requested parser returns GTEX");
+    };
+    let export = dds::export_gtex(data, &gtex)
+        .map_err(|error| Failure::parse(format!("{input}: {error}")))?;
+    let path = "payloads/texture.dds".to_string();
+    let mips: Vec<Value> = export
+        .mips
+        .iter()
+        .map(|mip| {
+            json!({
+                "ddsSpan": {
+                    "endExclusive": mip.dds_span.offset + mip.dds_span.length,
+                    "length": mip.dds_span.length,
+                    "offset": mip.dds_span.offset,
+                },
+                "height": mip.height,
+                "mipLevel": mip.mip_level,
+                "sha256": mip.sha256,
+                "sourceSpan": {
+                    "endExclusive": mip.source_span.offset + mip.source_span.length,
+                    "length": mip.source_span.length,
+                    "offset": mip.source_span.offset,
+                },
+                "width": mip.width,
+            })
+        })
+        .collect();
+    Ok(PayloadArtifact {
+        manifest: json!({
+            "dds": {
+                "format": {
+                    "clientIndex": export.format.index,
+                    "d3dName": export.format.d3d_name,
+                    "d3dValue": export.format.d3d_value,
+                },
+                "headerSpan": { "offset": 0, "length": dds::DDS_FILE_HEADER_SIZE },
+                "height": export.height,
+                "mipLevels": export.mip_levels,
+                "mips": mips,
+                "width": export.width,
+            },
+            "path": path,
+            "role": "gtex-dds-texture",
+            "sha256": sha256_hex(&export.bytes),
+            "size": export.bytes.len() as u64,
+        }),
+        path,
+        bytes: export.bytes,
+    })
 }
 
 #[cfg(test)]
@@ -913,6 +994,68 @@ mod tests {
                 &fs::read(&source).unwrap()[start..end]
             );
         }
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn exports_lossless_dds_alongside_raw_gtex_surfaces() {
+        let root = temp_root("gtex-dds");
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("texture.DAT");
+        fs::write(
+            &source,
+            include_bytes!("../../../tests/fixtures/public/gtex/tagged.bin"),
+        )
+        .unwrap();
+        let output = root.join("out");
+        run(&[
+            source.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--materialize-payloads".into(),
+            "--export-dds".into(),
+        ])
+        .unwrap();
+        let document = yaml_document(&output);
+        assert_eq!(document["payloads"].as_array().unwrap().len(), 3);
+        assert!(output.join("payloads/texture.dds").is_file());
+        let dds = fs::read(output.join("payloads/texture.dds")).unwrap();
+        assert_eq!(&dds[0..4], b"DDS ");
+        assert_eq!(u32::from_le_bytes(dds[12..16].try_into().unwrap()), 2);
+        assert_eq!(u32::from_le_bytes(dds[16..20].try_into().unwrap()), 4);
+        assert_eq!(u32::from_le_bytes(dds[20..24].try_into().unwrap()), 16);
+        let metadata_only = crate::verify_extract::run(&[output.display().to_string()]).unwrap();
+        assert!(metadata_only.text.contains("verified resource extraction"));
+        let verification = crate::verify_extract::run(&[
+            output.display().to_string(),
+            "--source".into(),
+            source.display().to_string(),
+        ])
+        .unwrap();
+        assert!(verification.text.contains("source replayed"));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn refuses_dds_for_unsupported_gtex_before_output() {
+        let root = temp_root("gtex-dds-refusal");
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("texture.DAT");
+        fs::write(
+            &source,
+            include_bytes!("../../../tests/fixtures/public/gtex/dds-unsupported-flags.bin"),
+        )
+        .unwrap();
+        let output = root.join("out");
+        let error = run(&[
+            source.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--export-dds".into(),
+        ])
+        .unwrap_err();
+        assert!(error.message.contains("cannot be exported as DDS"));
+        assert!(!output.exists());
         fs::remove_dir_all(root).unwrap();
     }
 
