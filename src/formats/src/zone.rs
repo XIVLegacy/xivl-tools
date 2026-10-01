@@ -525,6 +525,70 @@ pub fn parse_layout(data: &[u8]) -> Result<Layout> {
 
 /// Decode the documented SEDB model path (RES -> WRB -> MDL -> MESH).
 pub fn parse_model(data: &[u8]) -> Result<Model> {
+    let parsed = parse_model_parts(data)?;
+    Ok(Model {
+        parts: parsed.into_iter().map(|part| part.part).collect(),
+    })
+}
+
+/// Scale one zero-based render mesh part around its existing COMP center.
+///
+/// This experimental edit changes only the first three signed 16-bit
+/// position components in the selected STMS stream. The fourth component and
+/// every other input byte remain unchanged.
+pub fn edit_model_part_positions(data: &[u8], part_index: usize, factor: f32) -> Result<Vec<u8>> {
+    if !(factor.is_finite() && 0.0 < factor && factor <= 1.0) {
+        return Err(zone_error(
+            0,
+            "position scale factor must be finite and in (0, 1]",
+        ));
+    }
+    let parts = parse_model_parts(data)?;
+    let part = parts.get(part_index).ok_or_else(|| {
+        zone_error(
+            0,
+            format!(
+                "model mesh part index {part_index} is outside the {} parsed part(s)",
+                parts.len()
+            ),
+        )
+    })?;
+    let mut output = data.to_vec();
+    if factor == 1.0 {
+        return Ok(output);
+    }
+    for vertex in 0..part.position.item_count {
+        let at = part
+            .position
+            .data_offset
+            .checked_add(vertex.checked_mul(part.position.stride).ok_or_else(|| {
+                zone_error(
+                    part.position.data_offset as u64,
+                    "model position offset overflows",
+                )
+            })?)
+            .and_then(|offset| offset.checked_add(part.position.field_offset))
+            .ok_or_else(|| {
+                zone_error(
+                    part.position.data_offset as u64,
+                    "model position offset overflows",
+                )
+            })?;
+        for component in 0..3 {
+            let component_offset = at.checked_add(component * 2).ok_or_else(|| {
+                zone_error(at as u64, "model position component offset overflows")
+            })?;
+            let raw = i16_be_at(data, component_offset, 0)?;
+            let scaled = (raw as f32 * factor)
+                .round()
+                .clamp(i16::MIN as f32, i16::MAX as f32) as i16;
+            output[component_offset..component_offset + 2].copy_from_slice(&scaled.to_be_bytes());
+        }
+    }
+    Ok(output)
+}
+
+fn parse_model_parts(data: &[u8]) -> Result<Vec<ParsedMeshPart>> {
     let root = crate::sedb::parse_container(data, 0)?;
     if root.res.is_none() {
         return Err(zone_error(4, "model resource is not a RES container"));
@@ -542,7 +606,7 @@ pub fn parse_model(data: &[u8]) -> Result<Model> {
                 let start = child.span.offset as usize + usize::from(child.header_size);
                 let end = child.span.end() as usize;
                 if let Some(bytes) = data.get(start..end) {
-                    parse_wrb_chunks(bytes, None, &mut parts)?;
+                    parse_wrb_chunks(bytes, start, None, &mut parts)?;
                 }
             }
         }
@@ -550,7 +614,7 @@ pub fn parse_model(data: &[u8]) -> Result<Model> {
     if !found_wrb {
         return Err(zone_error(0, "model RES contains no WRB resource"));
     }
-    Ok(Model { parts })
+    Ok(parts)
 }
 
 fn reject_model_res_anomalies(container: &crate::sedb::Container) -> Result<()> {
@@ -1572,19 +1636,35 @@ fn resolve_resource_key(
 #[derive(Debug, Clone)]
 struct Chunk<'a> {
     tag: [u8; 4],
+    offset: usize,
     bytes: &'a [u8],
     children: Vec<Chunk<'a>>,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct PositionStream {
+    data_offset: usize,
+    item_count: usize,
+    stride: usize,
+    field_offset: usize,
+}
+
+#[derive(Debug, Clone)]
+struct ParsedMeshPart {
+    part: MeshPart,
+    position: PositionStream,
+}
+
 fn parse_wrb_chunks(
     bytes: &[u8],
+    base: usize,
     comp: Option<(Vec3, Vec3)>,
-    parts: &mut Vec<MeshPart>,
+    parts: &mut Vec<ParsedMeshPart>,
 ) -> Result<()> {
-    let chunks = parse_chunks(bytes)?;
+    let chunks = parse_chunks_at_depth(bytes, base, 0)?;
     for chunk in &chunks {
         let next_comp = if chunk.tag == *b"COMP" {
-            Some(read_box(chunk.bytes)?)
+            Some(read_box_at(chunk.bytes, chunk.offset + 16)?)
         } else {
             comp
         };
@@ -1600,7 +1680,7 @@ fn parse_wrb_chunks(
 fn parse_chunk_children<'a>(
     chunk: &Chunk<'a>,
     comp: Option<(Vec3, Vec3)>,
-    parts: &mut Vec<MeshPart>,
+    parts: &mut Vec<ParsedMeshPart>,
 ) -> Result<()> {
     let current_comp = find_comp(chunk)?.or(comp);
     for child in &chunk.children {
@@ -1620,15 +1700,23 @@ fn parse_chunk_children<'a>(
 fn parse_mesh_chunk(
     chunk: &Chunk<'_>,
     comp: Option<(Vec3, Vec3)>,
-    parts: &mut Vec<MeshPart>,
+    parts: &mut Vec<ParsedMeshPart>,
 ) -> Result<()> {
     let mut vertices = None;
     let mut indices = None;
+    let mut position_stream = None;
     for child in &chunk.children {
         if child.tag != *b"STMS" {
             continue;
         }
-        let (fields, item_count, stride, data) = parse_stms(child.bytes)?;
+        let stms_base = child.offset + 16;
+        let ParsedStream {
+            fields,
+            item_count,
+            stride,
+            data,
+            data_offset,
+        } = parse_stms(child.bytes, stms_base)?;
         if stride == 2
             && fields.len() == 1
             && fields[0].0 == 0
@@ -1636,17 +1724,37 @@ fn parse_mesh_chunk(
             && fields[0].2 == 1
             && fields[0].3 >> 16 == 0xFF
         {
+            if indices.is_some() {
+                return Err(zone_error(
+                    child.offset as u64,
+                    "model MESH has ambiguous supported index streams",
+                ));
+            }
             let mut values = Vec::with_capacity(item_count as usize);
             for index in 0..item_count as usize {
-                values.push(u16_be(data, index * 2)? as u32);
+                values.push(u16_be_at(data, index * 2, data_offset)? as u32);
             }
             indices = Some(values);
-        } else if let Some(position) = fields
-            .iter()
-            .find(|field| field.3 >> 16 == 0 && field.1 == 4 && field.2 == 4)
-        {
+        } else {
+            let positions = fields
+                .iter()
+                .enumerate()
+                .filter(|(_, field)| field.3 >> 16 == 0 && field.1 == 4 && field.2 == 4)
+                .collect::<Vec<_>>();
+            if positions.len() > 1 {
+                return Err(zone_error(
+                    stms_base as u64 + 16 + positions[1].0 as u64 * 16,
+                    "model position stream has ambiguous supported fields",
+                ));
+            }
+            let Some((field_index, position)) = positions.first().copied() else {
+                continue;
+            };
             let Some((min, max)) = comp else {
-                return Err(zone_error(0, "model position stream has no COMP box"));
+                return Err(zone_error(
+                    stms_base as u64,
+                    "model position stream has no COMP box",
+                ));
             };
             let field_offset = position.0 as usize;
             if field_offset
@@ -1654,17 +1762,28 @@ fn parse_mesh_chunk(
                 .is_none_or(|end| end > stride as usize)
             {
                 return Err(zone_error(
-                    0,
+                    stms_base as u64 + 16 + field_index as u64 * 16,
                     "model position field extends beyond stream stride",
+                ));
+            }
+            if position_stream.is_some() {
+                return Err(zone_error(
+                    stms_base as u64,
+                    "model MESH has ambiguous supported position streams",
                 ));
             }
             let mut values = Vec::with_capacity(item_count as usize);
             for index in 0..item_count as usize {
-                let at = index * stride as usize + field_offset;
+                let at = index
+                    .checked_mul(stride as usize)
+                    .and_then(|offset| offset.checked_add(field_offset))
+                    .ok_or_else(|| {
+                        zone_error(data_offset as u64, "model position offset overflows")
+                    })?;
                 let raw = [
-                    i16_be(data, at)?,
-                    i16_be(data, at + 2)?,
-                    i16_be(data, at + 4)?,
+                    i16_be_at(data, at, data_offset)?,
+                    i16_be_at(data, at + 2, data_offset)?,
+                    i16_be_at(data, at + 4, data_offset)?,
                 ];
                 values.push(Vec3 {
                     x: (min.x + max.x) * 0.5 + raw[0] as f32 / 32767.0 * (max.x - min.x) * 0.5,
@@ -1673,11 +1792,17 @@ fn parse_mesh_chunk(
                 });
             }
             vertices = Some(values);
+            position_stream = Some(PositionStream {
+                data_offset,
+                item_count: item_count as usize,
+                stride: stride as usize,
+                field_offset,
+            });
         }
     }
     let (Some(vertices), Some(indices)) = (vertices, indices) else {
         return Err(zone_error(
-            0,
+            chunk.offset as u64,
             "model MESH lacks a supported position or index stream",
         ));
     };
@@ -1686,12 +1811,24 @@ fn parse_mesh_chunk(
             .iter()
             .any(|index| *index as usize >= vertices.len())
     {
-        return Err(zone_error(0, "model index stream is not a triangle list"));
+        return Err(zone_error(
+            chunk.offset as u64,
+            "model index stream is not a triangle list",
+        ));
     }
-    parts.push(MeshPart {
-        classification: MeshClassification::Render,
-        vertices,
-        indices,
+    let Some(position) = position_stream else {
+        return Err(zone_error(
+            chunk.offset as u64,
+            "model MESH lacks a supported position stream",
+        ));
+    };
+    parts.push(ParsedMeshPart {
+        part: MeshPart {
+            classification: MeshClassification::Render,
+            vertices,
+            indices,
+        },
+        position,
     });
     Ok(())
 }
@@ -1699,7 +1836,7 @@ fn parse_mesh_chunk(
 fn find_comp(chunk: &Chunk<'_>) -> Result<Option<(Vec3, Vec3)>> {
     for child in &chunk.children {
         if child.tag == *b"COMP" {
-            return Ok(Some(read_box(child.bytes)?));
+            return Ok(Some(read_box_at(child.bytes, child.offset + 16)?));
         }
         if let Some(comp) = find_comp(child)? {
             return Ok(Some(comp));
@@ -1711,44 +1848,68 @@ fn find_comp(chunk: &Chunk<'_>) -> Result<Option<(Vec3, Vec3)>> {
 #[derive(Debug, Clone, Copy)]
 struct StreamField(u32, u32, u32, u32);
 
-fn parse_stms(bytes: &[u8]) -> Result<(Vec<StreamField>, u32, u32, &[u8])> {
-    let fields_count = bounded_u32(u32_be(bytes, 0)?, 0, "STMS field")?;
-    let item_count = bounded_u32(u32_be(bytes, 4)?, 4, "STMS item")?;
-    let stride = u32_be(bytes, 8)?;
+struct ParsedStream<'a> {
+    fields: Vec<StreamField>,
+    item_count: u32,
+    stride: u32,
+    data: &'a [u8],
+    data_offset: usize,
+}
+
+fn parse_stms(bytes: &[u8], base: usize) -> Result<ParsedStream<'_>> {
+    let fields_count = bounded_u32(u32_be_at(bytes, 0, base)?, base as u64, "STMS field")?;
+    let item_count = bounded_u32(u32_be_at(bytes, 4, base)?, base as u64 + 4, "STMS item")?;
+    let stride = u32_be_at(bytes, 8, base)?;
     let fields_start = 16usize;
     let fields_bytes = (fields_count as usize)
         .checked_mul(16)
-        .ok_or_else(|| zone_error(0, "STMS fields overflow"))?;
-    let data_start = fields_start
-        .checked_add(fields_bytes)
-        .ok_or_else(|| zone_error(0, "STMS data offset overflows"))?;
+        .ok_or_else(|| zone_error(base as u64 + 16, "STMS fields overflow"))?;
+    let data_start = fields_start.checked_add(fields_bytes).ok_or_else(|| {
+        zone_error(
+            base as u64 + fields_start as u64,
+            "STMS data offset overflows",
+        )
+    })?;
     let data_bytes = (item_count as usize)
         .checked_mul(stride as usize)
-        .ok_or_else(|| zone_error(0, "STMS data size overflows"))?;
-    if data_start + data_bytes != bytes.len() {
-        return Err(zone_error(0, "STMS size does not match its stream"));
+        .ok_or_else(|| zone_error(base as u64 + 4, "STMS data size overflows"))?;
+    let data_end = data_start
+        .checked_add(data_bytes)
+        .ok_or_else(|| zone_error(base as u64 + data_start as u64, "STMS data size overflows"))?;
+    if data_end != bytes.len() {
+        return Err(zone_error(
+            base as u64,
+            "STMS size does not match its stream",
+        ));
     }
     let mut fields = Vec::with_capacity(fields_count as usize);
     for index in 0..fields_count as usize {
         let at = fields_start + index * 16;
         fields.push(StreamField(
-            u32_be(bytes, at)?,
-            u32_be(bytes, at + 4)?,
-            u32_be(bytes, at + 8)?,
-            u32_be(bytes, at + 12)?,
+            u32_be_at(bytes, at, base)?,
+            u32_be_at(bytes, at + 4, base)?,
+            u32_be_at(bytes, at + 8, base)?,
+            u32_be_at(bytes, at + 12, base)?,
         ));
     }
-    Ok((fields, item_count, stride, &bytes[data_start..]))
+    Ok(ParsedStream {
+        fields,
+        item_count,
+        stride,
+        data: &bytes[data_start..],
+        data_offset: base + data_start,
+    })
 }
 
+#[cfg(test)]
 fn parse_chunks(bytes: &[u8]) -> Result<Vec<Chunk<'_>>> {
-    parse_chunks_at_depth(bytes, 0)
+    parse_chunks_at_depth(bytes, 0, 0)
 }
 
-fn parse_chunks_at_depth(bytes: &[u8], depth: usize) -> Result<Vec<Chunk<'_>>> {
+fn parse_chunks_at_depth(bytes: &[u8], base: usize, depth: usize) -> Result<Vec<Chunk<'_>>> {
     if depth > MAX_MODEL_CHUNK_DEPTH {
         return Err(zone_error(
-            depth as u64,
+            base as u64,
             "model chunk nesting exceeds the depth limit",
         ));
     }
@@ -1760,13 +1921,19 @@ fn parse_chunks_at_depth(bytes: &[u8], depth: usize) -> Result<Vec<Chunk<'_>>> {
         }
         let tag = bytes[offset..offset + 4]
             .try_into()
-            .map_err(|_| zone_error(offset as u64, "chunk tag"))?;
-        reject_known_tag_variant(&tag, offset)?;
-        let size = u32_be(bytes, offset + 8)? as usize;
-        let padded = u32_be(bytes, offset + 12)? as usize;
-        if size < 16 || offset + size > bytes.len() {
+            .map_err(|_| zone_error(base as u64 + offset as u64, "chunk tag"))?;
+        reject_known_tag_variant(&tag, base + offset)?;
+        let size = u32_be_at(bytes, offset + 8, base)? as usize;
+        let padded = u32_be_at(bytes, offset + 12, base)? as usize;
+        let size_end = offset.checked_add(size).ok_or_else(|| {
+            zone_error(
+                base as u64 + offset as u64 + 8,
+                "chunk size overflows payload",
+            )
+        })?;
+        if size < 16 || size_end > bytes.len() {
             return Err(zone_error(
-                offset as u64 + 8,
+                base as u64 + offset as u64 + 8,
                 "chunk size is outside payload",
             ));
         }
@@ -1777,15 +1944,19 @@ fn parse_chunks_at_depth(bytes: &[u8], depth: usize) -> Result<Vec<Chunk<'_>>> {
             || tag == *b"MESH"
             || tag == *b"AABB"
         {
-            let nested = child_bytes
-                .get(16..)
-                .ok_or_else(|| zone_error(offset as u64, "container chunk has no info block"))?;
-            parse_chunks_at_depth(nested, depth + 1)?
+            let nested = child_bytes.get(16..).ok_or_else(|| {
+                zone_error(
+                    base as u64 + offset as u64,
+                    "container chunk has no info block",
+                )
+            })?;
+            parse_chunks_at_depth(nested, base + offset + 32, depth + 1)?
         } else {
             Vec::new()
         };
         chunks.push(Chunk {
             tag,
+            offset: base + offset,
             bytes: child_bytes,
             children,
         });
@@ -1794,9 +1965,15 @@ fn parse_chunks_at_depth(bytes: &[u8], depth: usize) -> Result<Vec<Chunk<'_>>> {
         } else {
             (size + 15) & !15
         };
-        if advance == 0 || offset + advance > bytes.len() {
+        let advance_end = offset.checked_add(advance).ok_or_else(|| {
+            zone_error(
+                base as u64 + offset as u64 + 12,
+                "chunk padded size overflows payload",
+            )
+        })?;
+        if advance == 0 || advance_end > bytes.len() {
             return Err(zone_error(
-                offset as u64 + 12,
+                base as u64 + offset as u64 + 12,
                 "chunk padded size is outside payload",
             ));
         }
@@ -1815,17 +1992,17 @@ fn reject_known_tag_variant(tag: &[u8; 4], offset: usize) -> Result<()> {
     Ok(())
 }
 
-fn read_box(bytes: &[u8]) -> Result<(Vec3, Vec3)> {
+fn read_box_at(bytes: &[u8], base: usize) -> Result<(Vec3, Vec3)> {
     Ok((
         Vec3 {
-            x: f32_be(bytes, 0)?,
-            y: f32_be(bytes, 4)?,
-            z: f32_be(bytes, 8)?,
+            x: f32_be_at(bytes, 0, base)?,
+            y: f32_be_at(bytes, 4, base)?,
+            z: f32_be_at(bytes, 8, base)?,
         },
         Vec3 {
-            x: f32_be(bytes, 12)?,
-            y: f32_be(bytes, 16)?,
-            z: f32_be(bytes, 20)?,
+            x: f32_be_at(bytes, 12, base)?,
+            y: f32_be_at(bytes, 16, base)?,
+            z: f32_be_at(bytes, 20, base)?,
         },
     ))
 }
@@ -1868,26 +2045,26 @@ fn u16_le(data: &[u8], offset: usize) -> Result<u16> {
 fn u16_at(data: &[u8], offset: usize) -> Result<u16> {
     u16_le(data, offset)
 }
-fn u32_be(data: &[u8], offset: usize) -> Result<u32> {
+fn u32_be_at(data: &[u8], offset: usize, base: usize) -> Result<u32> {
     let bytes = data
         .get(offset..offset + 4)
-        .ok_or_else(|| zone_error(offset as u64, "u32 is outside input"))?;
+        .ok_or_else(|| zone_error(base as u64 + offset as u64, "u32 is outside input"))?;
     Ok(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
 }
-fn u16_be(data: &[u8], offset: usize) -> Result<u16> {
+fn u16_be_at(data: &[u8], offset: usize, base: usize) -> Result<u16> {
     let bytes = data
         .get(offset..offset + 2)
-        .ok_or_else(|| zone_error(offset as u64, "u16 is outside input"))?;
+        .ok_or_else(|| zone_error(base as u64 + offset as u64, "u16 is outside input"))?;
     Ok(u16::from_be_bytes([bytes[0], bytes[1]]))
 }
-fn i16_be(data: &[u8], offset: usize) -> Result<i16> {
-    Ok(u16_be(data, offset)? as i16)
+fn i16_be_at(data: &[u8], offset: usize, base: usize) -> Result<i16> {
+    Ok(u16_be_at(data, offset, base)? as i16)
 }
 fn f32_le(data: &[u8], offset: usize) -> Result<f32> {
     Ok(f32::from_le_bytes(u32_le(data, offset)?.to_le_bytes()))
 }
-fn f32_be(data: &[u8], offset: usize) -> Result<f32> {
-    Ok(f32::from_bits(u32_be(data, offset)?))
+fn f32_be_at(data: &[u8], offset: usize, base: usize) -> Result<f32> {
+    Ok(f32::from_bits(u32_be_at(data, offset, base)?))
 }
 
 fn zone_error(offset: u64, detail: impl Into<String>) -> FormatError {
@@ -2193,7 +2370,7 @@ mod tests {
         chunk(tag, &payload)
     }
 
-    fn stms_position_with_field_offset(field_offset: u32) -> Vec<u8> {
+    fn stms_position_with_values(field_offset: u32, values: [[i16; 4]; 3]) -> Vec<u8> {
         let mut payload = vec![0u8; 16 + 32 + 3 * 12];
         put_be_u32(&mut payload, 0, 2);
         put_be_u32(&mut payload, 4, 3);
@@ -2204,28 +2381,34 @@ mod tests {
         put_be_u32(&mut payload, 32, field_offset);
         put_be_u32(&mut payload, 32 + 4, 4);
         put_be_u32(&mut payload, 32 + 8, 4);
-        for (index, values) in [
-            [0i16, 0, 0, 32767],
-            [32767, 0, 0, 32767],
-            [0, 32767, 0, 32767],
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            let at = 48 + index * 12;
-            for (component, value) in values.into_iter().enumerate() {
-                payload[at + component * 2..at + component * 2 + 2]
-                    .copy_from_slice(&value.to_be_bytes());
+        if field_offset <= 4 {
+            for (index, values) in values.into_iter().enumerate() {
+                let at = 48 + index * 12 + field_offset as usize;
+                for (component, value) in values.into_iter().enumerate() {
+                    payload[at + component * 2..at + component * 2 + 2]
+                        .copy_from_slice(&value.to_be_bytes());
+                }
             }
         }
         chunk(b"STMS", &payload)
+    }
+
+    fn stms_position_with_field_offset(field_offset: u32) -> Vec<u8> {
+        stms_position_with_values(
+            field_offset,
+            [
+                [0i16, 0, 0, 32767],
+                [32767, 0, 0, 32767],
+                [0, 32767, 0, 32767],
+            ],
+        )
     }
 
     fn stms_position() -> Vec<u8> {
         stms_position_with_field_offset(0)
     }
 
-    fn stms_indices() -> Vec<u8> {
+    fn stms_indices_with_values(values: [u16; 3]) -> Vec<u8> {
         let mut payload = vec![0u8; 16 + 16 + 6];
         put_be_u32(&mut payload, 0, 1);
         put_be_u32(&mut payload, 4, 3);
@@ -2233,13 +2416,25 @@ mod tests {
         put_be_u32(&mut payload, 16 + 4, 0);
         put_be_u32(&mut payload, 16 + 8, 1);
         put_be_u32(&mut payload, 16 + 12, 0x00ff0000);
-        for (index, value) in [0u16, 1, 2].into_iter().enumerate() {
+        for (index, value) in values.into_iter().enumerate() {
             payload[32 + index * 2..34 + index * 2].copy_from_slice(&value.to_be_bytes());
         }
         chunk(b"STMS", &payload)
     }
 
+    fn stms_indices() -> Vec<u8> {
+        stms_indices_with_values([0, 1, 2])
+    }
+
     fn model_bytes_with_streams(position: Vec<u8>, indices: Vec<u8>) -> Vec<u8> {
+        model_bytes_with_mesh_streams(vec![position, indices])
+    }
+
+    fn model_bytes_with_mesh_streams(streams: Vec<Vec<u8>>) -> Vec<u8> {
+        model_bytes_with_meshes(vec![container_chunk(b"MESH", &streams)])
+    }
+
+    fn model_bytes_with_meshes(meshes: Vec<Vec<u8>>) -> Vec<u8> {
         let mut comp = vec![0u8; 24];
         for (offset, value) in [
             (0, -1.0),
@@ -2251,8 +2446,9 @@ mod tests {
         ] {
             put_be_f32(&mut comp, offset, value);
         }
-        let mesh = container_chunk(b"MESH", &[position, indices]);
-        let mdl = container_chunk(b"MDL\0", &[chunk(b"COMP", &comp), mesh]);
+        let mut mdl_children = vec![chunk(b"COMP", &comp)];
+        mdl_children.extend(meshes);
+        let mdl = container_chunk(b"MDL\0", &mdl_children);
         let mdlc = container_chunk(b"MDLC", &[mdl]);
         let wrb = container_chunk(b"WRB\0", &[mdlc]);
         let mut wrb_sedb = vec![0u8; 0x30];
@@ -2360,6 +2556,130 @@ mod tests {
         assert_eq!(model.parts[0].indices, vec![0, 1, 2]);
         assert_eq!(model.parts[0].vertices[1].x, 1.0);
         assert_eq!(model.parts[0].classification, MeshClassification::Render);
+    }
+
+    #[test]
+    fn edit_model_positions_preserves_everything_outside_selected_components() {
+        let input = model_bytes();
+        let edited = edit_model_part_positions(&input, 0, 0.5).unwrap();
+        let parsed = parse_model_parts(&input).unwrap();
+        let stream = parsed[0].position;
+        assert_eq!(edited.len(), input.len());
+        for (offset, (before, after)) in input.iter().zip(&edited).enumerate() {
+            let position_byte = (0..stream.item_count).any(|vertex| {
+                let start = stream.data_offset + vertex * stream.stride + stream.field_offset;
+                offset >= start && offset < start + 6
+            });
+            if !position_byte {
+                assert_eq!(after, before, "unexpected edit at byte {offset}");
+            }
+        }
+        for vertex in 0..stream.item_count {
+            let start = stream.data_offset + vertex * stream.stride + stream.field_offset;
+            for component in 0..3 {
+                let at = start + component * 2;
+                let raw = i16::from_be_bytes([input[at], input[at + 1]]);
+                let expected = (raw as f32 * 0.5).round() as i16;
+                assert_eq!(edited[at..at + 2], expected.to_be_bytes());
+            }
+            assert_eq!(edited[start + 6..start + 8], input[start + 6..start + 8]);
+        }
+        assert_eq!(parse_model(&edited).unwrap().parts.len(), 1);
+    }
+
+    #[test]
+    fn edit_model_positions_isolates_the_selected_part() {
+        let first = container_chunk(b"MESH", &[stms_position(), stms_indices()]);
+        let second = container_chunk(
+            b"MESH",
+            &[
+                stms_position_with_values(
+                    0,
+                    [
+                        [-32767, 0, 0, 123],
+                        [0, -32767, 0, 456],
+                        [0, 0, -32767, 789],
+                    ],
+                ),
+                stms_indices(),
+            ],
+        );
+        let input = model_bytes_with_meshes(vec![first, second]);
+        let edited = edit_model_part_positions(&input, 1, 0.25).unwrap();
+        let parsed = parse_model_parts(&input).unwrap();
+        let target = parsed[1].position;
+        for (offset, (before, after)) in input.iter().zip(&edited).enumerate() {
+            let target_byte = (0..target.item_count).any(|vertex| {
+                let start = target.data_offset + vertex * target.stride + target.field_offset;
+                offset >= start && offset < start + 6
+            });
+            if !target_byte {
+                assert_eq!(after, before, "unselected byte changed at {offset}");
+            }
+        }
+        assert_eq!(parse_model(&edited).unwrap().parts.len(), 2);
+    }
+
+    #[test]
+    fn edit_model_positions_identity_is_byte_identical() {
+        let input = model_bytes();
+        assert_eq!(edit_model_part_positions(&input, 0, 1.0).unwrap(), input);
+    }
+
+    #[test]
+    fn edit_model_positions_rejects_invalid_factor_and_part() {
+        let input = model_bytes();
+        for factor in [0.0, -0.5, 1.1, f32::NAN, f32::INFINITY] {
+            let error = edit_model_part_positions(&input, 0, factor).unwrap_err();
+            assert_eq!(error.kind(), ErrorKind::InvalidAttributeValue);
+            assert_eq!(error.offset(), 0);
+        }
+        let error = edit_model_part_positions(&input, 1, 0.5).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidAttributeValue);
+        assert_eq!(error.offset(), 0);
+    }
+
+    #[test]
+    fn edit_model_positions_rejects_malformed_stride_and_ambiguous_streams() {
+        let malformed = model_bytes_with_position(stms_position_with_field_offset(8));
+        let error = edit_model_part_positions(&malformed, 0, 0.5).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidAttributeValue);
+        assert!(error.offset() > 0);
+
+        let ambiguous = model_bytes_with_streams(stms_position(), stms_position());
+        let error = edit_model_part_positions(&ambiguous, 0, 0.5).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidAttributeValue);
+        assert!(error.detail().contains("ambiguous"));
+
+        let absent = model_bytes_with_streams(stms_indices(), stms_indices());
+        let error = edit_model_part_positions(&absent, 0, 0.5).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidAttributeValue);
+        assert!(error.offset() > 0);
+    }
+
+    #[test]
+    fn model_rejects_a_shadowed_index_stream_at_the_second_stms() {
+        let input = model_bytes_with_mesh_streams(vec![
+            stms_position(),
+            stms_indices_with_values([99, 1, 2]),
+            stms_indices(),
+        ]);
+        let error = parse_model(&input).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidAttributeValue);
+        assert!(error.offset() > 0);
+        assert!(error.detail().contains("ambiguous supported index streams"));
+        let error = edit_model_part_positions(&input, 0, 0.5).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidAttributeValue);
+        assert!(error.detail().contains("ambiguous supported index streams"));
+    }
+
+    #[test]
+    fn edit_model_positions_rejects_input_failure() {
+        let mut input = model_bytes();
+        input.truncate(input.len() - 1);
+        let error = edit_model_part_positions(&input, 0, 0.5).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::DeclaredSizeOutOfRange);
+        assert_eq!(error.offset(), 0x10);
     }
 
     #[test]

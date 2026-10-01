@@ -70,3 +70,29 @@ output is created. Tests use authored bytes with the documented retail
 MapLayout, lyb, RES/wrb, and PHB.GBD framing rather than a private surrogate
 wire format. The source evidence entry point is
 [SEDB, RES, and resource paths](sedb-res.md).
+
+## Experimental model position edit
+
+The format library includes an experimental, count-preserving byte edit for
+one explicitly selected zero-based render `MeshPart`. It scales the first
+three signed big-endian 16-bit position components around the existing `COMP`
+box center and leaves the fourth component, descriptors, indices, `COMP`,
+other streams and parts, padding, and unknown bytes unchanged.
+
+Run the research example with explicit paths:
+
+```powershell
+cargo run --locked -p xivl-formats --example model_position_edit -- <input> <new-output> <zero-based-mesh-part> <factor>
+```
+
+The factor must be finite and in `(0, 1]`. Each component is quantized as
+`round(raw_i16 * factor)` after validation. A factor of `1` returns a
+byte-identical copy. The example reports input and output lengths and hashes,
+mesh counts, and contiguous changed byte spans. It refuses an existing output
+and a source overwrite, and writes only after both input and edited output pass
+the bounded parser.
+
+This edit changes render position bytes only. It does not change topology,
+materials, collision data, stream sizes, or model descriptors. It is a
+research aid for inspecting a custom-zone rendering hypothesis and makes no
+claim that a modified file is accepted by the client or by other consumers.
