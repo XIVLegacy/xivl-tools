@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-truncated",
+  "formatId": "wrb-model",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/wrb-model/truncated.bin"
+  },
+  "arguments": ["--as", "wrb-model"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-attribute-value",
+    "errorOffset": 136
+  },
+  "notes": "A chunk whose declared size escapes its WRB payload is rejected at the size field."
+}

@@ -315,13 +315,14 @@
       "name": "WRB model and mesh",
       "category": "graphics",
       "phase": 4,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
       "export": "planned",
       "exportViews": [
         "gltf",
         "json"
-      ]
+      ],
+      "notes": "Explicit --as wrb-model inspection and validation reuse the bounded zone model reader for RES resources with exact wrb SEDB children. Reports retain absolute chunk and stream spans, metadata, counts, digests, and opaque ranges, including valid WRB resources without MESH. Public authored cases cover accepted structure, exact tags, malformed descriptors, truncation, counts, and nesting. A pinned retail RES case authenticates the documented chunk and stream framing through independent range accounting. Generic RES inspection remains unchanged. Read is partial; structural JSON does not establish lossless export support. glTF, rendering, material and texture interpretation, skeletons, animation, and a model writer remain outside this reader. Evidence: docs/formats/wrb-model.md."
     },
     {
       "id": "skeleton",

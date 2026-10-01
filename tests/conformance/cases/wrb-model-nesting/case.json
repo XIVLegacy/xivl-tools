@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-nesting",
+  "formatId": "wrb-model",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/wrb-model/nesting.bin"
+  },
+  "arguments": ["--as", "wrb-model"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-attribute-value",
+    "errorOffset": 2208
+  },
+  "notes": "Nested model chunks beyond the bounded depth are rejected."
+}

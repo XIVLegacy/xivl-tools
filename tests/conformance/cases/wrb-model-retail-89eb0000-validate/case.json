@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-retail-89eb0000-validate",
+  "formatId": "wrb-model",
+  "operation": "validate",
+  "fixture": { "kind": "private", "fixtureId": "retail-res-89eb0000" },
+  "arguments": ["--as", "wrb-model"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Retail 1.23b explicit WRB parse validation. A round-trip check is not applicable and this case establishes no writer or lossless export behavior."
+}

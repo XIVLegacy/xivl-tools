@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-bad-descriptor",
+  "formatId": "wrb-model",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/wrb-model/bad-descriptor.bin"
+  },
+  "arguments": ["--as", "wrb-model"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-attribute-value",
+    "errorOffset": 320
+  },
+  "notes": "An excessive STMS field count is rejected with its absolute stream offset."
+}

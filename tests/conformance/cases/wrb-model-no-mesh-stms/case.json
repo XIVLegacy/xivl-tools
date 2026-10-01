@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-no-mesh-stms",
+  "formatId": "wrb-model",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/wrb-model/no-mesh-stms.bin"
+  },
+  "arguments": ["--as", "wrb-model"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "A valid no-MESH WRB retains an STMS body outside the validated mesh path as opaque structure."
+}

@@ -1,0 +1,19 @@
+{
+  "checks": [
+    {
+      "name": "parse",
+      "status": "pass"
+    },
+    {
+      "name": "round-trip",
+      "status": "not-applicable"
+    }
+  ],
+  "format": "wrb-model",
+  "input": {
+    "length": 7711
+  },
+  "operation": "validate",
+  "schemaVersion": 1,
+  "sha256": "3218cfb49da670397d1e40664fc130c02712a64b989cbfecb1f4f25da6814592"
+}

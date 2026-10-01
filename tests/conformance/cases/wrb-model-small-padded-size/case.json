@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-small-padded-size",
+  "formatId": "wrb-model",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/wrb-model/small-padded-size.bin"
+  },
+  "arguments": ["--as", "wrb-model"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "A chunk with declared padded size zero reports the raw field and the resolved aligned advance."
+}

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-supported-validate",
+  "formatId": "wrb-model",
+  "operation": "validate",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/wrb-model/supported.bin"
+  },
+  "arguments": ["--as", "wrb-model"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Explicit WRB validation reports parse success without a writer round trip."
+}

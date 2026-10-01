@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-retail-89eb0000",
+  "formatId": "wrb-model",
+  "operation": "inspect",
+  "fixture": { "kind": "private", "fixtureId": "retail-res-89eb0000" },
+  "arguments": ["--as", "wrb-model"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Retail 1.23b bounded WRB chunk and stream structure inside the retained RES representative. The expectation contains metadata, spans, counts, and digests without decoded geometry or opaque bytes."
+}

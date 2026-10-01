@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-unknown",
+  "formatId": "wrb-model",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/wrb-model/unknown.bin"
+  },
+  "arguments": ["--as", "wrb-model"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "An opaque unknown chunk remains visible alongside a supported mesh hierarchy."
+}

@@ -101,6 +101,30 @@ The [standalone GTEX replay record](formats/gtex-pwib.md#standalone-retail-expor
 describes the independent raw, DDS, and PNG checks through both extraction
 commands. Missing unrelated fixtures do not stand in for these selected checks.
 
+WRB model `inspect` and `validate` cases use explicit `--as wrb-model`.
+Public authored fixtures cover accepted mesh structure, no-MESH resources,
+unknown chunks, exact tags, malformed descriptors, truncation, counts, and
+bounded nesting. Reports retain absolute source spans, structural metadata,
+counts, digests, and opaque ranges without vertex or index arrays. Validation
+marks round-trip as not applicable. See the
+[WRB inspection contract](formats/wrb-model.md).
+
+The two private WRB cases reuse `retail-res-89eb0000` and preserve its
+manifest-declared `data/89/EB/00/00.DAT` path. Include its retained generic
+RES inspect case to check that the views remain separate:
+
+```text
+conformance run --case retail-res-89eb0000
+                --case wrb-model-retail-89eb0000
+                --case wrb-model-retail-89eb0000-validate
+                --fixture-root client-install=<explicit-snapshot-root>
+                --require-private
+```
+
+The WRB evidence page records independent chunk and stream range accounting
+against this exact input. No private bytes or decoded geometry are retained
+in these expectations.
+
 PWIB `extract` cases use `--pwib-entry <index>` with the texture output
 options to exercise selected RES/txb extraction. Reports retain entry and
 type metadata, descriptor and table spans, second-relative offsets,

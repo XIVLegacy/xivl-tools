@@ -9,6 +9,7 @@
 use std::collections::BTreeMap;
 
 use crate::error::{ErrorKind, FormatError, Result};
+use crate::reader::Span;
 use crate::resource::ResourceId;
 use serde_json::{json, Value};
 
@@ -214,6 +215,76 @@ pub struct MeshPart {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Model {
     pub parts: Vec<MeshPart>,
+}
+
+/// Validated structural metadata for a RES -> WRB model resource.
+///
+/// The metadata carries source spans and counts only. Model positions and
+/// index values remain available to the geometry reader, but never cross this
+/// structural reporting boundary.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelInspection {
+    pub(crate) resources: Vec<ModelResourceInspection>,
+    pub(crate) chunk_count: u64,
+    pub(crate) mesh_count: u64,
+    pub(crate) stream_count: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelResourceInspection {
+    pub(crate) span: Span,
+    pub(crate) payload: Span,
+    pub(crate) chunks: Vec<ModelChunkInspection>,
+    pub(crate) opaque: Vec<ModelOpaqueSpan>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelChunkInspection {
+    pub(crate) tag: [u8; 4],
+    pub(crate) span: Span,
+    pub(crate) declared_size: u32,
+    pub(crate) declared_padded_size: u32,
+    pub(crate) padded_span: Span,
+    pub(crate) payload: Span,
+    pub(crate) padding: Option<Span>,
+    pub(crate) descriptor: bool,
+    pub(crate) stream: Option<ModelStreamInspection>,
+    pub(crate) mesh: Option<ModelMeshInspection>,
+    pub(crate) children: Vec<ModelChunkInspection>,
+    pub(crate) opaque: Vec<ModelOpaqueSpan>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelStreamInspection {
+    pub(crate) header: Span,
+    pub(crate) fields: Span,
+    pub(crate) field_count: u32,
+    pub(crate) item_count: u32,
+    pub(crate) stride: u32,
+    pub(crate) descriptors: Vec<ModelStreamFieldInspection>,
+    pub(crate) data: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelStreamFieldInspection {
+    pub(crate) span: Span,
+    pub(crate) words: [u32; 4],
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelMeshInspection {
+    pub(crate) stream_count: u32,
+    pub(crate) position_stream_count: u32,
+    pub(crate) index_stream_count: u32,
+    pub(crate) vertex_count: Option<u32>,
+    pub(crate) index_count: Option<u32>,
+    pub(crate) triangle_count: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelOpaqueSpan {
+    pub(crate) kind: &'static str,
+    pub(crate) span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -525,10 +596,7 @@ pub fn parse_layout(data: &[u8]) -> Result<Layout> {
 
 /// Decode the documented SEDB model path (RES -> WRB -> MDL -> MESH).
 pub fn parse_model(data: &[u8]) -> Result<Model> {
-    let parsed = parse_model_parts(data)?;
-    Ok(Model {
-        parts: parsed.into_iter().map(|part| part.part).collect(),
-    })
+    Ok(parse_model_with_structure(data)?.0)
 }
 
 /// Scale one zero-based render mesh part around its existing COMP center.
@@ -543,7 +611,7 @@ pub fn edit_model_part_positions(data: &[u8], part_index: usize, factor: f32) ->
             "position scale factor must be finite and in (0, 1]",
         ));
     }
-    let parts = parse_model_parts(data)?;
+    let (parts, _) = parse_model_parts(data)?;
     let part = parts.get(part_index).ok_or_else(|| {
         zone_error(
             0,
@@ -578,7 +646,7 @@ pub fn edit_model_part_positions(data: &[u8], part_index: usize, factor: f32) ->
             let component_offset = at.checked_add(component * 2).ok_or_else(|| {
                 zone_error(at as u64, "model position component offset overflows")
             })?;
-            let raw = i16_be_at(data, component_offset, 0)?;
+            let raw = i16_be(data, component_offset, 0)?;
             let scaled = (raw as f32 * factor)
                 .round()
                 .clamp(i16::MIN as f32, i16::MAX as f32) as i16;
@@ -588,13 +656,24 @@ pub fn edit_model_part_positions(data: &[u8], part_index: usize, factor: f32) ->
     Ok(output)
 }
 
-fn parse_model_parts(data: &[u8]) -> Result<Vec<ParsedMeshPart>> {
+pub(crate) fn parse_model_with_structure(data: &[u8]) -> Result<(Model, ModelInspection)> {
+    let (parts, inspection) = parse_model_parts(data)?;
+    Ok((
+        Model {
+            parts: parts.into_iter().map(|part| part.part).collect(),
+        },
+        inspection,
+    ))
+}
+
+fn parse_model_parts(data: &[u8]) -> Result<(Vec<ParsedMeshPart>, ModelInspection)> {
     let root = crate::sedb::parse_container(data, 0)?;
     if root.res.is_none() {
         return Err(zone_error(4, "model resource is not a RES container"));
     }
     reject_model_res_anomalies(&root)?;
-    let mut parts = Vec::new();
+    let mut parts: Vec<ParsedMeshPart> = Vec::new();
+    let mut resources = Vec::new();
     let mut found_wrb = false;
     for entry in &root.entries {
         if let crate::sedb::EntryBody::Subresource {
@@ -606,7 +685,13 @@ fn parse_model_parts(data: &[u8]) -> Result<Vec<ParsedMeshPart>> {
                 let start = child.span.offset as usize + usize::from(child.header_size);
                 let end = child.span.end() as usize;
                 if let Some(bytes) = data.get(start..end) {
-                    parse_wrb_chunks(bytes, start, None, &mut parts)?;
+                    let chunks = parse_wrb_chunks(bytes, start as u64, None, &mut parts)?;
+                    resources.push(ModelResourceInspection {
+                        span: child.span,
+                        payload: Span::new(start as u64, (end - start) as u64),
+                        chunks: chunks.chunks.iter().map(chunk_to_inspection).collect(),
+                        opaque: chunks.opaque,
+                    });
                 }
             }
         }
@@ -614,7 +699,27 @@ fn parse_model_parts(data: &[u8]) -> Result<Vec<ParsedMeshPart>> {
     if !found_wrb {
         return Err(zone_error(0, "model RES contains no WRB resource"));
     }
-    Ok(parts)
+    let chunk_count = resources
+        .iter()
+        .map(|resource| count_chunks(&resource.chunks))
+        .sum();
+    let mesh_count = resources
+        .iter()
+        .map(|resource| count_meshes(&resource.chunks))
+        .sum();
+    let stream_count = resources
+        .iter()
+        .map(|resource| count_streams(&resource.chunks))
+        .sum();
+    Ok((
+        parts,
+        ModelInspection {
+            resources,
+            chunk_count,
+            mesh_count,
+            stream_count,
+        },
+    ))
 }
 
 fn reject_model_res_anomalies(container: &crate::sedb::Container) -> Result<()> {
@@ -1636,9 +1741,24 @@ fn resolve_resource_key(
 #[derive(Debug, Clone)]
 struct Chunk<'a> {
     tag: [u8; 4],
-    offset: usize,
     bytes: &'a [u8],
+    span: Span,
+    declared_size: u32,
+    declared_padded_size: u32,
+    padded_span: Span,
+    payload: Span,
+    padding: Option<Span>,
+    descriptor: bool,
+    stream: Option<ModelStreamInspection>,
+    mesh: Option<ModelMeshInspection>,
     children: Vec<Chunk<'a>>,
+    opaque: Vec<ModelOpaqueSpan>,
+}
+
+#[derive(Debug, Clone)]
+struct ChunkList<'a> {
+    chunks: Vec<Chunk<'a>>,
+    opaque: Vec<ModelOpaqueSpan>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1655,16 +1775,16 @@ struct ParsedMeshPart {
     position: PositionStream,
 }
 
-fn parse_wrb_chunks(
-    bytes: &[u8],
-    base: usize,
+fn parse_wrb_chunks<'a>(
+    bytes: &'a [u8],
+    base: u64,
     comp: Option<(Vec3, Vec3)>,
     parts: &mut Vec<ParsedMeshPart>,
-) -> Result<()> {
-    let chunks = parse_chunks_at_depth(bytes, base, 0)?;
-    for chunk in &chunks {
+) -> Result<ChunkList<'a>> {
+    let mut chunks = parse_chunks(bytes, base)?;
+    for chunk in &mut chunks.chunks {
         let next_comp = if chunk.tag == *b"COMP" {
-            Some(read_box_at(chunk.bytes, chunk.offset + 16)?)
+            Some(read_box(chunk.bytes, chunk.payload.offset)?)
         } else {
             comp
         };
@@ -1674,16 +1794,16 @@ fn parse_wrb_chunks(
             parse_chunk_children(chunk, next_comp, parts)?;
         }
     }
-    Ok(())
+    Ok(chunks)
 }
 
 fn parse_chunk_children<'a>(
-    chunk: &Chunk<'a>,
+    chunk: &mut Chunk<'a>,
     comp: Option<(Vec3, Vec3)>,
     parts: &mut Vec<ParsedMeshPart>,
 ) -> Result<()> {
     let current_comp = find_comp(chunk)?.or(comp);
-    for child in &chunk.children {
+    for child in &mut chunk.children {
         if child.tag == *b"COMP" {
             continue;
         }
@@ -1698,52 +1818,52 @@ fn parse_chunk_children<'a>(
 }
 
 fn parse_mesh_chunk(
-    chunk: &Chunk<'_>,
+    chunk: &mut Chunk<'_>,
     comp: Option<(Vec3, Vec3)>,
     parts: &mut Vec<ParsedMeshPart>,
 ) -> Result<()> {
     let mut vertices = None;
     let mut indices = None;
     let mut position_stream = None;
-    for child in &chunk.children {
+    let mut stream_count = 0;
+    let mut position_stream_count = 0;
+    let mut index_stream_count = 0;
+    for child in &mut chunk.children {
         if child.tag != *b"STMS" {
             continue;
         }
-        let stms_base = child.offset + 16;
-        let ParsedStream {
-            fields,
-            item_count,
-            stride,
-            data,
-            data_offset,
-        } = parse_stms(child.bytes, stms_base)?;
-        if stride == 2
-            && fields.len() == 1
-            && fields[0].0 == 0
-            && fields[0].1 == 0
-            && fields[0].2 == 1
-            && fields[0].3 >> 16 == 0xFF
+        let parsed = parse_stms(child.bytes, child.payload.offset)?;
+        child.stream = Some(parsed.metadata.clone());
+        stream_count += 1;
+        if parsed.stride == 2
+            && parsed.fields.len() == 1
+            && parsed.fields[0].0 == 0
+            && parsed.fields[0].1 == 0
+            && parsed.fields[0].2 == 1
+            && parsed.fields[0].3 >> 16 == 0xFF
         {
             if indices.is_some() {
                 return Err(zone_error(
-                    child.offset as u64,
+                    child.span.offset,
                     "model MESH has ambiguous supported index streams",
                 ));
             }
-            let mut values = Vec::with_capacity(item_count as usize);
-            for index in 0..item_count as usize {
-                values.push(u16_be_at(data, index * 2, data_offset)? as u32);
+            index_stream_count += 1;
+            let mut values = Vec::with_capacity(parsed.item_count as usize);
+            for index in 0..parsed.item_count as usize {
+                values.push(u16_be(parsed.data, index * 2, parsed.metadata.data.offset)? as u32);
             }
             indices = Some(values);
         } else {
-            let positions = fields
+            let positions = parsed
+                .fields
                 .iter()
                 .enumerate()
                 .filter(|(_, field)| field.3 >> 16 == 0 && field.1 == 4 && field.2 == 4)
                 .collect::<Vec<_>>();
             if positions.len() > 1 {
                 return Err(zone_error(
-                    stms_base as u64 + 16 + positions[1].0 as u64 * 16,
+                    parsed.metadata.header.offset + 16 + positions[1].0 as u64 * 16,
                     "model position stream has ambiguous supported fields",
                 ));
             }
@@ -1752,38 +1872,42 @@ fn parse_mesh_chunk(
             };
             let Some((min, max)) = comp else {
                 return Err(zone_error(
-                    stms_base as u64,
+                    parsed.metadata.header.offset,
                     "model position stream has no COMP box",
                 ));
             };
+            position_stream_count += 1;
             let field_offset = position.0 as usize;
             if field_offset
                 .checked_add(8)
-                .is_none_or(|end| end > stride as usize)
+                .is_none_or(|end| end > parsed.stride as usize)
             {
                 return Err(zone_error(
-                    stms_base as u64 + 16 + field_index as u64 * 16,
+                    parsed.metadata.header.offset + 16 + field_index as u64 * 16,
                     "model position field extends beyond stream stride",
                 ));
             }
             if position_stream.is_some() {
                 return Err(zone_error(
-                    stms_base as u64,
+                    parsed.metadata.header.offset,
                     "model MESH has ambiguous supported position streams",
                 ));
             }
-            let mut values = Vec::with_capacity(item_count as usize);
-            for index in 0..item_count as usize {
+            let mut values = Vec::with_capacity(parsed.item_count as usize);
+            for index in 0..parsed.item_count as usize {
                 let at = index
-                    .checked_mul(stride as usize)
+                    .checked_mul(parsed.stride as usize)
                     .and_then(|offset| offset.checked_add(field_offset))
                     .ok_or_else(|| {
-                        zone_error(data_offset as u64, "model position offset overflows")
+                        zone_error(
+                            parsed.metadata.data.offset,
+                            "model position offset overflows",
+                        )
                     })?;
                 let raw = [
-                    i16_be_at(data, at, data_offset)?,
-                    i16_be_at(data, at + 2, data_offset)?,
-                    i16_be_at(data, at + 4, data_offset)?,
+                    i16_be(parsed.data, at, parsed.metadata.data.offset)?,
+                    i16_be(parsed.data, at + 2, parsed.metadata.data.offset)?,
+                    i16_be(parsed.data, at + 4, parsed.metadata.data.offset)?,
                 ];
                 values.push(Vec3 {
                     x: (min.x + max.x) * 0.5 + raw[0] as f32 / 32767.0 * (max.x - min.x) * 0.5,
@@ -1793,16 +1917,16 @@ fn parse_mesh_chunk(
             }
             vertices = Some(values);
             position_stream = Some(PositionStream {
-                data_offset,
-                item_count: item_count as usize,
-                stride: stride as usize,
+                data_offset: parsed.metadata.data.offset as usize,
+                item_count: parsed.item_count as usize,
+                stride: parsed.stride as usize,
                 field_offset,
             });
         }
     }
     let (Some(vertices), Some(indices)) = (vertices, indices) else {
         return Err(zone_error(
-            chunk.offset as u64,
+            chunk.span.offset,
             "model MESH lacks a supported position or index stream",
         ));
     };
@@ -1812,16 +1936,24 @@ fn parse_mesh_chunk(
             .any(|index| *index as usize >= vertices.len())
     {
         return Err(zone_error(
-            chunk.offset as u64,
+            chunk.span.offset,
             "model index stream is not a triangle list",
         ));
     }
     let Some(position) = position_stream else {
         return Err(zone_error(
-            chunk.offset as u64,
+            chunk.span.offset,
             "model MESH lacks a supported position stream",
         ));
     };
+    chunk.mesh = Some(ModelMeshInspection {
+        stream_count,
+        position_stream_count,
+        index_stream_count,
+        vertex_count: Some(vertices.len() as u32),
+        index_count: Some(indices.len() as u32),
+        triangle_count: Some((indices.len() / 3) as u32),
+    });
     parts.push(ParsedMeshPart {
         part: MeshPart {
             classification: MeshClassification::Render,
@@ -1836,7 +1968,7 @@ fn parse_mesh_chunk(
 fn find_comp(chunk: &Chunk<'_>) -> Result<Option<(Vec3, Vec3)>> {
     for child in &chunk.children {
         if child.tag == *b"COMP" {
-            return Ok(Some(read_box_at(child.bytes, child.offset + 16)?));
+            return Ok(Some(read_box(child.bytes, child.payload.offset)?));
         }
         if let Some(comp) = find_comp(child)? {
             return Ok(Some(comp));
@@ -1845,164 +1977,267 @@ fn find_comp(chunk: &Chunk<'_>) -> Result<Option<(Vec3, Vec3)>> {
     Ok(None)
 }
 
+fn chunk_to_inspection(chunk: &Chunk<'_>) -> ModelChunkInspection {
+    let is_container = chunk.tag == *b"WRB\0"
+        || chunk.tag == *b"MDLC"
+        || chunk.tag == *b"MDL\0"
+        || chunk.tag == *b"MESH"
+        || chunk.tag == *b"AABB";
+    let opaque = if is_container
+        || chunk.tag == *b"COMP"
+        || (chunk.tag == *b"STMS" && chunk.stream.is_some())
+    {
+        chunk.opaque.clone()
+    } else {
+        vec![ModelOpaqueSpan {
+            kind: "opaque-chunk-payload",
+            span: chunk.payload,
+        }]
+    };
+    ModelChunkInspection {
+        tag: chunk.tag,
+        span: chunk.span,
+        declared_size: chunk.declared_size,
+        declared_padded_size: chunk.declared_padded_size,
+        padded_span: chunk.padded_span,
+        payload: chunk.payload,
+        padding: chunk.padding,
+        descriptor: chunk.descriptor,
+        stream: chunk.stream.clone(),
+        mesh: chunk.mesh.clone(),
+        children: chunk.children.iter().map(chunk_to_inspection).collect(),
+        opaque,
+    }
+}
+
+fn count_chunks(chunks: &[ModelChunkInspection]) -> u64 {
+    chunks
+        .iter()
+        .map(|chunk| 1 + count_chunks(&chunk.children))
+        .sum()
+}
+
+fn count_meshes(chunks: &[ModelChunkInspection]) -> u64 {
+    chunks
+        .iter()
+        .map(|chunk| u64::from(chunk.mesh.is_some()) + count_meshes(&chunk.children))
+        .sum()
+}
+
+fn count_streams(chunks: &[ModelChunkInspection]) -> u64 {
+    chunks
+        .iter()
+        .map(|chunk| u64::from(chunk.stream.is_some()) + count_streams(&chunk.children))
+        .sum()
+}
+
 #[derive(Debug, Clone, Copy)]
 struct StreamField(u32, u32, u32, u32);
 
-struct ParsedStream<'a> {
+struct ParsedStms<'a> {
     fields: Vec<StreamField>,
     item_count: u32,
     stride: u32,
     data: &'a [u8],
-    data_offset: usize,
+    metadata: ModelStreamInspection,
 }
 
-fn parse_stms(bytes: &[u8], base: usize) -> Result<ParsedStream<'_>> {
-    let fields_count = bounded_u32(u32_be_at(bytes, 0, base)?, base as u64, "STMS field")?;
-    let item_count = bounded_u32(u32_be_at(bytes, 4, base)?, base as u64 + 4, "STMS item")?;
-    let stride = u32_be_at(bytes, 8, base)?;
+fn parse_stms(bytes: &[u8], base: u64) -> Result<ParsedStms<'_>> {
+    let fields_count = bounded_u32(u32_be(bytes, 0, base)?, base, "STMS field")?;
+    let item_count = bounded_u32(u32_be(bytes, 4, base)?, base + 4, "STMS item")?;
+    let stride = u32_be(bytes, 8, base)?;
     let fields_start = 16usize;
     let fields_bytes = (fields_count as usize)
         .checked_mul(16)
-        .ok_or_else(|| zone_error(base as u64 + 16, "STMS fields overflow"))?;
-    let data_start = fields_start.checked_add(fields_bytes).ok_or_else(|| {
-        zone_error(
-            base as u64 + fields_start as u64,
-            "STMS data offset overflows",
-        )
-    })?;
+        .ok_or_else(|| zone_error(base, "STMS fields overflow"))?;
+    let data_start = fields_start
+        .checked_add(fields_bytes)
+        .ok_or_else(|| zone_error(base, "STMS data offset overflows"))?;
     let data_bytes = (item_count as usize)
         .checked_mul(stride as usize)
-        .ok_or_else(|| zone_error(base as u64 + 4, "STMS data size overflows"))?;
+        .ok_or_else(|| zone_error(base + 4, "STMS data size overflows"))?;
     let data_end = data_start
         .checked_add(data_bytes)
-        .ok_or_else(|| zone_error(base as u64 + data_start as u64, "STMS data size overflows"))?;
+        .ok_or_else(|| zone_error(base + 8, "STMS data end overflows"))?;
     if data_end != bytes.len() {
-        return Err(zone_error(
-            base as u64,
-            "STMS size does not match its stream",
-        ));
+        return Err(zone_error(base, "STMS size does not match its stream"));
     }
     let mut fields = Vec::with_capacity(fields_count as usize);
+    let mut descriptors = Vec::with_capacity(fields_count as usize);
     for index in 0..fields_count as usize {
         let at = fields_start + index * 16;
         fields.push(StreamField(
-            u32_be_at(bytes, at, base)?,
-            u32_be_at(bytes, at + 4, base)?,
-            u32_be_at(bytes, at + 8, base)?,
-            u32_be_at(bytes, at + 12, base)?,
+            u32_be(bytes, at, base)?,
+            u32_be(bytes, at + 4, base)?,
+            u32_be(bytes, at + 8, base)?,
+            u32_be(bytes, at + 12, base)?,
         ));
+        let field = fields[index];
+        descriptors.push(ModelStreamFieldInspection {
+            span: Span::new(base + at as u64, 16),
+            words: [field.0, field.1, field.2, field.3],
+        });
     }
-    Ok(ParsedStream {
+    Ok(ParsedStms {
         fields,
         item_count,
         stride,
         data: &bytes[data_start..],
-        data_offset: base + data_start,
+        metadata: ModelStreamInspection {
+            header: Span::new(base, 16),
+            fields: Span::new(base + fields_start as u64, fields_bytes as u64),
+            field_count: fields_count,
+            item_count,
+            stride,
+            descriptors,
+            data: Span::new(base + data_start as u64, data_bytes as u64),
+        },
     })
 }
 
-#[cfg(test)]
-fn parse_chunks(bytes: &[u8]) -> Result<Vec<Chunk<'_>>> {
-    parse_chunks_at_depth(bytes, 0, 0)
+fn parse_chunks(bytes: &[u8], base: u64) -> Result<ChunkList<'_>> {
+    parse_chunks_at_depth(bytes, base, 0)
 }
 
-fn parse_chunks_at_depth(bytes: &[u8], base: usize, depth: usize) -> Result<Vec<Chunk<'_>>> {
+fn parse_chunks_at_depth(bytes: &[u8], base: u64, depth: usize) -> Result<ChunkList<'_>> {
     if depth > MAX_MODEL_CHUNK_DEPTH {
         return Err(zone_error(
-            base as u64,
+            base,
             "model chunk nesting exceeds the depth limit",
         ));
     }
     let mut chunks = Vec::new();
+    let mut opaque = Vec::new();
     let mut offset = 0usize;
-    while offset + 16 <= bytes.len() {
+    while offset < bytes.len() {
+        if bytes.len() - offset < 16 {
+            opaque.push(ModelOpaqueSpan {
+                kind: "chunk-tail",
+                span: Span::new(base + offset as u64, (bytes.len() - offset) as u64),
+            });
+            break;
+        }
         if bytes[offset..offset + 4].iter().all(|byte| *byte == 0) {
+            opaque.push(ModelOpaqueSpan {
+                kind: "zero-tail",
+                span: Span::new(base + offset as u64, (bytes.len() - offset) as u64),
+            });
             break;
         }
         let tag = bytes[offset..offset + 4]
             .try_into()
-            .map_err(|_| zone_error(base as u64 + offset as u64, "chunk tag"))?;
-        reject_known_tag_variant(&tag, base + offset)?;
-        let size = u32_be_at(bytes, offset + 8, base)? as usize;
-        let padded = u32_be_at(bytes, offset + 12, base)? as usize;
-        let size_end = offset.checked_add(size).ok_or_else(|| {
-            zone_error(
-                base as u64 + offset as u64 + 8,
-                "chunk size overflows payload",
-            )
-        })?;
-        if size < 16 || size_end > bytes.len() {
+            .map_err(|_| zone_error(base + offset as u64, "chunk tag"))?;
+        reject_known_tag_variant(&tag, base + offset as u64)?;
+        let size = u32_be(bytes, offset + 8, base)? as usize;
+        let padded = u32_be(bytes, offset + 12, base)? as usize;
+        let end = offset.checked_add(size);
+        if size < 16 || end.is_none_or(|end| end > bytes.len()) {
             return Err(zone_error(
-                base as u64 + offset as u64 + 8,
+                base + offset as u64 + 8,
                 "chunk size is outside payload",
             ));
         }
-        let child_bytes = &bytes[offset + 16..offset + size];
-        let children = if tag == *b"WRB\0"
+        let end = match end {
+            Some(end) => end,
+            None => {
+                return Err(zone_error(
+                    base + offset as u64 + 8,
+                    "chunk size overflows payload",
+                ));
+            }
+        };
+        let child_bytes = &bytes[offset + 16..end];
+        let is_container = tag == *b"WRB\0"
             || tag == *b"MDLC"
             || tag == *b"MDL\0"
             || tag == *b"MESH"
-            || tag == *b"AABB"
-        {
+            || tag == *b"AABB";
+        let (children, mut child_opaque) = if is_container {
             let nested = child_bytes.get(16..).ok_or_else(|| {
                 zone_error(
-                    base as u64 + offset as u64,
+                    base + offset as u64 + 16,
                     "container chunk has no info block",
                 )
             })?;
-            parse_chunks_at_depth(nested, base + offset + 32, depth + 1)?
+            let parsed = parse_chunks_at_depth(nested, base + offset as u64 + 32, depth + 1)?;
+            (parsed.chunks, parsed.opaque)
         } else {
-            Vec::new()
+            (Vec::new(), Vec::new())
         };
-        chunks.push(Chunk {
-            tag,
-            offset: base + offset,
-            bytes: child_bytes,
-            children,
-        });
-        let advance = if padded >= size {
+        let chunk_span = Span::new(base + offset as u64, size as u64);
+        let payload = Span::new(base + offset as u64 + 16, (size - 16) as u64);
+        let padded_size = if padded >= size {
             padded
         } else {
-            (size + 15) & !15
+            size.checked_add(15).map_or(size, |value| value & !15)
         };
-        let advance_end = offset.checked_add(advance).ok_or_else(|| {
+        let padded_end = offset.checked_add(padded_size).ok_or_else(|| {
             zone_error(
-                base as u64 + offset as u64 + 12,
+                base + offset as u64 + 12,
                 "chunk padded size overflows payload",
             )
         })?;
-        if advance == 0 || advance_end > bytes.len() {
+        if padded_size == 0 || padded_end > bytes.len() {
             return Err(zone_error(
-                base as u64 + offset as u64 + 12,
+                base + offset as u64 + 12,
                 "chunk padded size is outside payload",
             ));
         }
-        offset += advance;
+        if is_container {
+            child_opaque.insert(
+                0,
+                ModelOpaqueSpan {
+                    kind: "container-info",
+                    span: Span::new(base + offset as u64 + 16, 16),
+                },
+            );
+        }
+        chunks.push(Chunk {
+            tag,
+            bytes: child_bytes,
+            span: chunk_span,
+            declared_size: size as u32,
+            declared_padded_size: padded as u32,
+            padded_span: Span::new(base + offset as u64, padded_size as u64),
+            payload,
+            padding: (padded_size > size).then(|| {
+                Span::new(
+                    base + offset as u64 + size as u64,
+                    (padded_size - size) as u64,
+                )
+            }),
+            descriptor: tag == *b"COMP",
+            stream: None,
+            mesh: None,
+            children,
+            opaque: child_opaque,
+        });
+        offset = padded_end;
     }
-    Ok(chunks)
+    Ok(ChunkList { chunks, opaque })
 }
 
-fn reject_known_tag_variant(tag: &[u8; 4], offset: usize) -> Result<()> {
+fn reject_known_tag_variant(tag: &[u8; 4], offset: u64) -> Result<()> {
     let malformed = (tag.starts_with(b"WRB") && *tag != *b"WRB\0")
         || (tag.starts_with(b"MDL") && *tag != *b"MDL\0" && *tag != *b"MDLC")
         || (tag.starts_with(b"PHB") && *tag != *b"PHB\0");
     if malformed {
-        return Err(zone_error(offset as u64, "unsupported non-exact model tag"));
+        return Err(zone_error(offset, "unsupported non-exact model tag"));
     }
     Ok(())
 }
 
-fn read_box_at(bytes: &[u8], base: usize) -> Result<(Vec3, Vec3)> {
+fn read_box(bytes: &[u8], base: u64) -> Result<(Vec3, Vec3)> {
     Ok((
         Vec3 {
-            x: f32_be_at(bytes, 0, base)?,
-            y: f32_be_at(bytes, 4, base)?,
-            z: f32_be_at(bytes, 8, base)?,
+            x: f32_be(bytes, 0, base)?,
+            y: f32_be(bytes, 4, base)?,
+            z: f32_be(bytes, 8, base)?,
         },
         Vec3 {
-            x: f32_be_at(bytes, 12, base)?,
-            y: f32_be_at(bytes, 16, base)?,
-            z: f32_be_at(bytes, 20, base)?,
+            x: f32_be(bytes, 12, base)?,
+            y: f32_be(bytes, 16, base)?,
+            z: f32_be(bytes, 20, base)?,
         },
     ))
 }
@@ -2045,26 +2280,26 @@ fn u16_le(data: &[u8], offset: usize) -> Result<u16> {
 fn u16_at(data: &[u8], offset: usize) -> Result<u16> {
     u16_le(data, offset)
 }
-fn u32_be_at(data: &[u8], offset: usize, base: usize) -> Result<u32> {
+fn u32_be(data: &[u8], offset: usize, base: u64) -> Result<u32> {
     let bytes = data
         .get(offset..offset + 4)
-        .ok_or_else(|| zone_error(base as u64 + offset as u64, "u32 is outside input"))?;
+        .ok_or_else(|| zone_error(base + offset as u64, "u32 is outside input"))?;
     Ok(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
 }
-fn u16_be_at(data: &[u8], offset: usize, base: usize) -> Result<u16> {
+fn u16_be(data: &[u8], offset: usize, base: u64) -> Result<u16> {
     let bytes = data
         .get(offset..offset + 2)
-        .ok_or_else(|| zone_error(base as u64 + offset as u64, "u16 is outside input"))?;
+        .ok_or_else(|| zone_error(base + offset as u64, "u16 is outside input"))?;
     Ok(u16::from_be_bytes([bytes[0], bytes[1]]))
 }
-fn i16_be_at(data: &[u8], offset: usize, base: usize) -> Result<i16> {
-    Ok(u16_be_at(data, offset, base)? as i16)
+fn i16_be(data: &[u8], offset: usize, base: u64) -> Result<i16> {
+    Ok(u16_be(data, offset, base)? as i16)
 }
 fn f32_le(data: &[u8], offset: usize) -> Result<f32> {
     Ok(f32::from_le_bytes(u32_le(data, offset)?.to_le_bytes()))
 }
-fn f32_be_at(data: &[u8], offset: usize, base: usize) -> Result<f32> {
-    Ok(f32::from_bits(u32_be_at(data, offset, base)?))
+fn f32_be(data: &[u8], offset: usize, base: u64) -> Result<f32> {
+    Ok(f32::from_bits(u32_be(data, offset, base)?))
 }
 
 fn zone_error(offset: u64, detail: impl Into<String>) -> FormatError {
@@ -2562,7 +2797,7 @@ mod tests {
     fn edit_model_positions_preserves_everything_outside_selected_components() {
         let input = model_bytes();
         let edited = edit_model_part_positions(&input, 0, 0.5).unwrap();
-        let parsed = parse_model_parts(&input).unwrap();
+        let (parsed, _) = parse_model_parts(&input).unwrap();
         let stream = parsed[0].position;
         assert_eq!(edited.len(), input.len());
         for (offset, (before, after)) in input.iter().zip(&edited).enumerate() {
@@ -2606,7 +2841,7 @@ mod tests {
         );
         let input = model_bytes_with_meshes(vec![first, second]);
         let edited = edit_model_part_positions(&input, 1, 0.25).unwrap();
-        let parsed = parse_model_parts(&input).unwrap();
+        let (parsed, _) = parse_model_parts(&input).unwrap();
         let target = parsed[1].position;
         for (offset, (before, after)) in input.iter().zip(&edited).enumerate() {
             let target_byte = (0..target.item_count).any(|vertex| {
@@ -2750,6 +2985,6 @@ mod tests {
         for _ in 0..(MAX_MODEL_CHUNK_DEPTH + 2) {
             nested = container_chunk(b"AABB", &[nested]);
         }
-        assert!(parse_chunks(&nested).is_err());
+        assert!(parse_chunks(&nested, 0).is_err());
     }
 }

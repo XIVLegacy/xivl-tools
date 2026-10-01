@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-bad-count",
+  "formatId": "wrb-model",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/wrb-model/bad-count.bin"
+  },
+  "arguments": ["--as", "wrb-model"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-attribute-value",
+    "errorOffset": 324
+  },
+  "notes": "An excessive STMS item count is rejected with its absolute stream offset."
+}

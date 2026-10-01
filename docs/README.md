@@ -37,6 +37,7 @@ These pages describe the supported file formats.
 - [Static-actor SAN records](formats/staticactor-san.md)
 - [RegionResourceData root and child rows](formats/region.md)
 - [GTEX fields and PWIB segments](formats/gtex-pwib.md)
+- [Bounded WRB model inspection](formats/wrb-model.md)
 - [Zone geometry export](formats/zone-geometry.md)
 
 The [format evidence index](format-evidence.md) links the evidence and

@@ -123,7 +123,8 @@
     },
     {
       "formatIds": [
-        "res"
+        "res",
+        "wrb-model"
       ],
       "id": "retail-res-89eb0000",
       "notes": "A RES composite: subresource directory, nested SEDB children, and the trailing-region overlap and alignment slack that every RES resource carries.",

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-exact-tag",
+  "formatId": "wrb-model",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/wrb-model/exact-tag.bin"
+  },
+  "arguments": ["--as", "wrb-model"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-attribute-value",
+    "errorOffset": 128
+  },
+  "notes": "A non-exact WRB chunk tag is rejected before model dispatch."
+}

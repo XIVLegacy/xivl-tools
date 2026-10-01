@@ -19,7 +19,7 @@ use crate::lpb;
 use crate::lua51::{
     self, Lua51Instruction, Lua51Operand, Lua51Operands, Lua51Prototype, LuaConstant, LuaString,
 };
-use crate::reader::Span;
+use crate::reader::{escape_tag, Span};
 use crate::region::{self, RegionMembership};
 use crate::richstring::{payload_hex, RichString, Segment};
 use crate::scrambled;
@@ -29,6 +29,7 @@ use crate::sqwt;
 use crate::ssd::{self, SheetBody, SsdDocument};
 use crate::staticactor;
 use crate::xml;
+use crate::zone;
 
 /// Version of the inspect document shape.
 pub const DOCUMENT_SCHEMA_VERSION: u64 = 1;
@@ -63,6 +64,8 @@ pub enum InspectAs {
     Gtex,
     /// A PWIB resource with two loader-bounded segments.
     Pwib,
+    /// A RES resource whose WRB payload is structurally validated and reported.
+    WrbModel,
     EnableFile,
     RowOffsets,
     /// A sheet data file. With no columns it is read as a stream of string
@@ -76,7 +79,7 @@ pub enum InspectAs {
 
 impl InspectAs {
     /// Names accepted by the `--as` option.
-    pub const NAMES: [&'static str; 17] = [
+    pub const NAMES: [&'static str; 18] = [
         "sedb",
         "ssd",
         "scrambled-xml",
@@ -87,6 +90,7 @@ impl InspectAs {
         "region",
         "gtex",
         "pwib",
+        "wrb-model",
         "enable-file",
         "row-offsets",
         "sheet-data",
@@ -134,6 +138,7 @@ impl InspectAs {
             Some("region") => Self::Region,
             Some("gtex") => Self::Gtex,
             Some("pwib") => Self::Pwib,
+            Some("wrb-model") => Self::WrbModel,
             Some("enable-file") => Self::EnableFile,
             Some("row-offsets") => Self::RowOffsets,
             Some("sheet-data") => Self::SheetData(columns.clone().unwrap_or_default()),
@@ -208,6 +213,7 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
         InspectAs::Region => inspect_region(data),
         InspectAs::Gtex => inspect_tagged_resource(data, TaggedResourceKind::Gtex),
         InspectAs::Pwib => inspect_tagged_resource(data, TaggedResourceKind::Pwib),
+        InspectAs::WrbModel => inspect_wrb_model(data),
         InspectAs::EnableFile => inspect_enable_file(data),
         InspectAs::RowOffsets => inspect_row_offsets(data),
         InspectAs::SheetData(columns) => inspect_sheet_data(data, columns),
@@ -410,6 +416,164 @@ fn inspect_sedb(data: &[u8]) -> Result<Value> {
     object.insert("root".into(), container_to_json(&root));
     object.insert("trailing".into(), Value::Array(trailing));
     Ok(Value::Object(object))
+}
+
+fn inspect_wrb_model(data: &[u8]) -> Result<Value> {
+    let root = sedb::parse_container(data, 0)?;
+    let (_, model) = zone::parse_model_with_structure(data)?;
+    let container_end = root.total_size as usize;
+    let trailing = if container_end < data.len() {
+        vec![json!({
+            "kind": "trailing-bytes",
+            "span": { "offset": container_end as u64, "length": (data.len() - container_end) as u64 },
+            "sha256": sha256_hex(&data[container_end..]),
+        })]
+    } else {
+        Vec::new()
+    };
+
+    let mut object = envelope("wrb-model", data);
+    object.insert("root".into(), container_to_json(&root));
+    object.insert("trailing".into(), Value::Array(trailing));
+    object.insert(
+        "wrb".into(),
+        json!({
+            "resourceCount": model.resources.len(),
+            "chunkCount": model.chunk_count,
+            "meshCount": model.mesh_count,
+            "streamCount": model.stream_count,
+            "spanOverlap": "nested-child-spans-are-inside-owning-spans",
+            "resources": model.resources.iter().map(|resource| model_resource_to_json(data, resource)).collect::<Vec<_>>(),
+        }),
+    );
+    Ok(Value::Object(object))
+}
+
+fn model_resource_to_json(data: &[u8], resource: &zone::ModelResourceInspection) -> Value {
+    json!({
+        "span": resource.span.to_json(),
+        "sha256": sha256_hex(span_bytes(data, resource.span)),
+        "payload": {
+            "span": resource.payload.to_json(),
+            "sha256": sha256_hex(span_bytes(data, resource.payload)),
+        },
+        "partition": {
+            "span": resource.payload.to_json(),
+            "chunks": resource.chunks.iter().map(|chunk| model_chunk_to_json(data, chunk)).collect::<Vec<_>>(),
+            "opaque": resource.opaque.iter().map(|item| model_opaque_to_json(data, item)).collect::<Vec<_>>(),
+        },
+    })
+}
+
+fn model_chunk_to_json(data: &[u8], chunk: &zone::ModelChunkInspection) -> Value {
+    let mut object = Map::new();
+    object.insert("tag".into(), json!(escape_tag(&chunk.tag)));
+    object.insert("span".into(), chunk.span.to_json());
+    object.insert("declaredSize".into(), json!(chunk.declared_size));
+    object.insert(
+        "declaredPaddedSize".into(),
+        json!(chunk.declared_padded_size),
+    );
+    let header = Span::new(chunk.span.offset, 16);
+    object.insert(
+        "header".into(),
+        json!({
+            "span": header.to_json(),
+            "sha256": sha256_hex(span_bytes(data, header)),
+            "unknown": [{
+                "kind": "unknown-gap",
+                "span": Span::new(header.offset + 4, 4).to_json(),
+                "sha256": sha256_hex(span_bytes(data, Span::new(header.offset + 4, 4))),
+            }],
+        }),
+    );
+    object.insert("paddedSpan".into(), chunk.padded_span.to_json());
+    object.insert(
+        "sha256".into(),
+        json!(sha256_hex(span_bytes(data, chunk.span))),
+    );
+    object.insert(
+        "padding".into(),
+        match chunk.padding {
+            Some(span) => json!([{
+                "span": span.to_json(),
+                "sha256": sha256_hex(span_bytes(data, span)),
+            }]),
+            None => json!([]),
+        },
+    );
+    object.insert(
+        "contents".into(),
+        json!({
+            "span": chunk.payload.to_json(),
+            "chunks": chunk.children.iter().map(|child| model_chunk_to_json(data, child)).collect::<Vec<_>>(),
+            "opaque": chunk.opaque.iter().map(|item| model_opaque_to_json(data, item)).collect::<Vec<_>>(),
+        }),
+    );
+    if chunk.descriptor {
+        object.insert(
+            "descriptor".into(),
+            json!({
+                "kind": "COMP-bounds",
+                "span": chunk.payload.to_json(),
+                "sha256": sha256_hex(span_bytes(data, chunk.payload)),
+            }),
+        );
+    }
+    if let Some(stream) = &chunk.stream {
+        object.insert("stream".into(), model_stream_to_json(data, stream));
+    }
+    if let Some(mesh) = &chunk.mesh {
+        object.insert(
+            "mesh".into(),
+            json!({
+                "streamCount": mesh.stream_count,
+                "positionStreamCount": mesh.position_stream_count,
+                "indexStreamCount": mesh.index_stream_count,
+                "vertexCount": mesh.vertex_count,
+                "indexCount": mesh.index_count,
+                "triangleCount": mesh.triangle_count,
+            }),
+        );
+    }
+    Value::Object(object)
+}
+
+fn model_stream_to_json(data: &[u8], stream: &zone::ModelStreamInspection) -> Value {
+    json!({
+        "header": {
+            "span": stream.header.to_json(),
+            "sha256": sha256_hex(span_bytes(data, stream.header)),
+            "unknown": [{
+                "kind": "unknown-gap",
+                "span": Span::new(stream.header.offset + 12, 4).to_json(),
+                "sha256": sha256_hex(span_bytes(data, Span::new(stream.header.offset + 12, 4))),
+            }],
+        },
+        "fields": {
+            "span": stream.fields.to_json(),
+            "sha256": sha256_hex(span_bytes(data, stream.fields)),
+            "count": stream.field_count,
+            "descriptors": stream.descriptors.iter().map(|field| json!({
+                "span": field.span.to_json(),
+                "words": field.words,
+            })).collect::<Vec<_>>(),
+        },
+        "itemCount": stream.item_count,
+        "stride": stream.stride,
+        "data": {
+            "span": stream.data.to_json(),
+            "sha256": sha256_hex(span_bytes(data, stream.data)),
+        },
+    })
+}
+
+fn model_opaque_to_json(data: &[u8], item: &zone::ModelOpaqueSpan) -> Value {
+    json!({
+        "kind": item.kind,
+        "span": item.span.to_json(),
+        "sha256": sha256_hex(span_bytes(data, item.span)),
+    })
 }
 
 fn container_to_json(container: &Container) -> Value {
@@ -1441,6 +1605,10 @@ mod tests {
         assert_eq!(
             InspectAs::from_arguments(&arguments(&["--as", "gtex"])).unwrap(),
             InspectAs::Gtex
+        );
+        assert_eq!(
+            InspectAs::from_arguments(&arguments(&["--as", "wrb-model"])).unwrap(),
+            InspectAs::WrbModel
         );
         assert_eq!(
             InspectAs::from_arguments(&arguments(&["--as", "sheet-data", "--columns", "str,u8"]))

@@ -1,0 +1,234 @@
+{
+  "format": "wrb-model",
+  "input": {
+    "length": 192
+  },
+  "operation": "inspect",
+  "root": {
+    "anomalies": [],
+    "declaredSize": 192,
+    "entries": [
+      {
+        "entryCount": 1,
+        "kind": "subresource-directory",
+        "sha256": "028e26616d73c5676ea8ab9e9f3b54eca1029ff39225c7151b3ff21e5b898b02",
+        "span": {
+          "length": 16,
+          "offset": 64
+        }
+      },
+      {
+        "child": {
+          "anomalies": [],
+          "declaredSize": 112,
+          "entries": [
+            {
+              "kind": "payload",
+              "sha256": "ad17f801f39d62431e8c6c50d4e3cf693b865d470652d198a0b629e5ea1ae3f2",
+              "span": {
+                "length": 64,
+                "offset": 128
+              }
+            }
+          ],
+          "flags": 0,
+          "headerSize": 48,
+          "headerUnknown": [
+            {
+              "kind": "unknown-gap",
+              "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+              "span": {
+                "length": 28,
+                "offset": 100
+              }
+            }
+          ],
+          "kind": "sedb-container",
+          "span": {
+            "length": 112,
+            "offset": 80
+          },
+          "subtype": "wrb\\x00",
+          "totalSize": 112,
+          "unknownA": 0
+        },
+        "declaredKind": 2,
+        "declaredOffset": 0,
+        "declaredSize": 112,
+        "index": 0,
+        "kind": "subresource",
+        "sha256": "fa9d97ddb92d277d9e7ea842710770379ed64566ab002ffa1b96aa951a5e697d",
+        "span": {
+          "length": 112,
+          "offset": 80
+        }
+      }
+    ],
+    "flags": 0,
+    "headerSize": 64,
+    "headerUnknown": [
+      {
+        "kind": "unknown-gap",
+        "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+        "span": {
+          "length": 28,
+          "offset": 20
+        }
+      }
+    ],
+    "kind": "sedb-container",
+    "res": {
+      "subresourceCount": 1,
+      "typeName": "brt\\x00",
+      "unknownB": 0
+    },
+    "span": {
+      "length": 192,
+      "offset": 0
+    },
+    "subtype": "RES ",
+    "totalSize": 192,
+    "unknownA": 0
+  },
+  "schemaVersion": 1,
+  "trailing": [],
+  "wrb": {
+    "chunkCount": 2,
+    "meshCount": 0,
+    "resourceCount": 1,
+    "resources": [
+      {
+        "partition": {
+          "chunks": [
+            {
+              "contents": {
+                "chunks": [
+                  {
+                    "contents": {
+                      "chunks": [],
+                      "opaque": [
+                        {
+                          "kind": "opaque-chunk-payload",
+                          "sha256": "4db1efc310418c8e3a027b833ae9140fcbd5cf72eb71a1ab7621aa4cf95bd6bb",
+                          "span": {
+                            "length": 13,
+                            "offset": 176
+                          }
+                        }
+                      ],
+                      "span": {
+                        "length": 13,
+                        "offset": 176
+                      }
+                    },
+                    "declaredPaddedSize": 32,
+                    "declaredSize": 29,
+                    "header": {
+                      "sha256": "0411901d700f0731c0fc7f75c774f6cb0848870981d4065fd5460cb4652dd2d9",
+                      "span": {
+                        "length": 16,
+                        "offset": 160
+                      },
+                      "unknown": [
+                        {
+                          "kind": "unknown-gap",
+                          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                          "span": {
+                            "length": 4,
+                            "offset": 164
+                          }
+                        }
+                      ]
+                    },
+                    "paddedSpan": {
+                      "length": 32,
+                      "offset": 160
+                    },
+                    "padding": [
+                      {
+                        "sha256": "709e80c88487a2411e1ee4dfb9f22a861492d20c4765150c0c794abd70f8147c",
+                        "span": {
+                          "length": 3,
+                          "offset": 189
+                        }
+                      }
+                    ],
+                    "sha256": "3b3e25ac2f84aca8193d88997bca57574b1d9d9955bdfa3492525e5a57a4c5c8",
+                    "span": {
+                      "length": 29,
+                      "offset": 160
+                    },
+                    "tag": "HEAD"
+                  }
+                ],
+                "opaque": [
+                  {
+                    "kind": "container-info",
+                    "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+                    "span": {
+                      "length": 16,
+                      "offset": 144
+                    }
+                  }
+                ],
+                "span": {
+                  "length": 48,
+                  "offset": 144
+                }
+              },
+              "declaredPaddedSize": 64,
+              "declaredSize": 64,
+              "header": {
+                "sha256": "971261373e06ba4f69307d708d922ba5ebad092a326fb1af98c3698e7c301843",
+                "span": {
+                  "length": 16,
+                  "offset": 128
+                },
+                "unknown": [
+                  {
+                    "kind": "unknown-gap",
+                    "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                    "span": {
+                      "length": 4,
+                      "offset": 132
+                    }
+                  }
+                ]
+              },
+              "paddedSpan": {
+                "length": 64,
+                "offset": 128
+              },
+              "padding": [],
+              "sha256": "ad17f801f39d62431e8c6c50d4e3cf693b865d470652d198a0b629e5ea1ae3f2",
+              "span": {
+                "length": 64,
+                "offset": 128
+              },
+              "tag": "WRB\\x00"
+            }
+          ],
+          "opaque": [],
+          "span": {
+            "length": 64,
+            "offset": 128
+          }
+        },
+        "payload": {
+          "sha256": "ad17f801f39d62431e8c6c50d4e3cf693b865d470652d198a0b629e5ea1ae3f2",
+          "span": {
+            "length": 64,
+            "offset": 128
+          }
+        },
+        "sha256": "fa9d97ddb92d277d9e7ea842710770379ed64566ab002ffa1b96aa951a5e697d",
+        "span": {
+          "length": 112,
+          "offset": 80
+        }
+      }
+    ],
+    "spanOverlap": "nested-child-spans-are-inside-owning-spans",
+    "streamCount": 0
+  }
+}

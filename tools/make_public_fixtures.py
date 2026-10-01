@@ -832,6 +832,124 @@ def build_fixtures() -> dict[str, bytes]:
     fixtures["lpb/bytecode-nesting-bomb.bin"] = b"rlu\x0bBCOD" + LUA51_HEADER + deepest
 
     # -- sedb ------------------------------------------------------------
+    # -- wrb-model -------------------------------------------------------
+    # These resources exercise the validated RES -> WRB model reader. The
+    # values are synthetic and the reports retain only structure, counts,
+    # spans, and digests.
+    def model_chunk(chunk_tag: bytes, payload: bytes) -> bytes:
+        size = 16 + len(payload)
+        padded = (size + 15) & ~15
+        result = bytearray(padded)
+        result[0:4] = chunk_tag
+        struct.pack_into(">II", result, 8, size, padded)
+        result[16 : 16 + len(payload)] = payload
+        return bytes(result)
+
+    def model_chunk_with_declared_padded(
+        chunk_tag: bytes, payload: bytes, declared_padded: int
+    ) -> bytes:
+        size = 16 + len(payload)
+        resolved_padded = (size + 15) & ~15
+        result = bytearray(resolved_padded)
+        result[0:4] = chunk_tag
+        struct.pack_into(">II", result, 8, size, declared_padded)
+        result[16 : 16 + len(payload)] = payload
+        return bytes(result)
+
+    def model_container(chunk_tag: bytes, children: list[bytes]) -> bytes:
+        return model_chunk(chunk_tag, bytes(16) + b"".join(children))
+
+    def model_stms(
+        fields: list[tuple[int, int, int, int]], count: int, stride: int, data: bytes
+    ) -> bytes:
+        payload = bytearray(16 + 16 * len(fields) + len(data))
+        struct.pack_into(">III", payload, 0, len(fields), count, stride)
+        for index, field in enumerate(fields):
+            struct.pack_into(">IIII", payload, 16 + index * 16, *field)
+        payload[16 + 16 * len(fields) :] = data
+        return model_chunk(b"STMS", bytes(payload))
+
+    def model_resource(wrb_payload: bytes) -> bytes:
+        wrb_sedb = sedb_header("wrb", 0, 0, 0x30, 0x30 + len(wrb_payload)) + wrb_payload
+        root_total = 0x50 + len(wrb_sedb)
+        return (
+            sedb_header(
+                "RES ", 0, 0, RES_HEADER_SIZE, root_total, res_extended(1, 0, "brt")
+            )
+            + directory_entry(0, 0, len(wrb_sedb), 2)
+            + wrb_sedb
+        )
+
+    comp = struct.pack(">6f", -1.0, -1.0, -1.0, 1.0, 1.0, 1.0)
+    position_data = b"".join(
+        struct.pack(">hhhh", *values) + b"\x00" * 4
+        for values in ((0, 0, 0, 32767), (32767, 0, 0, 32767), (0, 32767, 0, 32767))
+    )
+    position_stream = model_stms(
+        [(0, 3, 4, 0x02000000), (0, 4, 4, 0)], 3, 12, position_data
+    )
+    index_data = struct.pack(">3H", 0, 1, 2)
+    index_stream = model_stms([(0, 0, 1, 0x00FF0000)], 3, 2, index_data)
+    mesh = model_container(b"MESH", [position_stream, index_stream])
+    model_mdl = model_container(b"MDL\0", [model_chunk(b"COMP", comp), mesh])
+    model_mdlc = model_container(b"MDLC", [model_mdl])
+    model_wrb = model_container(b"WRB\0", [model_mdlc])
+    fixtures["wrb-model/supported.bin"] = model_resource(model_wrb)
+    fixtures["wrb-model/no-mesh.bin"] = model_resource(
+        model_container(b"WRB\0", [model_chunk(b"HEAD", pattern(13, 0xA2))])
+    )
+    fixtures["wrb-model/no-mesh-stms.bin"] = model_resource(
+        model_container(b"WRB\0", [model_stms([], 0, 0, b"")])
+    )
+    fixtures["wrb-model/small-padded-size.bin"] = model_resource(
+        model_container(
+            b"WRB\0",
+            [model_chunk_with_declared_padded(b"HEAD", pattern(13, 0xA4), 0)],
+        )
+    )
+    fixtures["wrb-model/unknown.bin"] = model_resource(
+        model_container(
+            b"WRB\0",
+            [model_chunk(b"HEAD", pattern(13, 0xA3)), model_mdlc],
+        )
+    )
+    exact_tag = bytearray(model_wrb)
+    exact_tag[0:4] = b"WRBX"
+    fixtures["wrb-model/exact-tag.bin"] = model_resource(bytes(exact_tag))
+    bad_descriptor_stream = bytearray(position_stream)
+    struct.pack_into(">I", bad_descriptor_stream, 16, 0x1000001)
+    bad_descriptor_mdl = model_container(
+        b"MDL\0",
+        [
+            model_chunk(b"COMP", comp),
+            model_container(b"MESH", [bytes(bad_descriptor_stream), index_stream]),
+        ],
+    )
+    fixtures["wrb-model/bad-descriptor.bin"] = model_resource(
+        model_container(b"WRB\0", [model_container(b"MDLC", [bad_descriptor_mdl])])
+    )
+    bad_count_stream = bytearray(position_stream)
+    struct.pack_into(">I", bad_count_stream, 20, 0x1000001)
+    bad_count_mdl = model_container(
+        b"MDL\0",
+        [
+            model_chunk(b"COMP", comp),
+            model_container(b"MESH", [bytes(bad_count_stream), index_stream]),
+        ],
+    )
+    fixtures["wrb-model/bad-count.bin"] = model_resource(
+        model_container(b"WRB\0", [model_container(b"MDLC", [bad_count_mdl])])
+    )
+    truncated_chunk = bytearray(model_wrb)
+    struct.pack_into(">I", truncated_chunk, 8, len(truncated_chunk) + 16)
+    fixtures["wrb-model/truncated.bin"] = model_resource(bytes(truncated_chunk))
+    deep = model_chunk(b"HEAD", b"")
+    for _ in range(66):
+        deep = model_container(b"AABB", [deep])
+    fixtures["wrb-model/nesting.bin"] = model_resource(
+        model_container(b"WRB\0", [deep])
+    )
+
     # A well-formed non-composite container: 0x30 header, 0x20 payload, and
     # a totalSize that covers the whole file as a top-level container does.
     plain_payload = pattern(0x20, 0x11)

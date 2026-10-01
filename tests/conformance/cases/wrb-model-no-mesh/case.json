@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-no-mesh",
+  "formatId": "wrb-model",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/wrb-model/no-mesh.bin"
+  },
+  "arguments": ["--as", "wrb-model"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "A valid WRB with an opaque chunk and no MESH is accepted with zero decoded mesh parts."
+}

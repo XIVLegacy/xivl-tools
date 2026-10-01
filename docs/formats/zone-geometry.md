@@ -12,6 +12,12 @@ needed to retain model source associations; model render faces are not added
 to the collision OBJ. A structurally valid WRB with no MESH is retained as a
 render source association with no decoded parts.
 
+The same bounded model reader is available separately through explicit
+`inspect --as wrb-model` and `validate --as wrb-model`. The
+[WRB inspection contract](wrb-model.md) defines its structural report and
+retail authentication. This report retains metadata and opaque ranges
+without exporting decoded geometry.
+
 Retail InstanceObject child slots also contain an exact 0x0C flat range record
 with the descriptor `[(0,0)]`; its target and count are bounds-checked but its
 unresolved range payload is not treated as a ChildObject. Direct ChildObject,

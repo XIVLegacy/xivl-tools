@@ -59,6 +59,7 @@ no identifying signature or when you want a particular view.
 | `lpb-bytecode` | The LPB wrapper plus bounded Lua 5.1 structure. This is not decompilation or execution. See [Lua and LPB](formats/lua-lpb.md). |
 | `staticactor-san` | The static-actor SAN record framing without assigning meanings to its record members. See [SAN records](formats/staticactor-san.md). |
 | `region` | RegionResourceData 1.1.0 root and child structure, token spans, and opaque fields. See [RegionResourceData](formats/region.md). |
+| `wrb-model` | Explicit bounded WRB model structure inside a RES resource. Reports metadata, counts, spans, digests, and opaque ranges. See [WRB inspection](formats/wrb-model.md). |
 | `gtex` | Loader-backed GTEX fields and surface spans. See [GTEX and PWIB](formats/gtex-pwib.md). |
 | `pwib` | The two loader-bounded PWIB segments and the fixed SEDB header in the first segment. |
 | `enable-file` | A headerless enable-record array. |

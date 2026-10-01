@@ -92,7 +92,7 @@ lua-path applies the reversible ASCII resource-path transform. extract-lpb
 removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
 5.1 chunk without interpreting it. The output path must not already exist.
 
-  --as sedb | ssd | scrambled-xml | sqwt | lpb | lpb-bytecode | staticactor-san | region | gtex | pwib
+  --as sedb | ssd | scrambled-xml | sqwt | lpb | lpb-bytecode | staticactor-san | region | gtex | pwib | wrb-model
      | enable-file | row-offsets
      | sheet-data | config-sys | config-pad | config-lng | config-rgn
       Read the input as this format. Needed for enable-file and
@@ -111,6 +111,8 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
       --as lpb-bytecode retains the LPB wrapper report and adds bounded
       Lua 5.1 header, prototype, constant, nesting, and validated opcode
       and operand structure. It does not decompile or execute code.
+      --as wrb-model validates a RES -> WRB model and reports chunk and
+      stream spans, descriptors, counts, and digests without model payloads.
   --columns <type,...>
       Column types of a sheet-data file, from its schema document, for
       example 'str,s32,bool'. Without it the data is read as a stream of
@@ -362,5 +364,6 @@ mod tests {
     fn help_names_the_staticactor_reader() {
         assert!(USAGE.contains("static-actor SAN tables"));
         assert!(USAGE.contains("staticactor-san"));
+        assert!(USAGE.contains("wrb-model"));
     }
 }
