@@ -68,8 +68,12 @@ The index STMS chunk is `[6508,6604)`, with 24 two-byte items at
 The position STMS chunk is `[6604,6776)`, with nine 12-byte items at
 `[6668,6776)` and descriptors `(0,4,4,0)` and `(8,3,4,0x00020000)`.
 These observations authenticate chunk framing, descriptor-array extents,
-and stream byte counts for this input. The second position-stream field
-retains its unresolved interpretation.
+and stream byte counts for this input. The structural inspection keeps the
+descriptor semantics undecoded. A narrow format interpretation used by the
+experimental importer treats the exact usage-2 format-3 field as packed normal
+bytes, based on the [retail model and collision evidence](https://github.com/BahamutXIV/bahamut-navmesh/blob/e9f384c9d8c37e1942d942fb1566dc2967163f3e/docs/model-and-collision-data.md#index-stream-and-triangle-winding);
+the importer rejects overlapping fields and its local tests cover the byte
+encoder.
 
 ## Claim boundary
 

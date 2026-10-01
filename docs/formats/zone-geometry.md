@@ -102,3 +102,38 @@ This edit changes render position bytes only. It does not change topology,
 materials, collision data, stream sizes, or model descriptors. It is a
 research aid for inspecting a custom-zone rendering hypothesis and makes no
 claim that a modified file is accepted by the client or by other consumers.
+
+## Experimental OBJ model blockout import
+
+The format library also includes a bounded blockout import that uses one
+native RES model as its template. Run it with explicit native input, OBJ input,
+and a new output path:
+
+```powershell
+cargo run --locked -p xivl-formats --example model_obj_import -- <native-input> <obj-input> <new-output>
+```
+
+The template must contain one direct WRB resource with one MDL and one MESH,
+one MDL AABB leaf, one format-4 position stream, and one format-0 u16
+triangle-list stream. The importer accepts OBJ `v` and triangular `f` records,
+ignores comments and the documented `l`, `o`, and `s` records, preserves face
+order and winding, and rejects other record types. Position bounds are written
+to the MDL AABB, MESH AABB, and MDL COMP boxes, then quantized with the native
+signed-16 position encoding. When the template has the confirmed format-3
+usage-2 normal field, normals are generated from the OBJ triangles.
+
+The accepted MESH has exactly the position and index STMS streams described
+above; extra or ambiguous vertex streams are rejected. Template chunks,
+material and shader bytes, descriptors, and opaque padding are retained.
+Unresolved per-vertex fields retain template record bytes when the imported
+vertex array needs additional records; this does not import OBJ UVs, materials,
+textures, skeletons, or animation. The importer rejects bounds that overflow
+the native decode arithmetic and preflights a 256 MiB maximum output budget
+before allocating replacement vertex data.
+
+The command refuses an existing output and parses the generated resource before
+writing it. `RES` header `+0x34` remains unresolved and byte-preserved; in the
+selected source, `40432 + 0x40 == 40496` matched a trailing directory-entry
+start, and relocation may make such a relationship stale. The importer does not
+speculate about or rewrite that field. This remains an experimental blockout
+aid; client and renderer acceptance are unverified.
