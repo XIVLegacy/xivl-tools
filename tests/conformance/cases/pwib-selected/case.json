@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/pwib/selected.bin"
+  },
+  "arguments": ["--as", "pwib", "--pwib-entry", "6"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Selects the visible txb entry and records bounded descriptor and external surface facts."
+}

@@ -94,6 +94,22 @@ pub fn decode_png_rgba(bytes: &[u8]) -> Result<DecodedPngRgba> {
 
 /// Decode and encode the logical top mip without materializing any other mip.
 pub fn export_gtex_top_mip_png(data: &[u8], gtex: &GtexResource) -> Result<GtexPngPreview> {
+    export_gtex_top_mip_png_from_source(data, gtex)
+}
+
+/// Decode a validated external-source GTEX descriptor without joining the
+/// descriptor and surface buffers.
+pub fn export_gtex_top_mip_png_external(
+    source: &[u8],
+    gtex: &GtexResource,
+) -> Result<GtexPngPreview> {
+    export_gtex_top_mip_png_from_source(source, gtex)
+}
+
+pub fn export_gtex_top_mip_png_from_source(
+    data: &[u8],
+    gtex: &GtexResource,
+) -> Result<GtexPngPreview> {
     if let Some(reason) = preview_refusal(gtex) {
         return Err(FormatError::new(
             ErrorKind::UnsupportedGtexPreview,

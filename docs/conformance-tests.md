@@ -77,6 +77,16 @@ DXT1 modes, DXT5 alpha behavior, and partial-block cropping. CLI tests
 exercise both extraction commands and verification failures. See the
 [preview contract](formats/gtex-pwib.md#decoded-top-mip-png-preview).
 
+PWIB `extract` cases use `--pwib-entry <index>` with the texture output
+options to exercise selected RES/txb extraction. Reports retain entry and
+type metadata, descriptor and table spans, second-relative offsets,
+absolute encoded spans, and artifact digests. Authored fixtures cover
+nonzero surface offsets and whole-range refusals, including a surface
+whose start fits the second span but whose end does not. Separate command
+tests cover raw, DDS, and PNG output, catalog selection, inventory failures,
+manifest consistency, and complete source replay. See the
+[selected PWIB contract](formats/gtex-pwib.md#selected-pwib-restxb-texture).
+
 `extract-directory` exercises the production whole-directory `extract`
 implementation for `ssd-sheet`. Its `public-tree` fixture names a generated
 JSON descriptor with `format: "ssd-extract"`, `schemaVersion: 1`, and a

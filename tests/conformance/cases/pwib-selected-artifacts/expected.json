@@ -1,0 +1,440 @@
+{
+  "anomalies": [],
+  "artifacts": [
+    {
+      "format": "gtex",
+      "mipLevels": 1,
+      "mips": [
+        {
+          "ddsSpan": {
+            "length": 32768,
+            "offset": 128
+          },
+          "height": 256,
+          "mipLevel": 0,
+          "sha256": "5e3c408aa602faab0d17c5f4c06e84b933308e21ac8cd7aab8251ec9c8a73900",
+          "sourceRelativeOffset": 16,
+          "sourceSpan": {
+            "endExclusive": 33541,
+            "length": 32768,
+            "offset": 773
+          },
+          "width": 256
+        }
+      ],
+      "path": "payloads/texture.dds",
+      "role": "pwib-gtex-dds-texture",
+      "sha256": "ec52011266a674524acf851bb13aa6c993dfa673da951593e664f8406848ce80",
+      "size": 32896,
+      "texture": {
+        "format": {
+          "clientIndex": 24,
+          "d3dName": "D3DFMT_DXT1",
+          "d3dValue": 827611204
+        },
+        "height": 256,
+        "width": 256
+      }
+    },
+    {
+      "format": "gtex",
+      "height": 256,
+      "mipLevel": 0,
+      "path": "payloads/preview.png",
+      "png": {
+        "format": {
+          "clientIndex": 24,
+          "d3dName": "D3DFMT_DXT1",
+          "d3dValue": 827611204
+        },
+        "height": 256,
+        "mipLevel": 0,
+        "rgbaSha256": "8bfc58ca96fcddc1741e8945d10c899cd58fd52ace4f9ebe4b91ee445a9545fc",
+        "sourceSha256": "5e3c408aa602faab0d17c5f4c06e84b933308e21ac8cd7aab8251ec9c8a73900",
+        "sourceSpan": {
+          "endExclusive": 33541,
+          "length": 32768,
+          "offset": 773
+        },
+        "width": 256
+      },
+      "role": "pwib-gtex-png-preview",
+      "sha256": "781dad3137251fd522c0e6ad746a9bde6766189f09080468d55839850c0ba577",
+      "size": 2972,
+      "texture": {
+        "format": {
+          "clientIndex": 24,
+          "d3dName": "D3DFMT_DXT1",
+          "d3dValue": 827611204
+        },
+        "height": 256,
+        "width": 256
+      },
+      "width": 256
+    }
+  ],
+  "firstSegment": {
+    "kind": "sedb-prefix",
+    "sedbHeader": {
+      "declaredSize": 741,
+      "flags": 0,
+      "headerSize": 64,
+      "span": {
+        "length": 20,
+        "offset": 16
+      },
+      "subtype": "RES ",
+      "unknownA": 4000
+    },
+    "sha256": "470707b169cb2c237e3b22761361b8fc4474eb44b52f9da87b2bc88deca6d46d",
+    "span": {
+      "length": 741,
+      "offset": 16
+    }
+  },
+  "format": "pwib",
+  "header": {
+    "firstSegmentOffset": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 8
+      },
+      "value": 16
+    },
+    "secondSegmentOffset": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 12
+      },
+      "value": 757
+    },
+    "span": {
+      "length": 16,
+      "offset": 0
+    },
+    "totalSize": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 4
+      },
+      "value": 33552
+    },
+    "unknown": []
+  },
+  "input": {
+    "length": 33552
+  },
+  "layoutStatus": "bounded",
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "secondSegment": {
+    "kind": "opaque-continuation",
+    "sha256": "582659940a5ea1f1bf924f78b19f2d3ed4bce6dc6f939e9a53f1b3f9578a6466",
+    "span": {
+      "length": 32795,
+      "offset": 757
+    }
+  },
+  "selection": {
+    "descriptor": {
+      "dataBase": 0,
+      "fixedSha256": "1d94498818db7e9ca0383750c16b678f76303456b859a51754ef7ecda70c3d26",
+      "fixedSpan": {
+        "length": 24,
+        "offset": 578
+      },
+      "format": "gtex",
+      "offset": {
+        "branch": "indirect-dword",
+        "fieldSpan": {
+          "length": 2,
+          "offset": 528
+        },
+        "pointerSpan": {
+          "length": 4,
+          "offset": 562
+        },
+        "resolved": 64,
+        "word": 64
+      },
+      "offsetTable": {
+        "base": 24,
+        "entries": [
+          {
+            "calculatedSize": 32768,
+            "face": 0,
+            "index": 0,
+            "mipLevel": 0,
+            "offset": 16,
+            "size": 32768
+          }
+        ],
+        "entryStride": 8,
+        "sha256": "027a440c6aab65cd1449e76b4c2b7bd2fae1d5699275d0a6e60fc46fe62fc7ae",
+        "span": {
+          "length": 8,
+          "offset": 602
+        }
+      },
+      "sha256": "102273cdcb86f44dd291bc0297631de5a7a5be5829d707179667f16bfb8cd091",
+      "span": {
+        "length": 32,
+        "offset": 578
+      },
+      "texture": {
+        "depth": 1,
+        "flags": 0,
+        "formatIndex": 24,
+        "height": 256,
+        "kind": "2d",
+        "mipLevels": 1,
+        "width": 256
+      }
+    },
+    "directory": {
+      "count": 11,
+      "sha256": "900bc770ddebba31de714ed5740fc013ec7af04c1d1c2941a35c1646753cd73c",
+      "span": {
+        "length": 176,
+        "offset": 80
+      }
+    },
+    "entries": [
+      {
+        "declaredOffset": 0,
+        "declaredSize": 44,
+        "index": 0,
+        "kind": 0,
+        "name": "RESOURCE_TYPE",
+        "nameIndex": 0,
+        "sha256": "53b82031790036a504ab1c8b09c3700e4d8cdf500faaaeed9681fa95621bb2fa",
+        "span": {
+          "length": 44,
+          "offset": 256
+        },
+        "visibleIndex": null
+      },
+      {
+        "declaredOffset": 44,
+        "declaredSize": 176,
+        "index": 1,
+        "kind": 0,
+        "name": "RESOURCE_ID",
+        "nameIndex": 1,
+        "sha256": "86196f9925e43c0447c15f243b382a58a95a50b33c2826a76a3a2a4099ceab97",
+        "span": {
+          "length": 176,
+          "offset": 300
+        },
+        "visibleIndex": null
+      },
+      {
+        "declaredOffset": 220,
+        "declaredSize": 8,
+        "index": 2,
+        "kind": 0,
+        "name": "block0",
+        "nameIndex": 2,
+        "sha256": "2c3f873cfcdc804d0ab9354b4e44ae683f98e3450095f7687372f75e4ed12018",
+        "span": {
+          "length": 8,
+          "offset": 476
+        },
+        "visibleIndex": 2
+      },
+      {
+        "declaredOffset": 228,
+        "declaredSize": 9,
+        "index": 3,
+        "kind": 0,
+        "name": "block1",
+        "nameIndex": 3,
+        "sha256": "7670433aa1a584a852fa59644c6c1688a5ac1a4898dccb42e2667fe44fcb6419",
+        "span": {
+          "length": 9,
+          "offset": 484
+        },
+        "visibleIndex": 3
+      },
+      {
+        "declaredOffset": 237,
+        "declaredSize": 10,
+        "index": 4,
+        "kind": 0,
+        "name": "block2",
+        "nameIndex": 4,
+        "sha256": "cb063c2009cf7962f11a3b4b3398528ca0ba7223ebfc4fceee4d1131326dd3fd",
+        "span": {
+          "length": 10,
+          "offset": 493
+        },
+        "visibleIndex": 4
+      },
+      {
+        "declaredOffset": 247,
+        "declaredSize": 11,
+        "index": 5,
+        "kind": 0,
+        "name": "block3",
+        "nameIndex": 5,
+        "sha256": "0dc8a47e7e0c14365d7491eadcd3821b1c0014091d03032f7dc10a9a8cca1b03",
+        "span": {
+          "length": 11,
+          "offset": 503
+        },
+        "visibleIndex": 5
+      },
+      {
+        "declaredOffset": 258,
+        "declaredSize": 96,
+        "index": 6,
+        "kind": 0,
+        "name": "block4",
+        "nameIndex": 6,
+        "sha256": "b12c9b5a683807758070d0316db825bd7ce68c4942d9783fa3948887dc4b3a5c",
+        "span": {
+          "length": 96,
+          "offset": 514
+        },
+        "visibleIndex": 6
+      },
+      {
+        "declaredOffset": 354,
+        "declaredSize": 13,
+        "index": 7,
+        "kind": 0,
+        "name": "block5",
+        "nameIndex": 7,
+        "sha256": "98f5817d5ecbac53de1de1d4dc1f906ecd5643af911710815e6cabfb1036dac8",
+        "span": {
+          "length": 13,
+          "offset": 610
+        },
+        "visibleIndex": 7
+      },
+      {
+        "declaredOffset": 367,
+        "declaredSize": 14,
+        "index": 8,
+        "kind": 0,
+        "name": "block6",
+        "nameIndex": 8,
+        "sha256": "2fa13862a2fe91b617f843e497a1889412e12c0f0f70d18bbb3b3763f0a4005c",
+        "span": {
+          "length": 14,
+          "offset": 623
+        },
+        "visibleIndex": 8
+      },
+      {
+        "declaredOffset": 381,
+        "declaredSize": 15,
+        "index": 9,
+        "kind": 0,
+        "name": "block7",
+        "nameIndex": 9,
+        "sha256": "ae26de6ac23689c9dd39e8210ef916186ac625904fe5725d99ab08b8cabdcc36",
+        "span": {
+          "length": 15,
+          "offset": 637
+        },
+        "visibleIndex": 9
+      },
+      {
+        "declaredOffset": 396,
+        "declaredSize": 16,
+        "index": 10,
+        "kind": 0,
+        "name": "block8",
+        "nameIndex": 10,
+        "sha256": "faadb7de4968b7cb9cba778f0d365ce96303a58d1ce40a44c3093f1487d17bf5",
+        "span": {
+          "length": 16,
+          "offset": 652
+        },
+        "visibleIndex": 10
+      }
+    ],
+    "metadataCount": 2,
+    "names": {
+      "count": 11,
+      "sha256": "9cf103a890184a5f0743dc686c2400388d2a1260e98f2f555ce2e166205e00b5",
+      "span": {
+        "length": 89,
+        "offset": 668
+      }
+    },
+    "payloadBase": 256,
+    "resourceId": {
+      "declaredOffset": 44,
+      "declaredSize": 176,
+      "index": 1,
+      "kind": 0,
+      "name": "RESOURCE_ID",
+      "nameIndex": 1,
+      "sha256": "86196f9925e43c0447c15f243b382a58a95a50b33c2826a76a3a2a4099ceab97",
+      "span": {
+        "length": 176,
+        "offset": 300
+      },
+      "visibleIndex": null
+    },
+    "resourceType": {
+      "declaredOffset": 0,
+      "declaredSize": 44,
+      "index": 0,
+      "kind": 0,
+      "name": "RESOURCE_TYPE",
+      "nameIndex": 0,
+      "sha256": "53b82031790036a504ab1c8b09c3700e4d8cdf500faaaeed9681fa95621bb2fa",
+      "span": {
+        "length": 44,
+        "offset": 256
+      },
+      "visibleIndex": null
+    },
+    "selectedEntry": {
+      "declaredOffset": 258,
+      "declaredSize": 96,
+      "index": 6,
+      "kind": 0,
+      "name": "block4",
+      "nameIndex": 6,
+      "sha256": "b12c9b5a683807758070d0316db825bd7ce68c4942d9783fa3948887dc4b3a5c",
+      "span": {
+        "length": 96,
+        "offset": 514
+      },
+      "visibleIndex": 6
+    },
+    "selectedType": 7632994,
+    "surface": {
+      "relativeOffset": 16,
+      "sha256": "5e3c408aa602faab0d17c5f4c06e84b933308e21ac8cd7aab8251ec9c8a73900",
+      "span": {
+        "length": 32768,
+        "offset": 773
+      }
+    },
+    "txb": {
+      "sha256": "b12c9b5a683807758070d0316db825bd7ce68c4942d9783fa3948887dc4b3a5c",
+      "span": {
+        "length": 96,
+        "offset": 514
+      }
+    },
+    "visibleCount": 9,
+    "visibleIndex": 6
+  },
+  "signature": {
+    "ascii": "PWIB",
+    "span": {
+      "length": 4,
+      "offset": 0
+    }
+  },
+  "trailing": []
+}

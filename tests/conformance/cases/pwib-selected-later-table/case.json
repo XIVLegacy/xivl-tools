@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected-later-table",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": { "kind": "public", "path": "tests/fixtures/public/pwib/selected-later-table.bin" },
+  "arguments": ["--as", "pwib", "--pwib-entry", "6"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "A table at descriptor-relative offset 0x20 remains inside the txb block."
+}

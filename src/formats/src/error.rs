@@ -87,6 +87,12 @@ pub enum ErrorKind {
     InvalidGtexPreview,
     /// PNG encoding failed after a valid RGBA preview was decoded.
     PngEncodingFailed,
+    /// A PWIB RES entry selection is outside the visible entry set.
+    InvalidPwibSelection,
+    /// A selected PWIB RES/txb entry is outside the bounded supported subset.
+    UnsupportedPwibSelection,
+    /// A selected PWIB RES/txb structure is malformed or escapes its view.
+    InvalidPwibStructure,
 }
 
 impl ErrorKind {
@@ -126,6 +132,9 @@ impl ErrorKind {
             ErrorKind::UnsupportedGtexPreview => "unsupported-gtex-preview",
             ErrorKind::InvalidGtexPreview => "invalid-gtex-preview",
             ErrorKind::PngEncodingFailed => "png-encoding-failed",
+            ErrorKind::InvalidPwibSelection => "invalid-pwib-selection",
+            ErrorKind::UnsupportedPwibSelection => "unsupported-pwib-selection",
+            ErrorKind::InvalidPwibStructure => "invalid-pwib-structure",
         }
     }
 }

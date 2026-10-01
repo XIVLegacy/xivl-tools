@@ -10,7 +10,8 @@ use xivl_formats::gtex_pwib::{self, TaggedResource, TaggedResourceKind};
 use xivl_formats::sedb::{self, EntryBody};
 use xivl_formats::texture_preview;
 use xivl_formats::{
-    extract_lpb, inspect_named_bytes_as, parse_dat_path, to_canonical_json, InspectAs,
+    extract_lpb, inspect_named_bytes_as, inspect_selected_pwib, parse_dat_path, to_canonical_json,
+    InspectAs, Span,
 };
 
 use crate::batch_extract::reject_link_if_present;
@@ -46,7 +47,7 @@ pub(crate) struct PlannedExtraction {
 pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
     let Some(input) = arguments.first() else {
         return Err(Failure::usage(
-            "usage: xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--export-dds] [--preview-png] [--as <format>] [--columns <list>]",
+            "usage: xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--export-dds] [--preview-png] [--pwib-entry <index>] [--as <format>] [--columns <list>]",
         ));
     };
     let mut output = None;
@@ -54,6 +55,7 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
     let mut materialize_payloads = false;
     let mut export_dds = false;
     let mut preview_png = false;
+    let mut pwib_entry = None;
     let mut inspect_arguments = Vec::new();
     let mut index = 1;
     while index < arguments.len() {
@@ -99,6 +101,15 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
                 preview_png = true;
                 index += 1;
             }
+            "--pwib-entry" if index + 1 < arguments.len() => {
+                if pwib_entry.is_some() {
+                    return Err(Failure::usage("--pwib-entry was supplied more than once"));
+                }
+                pwib_entry = Some(arguments[index + 1].parse::<u32>().map_err(|_| {
+                    Failure::usage("--pwib-entry requires a zero-based unsigned index")
+                })?);
+                index += 2;
+            }
             "--as" | "--columns" if index + 1 < arguments.len() => {
                 inspect_arguments.push(arguments[index].clone());
                 inspect_arguments.push(arguments[index + 1].clone());
@@ -117,7 +128,7 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
     reject_link_if_present(output_path, "output")?;
     require_empty_output(output_path)?;
     let data = read_capped(input)?;
-    let planned = plan_bytes_options(
+    let planned = plan_bytes_options_with_pwib(
         input,
         &data,
         &sha256_hex(&data),
@@ -125,6 +136,7 @@ pub fn run(arguments: &[String]) -> Result<ExtractResourceSummary, Failure> {
         materialize_payloads,
         export_dds,
         preview_png,
+        pwib_entry,
         &inspect_arguments,
     )?;
     planned.write_to(output_path)?;
@@ -146,7 +158,7 @@ pub(crate) fn plan_bytes(
     export_dds: bool,
     inspect_arguments: &[String],
 ) -> Result<PlannedExtraction, Failure> {
-    plan_bytes_options(
+    plan_bytes_options_with_pwib(
         input,
         data,
         source_sha256,
@@ -154,6 +166,7 @@ pub(crate) fn plan_bytes(
         materialize_payloads,
         export_dds,
         false,
+        None,
         inspect_arguments,
     )
 }
@@ -169,6 +182,31 @@ pub(crate) fn plan_bytes_options(
     preview_png: bool,
     inspect_arguments: &[String],
 ) -> Result<PlannedExtraction, Failure> {
+    plan_bytes_options_with_pwib(
+        input,
+        data,
+        source_sha256,
+        format,
+        materialize_payloads,
+        export_dds,
+        preview_png,
+        None,
+        inspect_arguments,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn plan_bytes_options_with_pwib(
+    input: &str,
+    data: &[u8],
+    source_sha256: &str,
+    format: DocumentFormat,
+    materialize_payloads: bool,
+    export_dds: bool,
+    preview_png: bool,
+    pwib_entry: Option<u32>,
+    inspect_arguments: &[String],
+) -> Result<PlannedExtraction, Failure> {
     let selected = if inspect_arguments.is_empty() {
         detect(data).map(|(_, how)| how).ok_or_else(|| {
             Failure::usage(format!(
@@ -179,7 +217,20 @@ pub(crate) fn plan_bytes_options(
         InspectAs::from_arguments(inspect_arguments).map_err(Failure::usage)?
     };
     let name = base_name(input);
-    let parsed = inspect_named_bytes_as(data, name, &selected).map_err(|error| Failure {
+    if pwib_entry.is_some() && !matches!(selected, InspectAs::Pwib | InspectAs::Auto) {
+        return Err(Failure::usage(
+            "--pwib-entry applies only to PWIB input; use --as pwib or omit --as",
+        ));
+    }
+    let parsed = if let Some(entry) = pwib_entry {
+        if !data.starts_with(gtex_pwib::PWIB_MAGIC) {
+            return Err(Failure::usage("--pwib-entry applies only to PWIB input"));
+        }
+        inspect_selected_pwib(data, entry)
+    } else {
+        inspect_named_bytes_as(data, name, &selected)
+    }
+    .map_err(|error| Failure {
         message: format!("{input}: {error}"),
         code: EXIT_PARSE_FAILURE,
     })?;
@@ -243,6 +294,9 @@ pub(crate) fn plan_bytes_options(
             // direct container spans, which these formats do not expose.
             "sqwt" | "scrambled-xml" => {}
             "gtex" => artifacts.extend(gtex_surface_payloads(data, input)?),
+            "pwib" if pwib_entry.is_some() => {
+                artifacts.push(pwib_surface_payload(data, input, pwib_entry.unwrap())?)
+            }
             "sedb" | "res" => artifacts.extend(container_payloads(data, input)?),
             other => {
                 return Err(Failure::usage(format!(
@@ -252,26 +306,34 @@ pub(crate) fn plan_bytes_options(
         }
     }
     if export_dds {
-        if parsed_format != "gtex" {
+        if parsed_format != "gtex" && !(parsed_format == "pwib" && pwib_entry.is_some()) {
             return Err(Failure::usage(format!(
                 "--export-dds applies only to GTEX input, not '{parsed_format}'"
             )));
         }
-        artifacts.push(gtex_dds_payload(data, input)?);
+        if let Some(entry) = pwib_entry {
+            artifacts.push(pwib_dds_payload(data, input, entry)?);
+        } else {
+            artifacts.push(gtex_dds_payload(data, input)?);
+        }
     }
     if preview_png {
-        if parsed_format != "gtex" {
+        if parsed_format != "gtex" && !(parsed_format == "pwib" && pwib_entry.is_some()) {
             return Err(Failure::usage(format!(
                 "--preview-png applies only to GTEX input, not '{parsed_format}'"
             )));
         }
-        artifacts.push(gtex_png_payload(data, input)?);
+        if let Some(entry) = pwib_entry {
+            artifacts.push(pwib_png_payload(data, input, entry)?);
+        } else {
+            artifacts.push(gtex_png_payload(data, input)?);
+        }
     }
     let payloads: Vec<Value> = artifacts
         .iter()
         .map(|artifact| artifact.manifest.clone())
         .collect();
-    let document = json!({
+    let mut document = json!({
         "anomalies": collect_anomalies(&parsed),
         "format": {
             "id": parsed_format,
@@ -293,6 +355,9 @@ pub(crate) fn plan_bytes_options(
             "version": env!("CARGO_PKG_VERSION"),
         },
     });
+    if let Some(entry) = pwib_entry {
+        document["source"]["pwibEntry"] = json!(entry);
+    }
     // Render before creating the output directory. Parse, span-safety, and
     // document-generation failures therefore leave no partial extraction.
     let (document_name, document) = match format {
@@ -545,6 +610,174 @@ fn gtex_surface_payloads(data: &[u8], input: &str) -> Result<Vec<PayloadArtifact
             })
         })
         .collect()
+}
+
+fn pwib_surface_payload(
+    data: &[u8],
+    input: &str,
+    visible_index: u32,
+) -> Result<PayloadArtifact, Failure> {
+    let selected = gtex_pwib::parse_selected_pwib(data, visible_index)
+        .map_err(|error| Failure::parse(format!("{input}: {error}")))?;
+    let start = usize::try_from(selected.surface.offset)
+        .map_err(|_| Failure::parse(format!("{input}: PWIB surface offset does not fit")))?;
+    let end_u64 = selected
+        .surface
+        .offset
+        .checked_add(selected.surface.length)
+        .ok_or_else(|| Failure::parse(format!("{input}: PWIB surface end overflows")))?;
+    let end = usize::try_from(end_u64)
+        .map_err(|_| Failure::parse(format!("{input}: PWIB surface end does not fit")))?;
+    let bytes = data
+        .get(start..end)
+        .ok_or_else(|| Failure::parse(format!("{input}: PWIB surface escapes the input")))?;
+    let digest = sha256_hex(bytes);
+    let path = format!(
+        "payloads/pwib-surface-e{:06}-o{:016x}-l{:016x}-{}.bin",
+        visible_index,
+        selected.surface.offset,
+        selected.surface.length,
+        &digest[..16]
+    );
+    Ok(PayloadArtifact {
+        manifest: json!({
+            "entry": {
+                "kind": "pwib-gtex-encoded-surface",
+                "path": "$.parsed.selection.surface",
+                "visibleIndex": visible_index,
+                "relativeOffset": selected.surface_relative_offset,
+            },
+            "path": path,
+            "role": "pwib-gtex-encoded-surface",
+            "sha256": digest,
+            "size": bytes.len() as u64,
+            "sourceSpan": {
+                "endExclusive": end_u64,
+                "length": selected.surface.length,
+                "offset": selected.surface.offset,
+            },
+        }),
+        path,
+        bytes: bytes.to_vec(),
+    })
+}
+
+fn pwib_dds_payload(
+    data: &[u8],
+    input: &str,
+    visible_index: u32,
+) -> Result<PayloadArtifact, Failure> {
+    let selected = gtex_pwib::parse_selected_pwib(data, visible_index)
+        .map_err(|error| Failure::parse(format!("{input}: {error}")))?;
+    let second_start = usize::try_from(selected.pwib.second_segment.offset)
+        .map_err(|_| Failure::parse(format!("{input}: PWIB second offset does not fit")))?;
+    let second_end = usize::try_from(selected.pwib.second_segment.end())
+        .map_err(|_| Failure::parse(format!("{input}: PWIB second end does not fit")))?;
+    let second = data
+        .get(second_start..second_end)
+        .ok_or_else(|| Failure::parse(format!("{input}: PWIB second segment escapes input")))?;
+    let export = dds::export_gtex_external(second, &selected.gtex)
+        .map_err(|error| Failure::parse(format!("{input}: {error}")))?;
+    let mips: Vec<Value> = export
+        .mips
+        .iter()
+        .map(|mip| {
+            let source_span = Span::new(
+                selected.pwib.second_segment.offset + mip.source_span.offset,
+                mip.source_span.length,
+            );
+            json!({
+                "ddsSpan": {
+                    "endExclusive": mip.dds_span.offset + mip.dds_span.length,
+                    "length": mip.dds_span.length,
+                    "offset": mip.dds_span.offset,
+                },
+                "height": mip.height,
+                "mipLevel": mip.mip_level,
+                "sha256": mip.sha256,
+                "sourceSpan": {
+                    "endExclusive": source_span.offset + source_span.length,
+                    "length": source_span.length,
+                    "offset": source_span.offset,
+                },
+                "sourceRelativeOffset": mip.source_span.offset,
+                "width": mip.width,
+            })
+        })
+        .collect();
+    let path = "payloads/texture.dds".to_string();
+    Ok(PayloadArtifact {
+        manifest: json!({
+            "dds": {
+                "format": {
+                    "clientIndex": export.format.index,
+                    "d3dName": export.format.d3d_name,
+                    "d3dValue": export.format.d3d_value,
+                },
+                "headerSpan": { "offset": 0, "length": dds::DDS_FILE_HEADER_SIZE },
+                "height": export.height,
+                "mipLevels": export.mip_levels,
+                "mips": mips,
+                "width": export.width,
+            },
+            "path": path,
+            "role": "pwib-gtex-dds-texture",
+            "sha256": sha256_hex(&export.bytes),
+            "size": export.bytes.len() as u64,
+        }),
+        path,
+        bytes: export.bytes,
+    })
+}
+
+fn pwib_png_payload(
+    data: &[u8],
+    input: &str,
+    visible_index: u32,
+) -> Result<PayloadArtifact, Failure> {
+    let selected = gtex_pwib::parse_selected_pwib(data, visible_index)
+        .map_err(|error| Failure::parse(format!("{input}: {error}")))?;
+    let second_start = usize::try_from(selected.pwib.second_segment.offset)
+        .map_err(|_| Failure::parse(format!("{input}: PWIB second offset does not fit")))?;
+    let second_end = usize::try_from(selected.pwib.second_segment.end())
+        .map_err(|_| Failure::parse(format!("{input}: PWIB second end does not fit")))?;
+    let second = data
+        .get(second_start..second_end)
+        .ok_or_else(|| Failure::parse(format!("{input}: PWIB second segment escapes input")))?;
+    let preview = texture_preview::export_gtex_top_mip_png_external(second, &selected.gtex)
+        .map_err(|error| Failure::parse(format!("{input}: {error}")))?;
+    let path = "payloads/preview.png".to_string();
+    let source_span = Span::new(
+        selected.pwib.second_segment.offset + preview.source_span.offset,
+        preview.source_span.length,
+    );
+    Ok(PayloadArtifact {
+        manifest: json!({
+            "path": path,
+            "png": {
+                "format": {
+                    "clientIndex": preview.format.index,
+                    "d3dName": preview.format.d3d_name,
+                    "d3dValue": preview.format.d3d_value,
+                },
+                "height": preview.height,
+                "mipLevel": preview.mip_level,
+                "rgbaSha256": preview.rgba_sha256,
+                "sourceSha256": preview.source_sha256,
+                "sourceSpan": {
+                    "endExclusive": source_span.offset + source_span.length,
+                    "length": source_span.length,
+                    "offset": source_span.offset,
+                },
+                "width": preview.width,
+            },
+            "role": "pwib-gtex-png-preview",
+            "sha256": sha256_hex(&preview.bytes),
+            "size": preview.bytes.len() as u64,
+        }),
+        path,
+        bytes: preview.bytes,
+    })
 }
 
 fn gtex_dds_payload(data: &[u8], input: &str) -> Result<PayloadArtifact, Failure> {

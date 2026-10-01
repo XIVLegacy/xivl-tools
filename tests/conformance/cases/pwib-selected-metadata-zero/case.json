@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected-metadata-zero",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": { "kind": "public", "path": "tests/fixtures/public/pwib/selected.bin" },
+  "arguments": ["--as", "pwib", "--pwib-entry", "0"],
+  "expect": { "outcome": "parse-error", "errorKind": "unsupported-pwib-selection" },
+  "notes": "The physical RESOURCE_TYPE metadata block is refused when selected directly."
+}

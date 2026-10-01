@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected-preserved-prefix",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": { "kind": "public", "path": "tests/fixtures/public/pwib/selected-preserved-prefix.bin" },
+  "arguments": ["--as", "pwib", "--pwib-entry", "6"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "The authored RES prefix preserves an advisory scalar without constraining selected bounds."
+}

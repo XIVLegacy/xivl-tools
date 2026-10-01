@@ -102,7 +102,8 @@ The default output is a schema-versioned `extraction.yaml` (use
 `--format json` for JSON). It contains the inspection report and references to
 separate payload files. The optional `--materialize-payloads` flag writes
 exact direct payload spans only where the format contract allows it, currently
-SEDB, RES, and the supported GTEX boundary. It refuses ambiguous or unsupported
+SEDB, RES, the supported GTEX boundary, and an explicitly selected PWIB
+RES/txb texture. It refuses ambiguous or unsupported
 payload layouts rather than choosing an owner for the bytes.
 
 SQEX widget and scrambled-XML inputs automatically produce
@@ -124,6 +125,19 @@ decoded RGBA limit, and can accompany raw surfaces and DDS. PNG is a
 preview rather than a lossless resource view. See the
 [pixel conversion contract](formats/gtex-pwib.md#decoded-top-mip-png-preview).
 
+For a PWIB texture, supply `--pwib-entry <zero-based-visible-index>` to
+either extraction command. Add the same raw, DDS, and PNG options for the
+selected entry. For example:
+
+```powershell
+cargo run --locked -p xivl-cli -- extract-resource bank.DAT --output texture --pwib-entry 6 --export-dds --preview-png
+```
+
+The bounded path accepts only version-one, little-endian RES/txb with an
+externally backed, table-bearing, one-mip DXT1 descriptor, 2D flags zero,
+and depth one. Omitting entry selection keeps PWIB metadata-only. See the
+[selected-entry contract](formats/gtex-pwib.md#selected-pwib-restxb-texture).
+
 For several resources, first make a catalog and then name each selection:
 
 ```powershell
@@ -143,7 +157,8 @@ to set different positive limits.
 Selected scrambled-XML DAT entries also emit their decoded documents.
 Use `extract-resource` for original named SQEX widget files.
 
-With `--export-dds`, every selected entry must be an eligible GTEX texture.
+With `--export-dds`, every selected resource must be an eligible GTEX
+texture or, with `--pwib-entry`, an eligible selected PWIB texture.
 DDS output is included in the same output limits and atomic batch workflow.
 With `--preview-png`, every selected entry must also satisfy the preview
 boundary. Preview bytes count toward the same output limit.

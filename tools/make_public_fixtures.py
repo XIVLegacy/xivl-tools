@@ -484,6 +484,160 @@ def build_fixtures() -> dict[str, bytes]:
     fixtures["gtex/truncated-tag.bin"] = b"GTE"
     fixtures["pwib/truncated-tag.bin"] = b"PWI"
 
+    def selected_pwib(
+        *,
+        descriptor_word: int = 0x40,
+        descriptor_pointer: int = 0x40,
+        surface_offset: int = 0,
+        format_index: int = 24,
+        width: int = 256,
+        height: int = 256,
+        surface_size: int = 32768,
+        second_length: int | None = None,
+        first_patch: tuple[int, bytes] | None = None,
+        txb_patch: tuple[int, bytes] | None = None,
+        descriptor_patch: tuple[int, bytes] | None = None,
+        table_base: int = 0x18,
+        late_resource_type: bool = False,
+    ) -> bytes:
+        names = [
+            "RESOURCE_TYPE",
+            "RESOURCE_ID",
+            "block0",
+            "block1",
+            "block2",
+            "block3",
+            "block4",
+            "block5",
+            "block6",
+            "block7",
+            "block8",
+        ]
+        count = len(names)
+        type_data = bytearray(count * 4)
+        struct.pack_into("<I", type_data, 6 * 4, 0x00747862)
+        id_data = pattern(count * 16, 0xA4)
+        txb = bytearray(pattern(96, 0xB1))
+        txb[0:8] = b"SEDBtxb\0"
+        struct.pack_into("<I", txb, 0x08, 1)
+        txb[0x0C] = 0
+        struct.pack_into("<H", txb, 0x0E, descriptor_word)
+        struct.pack_into("<I", txb, 0x30, descriptor_pointer)
+        descriptor_offset = (
+            0x30 + descriptor_word if descriptor_word <= 0x30 else descriptor_pointer
+        )
+        descriptor = bytearray(0x18)
+        descriptor[0:4] = b"GTEX"
+        descriptor[6] = format_index
+        descriptor[7] = 1
+        descriptor[9] = 0
+        struct.pack_into(">HHH", descriptor, 0x0A, width, height, 1)
+        struct.pack_into(">II", descriptor, 0x10, table_base, 0)
+        txb[descriptor_offset : descriptor_offset + len(descriptor)] = descriptor
+        struct.pack_into(
+            ">II", txb, descriptor_offset + table_base, surface_offset, surface_size
+        )
+        if txb_patch:
+            offset, patch = txb_patch
+            txb[offset : offset + len(patch)] = patch
+        blocks = [pattern(8 + index, 0xC0 + index) for index in range(9)]
+        blocks[4] = bytes(txb)
+        payload = bytearray()
+        entries: list[tuple[int, int, int, int]] = []
+        entries.append((0, len(payload), len(type_data), 0))
+        payload.extend(type_data)
+        entries.append((1, len(payload), len(id_data), 0))
+        payload.extend(id_data)
+        for index, block in enumerate(blocks):
+            entries.append((index + 2, len(payload), len(block), 0))
+            payload.extend(block)
+        if late_resource_type:
+            entries[0], entries[9] = entries[9], entries[0]
+        names_offset = len(payload)
+        names_bytes = b"".join(name.encode("ascii") + b"\0" for name in names)
+        total = 0x40 + count * 16 + len(payload) + len(names_bytes)
+        extended = struct.pack("<IIII", count, names_offset, count, 0)
+        first = bytearray(sedb_header("RES ", 4000, 0, 0x40, total, extended))
+        for index, (name_index, offset, size, kind) in enumerate(entries):
+            first.extend(directory_entry(name_index, offset, size, kind))
+        first.extend(payload)
+        first.extend(names_bytes)
+        if first_patch:
+            offset, patch = first_patch
+            first[offset : offset + len(patch)] = patch
+        if second_length is None:
+            second = bytearray(pattern(surface_offset, 0xD2))
+            second.extend(pattern(surface_size, 0xD8))
+            second.extend(pattern(11, 0xDE))
+        else:
+            second = bytearray(pattern(second_length, 0xD2))
+        if descriptor_patch:
+            offset, patch = descriptor_patch
+            txb_start = entries[2 + 4][1] + (0x40 + count * 16)
+            first[
+                txb_start + descriptor_offset + offset : txb_start
+                + descriptor_offset
+                + offset
+                + len(patch)
+            ] = patch
+        return pwib(bytes(first), bytes(second))
+
+    fixtures["pwib/selected.bin"] = selected_pwib(surface_offset=16)
+    fixtures["pwib/selected-short-descriptor.bin"] = selected_pwib(
+        descriptor_word=0, descriptor_pointer=0x30, surface_offset=0
+    )
+    fixtures["pwib/selected-later-table.bin"] = selected_pwib(
+        descriptor_word=0, descriptor_pointer=0x30, table_base=0x20, surface_offset=0
+    )
+    fixtures["pwib/selected-table-escapes.bin"] = selected_pwib(
+        descriptor_word=0,
+        descriptor_pointer=0x30,
+        descriptor_patch=(0x10, struct.pack(">I", 0x50)),
+        surface_offset=0,
+    )
+    fixtures["pwib/selected-late-metadata.bin"] = selected_pwib(
+        late_resource_type=True, surface_offset=16
+    )
+    fixtures["pwib/selected-preserved-prefix.bin"] = selected_pwib(
+        first_patch=(0x10, struct.pack("<I", 0xFFFF_FFFF)), surface_offset=16
+    )
+    fixtures["pwib/selected-bad-type.bin"] = selected_pwib(
+        first_patch=(0x40 + 16 * 11 + 6 * 4, struct.pack("<I", 0x0074626E))
+    )
+    fixtures["pwib/selected-big-endian.bin"] = selected_pwib(
+        first_patch=(0x0C, b"\x01")
+    )
+    fixtures["pwib/selected-bad-txb-endian.bin"] = selected_pwib(
+        txb_patch=(0x0C, b"\x01")
+    )
+    fixtures["pwib/selected-bad-version.bin"] = selected_pwib(
+        txb_patch=(0x08, struct.pack("<I", 2))
+    )
+    fixtures["pwib/selected-bad-directory.bin"] = selected_pwib(
+        first_patch=(0x30, struct.pack("<I", 0xFFFF))
+    )
+    fixtures["pwib/selected-bad-names.bin"] = selected_pwib(
+        first_patch=(0x34, struct.pack("<I", 0xFFFF))
+    )
+    fixtures["pwib/selected-bad-metadata.bin"] = selected_pwib(
+        first_patch=(0x40 + 8, struct.pack("<I", 1))
+    )
+    fixtures["pwib/selected-bad-descriptor.bin"] = selected_pwib(
+        txb_patch=(0x30, struct.pack("<I", 0xFFFF))
+    )
+    fixtures["pwib/selected-bad-table.bin"] = selected_pwib(
+        descriptor_patch=(0x10, struct.pack(">I", 0x1000))
+    )
+    fixtures["pwib/selected-unsupported-format.bin"] = selected_pwib(format_index=26)
+    fixtures["pwib/selected-zero-dimensions.bin"] = selected_pwib(width=0)
+    fixtures["pwib/selected-size-mismatch.bin"] = selected_pwib(surface_size=8)
+    fixtures["pwib/selected-surface-start-outside.bin"] = selected_pwib(
+        surface_offset=2, second_length=1
+    )
+    fixtures["pwib/selected-surface-end-outside.bin"] = selected_pwib(
+        surface_offset=0, second_length=32767
+    )
+
     # -- the static-actor SAN table --------------------------------------
     # Only the framing is promoted: the authored strings resemble paths so
     # the positive case exercises the retail byte class without assigning a

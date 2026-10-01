@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected-late-metadata-zero",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": { "kind": "public", "path": "tests/fixtures/public/pwib/selected-late-metadata.bin" },
+  "arguments": ["--as", "pwib", "--pwib-entry", "0"],
+  "expect": { "outcome": "parse-error", "errorKind": "unsupported-pwib-selection" },
+  "notes": "Physical entry 0 no longer redirects to the txb through metadata compaction."
+}

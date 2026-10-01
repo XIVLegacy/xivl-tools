@@ -60,6 +60,7 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
     let mut materialize_payloads = false;
     let mut export_dds = false;
     let mut preview_png = false;
+    let mut pwib_entry = None;
     let mut index = 1;
     while index < arguments.len() {
         match arguments[index].as_str() {
@@ -123,6 +124,15 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
                 }
                 preview_png = true;
                 index += 1;
+            }
+            "--pwib-entry" if index + 1 < arguments.len() => {
+                if pwib_entry.is_some() {
+                    return Err(batch_error("duplicate-option: --pwib-entry"));
+                }
+                pwib_entry = Some(arguments[index + 1].parse::<u32>().map_err(|_| {
+                    batch_error("invalid-option: --pwib-entry needs a zero-based unsigned index")
+                })?);
+                index += 2;
             }
             option => return Err(batch_error(format!("unknown-option: '{option}'"))),
         }
@@ -195,20 +205,27 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
             )));
         }
         let materialize = materialize_payloads
-            && matches!(entry.detected_format.as_str(), "sedb" | "res" | "gtex");
-        if export_dds && entry.detected_format != "gtex" {
+            && (matches!(entry.detected_format.as_str(), "sedb" | "res" | "gtex")
+                || (entry.detected_format == "pwib" && pwib_entry.is_some()));
+        if export_dds
+            && entry.detected_format != "gtex"
+            && !(entry.detected_format == "pwib" && pwib_entry.is_some())
+        {
             return Err(batch_error(format!(
                 "--export-dds applies only to GTEX input, not '{}'",
                 entry.detected_format
             )));
         }
-        if preview_png && entry.detected_format != "gtex" {
+        if preview_png
+            && entry.detected_format != "gtex"
+            && !(entry.detected_format == "pwib" && pwib_entry.is_some())
+        {
             return Err(batch_error(format!(
                 "--preview-png applies only to GTEX input, not '{}'",
                 entry.detected_format
             )));
         }
-        let plan = crate::resource_export::plan_bytes_options(
+        let plan = crate::resource_export::plan_bytes_options_with_pwib(
             &source.display().to_string(),
             &data,
             &digest,
@@ -216,6 +233,7 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
             materialize,
             export_dds,
             preview_png,
+            pwib_entry,
             &[],
         )?;
         if plan.format_id() != entry.detected_format {
@@ -260,6 +278,7 @@ pub fn run(arguments: &[String]) -> Result<BatchSummary, Failure> {
         materialize_payloads,
         export_dds,
         preview_png,
+        pwib_entry,
     )?;
     if output_bytes > max_output_bytes {
         return Err(batch_error(format!(
@@ -357,7 +376,7 @@ fn write_batch_atomically(
 }
 
 fn usage() -> &'static str {
-    "usage: xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads] [--export-dds] [--preview-png]"
+    "usage: xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads] [--export-dds] [--preview-png] [--pwib-entry <index>]"
 }
 
 fn batch_error(message: impl Into<String>) -> Failure {
@@ -674,6 +693,7 @@ fn render_batch(
     materialize_payloads: bool,
     export_dds: bool,
     preview_png: bool,
+    pwib_entry: Option<u32>,
 ) -> Result<(&'static str, String, u64), Failure> {
     let resources: Vec<Value> = planned
         .iter()
@@ -723,6 +743,9 @@ fn render_batch(
                 "sourceBytes": source_bytes,
             },
         });
+        if let Some(entry) = pwib_entry {
+            document["pwibEntry"] = json!(entry);
+        }
         if export_dds {
             document
                 .as_object_mut()
@@ -1003,6 +1026,54 @@ mod tests {
             .iter()
             .any(|payload| payload["role"] == "gtex-top-mip-png-preview"));
         assert!(directory.join("payloads/preview.png").is_file());
+        let verification = crate::verify_extract::run(&[
+            output.display().to_string(),
+            "--catalog".into(),
+            catalog.display().to_string(),
+            "--root".into(),
+            root.display().to_string(),
+        ])
+        .unwrap();
+        assert!(verification.text.contains("catalog sources replayed"));
+        fs::remove_dir_all(work).unwrap();
+    }
+
+    #[test]
+    fn selected_pwib_resource_exports_raw_dds_png_and_replays_catalog() {
+        let work = temp_root("pwib-selected");
+        let root = work.join("install");
+        fs::create_dir_all(&root).unwrap();
+        let bytes = include_bytes!("../../../tests/fixtures/public/pwib/selected.bin");
+        let relative = "data/12/34/56/78.DAT";
+        create_resource(&root, relative, bytes);
+        let catalog = work.join("catalog.json");
+        write_catalog(
+            &catalog,
+            vec![row(relative, Some("0x12345678"), bytes, "pwib", "parsed")],
+        );
+        let output = work.join("output");
+        let mut arguments = base_arguments(&catalog, &root, &output);
+        arguments.extend([
+            "--id".into(),
+            "0x12345678".into(),
+            "--pwib-entry".into(),
+            "6".into(),
+            "--materialize-payloads".into(),
+            "--export-dds".into(),
+            "--preview-png".into(),
+        ]);
+        let summary = run(&arguments).unwrap();
+        let batch: Value =
+            serde_yaml::from_str(&fs::read_to_string(&summary.output).unwrap()).unwrap();
+        assert_eq!(batch["pwibEntry"], 6);
+        let directory = output.join(batch["resources"][0]["outputDirectory"].as_str().unwrap());
+        let extraction: Value =
+            serde_yaml::from_str(&fs::read_to_string(directory.join("extraction.yaml")).unwrap())
+                .unwrap();
+        assert_eq!(extraction["payloads"].as_array().unwrap().len(), 3);
+        assert!(directory.join("payloads/texture.dds").is_file());
+        assert!(directory.join("payloads/preview.png").is_file());
+        assert_eq!(fs::read_dir(directory.join("payloads")).unwrap().count(), 3);
         let verification = crate::verify_extract::run(&[
             output.display().to_string(),
             "--catalog".into(),

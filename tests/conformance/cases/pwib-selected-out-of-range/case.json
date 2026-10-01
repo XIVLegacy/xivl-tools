@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected-out-of-range",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/pwib/selected.bin"
+  },
+  "arguments": ["--as", "pwib", "--pwib-entry", "99"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-pwib-selection"
+  },
+  "notes": "An unlisted visible index is refused before any output is created."
+}

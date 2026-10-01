@@ -17,7 +17,9 @@ use crate::batch_extract::{
     normalize_relative_path, parse_catalog, reject_link_if_present, secure_root, secure_source,
     CatalogEntry,
 };
-use crate::resource_export::{plan_bytes, plan_bytes_options, DocumentFormat};
+use crate::resource_export::{
+    plan_bytes, plan_bytes_options, plan_bytes_options_with_pwib, DocumentFormat,
+};
 use crate::{read_capped, Failure};
 
 const SINGLE_SCHEMA: &str = include_str!("../../../schemas/resource-extraction.schema.json");
@@ -374,12 +376,37 @@ fn verify_single(
     let mut output_bytes = record.size;
     let recorded_source_size = integer(object(&document, "source")?, "size")?;
     let payloads = array(&document, "payloads")?;
+    let is_pwib = string(object(&document, "format")?, "id")? == "pwib";
+    let has_pwib_selection = object(&document, "parsed")?.get("selection").is_some();
+    let has_pwib_artifact = payloads.iter().any(|payload| {
+        payload
+            .get("role")
+            .and_then(Value::as_str)
+            .is_some_and(|role| role.starts_with("pwib-"))
+    });
+    let pwib_entry = object(&document, "source")?.get("pwibEntry");
+    let has_pwib_index = pwib_entry.is_some_and(|value| !value.is_null());
+    if (has_pwib_selection || has_pwib_artifact || has_pwib_index) && !is_pwib {
+        return Err(fail(
+            "pwib-format-mismatch",
+            "PWIB selection or artifact requires top-level PWIB format",
+        ));
+    }
+    if is_pwib && (has_pwib_selection || has_pwib_artifact || has_pwib_index) {
+        if pwib_entry.is_none() || pwib_entry.is_some_and(Value::is_null) {
+            return Err(fail(
+                "pwib-selection-missing",
+                "selected PWIB manifest has no source index",
+            ));
+        }
+        verify_pwib_selection(&document, recorded_source_size)?;
+    }
     let mut dds_count = 0usize;
     let mut png_count = 0usize;
     for payload in payloads {
         let role = string(payload, "role")?;
         let path = string(payload, "path")?;
-        let is_dds_role = role == "gtex-dds-texture";
+        let is_dds_role = role == "gtex-dds-texture" || role == "pwib-gtex-dds-texture";
         let has_dds_metadata = payload.get("dds").is_some();
         let is_dds_path = path == "payloads/texture.dds";
         if is_dds_role || has_dds_metadata || is_dds_path {
@@ -390,7 +417,7 @@ fn verify_single(
                 .checked_add(1)
                 .ok_or_else(|| fail("dds-artifact-contract", "DDS artifact count overflow"))?;
         }
-        let is_png_role = role == "gtex-top-mip-png-preview";
+        let is_png_role = role == "gtex-top-mip-png-preview" || role == "pwib-gtex-png-preview";
         let has_png_metadata = payload.get("png").is_some();
         let is_png_path = path == "payloads/preview.png";
         if is_png_role || has_png_metadata || is_png_path {
@@ -447,8 +474,14 @@ fn verify_single(
         if string(payload, "role")? == "gtex-dds-texture" {
             verify_dds_payload(payload, file, &document, index, recorded_source_size)?;
         }
+        if string(payload, "role")? == "pwib-gtex-dds-texture" {
+            verify_pwib_dds_payload(payload, file, &document, index, recorded_source_size)?;
+        }
         if string(payload, "role")? == "gtex-top-mip-png-preview" {
             verify_png_payload(payload, file, &document, index, recorded_source_size)?;
+        }
+        if string(payload, "role")? == "pwib-gtex-png-preview" {
+            verify_pwib_png_payload(payload, file, &document, index, recorded_source_size)?;
         }
         output_bytes = checked_add(output_bytes, file.size, "output-byte-overflow")?;
         expected_files.insert(full);
@@ -503,6 +536,37 @@ fn verify_payload_relationship(
     document: &Value,
     index: usize,
 ) -> Result<Option<String>, Failure> {
+    if string(payload, "role")? == "pwib-gtex-encoded-surface" {
+        let entry = object(payload, "entry")?;
+        if string(entry, "path")? != "$.parsed.selection.surface"
+            || string(entry, "kind")? != "pwib-gtex-encoded-surface"
+        {
+            return Err(fail(
+                "pwib-entry-relationship-mismatch",
+                format!("payload {index}"),
+            ));
+        }
+        let selection = object(object(document, "parsed")?, "selection")?;
+        let expected = object(selection, "surface")?;
+        let span = object(payload, "sourceSpan")?;
+        let span_offset = integer(span, "offset")?;
+        let span_length = integer(span, "length")?;
+        if integer(span, "endExclusive")?
+            != checked_add(span_offset, span_length, "pwib-span-overflow")?
+            || integer(payload, "size")? != span_length
+            || span.get("offset") != expected.get("span").and_then(|value| value.get("offset"))
+            || span.get("length") != expected.get("span").and_then(|value| value.get("length"))
+            || string(payload, "sha256")? != string(expected, "sha256")?
+            || entry.get("visibleIndex") != selection.get("visibleIndex")
+            || entry.get("relativeOffset") != expected.get("relativeOffset")
+        {
+            return Err(fail(
+                "pwib-entry-relationship-mismatch",
+                format!("payload {index}"),
+            ));
+        }
+        return Ok(Some(string(entry, "path")?.to_string()));
+    }
     let Some(span) = payload.get("sourceSpan") else {
         if payload.get("container").is_some() || payload.get("entry").is_some() {
             return Err(fail(
@@ -632,6 +696,548 @@ fn verify_payload_relationship(
         }
     }
     Ok(Some(entry_path.to_string()))
+}
+
+fn verify_pwib_span(value: &Value, source_size: u64, label: &str) -> Result<(u64, u64), Failure> {
+    let offset = integer(value, "offset")?;
+    let length = integer(value, "length")?;
+    let end = checked_add(offset, length, "pwib-span-overflow")?;
+    if value
+        .get("endExclusive")
+        .and_then(Value::as_u64)
+        .is_some_and(|recorded| recorded != end)
+    {
+        return Err(fail("pwib-span-mismatch", label));
+    }
+    if end > source_size {
+        return Err(fail("pwib-span-out-of-range", label));
+    }
+    Ok((offset, end))
+}
+
+fn verify_pwib_selection(document: &Value, source_size: u64) -> Result<(), Failure> {
+    let source = object(document, "source")?;
+    let selected_index = integer(source, "pwibEntry")?;
+    let parsed = object(document, "parsed")?;
+    if string(parsed, "format")? != "pwib" {
+        return Err(fail("pwib-selection-format-mismatch", "parsed format"));
+    }
+    let selection = object(parsed, "selection")?;
+    if integer(selection, "visibleIndex")? != selected_index {
+        return Err(fail("pwib-selection-index-mismatch", selected_index));
+    }
+    let input = object(parsed, "input")?;
+    if integer(input, "length")? != source_size {
+        return Err(fail("pwib-source-length-mismatch", "input length"));
+    }
+    let header = object(parsed, "header")?;
+    if integer(object(header, "span")?, "offset")? != 0
+        || integer(object(header, "span")?, "length")? != 16
+    {
+        return Err(fail("pwib-header-span-mismatch", "header"));
+    }
+    let first = object(parsed, "firstSegment")?;
+    let (second_start, second_end) = verify_pwib_span(
+        object(object(parsed, "secondSegment")?, "span")?,
+        source_size,
+        "second segment",
+    )?;
+    let (first_start, first_end) =
+        verify_pwib_span(object(first, "span")?, source_size, "first segment")?;
+    if first_start != integer(object(header, "firstSegmentOffset")?, "value")?
+        || second_start != integer(object(header, "secondSegmentOffset")?, "value")?
+        || second_start != first_end
+        || integer(object(header, "totalSize")?, "value")? != second_end
+        || second_end > source_size
+    {
+        return Err(fail("pwib-layout-mismatch", "header and segment geometry"));
+    }
+    let sedb_header = object(first, "sedbHeader")?;
+    let (sedb_start, sedb_end) =
+        verify_pwib_span(object(sedb_header, "span")?, source_size, "SEDRES header")?;
+    if string(sedb_header, "subtype")? != "RES "
+        || sedb_start != first_start
+        || sedb_end > first_end
+    {
+        return Err(fail("pwib-res-header-mismatch", "first segment"));
+    }
+    for (name, value) in [
+        ("directory", object(selection, "directory")?),
+        ("names", object(selection, "names")?),
+        ("txb", object(selection, "txb")?),
+        ("descriptor", object(selection, "descriptor")?),
+    ] {
+        let (start, end) = verify_pwib_span(object(value, "span")?, source_size, name)?;
+        if start < first_start || end > first_end {
+            return Err(fail("pwib-first-span-out-of-range", name));
+        }
+        let _ = string(value, "sha256")?;
+    }
+    let directory = object(selection, "directory")?;
+    let names = object(selection, "names")?;
+    let directory_count = integer(directory, "count")?;
+    let names_count = integer(names, "count")?;
+    let entries = array(selection, "entries")?;
+    if directory_count != entries.len() as u64
+        || names_count == 0
+        || integer(selection, "metadataCount")? > directory_count
+        || integer(selection, "visibleCount")?
+            != directory_count - integer(selection, "metadataCount")?
+    {
+        return Err(fail(
+            "pwib-directory-count-mismatch",
+            "directory, names, or metadata count",
+        ));
+    }
+    let payload_base = integer(selection, "payloadBase")?;
+    let (directory_start, directory_end) =
+        verify_pwib_span(object(directory, "span")?, source_size, "directory")?;
+    let expected_directory_start = checked_add(first_start, 0x40, "pwib-directory-overflow")?;
+    if directory_start != expected_directory_start
+        || directory_end - directory_start
+            != directory_count
+                .checked_mul(16)
+                .ok_or_else(|| fail("pwib-directory-overflow", "directory count"))?
+    {
+        return Err(fail("pwib-directory-geometry-mismatch", "directory span"));
+    }
+    if payload_base < first_start || payload_base > first_end {
+        return Err(fail("pwib-payload-base-out-of-range", payload_base));
+    }
+    let mut metadata_count = 0u64;
+    for (physical, entry) in entries.iter().enumerate() {
+        if integer(entry, "index")? != physical as u64 {
+            return Err(fail("pwib-entry-index-mismatch", physical));
+        }
+        if integer(entry, "nameIndex")? >= names_count {
+            return Err(fail("pwib-name-index-mismatch", physical));
+        }
+        let (entry_start, entry_end) =
+            verify_pwib_span(object(entry, "span")?, source_size, "entry")?;
+        if entry_start < first_start
+            || entry_end > first_end
+            || entry_start
+                != checked_add(
+                    payload_base,
+                    integer(entry, "declaredOffset")?,
+                    "pwib-entry-overflow",
+                )?
+            || entry_end
+                != checked_add(
+                    entry_start,
+                    integer(entry, "declaredSize")?,
+                    "pwib-entry-overflow",
+                )?
+        {
+            return Err(fail("pwib-entry-geometry-mismatch", physical));
+        }
+        if string(entry, "name")? == "RESOURCE_TYPE" || string(entry, "name")? == "RESOURCE_ID" {
+            metadata_count += 1;
+            if entry
+                .get("visibleIndex")
+                .is_some_and(|value| !value.is_null())
+            {
+                return Err(fail("pwib-metadata-index-mismatch", physical));
+            }
+        } else if integer(entry, "visibleIndex")? != physical as u64 {
+            return Err(fail("pwib-physical-index-mismatch", physical));
+        }
+    }
+    if metadata_count != integer(selection, "metadataCount")? {
+        return Err(fail("pwib-metadata-count-mismatch", metadata_count));
+    }
+    let surface = object(selection, "surface")?;
+    let surface_span = object(surface, "span")?;
+    let (surface_start, surface_end) = verify_pwib_span(surface_span, source_size, "surface")?;
+    if surface_start < second_start || surface_end > second_end {
+        return Err(fail(
+            "pwib-surface-out-of-range",
+            "surface is outside second segment",
+        ));
+    }
+    let selected_entry = object(selection, "selectedEntry")?;
+    let (selected_start, selected_end) = verify_pwib_span(
+        object(selected_entry, "span")?,
+        source_size,
+        "selected entry",
+    )?;
+    let entry = entries
+        .get(selected_index as usize)
+        .ok_or_else(|| fail("pwib-selection-index-mismatch", selected_index))?;
+    if selected_start < first_start || selected_end > first_end || selected_entry != entry {
+        return Err(fail("pwib-selection-entry-mismatch", selected_index));
+    }
+    if integer(selected_entry, "visibleIndex")? != selected_index
+        || integer(selection, "selectedType")? != 0x0074_7862
+        || selected_index >= integer(selection, "visibleCount")?
+        || string(selected_entry, "name")? == "RESOURCE_TYPE"
+        || string(selected_entry, "name")? == "RESOURCE_ID"
+    {
+        return Err(fail("pwib-selection-metadata-mismatch", selected_index));
+    }
+    let resource_type = object(selection, "resourceType")?;
+    let expected_resource_type = entries
+        .iter()
+        .find(|entry| entry.get("name").and_then(Value::as_str) == Some("RESOURCE_TYPE"))
+        .ok_or_else(|| fail("pwib-metadata-missing", "RESOURCE_TYPE"))?;
+    if resource_type != expected_resource_type {
+        return Err(fail("pwib-resource-type-mismatch", selected_index));
+    }
+    if let Some(resource_id) = selection.get("resourceId").filter(|value| !value.is_null()) {
+        let expected = entries
+            .iter()
+            .find(|entry| entry.get("name").and_then(Value::as_str) == Some("RESOURCE_ID"))
+            .ok_or_else(|| fail("pwib-metadata-missing", "RESOURCE_ID"))?;
+        if resource_id != expected {
+            return Err(fail("pwib-resource-id-mismatch", selected_index));
+        }
+    }
+    let txb = object(selection, "txb")?;
+    let (txb_start, txb_end) = verify_pwib_span(object(txb, "span")?, source_size, "txb")?;
+    if txb_start != selected_start
+        || txb_end != selected_end
+        || string(txb, "sha256")? != string(selected_entry, "sha256")?
+    {
+        return Err(fail("pwib-txb-selection-mismatch", selected_index));
+    }
+    let descriptor = object(selection, "descriptor")?;
+    let (descriptor_start, descriptor_end) =
+        verify_pwib_span(object(descriptor, "span")?, source_size, "descriptor")?;
+    let fixed_span = object(descriptor, "fixedSpan")?;
+    let (fixed_start, fixed_end) = verify_pwib_span(fixed_span, source_size, "descriptor fixed")?;
+    if descriptor_start < txb_start
+        || descriptor_end > txb_end
+        || fixed_start != descriptor_start
+        || fixed_end - fixed_start != 24
+        || fixed_end > descriptor_end
+    {
+        return Err(fail("pwib-descriptor-geometry-mismatch", selected_index));
+    }
+    let offset = object(descriptor, "offset")?;
+    let (field_start, field_end) = verify_pwib_span(
+        object(offset, "fieldSpan")?,
+        source_size,
+        "descriptor offset field",
+    )?;
+    let expected_field_start = checked_add(txb_start, 0x0e, "pwib-descriptor-overflow")?;
+    if field_start != expected_field_start
+        || field_start < txb_start
+        || field_end > txb_end
+        || field_end - field_start != 2
+    {
+        return Err(fail("pwib-descriptor-offset-field", selected_index));
+    }
+    let word = integer(offset, "word")?;
+    let resolved = integer(offset, "resolved")?;
+    let branch = string(offset, "branch")?;
+    let pointer = offset
+        .get("pointerSpan")
+        .ok_or_else(|| fail("manifest-semantic-error", "pointerSpan is missing"))?;
+    if branch == "indirect-dword" {
+        let (pointer_start, pointer_end) =
+            verify_pwib_span(pointer, source_size, "descriptor pointer field")?;
+        if pointer_start != checked_add(txb_start, 0x30, "pwib-descriptor-overflow")?
+            || pointer_end - pointer_start != 4
+            || pointer_start < txb_start
+            || pointer_end > txb_end
+        {
+            return Err(fail("pwib-descriptor-pointer-field", selected_index));
+        }
+    } else if !pointer.is_null() {
+        return Err(fail("pwib-descriptor-pointer-field", selected_index));
+    }
+    let expected_resolved = if branch == "direct-word" {
+        0x30u64
+            .checked_add(word)
+            .ok_or_else(|| fail("pwib-descriptor-offset-overflow", selected_index))?
+    } else {
+        resolved
+    };
+    if !matches!(branch, "direct-word" | "indirect-dword")
+        || (branch == "direct-word") != (word <= 0x30)
+        || resolved != expected_resolved
+        || checked_add(txb_start, resolved, "pwib-descriptor-offset-overflow")? != descriptor_start
+    {
+        return Err(fail("pwib-descriptor-offset-mismatch", selected_index));
+    }
+    let table = object(object(descriptor, "offsetTable")?, "span")?;
+    let (table_start, table_end) = verify_pwib_span(table, source_size, "descriptor table")?;
+    let table_record = object(descriptor, "offsetTable")?;
+    let stride = integer(table_record, "entryStride")?;
+    let offset_base = integer(table_record, "base")?;
+    let table_entries = array(table_record, "entries")?;
+    let expected_table_start = checked_add(descriptor_start, offset_base, "pwib-table-overflow")?;
+    let expected_table_length = stride
+        .checked_mul(table_entries.len() as u64)
+        .ok_or_else(|| fail("pwib-table-overflow", selected_index))?;
+    if stride != 8
+        || table_start != expected_table_start
+        || table_end - table_start != expected_table_length
+        || table_start < fixed_end
+        || table_end > descriptor_end
+        || table_end > txb_end
+    {
+        return Err(fail("pwib-descriptor-table-geometry", selected_index));
+    }
+    let texture = object(descriptor, "texture")?;
+    if integer(texture, "formatIndex")? != 24
+        || string(texture, "kind")? != "2d"
+        || integer(texture, "mipLevels")? != 1
+        || integer(texture, "flags")? != 0
+        || integer(texture, "depth")? != 1
+        || integer(texture, "width")? == 0
+        || integer(texture, "height")? == 0
+    {
+        return Err(fail("pwib-unsupported-gtex", selected_index));
+    }
+    let entries = array(object(descriptor, "offsetTable")?, "entries")?;
+    if entries.len() != 1 || integer(descriptor, "dataBase")? != 0 {
+        return Err(fail("pwib-gtex-layout", "expected one surface entry"));
+    }
+    let entry = &entries[0];
+    let width = integer(texture, "width")?;
+    let height = integer(texture, "height")?;
+    let calculated_size = width
+        .div_ceil(4)
+        .checked_mul(height.div_ceil(4))
+        .and_then(|value| value.checked_mul(8))
+        .ok_or_else(|| fail("pwib-size-overflow", selected_index))?;
+    if integer(entry, "offset")? != integer(surface, "relativeOffset")?
+        || integer(entry, "size")? != integer(object(surface, "span")?, "length")?
+        || integer(entry, "calculatedSize")? != calculated_size
+        || integer(object(surface, "span")?, "length")? != calculated_size
+        || integer(entry, "index")? != 0
+        || integer(entry, "face")? != 0
+        || integer(entry, "mipLevel")? != 0
+    {
+        return Err(fail(
+            "pwib-gtex-layout",
+            "surface entry does not match selection",
+        ));
+    }
+    if checked_add(
+        integer(surface, "relativeOffset")?,
+        integer(surface_span, "length")?,
+        "pwib-surface-overflow",
+    )? > second_end - second_start
+        || checked_add(
+            second_start,
+            integer(surface, "relativeOffset")?,
+            "pwib-surface-overflow",
+        )? != surface_start
+        || surface_end > second_end
+    {
+        return Err(fail("pwib-surface-geometry", selected_index));
+    }
+    Ok(())
+}
+
+fn verify_pwib_dds_payload(
+    payload: &Value,
+    file: &FileRecord,
+    document: &Value,
+    index: usize,
+    source_size: u64,
+) -> Result<(), Failure> {
+    if string(payload, "path")? != "payloads/texture.dds"
+        || string(payload, "role")? != "pwib-gtex-dds-texture"
+    {
+        return Err(fail(
+            "pwib-dds-artifact-contract",
+            format!("payload {index}"),
+        ));
+    }
+    let bytes =
+        fs::read(&file.path).map_err(|error| fail("payload-read-failed", error.to_string()))?;
+    let image = dds::parse(&bytes).map_err(|error| {
+        fail(
+            "pwib-dds-payload-invalid",
+            format!("payload {index}: {error}"),
+        )
+    })?;
+    let parsed = object(document, "parsed")?;
+    let selection = object(parsed, "selection")?;
+    let descriptor = object(selection, "descriptor")?;
+    let texture = object(descriptor, "texture")?;
+    if image.format != DdsPixelFormat::Dxt1
+        || image.width as u64 != integer(texture, "width")?
+        || image.height as u64 != integer(texture, "height")?
+        || image.mip_levels != 1
+    {
+        return Err(fail(
+            "pwib-dds-metadata-mismatch",
+            format!("payload {index}"),
+        ));
+    }
+    let record = object(payload, "dds")?;
+    let surface = object(selection, "surface")?;
+    let surface_span = object(surface, "span")?;
+    let surface_length = integer(surface_span, "length")?;
+    if bytes.len() as u64
+        != checked_add(
+            dds::DDS_FILE_HEADER_SIZE as u64,
+            surface_length,
+            "pwib-dds-span-overflow",
+        )?
+    {
+        return Err(fail("pwib-dds-span-mismatch", format!("payload {index}")));
+    }
+    if integer(record, "width")? != image.width as u64
+        || integer(record, "height")? != image.height as u64
+        || integer(record, "mipLevels")? != 1
+    {
+        return Err(fail(
+            "pwib-dds-metadata-mismatch",
+            format!("payload {index}"),
+        ));
+    }
+    let format = object(record, "format")?;
+    if integer(format, "clientIndex")? != 24
+        || string(format, "d3dName")? != "D3DFMT_DXT1"
+        || integer(format, "d3dValue")? != 0x3154_5844
+    {
+        return Err(fail("pwib-dds-format-mismatch", format!("payload {index}")));
+    }
+    let header = object(record, "headerSpan")?;
+    if integer(header, "offset")? != 0
+        || integer(header, "length")? != dds::DDS_FILE_HEADER_SIZE as u64
+    {
+        return Err(fail(
+            "pwib-dds-header-span-mismatch",
+            format!("payload {index}"),
+        ));
+    }
+    let mips = array(record, "mips")?;
+    if mips.len() != 1 {
+        return Err(fail(
+            "pwib-dds-mip-count-mismatch",
+            format!("payload {index}"),
+        ));
+    }
+    let source_span = object(&mips[0], "sourceSpan")?;
+    verify_pwib_span(source_span, source_size, "DDS source span")?;
+    if integer(&mips[0], "mipLevel")? != 0
+        || integer(&mips[0], "width")? != image.width as u64
+        || integer(&mips[0], "height")? != image.height as u64
+        || integer(&mips[0], "sourceRelativeOffset")? != integer(surface, "relativeOffset")?
+    {
+        return Err(fail(
+            "pwib-dds-metadata-mismatch",
+            format!("payload {index}"),
+        ));
+    }
+    let mip_sha = string(&mips[0], "sha256")?;
+    if mip_sha != string(surface, "sha256")?
+        || mip_sha != sha256_hex(&bytes[dds::DDS_FILE_HEADER_SIZE..])
+    {
+        return Err(fail("pwib-dds-digest-mismatch", format!("payload {index}")));
+    }
+    let dds_span = object(&mips[0], "ddsSpan")?;
+    if integer(dds_span, "offset")? != dds::DDS_FILE_HEADER_SIZE as u64
+        || integer(dds_span, "length")? != surface_length
+        || integer(dds_span, "endExclusive")? != bytes.len() as u64
+    {
+        return Err(fail("pwib-dds-span-mismatch", format!("payload {index}")));
+    }
+    if integer(source_span, "offset")? != integer(surface_span, "offset")?
+        || integer(source_span, "length")? != integer(surface_span, "length")?
+        || integer(source_span, "endExclusive")?
+            != checked_add(
+                integer(source_span, "offset")?,
+                integer(source_span, "length")?,
+                "pwib-span-overflow",
+            )?
+    {
+        return Err(fail(
+            "pwib-dds-source-span-mismatch",
+            format!("payload {index}"),
+        ));
+    }
+    Ok(())
+}
+
+fn verify_pwib_png_payload(
+    payload: &Value,
+    file: &FileRecord,
+    document: &Value,
+    index: usize,
+    source_size: u64,
+) -> Result<(), Failure> {
+    if string(payload, "path")? != "payloads/preview.png"
+        || string(payload, "role")? != "pwib-gtex-png-preview"
+    {
+        return Err(fail(
+            "pwib-png-artifact-contract",
+            format!("payload {index}"),
+        ));
+    }
+    let bytes =
+        fs::read(&file.path).map_err(|error| fail("payload-read-failed", error.to_string()))?;
+    let decoded = texture_preview::decode_png_rgba(&bytes).map_err(|error| {
+        fail(
+            "pwib-png-payload-invalid",
+            format!("payload {index}: {error}"),
+        )
+    })?;
+    let canonical = texture_preview::encode_png_rgba(decoded.width, decoded.height, &decoded.rgba)
+        .map_err(|error| {
+            fail(
+                "pwib-png-payload-invalid",
+                format!("payload {index}: {error}"),
+            )
+        })?;
+    if canonical != bytes {
+        return Err(fail(
+            "pwib-png-payload-noncanonical",
+            format!("payload {index}"),
+        ));
+    }
+    let selection = object(object(document, "parsed")?, "selection")?;
+    let texture = object(object(selection, "descriptor")?, "texture")?;
+    if decoded.width as u64 != integer(texture, "width")?
+        || decoded.height as u64 != integer(texture, "height")?
+        || string(payload, "sha256")? != sha256_hex(&bytes)
+    {
+        return Err(fail(
+            "pwib-png-metadata-mismatch",
+            format!("payload {index}"),
+        ));
+    }
+    let record = object(payload, "png")?;
+    let surface = object(selection, "surface")?;
+    let surface_span = object(surface, "span")?;
+    let format = object(record, "format")?;
+    if integer(format, "clientIndex")? != 24
+        || string(format, "d3dName")? != "D3DFMT_DXT1"
+        || integer(format, "d3dValue")? != 0x3154_5844
+        || integer(record, "mipLevel")? != 0
+        || integer(record, "width")? != decoded.width as u64
+        || integer(record, "height")? != decoded.height as u64
+        || string(record, "sourceSha256")? != string(surface, "sha256")?
+        || string(record, "rgbaSha256")? != sha256_hex(&decoded.rgba)
+    {
+        return Err(fail(
+            "pwib-png-metadata-mismatch",
+            format!("payload {index}"),
+        ));
+    }
+    let source_span = object(record, "sourceSpan")?;
+    verify_pwib_span(source_span, source_size, "PNG source span")?;
+    if integer(source_span, "offset")? != integer(surface_span, "offset")?
+        || integer(source_span, "length")? != integer(surface_span, "length")?
+        || integer(source_span, "endExclusive")?
+            != checked_add(
+                integer(source_span, "offset")?,
+                integer(source_span, "length")?,
+                "pwib-span-overflow",
+            )?
+    {
+        return Err(fail(
+            "pwib-png-source-span-mismatch",
+            format!("payload {index}"),
+        ));
+    }
+    Ok(())
 }
 
 fn verify_dds_payload(
@@ -1231,17 +1837,38 @@ fn replay_payload(
 ) -> Result<(), Failure> {
     let bytes =
         fs::read(&file.path).map_err(|error| fail("payload-read-failed", error.to_string()))?;
-    if string(payload, "role")? == "gtex-dds-texture" {
+    if string(payload, "role")? == "gtex-dds-texture"
+        || string(payload, "role")? == "pwib-gtex-dds-texture"
+    {
         let source_name = string(object(document, "source")?, "fileName")?;
-        let replay = plan_bytes(
-            source_name,
-            source,
-            string(object(document, "source")?, "sha256")?,
-            DocumentFormat::Json,
-            false,
-            true,
-            &["--as".into(), "gtex".into()],
-        )?;
+        let source_object = object(document, "source")?;
+        let selected = source_object
+            .get("pwibEntry")
+            .and_then(Value::as_u64)
+            .map(|value| value as u32);
+        let replay = if string(payload, "role")? == "pwib-gtex-dds-texture" {
+            plan_bytes_options_with_pwib(
+                source_name,
+                source,
+                string(source_object, "sha256")?,
+                DocumentFormat::Json,
+                false,
+                true,
+                false,
+                selected,
+                &["--as".into(), "pwib".into()],
+            )?
+        } else {
+            plan_bytes(
+                source_name,
+                source,
+                string(source_object, "sha256")?,
+                DocumentFormat::Json,
+                false,
+                true,
+                &["--as".into(), "gtex".into()],
+            )?
+        };
         let expected = replay
             .artifact_bytes("payloads/texture.dds")
             .ok_or_else(|| fail("payload-replay-unsupported", "DDS artifact missing"))?;
@@ -1250,18 +1877,39 @@ fn replay_payload(
         }
         return Ok(());
     }
-    if string(payload, "role")? == "gtex-top-mip-png-preview" {
+    if string(payload, "role")? == "gtex-top-mip-png-preview"
+        || string(payload, "role")? == "pwib-gtex-png-preview"
+    {
         let source_name = string(object(document, "source")?, "fileName")?;
-        let replay = plan_bytes_options(
-            source_name,
-            source,
-            string(object(document, "source")?, "sha256")?,
-            DocumentFormat::Json,
-            false,
-            false,
-            true,
-            &["--as".into(), "gtex".into()],
-        )?;
+        let source_object = object(document, "source")?;
+        let selected = source_object
+            .get("pwibEntry")
+            .and_then(Value::as_u64)
+            .map(|value| value as u32);
+        let replay = if string(payload, "role")? == "pwib-gtex-png-preview" {
+            plan_bytes_options_with_pwib(
+                source_name,
+                source,
+                string(source_object, "sha256")?,
+                DocumentFormat::Json,
+                false,
+                false,
+                true,
+                selected,
+                &["--as".into(), "pwib".into()],
+            )?
+        } else {
+            plan_bytes_options(
+                source_name,
+                source,
+                string(source_object, "sha256")?,
+                DocumentFormat::Json,
+                false,
+                false,
+                true,
+                &["--as".into(), "gtex".into()],
+            )?
+        };
         let expected = replay
             .artifact_bytes("payloads/preview.png")
             .ok_or_else(|| fail("payload-replay-unsupported", "PNG preview artifact missing"))?;
@@ -1325,24 +1973,49 @@ fn verify_source(document: &Value, path: &Path, bytes: &[u8]) -> Result<(), Fail
     let inspect_arguments = ["--as".to_string(), inspect_format.to_string()];
     let materialize = array(document, "payloads")?.iter().any(|payload| {
         payload.get("role").and_then(Value::as_str) == Some("gtex-encoded-surface")
+            || payload.get("role").and_then(Value::as_str) == Some("pwib-gtex-encoded-surface")
             || payload.get("container").is_some()
     });
-    let export_dds = array(document, "payloads")?
-        .iter()
-        .any(|payload| payload.get("role").and_then(Value::as_str) == Some("gtex-dds-texture"));
-    let preview_png = array(document, "payloads")?.iter().any(|payload| {
-        payload.get("role").and_then(Value::as_str) == Some("gtex-top-mip-png-preview")
+    let export_dds = array(document, "payloads")?.iter().any(|payload| {
+        matches!(
+            payload.get("role").and_then(Value::as_str),
+            Some("gtex-dds-texture") | Some("pwib-gtex-dds-texture")
+        )
     });
-    let replay = plan_bytes_options(
-        &path.display().to_string(),
-        bytes,
-        string(source, "sha256")?,
-        DocumentFormat::Json,
-        materialize,
-        export_dds,
-        preview_png,
-        &inspect_arguments,
-    )?;
+    let preview_png = array(document, "payloads")?.iter().any(|payload| {
+        matches!(
+            payload.get("role").and_then(Value::as_str),
+            Some("gtex-top-mip-png-preview") | Some("pwib-gtex-png-preview")
+        )
+    });
+    let pwib_entry = source
+        .get("pwibEntry")
+        .and_then(Value::as_u64)
+        .map(|value| value as u32);
+    let replay = if pwib_entry.is_some() {
+        plan_bytes_options_with_pwib(
+            &path.display().to_string(),
+            bytes,
+            string(source, "sha256")?,
+            DocumentFormat::Json,
+            materialize,
+            export_dds,
+            preview_png,
+            pwib_entry,
+            &inspect_arguments,
+        )?
+    } else {
+        plan_bytes_options(
+            &path.display().to_string(),
+            bytes,
+            string(source, "sha256")?,
+            DocumentFormat::Json,
+            materialize,
+            export_dds,
+            preview_png,
+            &inspect_arguments,
+        )?
+    };
     if replay.format_id() != format {
         return Err(fail(
             "stale-source-format",
@@ -1410,6 +2083,15 @@ fn verify_batch(
             .as_bool()
             .ok_or_else(|| fail("manifest-semantic-error", "previewPng is not a boolean"))?,
     };
+    let batch_pwib_entry = match document.get("pwibEntry") {
+        None | Some(Value::Null) => None,
+        Some(value) => Some(value.as_u64().ok_or_else(|| {
+            fail(
+                "manifest-semantic-error",
+                "pwibEntry is not an unsigned integer",
+            )
+        })?),
+    };
     let replay = match (&options.catalog, &options.root) {
         (Some(catalog), Some(root)) => Some(load_replay(catalog, root, &document)?),
         _ => None,
@@ -1475,19 +2157,29 @@ fn verify_batch(
             None
         };
         let nested = verify_single(inventory, nested_name, &directory, source.as_ref(), false)?;
-        let nested_export_dds = array(&nested.document, "payloads")?
-            .iter()
-            .any(|payload| payload.get("role").and_then(Value::as_str) == Some("gtex-dds-texture"));
+        let nested_export_dds = array(&nested.document, "payloads")?.iter().any(|payload| {
+            matches!(
+                payload.get("role").and_then(Value::as_str),
+                Some("gtex-dds-texture") | Some("pwib-gtex-dds-texture")
+            )
+        });
         if nested_export_dds != export_dds {
             return Err(fail("batch-dds-selection-mismatch", directory));
         }
         let nested_preview_png = array(&nested.document, "payloads")?.iter().any(|payload| {
-            payload.get("role").and_then(Value::as_str) == Some("gtex-top-mip-png-preview")
+            matches!(
+                payload.get("role").and_then(Value::as_str),
+                Some("gtex-top-mip-png-preview") | Some("pwib-gtex-png-preview")
+            )
         });
         if nested_preview_png != preview_png {
             return Err(fail("batch-png-selection-mismatch", directory));
         }
         let nested_source = object(&nested.document, "source")?;
+        let nested_pwib_entry = nested_source.get("pwibEntry").and_then(Value::as_u64);
+        if nested_pwib_entry != batch_pwib_entry {
+            return Err(fail("batch-pwib-selection-mismatch", directory.clone()));
+        }
         if string(resource, "sourcePath")?.rsplit('/').next()
             != Some(string(nested_source, "fileName")?)
             || resource.get("resourceId") != nested_source.get("resourceId")
@@ -2331,6 +3023,144 @@ mod tests {
             source.display().to_string(),
             "--output".into(),
             output.display().to_string(),
+            "--preview-png".into(),
+        ])
+        .unwrap();
+        assert!(run(&verify_arguments(&output, None)).is_ok());
+        assert!(run(&verify_arguments(&output, Some(&source))).is_ok());
+        fs::remove_dir_all(work).unwrap();
+    }
+
+    #[test]
+    fn verifies_selected_pwib_replay_and_manifest_accounting() {
+        let work = temp_root("pwib-selected-verification");
+        fs::create_dir_all(&work).unwrap();
+        let source = work.join("selected.bin");
+        fs::write(
+            &source,
+            include_bytes!("../../../tests/fixtures/public/pwib/selected.bin"),
+        )
+        .unwrap();
+        let output = work.join("output");
+        crate::resource_export::run(&[
+            source.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--pwib-entry".into(),
+            "6".into(),
+            "--materialize-payloads".into(),
+            "--export-dds".into(),
+            "--preview-png".into(),
+        ])
+        .unwrap();
+        assert!(run(&verify_arguments(&output, None)).is_ok());
+        assert!(run(&verify_arguments(&output, Some(&source))).is_ok());
+
+        let original = manifest(&output);
+        let mut changed = original.clone();
+        changed["format"]["id"] = json!("gtex");
+        write_manifest(&output, &changed);
+        assert!(run(&verify_arguments(&output, None))
+            .unwrap_err()
+            .message
+            .contains("pwib-format-mismatch"));
+        write_manifest(&output, &original);
+        let source_bytes = fs::read(&source).unwrap();
+        let selection = &original["parsed"]["selection"];
+        let surface_span = &selection["surface"]["span"];
+        let surface_start = surface_span["offset"].as_u64().unwrap() as usize;
+        let surface_end = surface_start + surface_span["length"].as_u64().unwrap() as usize;
+        let raw_path = original["payloads"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|payload| payload["role"] == "pwib-gtex-encoded-surface")
+            .unwrap()["path"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let raw_file = output.join(&raw_path);
+        let raw_bytes = fs::read(&raw_file).unwrap();
+        assert_eq!(raw_bytes, source_bytes[surface_start..surface_end]);
+        let dds_bytes = fs::read(output.join("payloads/texture.dds")).unwrap();
+        assert_eq!(&dds_bytes[..4], b"DDS ");
+        assert_eq!(
+            u32::from_le_bytes(dds_bytes[12..16].try_into().unwrap()),
+            256
+        );
+        assert_eq!(
+            u32::from_le_bytes(dds_bytes[16..20].try_into().unwrap()),
+            256
+        );
+        assert_eq!(&dds_bytes[84..88], b"DXT1");
+        assert_eq!(&dds_bytes[128..], &source_bytes[surface_start..surface_end]);
+        let png_bytes = fs::read(output.join("payloads/preview.png")).unwrap();
+        let png = texture_preview::decode_png_rgba(&png_bytes).unwrap();
+        assert_eq!((png.width, png.height), (256, 256));
+        assert_eq!(&png.rgba[..4], &[222, 251, 198, 255]);
+        let mut altered = raw_bytes.clone();
+        altered[0] ^= 1;
+        fs::write(&raw_file, &altered).unwrap();
+        assert!(run(&verify_arguments(&output, None))
+            .unwrap_err()
+            .message
+            .contains("payload-sha256-mismatch"));
+        fs::write(&raw_file, &raw_bytes).unwrap();
+
+        fs::remove_file(&raw_file).unwrap();
+        assert!(run(&verify_arguments(&output, None))
+            .unwrap_err()
+            .message
+            .contains("missing-file"));
+        fs::write(&raw_file, &raw_bytes).unwrap();
+
+        fs::write(output.join("payloads/unlisted.bin"), b"extra").unwrap();
+        assert!(run(&verify_arguments(&output, None))
+            .unwrap_err()
+            .message
+            .contains("extra-file"));
+        fs::remove_file(output.join("payloads/unlisted.bin")).unwrap();
+
+        let mut changed = original.clone();
+        changed["parsed"]["selection"]["surface"]["relativeOffset"] = json!(0);
+        write_manifest(&output, &changed);
+        assert!(run(&verify_arguments(&output, None))
+            .unwrap_err()
+            .message
+            .contains("pwib-gtex-layout"));
+        write_manifest(&output, &original);
+
+        let mut changed = original.clone();
+        changed["source"]["pwibEntry"] = json!(7);
+        write_manifest(&output, &changed);
+        assert!(run(&verify_arguments(&output, None))
+            .unwrap_err()
+            .message
+            .contains("pwib-selection-index-mismatch"));
+        write_manifest(&output, &original);
+        assert!(run(&verify_arguments(&output, Some(&source))).is_ok());
+        fs::remove_dir_all(work).unwrap();
+    }
+
+    #[test]
+    fn verifies_selected_pwib_with_preserved_prefix_in_both_modes() {
+        let work = temp_root("pwib-preserved-prefix");
+        fs::create_dir_all(&work).unwrap();
+        let source = work.join("selected-preserved-prefix.bin");
+        fs::write(
+            &source,
+            include_bytes!("../../../tests/fixtures/public/pwib/selected-preserved-prefix.bin"),
+        )
+        .unwrap();
+        let output = work.join("output");
+        crate::resource_export::run(&[
+            source.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--pwib-entry".into(),
+            "6".into(),
+            "--materialize-payloads".into(),
+            "--export-dds".into(),
             "--preview-png".into(),
         ])
         .unwrap();

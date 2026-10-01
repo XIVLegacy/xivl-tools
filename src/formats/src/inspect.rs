@@ -207,6 +207,117 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
     }
 }
 
+/// Inspect an explicitly selected visible RES entry in the bounded PWIB
+/// RES/txb texture subset. The descriptor and external surface retain their
+/// separate absolute source spans.
+pub fn inspect_selected_pwib(data: &[u8], visible_index: u32) -> Result<Value> {
+    let selected = gtex_pwib::parse_selected_pwib(data, visible_index)?;
+    let mut document = inspect_tagged_resource(data, TaggedResourceKind::Pwib)?;
+    let object = document
+        .as_object_mut()
+        .expect("tagged resource inspection returns an object");
+    let entry_json = |entry: &gtex_pwib::ResEntry| {
+        json!({
+            "declaredOffset": entry.declared_offset,
+            "declaredSize": entry.declared_size,
+            "index": entry.physical_index,
+            "kind": entry.kind,
+            "name": entry.name,
+            "nameIndex": entry.name_index,
+            "span": entry.source_span.to_json(),
+            "sha256": span_sha256(data, entry.source_span),
+            "visibleIndex": entry.visible_index,
+        })
+    };
+    let descriptor_bytes =
+        &data[selected.descriptor.offset as usize..selected.descriptor.end() as usize];
+    let descriptor = &selected.gtex;
+    let descriptor_table_bytes =
+        &data[selected.descriptor_table.offset as usize..selected.descriptor_table.end() as usize];
+    let descriptor_entries: Vec<Value> = descriptor
+        .surfaces
+        .iter()
+        .map(|surface| {
+            json!({
+                "calculatedSize": surface.calculated_size,
+                "face": surface.face,
+                "index": surface.index,
+                "mipLevel": surface.mip_level,
+                "offset": surface.relative_offset,
+                "size": surface.declared_size,
+            })
+        })
+        .collect();
+    let selected_object = json!({
+        "descriptor": {
+            "format": "gtex",
+            "fixedSha256": span_sha256(data, selected.descriptor_fixed),
+            "sha256": sha256_hex(descriptor_bytes),
+            "span": selected.descriptor.to_json(),
+            "fixedSpan": selected.descriptor_fixed.to_json(),
+            "offset": {
+                "branch": match selected.descriptor_offset_branch {
+                    gtex_pwib::DescriptorOffsetBranch::DirectWord => "direct-word",
+                    gtex_pwib::DescriptorOffsetBranch::IndirectDword => "indirect-dword",
+                },
+                "fieldSpan": selected.descriptor_offset_field.to_json(),
+                "pointerSpan": selected
+                    .descriptor_pointer_field
+                    .map_or(Value::Null, |span| span.to_json()),
+                "word": selected.descriptor_offset_word,
+                "resolved": selected.descriptor_offset,
+            },
+            "texture": {
+                "depth": descriptor.depth,
+                "flags": descriptor.flags,
+                "formatIndex": descriptor.format_index,
+                "height": descriptor.height,
+                "kind": descriptor.texture_kind.name(),
+                "mipLevels": descriptor.mip_levels,
+                "width": descriptor.width,
+            },
+            "offsetTable": {
+                "base": descriptor.offset_table_base,
+                "entryStride": gtex_pwib::SURFACE_OFFSET_ENTRY_SIZE,
+                "entries": descriptor_entries,
+                "span": selected.descriptor_table.to_json(),
+                "sha256": sha256_hex(descriptor_table_bytes),
+            },
+            "dataBase": descriptor.data_base,
+        },
+        "directory": {
+            "count": selected.directory_count,
+            "span": selected.first_directory.to_json(),
+            "sha256": span_sha256(data, selected.first_directory),
+        },
+        "entries": selected.entries.iter().map(entry_json).collect::<Vec<_>>(),
+        "names": {
+            "count": selected.names_count,
+            "span": selected.names.to_json(),
+            "sha256": span_sha256(data, selected.names),
+        },
+        "payloadBase": selected.payload_base,
+        "resourceId": selected.resource_id.as_ref().map(entry_json),
+        "resourceType": entry_json(&selected.resource_type),
+        "selectedEntry": entry_json(&selected.selected_entry),
+        "selectedType": selected.selected_type,
+        "metadataCount": selected.metadata_count,
+        "visibleCount": selected.visible_count,
+        "surface": {
+            "relativeOffset": selected.surface_relative_offset,
+            "span": selected.surface.to_json(),
+            "sha256": span_sha256(data, selected.surface),
+        },
+        "txb": {
+            "span": selected.txb.to_json(),
+            "sha256": span_sha256(data, selected.txb),
+        },
+        "visibleIndex": selected.visible_index,
+    });
+    object.insert("selection".into(), selected_object);
+    Ok(document)
+}
+
 /// Read an input and check the invariants its format promises.
 ///
 /// `inspect` answers what an input holds. `validate` answers whether this

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected-artifacts",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": { "kind": "public", "path": "tests/fixtures/public/pwib/selected.bin" },
+  "arguments": ["--as", "pwib", "--pwib-entry", "6", "--export-dds", "--preview-png"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "DDS and PNG artifacts coexist with one selected external surface."
+}

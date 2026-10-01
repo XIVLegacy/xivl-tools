@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected-late-metadata",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": { "kind": "public", "path": "tests/fixtures/public/pwib/selected-late-metadata.bin" },
+  "arguments": ["--as", "pwib", "--pwib-entry", "6"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "RESOURCE_TYPE is moved to physical entry 9; physical entry 6 remains the txb."
+}

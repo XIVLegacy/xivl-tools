@@ -67,9 +67,116 @@ in the first segment are reported. The ordinary SEDB parser is deliberately
 not used: retail PWIB files split the logical resource across both segments,
 so the first span is not a standalone bounded SEDB container. Bytes after the
 PWIB total size, if present, remain a separate trailing span.
+The inherited SEDB prefix size fields remain metadata; they do not replace
+the PWIB boundaries or impose a standalone first-span extent.
 
-The purpose and internal structure of the second segment remain unresolved.
-No texture or index-buffer interpretation is claimed.
+The selected RES/txb path below resolves one encoded texture surface in the
+second segment. Other entries and remaining second-segment bytes retain
+their spans and digests without an inferred texture or index-buffer meaning.
+
+## Selected PWIB RES/txb texture
+
+The selected consumer contract is promoted from
+`xivl-decomp:docs/resource/gtex-pwib-loader.md`, section
+`Selected RES/txb consumer`, at revision
+`d05b0fdf6e2314fd0c62dd9d7845aa8204ab8889`. The finding identifies
+the retail `ffxivgame.exe` by SHA-256
+`9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9`
+and records the exact handler, node, and GTEX upload joins.
+
+`extract-resource` and `extract-catalog` accept
+`--pwib-entry <zero-based-visible-index>`. Selection is explicit and applies
+to each selected PWIB resource. It does not search entries for textures.
+Omitting it preserves the ordinary bounded PWIB inspection report.
+
+### Directory and type selection
+
+The first span must contain the little-endian `SEDBRES ` path.
+Its directory begins at first-relative `0x40` and has `N` entries of
+16 bytes, where `N` is the little-endian dword at `+0x30`. The payload
+base is `D = 0x40 + 16*N`. Each directory entry supplies a name index,
+payload-relative byte offset, and byte length in its first three dwords.
+The fourth dword retains its value without a semantic interpretation.
+The RES scalar at `+0x08` is also retained: the promoted reader compares
+it against 4000 but does not identify it as the selected txb version.
+Names begin at `D + LE32(first+0x34)` and contain the number of consecutive
+NUL-terminated strings declared at `+0x38`.
+
+The literal metadata names `RESOURCE_TYPE` and `RESOURCE_ID` each reduce
+the exposed entry count by one when present. The selected index must be
+within that visible range and indexes the original physical directory.
+Metadata entries are not removed to compact or renumber that directory.
+`RESOURCE_TYPE` is required and its selected
+little-endian dword must equal `0x00747862` (`txb`). Filename, directory
+order adjacency, and an embedded GTEX tag do not establish this type.
+Directory, name, entry, and metadata extents are checked against the
+first span with checked arithmetic before an entry is selected.
+
+### Descriptor and external surface views
+
+The selected block must use the version-one, little-endian `SEDBtxb\0`
+path. Let `B` be its first-span block pointer and `w` the little-endian
+word at block `+0x0e`. The descriptor location follows the selected node
+initializer at `0x00c78a00`:
+
+```text
+w <= 0x30: descriptor = B + 0x30 + w
+w >  0x30: descriptor = B + LE32(B+0x30)
+```
+
+The GTEX fixed fields and eight-byte table entry must fit within the
+selected block. Descriptor scalar and table dwords are big-endian.
+Extraction accepts only format index 24 (`D3DFMT_DXT1`), one mip, 2D
+flags zero, depth one, nonzero dimensions, a present table, and source-data
+base zero. The encoded byte count must equal
+`ceil(width/4) * ceil(height/4) * 8`.
+
+The source-data base zero selects the separately supplied second view:
+
+```text
+table   = descriptor + BE32(descriptor+0x10)
+surface = second.offset + BE32(table)
+```
+
+The descriptor and encoded surface remain distinct bounded views. The
+table offset is descriptor-relative; the encoded surface offset is
+second-relative. The offline reader checks the entire encoded range,
+including its end, against the second span. The native upload path at
+`0x00431ee5` checks only that the start is below the supplied length and
+does not establish this whole-range guard.
+
+Add `--materialize-payloads`, `--export-dds`, or `--preview-png` to obtain
+the existing raw-surface, legacy DDS, or decoded PNG view. These options
+may be combined. Encoded bytes retain their DXT1 layout and are copied
+without decoding or recompression for raw and DDS output. PNG uses the
+documented DXT1 preview conversion and allocation limit below. Unselected
+entries, gaps, and remaining bytes stay accounted for as bounded spans
+and digests; extraction does not assign them a new meaning.
+
+The manifest retains the selected entry identity and type metadata,
+descriptor location, separately bounded second view, second-relative
+surface offset, absolute encoded source span, and digests. Verification
+checks these relationships alongside exact output inventory. Source
+replay repeats selection and decoding and compares complete output files.
+Malformed or unsupported requests fail before extraction output is created.
+
+### Retained check vector and limits
+
+The retained source vector is `m520/equ/e001/top_tex1/0000`, entry 6:
+103600 bytes with SHA-256
+`23b3f4cbd2a25e3d43f4864bbf8b79f9b7d68322b96849bb044483c62286314d`.
+Its descriptor is at file offset 4296 and selects file range
+`[5296,38064)`: 256 by 256 DXT1, 32768 encoded bytes. This identity and
+range are promoted evidence, not a substitute for running the extraction.
+A retail replay requires an explicit input root and matching size and
+digest before this vector is used.
+
+PWIB read and export remain `partial`. Other versions, endian paths,
+types, descriptor-relative source data, mip counts, pixel formats, cube
+and volume textures, and nonzero flags are refused. The remaining entry
+semantics and bytes are unresolved. Runtime activation, appearance
+selection, and GPU parity remain unproved. This is a selected texture
+view, not a PWIB or GTEX round-trip writer.
 
 ## Retail parity
 
@@ -112,7 +219,8 @@ shape against the four retail resources without retaining recoverable bytes.
 With `--materialize-payloads`, supported GTEX inputs produce one deterministic
 `gtex-encoded-surface` artifact per table entry. Each manifest records the
 face, mip, format mapping, source span, and digest; verification checks both
-the artifact and source replay. PWIB remains metadata-only.
+the artifact and source replay. PWIB texture views require the explicit
+RES/txb entry selection described above.
 
 ## Lossless DDS texture view
 

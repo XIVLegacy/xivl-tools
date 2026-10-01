@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected-late-metadata-out-of-range",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": { "kind": "public", "path": "tests/fixtures/public/pwib/selected-late-metadata.bin" },
+  "arguments": ["--as", "pwib", "--pwib-entry", "9"],
+  "expect": { "outcome": "parse-error", "errorKind": "invalid-pwib-selection" },
+  "notes": "The N-minus-metadata upper bound rejects physical index 9."
+}

@@ -26,7 +26,8 @@
           "pattern": "^0x[0-9A-F]{8}$"
         },
         "size": { "type": "integer", "minimum": 0 },
-        "sha256": { "$ref": "#/$defs/sha256" }
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "pwibEntry": { "type": ["integer", "null"], "minimum": 0 }
       }
     },
     "tool": {
@@ -113,7 +114,7 @@
       "required": ["path", "kind"],
       "properties": {
         "path": { "type": "string", "minLength": 1 },
-          "kind": { "enum": ["payload", "subresource", "unknown-gap", "gtex-encoded-surface", "gtex-top-mip-png-preview"] },
+          "kind": { "enum": ["payload", "subresource", "unknown-gap", "gtex-encoded-surface", "gtex-top-mip-png-preview", "pwib-gtex-encoded-surface"] },
         "face": { "type": "integer", "minimum": 0 },
         "mipLevel": { "type": "integer", "minimum": 0 },
         "gtexFormat": { "$ref": "#/$defs/gtexFormat" },
@@ -121,7 +122,9 @@
         "declaredOffset": { "type": "integer", "minimum": 0 },
         "declaredSize": { "type": "integer", "minimum": 0 },
         "declaredKind": { "type": "integer", "minimum": 0 },
-        "childContainer": { "$ref": "#/$defs/childContainer" }
+        "childContainer": { "$ref": "#/$defs/childContainer" },
+        "visibleIndex": { "type": "integer", "minimum": 0 },
+        "relativeOffset": { "type": "integer", "minimum": 0 }
       }
     },
     "gtexFormat": {
@@ -166,6 +169,7 @@
               "width": { "type": "integer", "minimum": 1 },
               "height": { "type": "integer", "minimum": 1 },
               "sourceSpan": { "$ref": "#/$defs/sourceSpan" },
+              "sourceRelativeOffset": { "type": "integer", "minimum": 0 },
               "ddsSpan": { "$ref": "#/$defs/sourceSpan" },
               "sha256": { "$ref": "#/$defs/sha256" }
             }

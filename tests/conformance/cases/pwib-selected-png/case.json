@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected-png",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": { "kind": "public", "path": "tests/fixtures/public/pwib/selected.bin" },
+  "arguments": ["--as", "pwib", "--pwib-entry", "6", "--preview-png"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "The selected external surface previews as a normalized RGBA PNG artifact."
+}

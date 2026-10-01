@@ -41,7 +41,8 @@ pub use config::{ConfigFile, ConfigKind};
 pub use csv::{export_sheet_data, parse_row_span, value_text, CsvTable};
 pub use error::{ErrorKind, FormatError, Result};
 pub use inspect::{
-    inspect_bytes, inspect_bytes_as, inspect_named_bytes_as, validate_named_bytes_as, InspectAs,
+    inspect_bytes, inspect_bytes_as, inspect_named_bytes_as, inspect_selected_pwib,
+    validate_named_bytes_as, InspectAs,
 };
 pub use lpb::{extract as extract_lpb, LpbFile, LpbVariant, PreservedBytes};
 pub use lua51::{

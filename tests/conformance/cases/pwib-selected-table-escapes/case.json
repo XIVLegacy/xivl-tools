@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected-table-escapes",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": { "kind": "public", "path": "tests/fixtures/public/pwib/selected-table-escapes.bin" },
+  "arguments": ["--as", "pwib", "--pwib-entry", "6"],
+  "expect": { "outcome": "parse-error", "errorKind": "invalid-pwib-structure" },
+  "notes": "A descriptor table whose full extent escapes the txb block is refused."
+}

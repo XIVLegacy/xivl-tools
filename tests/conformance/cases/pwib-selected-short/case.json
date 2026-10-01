@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected-short",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/pwib/selected-short-descriptor.bin"
+  },
+  "arguments": ["--as", "pwib", "--pwib-entry", "6"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Exercises the direct descriptor offset branch."
+}

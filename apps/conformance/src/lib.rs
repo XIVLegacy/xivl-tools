@@ -183,19 +183,48 @@ fn run_case(
             let arguments = case_arguments(case);
             let export_dds = arguments.iter().any(|argument| argument == "--export-dds");
             let preview_png = arguments.iter().any(|argument| argument == "--preview-png");
-            let inspect_arguments: Vec<String> = arguments
-                .iter()
-                .filter(|argument| {
-                    argument.as_str() != "--export-dds" && argument.as_str() != "--preview-png"
-                })
-                .cloned()
-                .collect();
+            let mut pwib_entry = None;
+            let mut inspect_arguments = Vec::new();
+            let mut argument_index = 0;
+            while argument_index < arguments.len() {
+                match arguments[argument_index].as_str() {
+                    "--export-dds" | "--preview-png" => argument_index += 1,
+                    "--pwib-entry" => {
+                        let Some(value) = arguments.get(argument_index + 1) else {
+                            return Outcome::Failed(
+                                "case arguments: --pwib-entry needs an index".into(),
+                            );
+                        };
+                        pwib_entry = match value.parse::<u32>() {
+                            Ok(value) => Some(value),
+                            Err(_) => {
+                                return Outcome::Failed(
+                                    "case arguments: --pwib-entry needs an unsigned index".into(),
+                                )
+                            }
+                        };
+                        argument_index += 2;
+                    }
+                    _ => {
+                        inspect_arguments.push(arguments[argument_index].clone());
+                        argument_index += 1;
+                    }
+                }
+            }
             match InspectAs::from_arguments(&inspect_arguments) {
                 Ok(how) => {
                     if operation == "inspect" {
                         inspect_named_bytes_as(&input, &name, &how)
                     } else if operation == "extract" {
-                        if export_dds {
+                        if let Some(index) = pwib_entry {
+                            pwib_selected_export_document(
+                                &input,
+                                &name,
+                                index,
+                                export_dds,
+                                preview_png,
+                            )
+                        } else if export_dds {
                             dds_export_document(&input, &name, &how)
                         } else if preview_png {
                             png_preview_document(&input, &name, &how)
@@ -568,6 +597,88 @@ fn dds_export_document(input: &[u8], name: &str, how: &InspectAs) -> Result<Valu
             "width": export.width,
         },
     }))
+}
+
+fn pwib_selected_export_document(
+    input: &[u8],
+    _name: &str,
+    index: u32,
+    export_dds: bool,
+    preview_png: bool,
+) -> Result<Value, FormatError> {
+    let mut document = xivl_formats::inspect_selected_pwib(input, index)?;
+    if !export_dds && !preview_png {
+        return Ok(document);
+    }
+    let selection = xivl_formats::gtex_pwib::parse_selected_pwib(input, index)?;
+    let second_start = usize::try_from(selection.pwib.second_offset).map_err(|_| {
+        FormatError::new(
+            ErrorKind::InvalidPwibStructure,
+            selection.pwib.second_offset as u64,
+            "PWIB second segment offset does not fit this platform",
+        )
+    })?;
+    let second_end = second_start
+        .checked_add(selection.pwib.second_segment.length as usize)
+        .ok_or_else(|| {
+            FormatError::new(
+                ErrorKind::InvalidPwibStructure,
+                selection.pwib.second_offset as u64,
+                "PWIB second segment end overflows",
+            )
+        })?;
+    let second = input.get(second_start..second_end).ok_or_else(|| {
+        FormatError::new(
+            ErrorKind::InvalidPwibStructure,
+            selection.pwib.second_offset as u64,
+            "PWIB second segment escapes the input",
+        )
+    })?;
+    let mut artifacts = Vec::new();
+    if export_dds {
+        let export = xivl_formats::dds::export_gtex_external(second, &selection.gtex)?;
+        artifacts.push(json!({
+            "format": "gtex",
+            "mipLevels": export.mip_levels,
+            "mips": export.mips.iter().map(|mip| json!({
+                "ddsSpan": mip.dds_span.to_json(),
+                "height": mip.height,
+                "mipLevel": mip.mip_level,
+                "sha256": mip.sha256,
+                "sourceRelativeOffset": mip.source_span.offset,
+                "sourceSpan": { "offset": selection.pwib.second_segment.offset + mip.source_span.offset, "length": mip.source_span.length, "endExclusive": selection.pwib.second_segment.offset + mip.source_span.offset + mip.source_span.length },
+                "width": mip.width,
+            })).collect::<Vec<_>>(),
+            "path": "payloads/texture.dds",
+            "role": "pwib-gtex-dds-texture",
+            "sha256": sha256_hex(&export.bytes),
+            "size": export.bytes.len() as u64,
+            "texture": { "format": { "clientIndex": export.format.index, "d3dName": export.format.d3d_name, "d3dValue": export.format.d3d_value }, "height": export.height, "width": export.width },
+        }));
+    }
+    if preview_png {
+        let preview = xivl_formats::texture_preview::export_gtex_top_mip_png_from_source(
+            second,
+            &selection.gtex,
+        )?;
+        artifacts.push(json!({
+            "format": "gtex",
+            "height": preview.height,
+            "mipLevel": preview.mip_level,
+            "path": "payloads/preview.png",
+            "png": { "format": { "clientIndex": preview.format.index, "d3dName": preview.format.d3d_name, "d3dValue": preview.format.d3d_value }, "height": preview.height, "mipLevel": preview.mip_level, "rgbaSha256": preview.rgba_sha256, "sourceSha256": preview.source_sha256, "sourceSpan": { "offset": selection.pwib.second_segment.offset + preview.source_span.offset, "length": preview.source_span.length, "endExclusive": selection.pwib.second_segment.offset + preview.source_span.offset + preview.source_span.length }, "width": preview.width },
+            "role": "pwib-gtex-png-preview",
+            "sha256": sha256_hex(&preview.bytes),
+            "size": preview.bytes.len() as u64,
+            "texture": { "format": { "clientIndex": preview.format.index, "d3dName": preview.format.d3d_name, "d3dValue": preview.format.d3d_value }, "height": preview.height, "width": preview.width },
+            "width": preview.width,
+        }));
+    }
+    document
+        .as_object_mut()
+        .expect("selected PWIB inspection is an object")
+        .insert("artifacts".into(), Value::Array(artifacts));
+    Ok(document)
 }
 
 /// Report the safe, normalized identity of a decoded XML export. The

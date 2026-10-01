@@ -76,6 +76,17 @@ pub const fn max_mip_levels(width: u32, height: u32) -> u32 {
 }
 
 pub fn export_gtex(data: &[u8], gtex: &GtexResource) -> Result<DdsExport> {
+    export_gtex_from_source(data, gtex)
+}
+
+/// Export a validated external-source GTEX descriptor. Surface spans in
+/// `gtex` are relative to `source`; the descriptor bytes are intentionally
+/// not joined to that view.
+pub fn export_gtex_external(source: &[u8], gtex: &GtexResource) -> Result<DdsExport> {
+    export_gtex_from_source(source, gtex)
+}
+
+fn export_gtex_from_source(data: &[u8], gtex: &GtexResource) -> Result<DdsExport> {
     if let Some(reason) = gtex.materialization_refusal() {
         return Err(FormatError::new(
             ErrorKind::UnsupportedDdsFormat,

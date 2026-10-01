@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected-surface-end-outside",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/pwib/selected-surface-end-outside.bin"
+  },
+  "arguments": ["--as", "pwib", "--pwib-entry", "6"],
+  "expect": { "outcome": "parse-error", "errorKind": "declared-size-out-of-range" },
+  "notes": "The complete external surface extent must fit the second segment."
+}

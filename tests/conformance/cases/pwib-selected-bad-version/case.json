@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-selected-bad-version",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/pwib/selected-bad-version.bin"
+  },
+  "arguments": ["--as", "pwib", "--pwib-entry", "6"],
+  "expect": { "outcome": "parse-error", "errorKind": "unsupported-pwib-selection" },
+  "notes": "The selected txb block must use version one."
+}

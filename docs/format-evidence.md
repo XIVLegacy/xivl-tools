@@ -46,7 +46,9 @@ Specifically not handled:
   directory `kind` values. The values are carried into the report;
 - non-SEDB layouts remain outside the SEDB/RES claim. GTEX has its own
   loader-backed reader and PWIB reports two loader-bounded segments without
-  treating its SEDB prefix as a standalone child; MapLayout, zero-filled, and
+  treating its SEDB prefix as a standalone child. Its separately documented
+  selected RES/txb path resolves one DXT1 surface against the second span;
+  MapLayout, zero-filled, and
   unrecognized files still fail with `bad-magic`;
 - the `wrb` chunk tree, model, mesh, skeleton, and texture layouts, which are
   outside this support claim;

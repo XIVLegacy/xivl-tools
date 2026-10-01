@@ -112,8 +112,9 @@ LPB extraction writes the decoded Lua 5.1 chunk to
 `payloads/decoded.luac`. The manifest records only its relative path, role,
 size, and digest. For SEDB and RES files, add `--materialize-payloads` to
 write exact direct-root payload entries. GTEX materialization is limited to
-the supported table-bearing 2D boundary; PWIB and unsupported GTEX variants
-remain metadata-only.
+the supported table-bearing 2D boundary. PWIB texture materialization
+requires the explicit RES/txb selection below; unsupported variants are
+refused when materialization is requested.
 
 For an eligible GTEX texture, add `--export-dds` to write all encoded mip
 levels in one `payloads/texture.dds` file:
@@ -142,6 +143,22 @@ digest. Preview requests use the eligible GTEX boundary and a 64 MiB RGBA
 allocation limit. See the
 [PNG preview contract](formats/gtex-pwib.md#decoded-top-mip-png-preview) for
 channel, interpolation, alpha, and partial-block rules.
+
+For the bounded PWIB RES/txb path, select one visible entry explicitly:
+
+```powershell
+cargo run --locked -p xivl-cli -- extract-resource bank.DAT --output texture --pwib-entry 6 --materialize-payloads --export-dds --preview-png
+```
+
+`--pwib-entry` is a zero-based visible RES index. The selected entry must
+have `txb` type metadata and a supported externally backed GTEX descriptor.
+The initial boundary is version-one, little-endian RES/txb, one-mip DXT1,
+2D flags zero, and depth one. The descriptor is bounded by its first-span
+entry while its encoded surface is bounded independently by the second
+span. Raw, DDS, and PNG files use the same texture output conventions and
+accounting above. See the
+[selected PWIB contract](formats/gtex-pwib.md#selected-pwib-restxb-texture)
+for offset resolution, full-range checks, and evidence limits.
 
 Container payloads use deterministic names containing the entry ordinal, role, source
 offset and length, and a SHA-256 prefix. The manifest keeps the full digest and
@@ -208,6 +225,12 @@ publication. Omitting the option preserves ordinary extraction behavior.
 must satisfy the preview boundary. For both texture options, planning
 includes artifact bytes in the output limit before the batch is published.
 
+`--pwib-entry <index>` also applies to `extract-catalog`. Each selected
+resource must be PWIB and its requested visible entry must satisfy the
+bounded RES/txb contract. The same index applies to every selected resource.
+It may accompany raw, DDS, and PNG options. An unsupported entry refuses
+the batch before publication.
+
 ## Verify extraction output
 
 `xivl verify-extraction <directory>` auto-detects exactly one root manifest:
@@ -232,6 +255,14 @@ header and exact encoded mip bytes.
 For PNG previews, verification checks PNG structure and decoded RGBA
 identity, dimensions, the top-mip metadata, and the GTEX source-table
 relationships. Source replay regenerates and compares the complete preview.
+
+Selected PWIB outputs retain entry identity, descriptor location, the
+second-relative encoded offset, absolute source span, and digests.
+Verification checks that the descriptor and table lie within the first-span
+entry and that the complete encoded range lies within the second span.
+It checks the texture artifacts against these distinct views. Source replay
+uses the recorded entry index to repeat selection and regenerate every
+complete output exactly.
 
 For a batch, it performs the same checks for every isolated resource and also
 checks the top-level records, ordinals, catalog indexes, paths, formats, byte
