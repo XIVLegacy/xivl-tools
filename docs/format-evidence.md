@@ -18,6 +18,7 @@ repository makes.
 - [GTEX fields and PWIB segments](formats/gtex-pwib.md)
 - [Bounded WRB model inspection](formats/wrb-model.md)
 - [Zone geometry export](formats/zone-geometry.md)
+- [Experimental PHB collision authoring](formats/phb-collision.md)
 
 ## How a fact gets here
 

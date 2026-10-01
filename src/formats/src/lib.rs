@@ -24,6 +24,7 @@ pub mod lua51;
 pub mod lua_path;
 pub mod model_import;
 pub mod normalize;
+pub mod phb_author;
 pub mod reader;
 pub mod region;
 pub mod resource;

@@ -77,6 +77,14 @@ MapLayout, lyb, RES/wrb, and PHB.GBD framing rather than a private surrogate
 wire format. The source evidence entry point is
 [SEDB, RES, and resource paths](sedb-res.md).
 
+## Experimental PHB collision authoring
+
+The reusable `phb_author` library and explicit-path `phb_collision_author`
+example accept authored triangular collision geometry through a strict input
+contract. The [PHB authoring contract](phb-collision.md) owns the accepted
+template profile, acceleration evidence, byte-preservation boundary, and
+remaining owner-operated client checks.
+
 ## Experimental model position edit
 
 The format library includes an experimental, count-preserving byte edit for
