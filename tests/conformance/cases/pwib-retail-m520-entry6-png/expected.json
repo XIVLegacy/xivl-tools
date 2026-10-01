@@ -1,0 +1,419 @@
+{
+  "anomalies": [],
+  "artifacts": [
+    {
+      "format": "gtex",
+      "height": 256,
+      "mipLevel": 0,
+      "path": "payloads/preview.png",
+      "png": {
+        "format": {
+          "clientIndex": 24,
+          "d3dName": "D3DFMT_DXT1",
+          "d3dValue": 827611204
+        },
+        "height": 256,
+        "mipLevel": 0,
+        "rgbaSha256": "a5ff58f347b087d85ae870f8cf3d38504ba536f326a2dbc3e3e19c1bd57bea02",
+        "sourceSha256": "9e31e16c1ccda881110cbaf555e62ace19cb6d0c9ff7249e2a39441d6b3d0801",
+        "sourceSpan": {
+          "endExclusive": 38064,
+          "length": 32768,
+          "offset": 5296
+        },
+        "width": 256
+      },
+      "role": "pwib-gtex-png-preview",
+      "sha256": "865a0a465d9b16e6b95a1ea0c09434c606427e78ab430bf1a84fa5985062c7d3",
+      "size": 79561,
+      "texture": {
+        "format": {
+          "clientIndex": 24,
+          "d3dName": "D3DFMT_DXT1",
+          "d3dValue": 827611204
+        },
+        "height": 256,
+        "width": 256
+      },
+      "width": 256
+    }
+  ],
+  "firstSegment": {
+    "kind": "sedb-prefix",
+    "sedbHeader": {
+      "declaredSize": 5275,
+      "flags": 512,
+      "headerSize": 64,
+      "span": {
+        "length": 20,
+        "offset": 16
+      },
+      "subtype": "RES ",
+      "unknownA": 4000
+    },
+    "sha256": "2f4ac46364ddfac87902752dcbe9d17a906b209fb1c24a4d8a0b9a09cc67762d",
+    "span": {
+      "length": 5280,
+      "offset": 16
+    }
+  },
+  "format": "pwib",
+  "header": {
+    "firstSegmentOffset": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 8
+      },
+      "value": 16
+    },
+    "secondSegmentOffset": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 12
+      },
+      "value": 5296
+    },
+    "span": {
+      "length": 16,
+      "offset": 0
+    },
+    "totalSize": {
+      "byteOrder": "big",
+      "span": {
+        "length": 4,
+        "offset": 4
+      },
+      "value": 103600
+    },
+    "unknown": []
+  },
+  "input": {
+    "length": 103600
+  },
+  "layoutStatus": "bounded",
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "secondSegment": {
+    "kind": "opaque-continuation",
+    "sha256": "369ce7513f1943f5f3aeb419d22fab89aa866fa4c67f00e7d2cdfdf9568361e4",
+    "span": {
+      "length": 98304,
+      "offset": 5296
+    }
+  },
+  "selection": {
+    "descriptor": {
+      "dataBase": 0,
+      "fixedSha256": "230de91950d1f990c95e4bf31e434dd4ee022055c389622f765d10b060fc5096",
+      "fixedSpan": {
+        "length": 24,
+        "offset": 4296
+      },
+      "format": "gtex",
+      "offset": {
+        "branch": "indirect-dword",
+        "fieldSpan": {
+          "length": 2,
+          "offset": 4246
+        },
+        "pointerSpan": {
+          "length": 4,
+          "offset": 4280
+        },
+        "resolved": 64,
+        "word": 64
+      },
+      "offsetTable": {
+        "base": 24,
+        "entries": [
+          {
+            "calculatedSize": 32768,
+            "face": 0,
+            "index": 0,
+            "mipLevel": 0,
+            "offset": 0,
+            "size": 32768
+          }
+        ],
+        "entryStride": 8,
+        "sha256": "24b5d6e79d4d3dab7575da7f0beceafa9281c19295c6ce5ab31951db761ef188",
+        "span": {
+          "length": 8,
+          "offset": 4320
+        }
+      },
+      "sha256": "267567a38d524c6334ec843c10a6d512a8dcc35c6d2a309bba7fe8d83a1a0764",
+      "span": {
+        "length": 32,
+        "offset": 4296
+      },
+      "texture": {
+        "depth": 1,
+        "flags": 0,
+        "formatIndex": 24,
+        "height": 256,
+        "kind": "2d",
+        "mipLevels": 1,
+        "width": 256
+      }
+    },
+    "directory": {
+      "count": 11,
+      "sha256": "fa2605589f01493ad007526387d8e3e90e7e0235157dd86a919e875187751bbd",
+      "span": {
+        "length": 176,
+        "offset": 80
+      }
+    },
+    "entries": [
+      {
+        "declaredOffset": 0,
+        "declaredSize": 438,
+        "index": 0,
+        "kind": 2,
+        "nameByteLength": 52,
+        "nameIndex": 0,
+        "nameSha256": "11c88b7d5d8c281339c1363af7eba5c78b1beeb44d6852f97f96a1b9e747d967",
+        "sha256": "5ab360a828d33983eb297f34d01fd162bb680ad3de030cadf082fb8f6306061c",
+        "span": {
+          "length": 438,
+          "offset": 256
+        },
+        "visibleIndex": 0
+      },
+      {
+        "declaredOffset": 440,
+        "declaredSize": 528,
+        "index": 1,
+        "kind": 2,
+        "nameByteLength": 51,
+        "nameIndex": 1,
+        "nameSha256": "c94810f318361d4fa91fc861bb651fdffe5cd5730039b1e47044a61eee0e3b1c",
+        "sha256": "378923aac07f79b5fcefec28827815481513550aee84089d55d0d31e48b65211",
+        "span": {
+          "length": 528,
+          "offset": 696
+        },
+        "visibleIndex": 1
+      },
+      {
+        "declaredOffset": 968,
+        "declaredSize": 822,
+        "index": 2,
+        "kind": 2,
+        "nameByteLength": 52,
+        "nameIndex": 2,
+        "nameSha256": "6a7ba3a65d7c71dab569de8318aa2cfe0edc9da63ff4d014764082c0bf588589",
+        "sha256": "4418c1c73c737d2eea4d0d1122bfb5eb05a56a76fa96f501155103e437edabcc",
+        "span": {
+          "length": 822,
+          "offset": 1224
+        },
+        "visibleIndex": 2
+      },
+      {
+        "declaredOffset": 1792,
+        "declaredSize": 528,
+        "index": 3,
+        "kind": 2,
+        "nameByteLength": 51,
+        "nameIndex": 3,
+        "nameSha256": "95d89257912f047bde8365dc2b3429b98290d20e6624d49d7667d7788f1c2ee3",
+        "sha256": "b9780d3ecd6bc1ecf4bc85f654ae63223e60e62d8986f831481f1ac61302a480",
+        "span": {
+          "length": 528,
+          "offset": 2048
+        },
+        "visibleIndex": 3
+      },
+      {
+        "declaredOffset": 2320,
+        "declaredSize": 1126,
+        "index": 4,
+        "kind": 2,
+        "nameByteLength": 52,
+        "nameIndex": 4,
+        "nameSha256": "8f87b431842a7ea526c5c95b94770ac3cfc23e5e744be5a4de2b3d7080cf77b4",
+        "sha256": "98ccbd04a2287c02510941ad15846ee61f108b07094b01e9776150140f6152ae",
+        "span": {
+          "length": 1126,
+          "offset": 2576
+        },
+        "visibleIndex": 4
+      },
+      {
+        "declaredOffset": 3448,
+        "declaredSize": 528,
+        "index": 5,
+        "kind": 2,
+        "nameByteLength": 51,
+        "nameIndex": 5,
+        "nameSha256": "15d4cfe477ef71b7ac3c98c44d8c4fb59779cc3fba9d9c7c134ba64385c24a7f",
+        "sha256": "d4f6e349c0b01b4d12d9ae2a26f46d299cc64744ed2e349d0d24a4e28ac99946",
+        "span": {
+          "length": 528,
+          "offset": 3704
+        },
+        "visibleIndex": 5
+      },
+      {
+        "declaredOffset": 3976,
+        "declaredSize": 96,
+        "index": 6,
+        "kind": 2,
+        "nameByteLength": 65,
+        "nameIndex": 6,
+        "nameSha256": "d672b1204d4fca53dff0afc6246c608669cf8cbce552621acb6a124b4ad3b3fd",
+        "sha256": "57f4c5ce7699074a725df1887d3d3ecf0aec3ac8a9f7ec45c93166c3ec67d001",
+        "span": {
+          "length": 96,
+          "offset": 4232
+        },
+        "visibleIndex": 6
+      },
+      {
+        "declaredOffset": 4072,
+        "declaredSize": 96,
+        "index": 7,
+        "kind": 2,
+        "nameByteLength": 65,
+        "nameIndex": 7,
+        "nameSha256": "d08615fe161724096c46269ee35f9b6a60fa8a54c49685f8e361a6963ae39f23",
+        "sha256": "88cb26d1cef6b162ade9a4b28ee46824428c23c468341a419c22312be7eff5b0",
+        "span": {
+          "length": 96,
+          "offset": 4328
+        },
+        "visibleIndex": 7
+      },
+      {
+        "declaredOffset": 4168,
+        "declaredSize": 96,
+        "index": 8,
+        "kind": 2,
+        "nameByteLength": 65,
+        "nameIndex": 8,
+        "nameSha256": "a3f6716a2fe16ed312c28908998d4780d597e8828f8aaa0319bef7c1f9a34184",
+        "sha256": "e7d477e230bba7db953d7dad869632bbaaa3f2ffc52ae2cf654ec2ca9e231363",
+        "span": {
+          "length": 96,
+          "offset": 4424
+        },
+        "visibleIndex": 8
+      },
+      {
+        "declaredOffset": 4264,
+        "declaredSize": 284,
+        "index": 9,
+        "kind": 0,
+        "nameByteLength": 13,
+        "nameIndex": 9,
+        "nameSha256": "60ace821e69301e5f5ef61c4f2acd66b9143ed6a216e6470c68c16c08bbd4125",
+        "sha256": "d982451313f74fd6c893fa3952a9ed2673a0076877afe329c067a3eaa1deb39b",
+        "span": {
+          "length": 284,
+          "offset": 4520
+        },
+        "visibleIndex": null
+      },
+      {
+        "declaredOffset": 4320,
+        "declaredSize": 416,
+        "index": 10,
+        "kind": 0,
+        "nameByteLength": 11,
+        "nameIndex": 10,
+        "nameSha256": "85f5026917afb861a757c37755423d4d6b64b631cbbc063ff31bab4cd4c8cfcc",
+        "sha256": "ec211023f0d664e951d06d7c588c21bd9e396294a5680945bd3462efa857ca91",
+        "span": {
+          "length": 416,
+          "offset": 4576
+        },
+        "visibleIndex": null
+      }
+    ],
+    "metadataCount": 2,
+    "names": {
+      "count": 11,
+      "sha256": "df4bd6ce0954faf31e383467c1203a091b7a868d6f6f5d2644b1500e42035215",
+      "span": {
+        "length": 539,
+        "offset": 4752
+      }
+    },
+    "payloadBase": 256,
+    "resourceId": {
+      "declaredOffset": 4320,
+      "declaredSize": 416,
+      "index": 10,
+      "kind": 0,
+      "nameByteLength": 11,
+      "nameIndex": 10,
+      "nameSha256": "85f5026917afb861a757c37755423d4d6b64b631cbbc063ff31bab4cd4c8cfcc",
+      "sha256": "ec211023f0d664e951d06d7c588c21bd9e396294a5680945bd3462efa857ca91",
+      "span": {
+        "length": 416,
+        "offset": 4576
+      },
+      "visibleIndex": null
+    },
+    "resourceType": {
+      "declaredOffset": 4264,
+      "declaredSize": 284,
+      "index": 9,
+      "kind": 0,
+      "nameByteLength": 13,
+      "nameIndex": 9,
+      "nameSha256": "60ace821e69301e5f5ef61c4f2acd66b9143ed6a216e6470c68c16c08bbd4125",
+      "sha256": "d982451313f74fd6c893fa3952a9ed2673a0076877afe329c067a3eaa1deb39b",
+      "span": {
+        "length": 284,
+        "offset": 4520
+      },
+      "visibleIndex": null
+    },
+    "selectedEntry": {
+      "declaredOffset": 3976,
+      "declaredSize": 96,
+      "index": 6,
+      "kind": 2,
+      "nameByteLength": 65,
+      "nameIndex": 6,
+      "nameSha256": "d672b1204d4fca53dff0afc6246c608669cf8cbce552621acb6a124b4ad3b3fd",
+      "sha256": "57f4c5ce7699074a725df1887d3d3ecf0aec3ac8a9f7ec45c93166c3ec67d001",
+      "span": {
+        "length": 96,
+        "offset": 4232
+      },
+      "visibleIndex": 6
+    },
+    "selectedType": 7632994,
+    "surface": {
+      "relativeOffset": 0,
+      "sha256": "9e31e16c1ccda881110cbaf555e62ace19cb6d0c9ff7249e2a39441d6b3d0801",
+      "span": {
+        "length": 32768,
+        "offset": 5296
+      }
+    },
+    "txb": {
+      "sha256": "57f4c5ce7699074a725df1887d3d3ecf0aec3ac8a9f7ec45c93166c3ec67d001",
+      "span": {
+        "length": 96,
+        "offset": 4232
+      }
+    },
+    "visibleCount": 9,
+    "visibleIndex": 6
+  },
+  "signature": {
+    "ascii": "PWIB",
+    "span": {
+      "length": 4,
+      "offset": 0
+    }
+  },
+  "trailing": []
+}

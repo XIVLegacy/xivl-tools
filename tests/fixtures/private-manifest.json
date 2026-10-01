@@ -145,6 +145,17 @@
     },
     {
       "formatIds": [
+        "pwib"
+      ],
+      "id": "retail-pwib-m520-top-tex1",
+      "notes": "Selected physical entry 6: descriptor offset 4296, external 256 by 256 DXT1 surface at file range [5296,38064). Catalog copies retain this original source provenance and do not establish a DAT resource ID.",
+      "root": "client-install",
+      "sha256": "23b3f4cbd2a25e3d43f4864bbf8b79f9b7d68322b96849bb044483c62286314d",
+      "size": 103600,
+      "sourcePath": "client/chara/mon/m520/equ/e001/top_tex1/0000"
+    },
+    {
+      "formatIds": [
         "ssd-sheet"
       ],
       "id": "retail-row-offsets-27950020",

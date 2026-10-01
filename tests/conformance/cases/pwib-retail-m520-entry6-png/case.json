@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-retail-m520-entry6-png",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": { "kind": "private", "fixtureId": "retail-pwib-m520-top-tex1" },
+  "arguments": ["--as", "pwib", "--pwib-entry", "6", "--preview-png"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Pins dimensions and encoded, decoded RGBA, and PNG digests. An independent DXT1 oracle checked every decoded sample using the documented preview conversion; no decoded samples are retained."
+}

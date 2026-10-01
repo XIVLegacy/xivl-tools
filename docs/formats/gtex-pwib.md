@@ -167,9 +167,33 @@ The retained source vector is `m520/equ/e001/top_tex1/0000`, entry 6:
 `23b3f4cbd2a25e3d43f4864bbf8b79f9b7d68322b96849bb044483c62286314d`.
 Its descriptor is at file offset 4296 and selects file range
 `[5296,38064)`: 256 by 256 DXT1, 32768 encoded bytes. This identity and
-range are promoted evidence, not a substitute for running the extraction.
-A retail replay requires an explicit input root and matching size and
-digest before this vector is used.
+range are pinned in `tests/fixtures/private-manifest.json` as
+`retail-pwib-m520-top-tex1`. A retail replay requires an explicit input root
+and matching size and digest before this vector is used.
+
+The private cases `pwib-retail-m520-entry6`,
+`pwib-retail-m520-entry6-dds`, and `pwib-retail-m520-entry6-png` reproduce
+selected-entry structure and artifact identities. Their expectations contain
+metadata, spans, counts, and digests. Decoded entry names are replaced with
+UTF-8 byte lengths and SHA-256 digests; encoded surfaces and decoded pixels
+remain outside the repository.
+
+Both extraction commands reproduced raw, DDS, and PNG views for this exact
+input and passed complete source replay. Catalog extraction used a
+size-and-digest-verified private DAT copy selected by path, retaining the
+original client-relative source provenance. The copy's DAT filename does
+not establish a retail resource ID. Raw bytes and the DDS payload at output
+offset 128 matched the independent source range, whose SHA-256 is
+`9e31e16c1ccda881110cbaf555e62ace19cb6d0c9ff7249e2a39441d6b3d0801`.
+An independent legacy-header check validated the DDS fields against
+Microsoft's definitions linked below.
+
+The PNG is 256 by 256. An independent DXT1 oracle using the preview conversion
+below compared every decoded RGBA sample, including both endpoint-order
+modes. The decoded row-order RGBA SHA-256 is
+`a5ff58f347b087d85ae870f8cf3d38504ba536f326a2dbc3e3e19c1bd57bea02`.
+This establishes the documented preview conversion for this input, not
+GPU-identical rounding, color space, or premultiplication.
 
 PWIB read and export remain `partial`. Other versions, endian paths,
 types, descriptor-relative source data, mip counts, pixel formats, cube
@@ -304,8 +328,8 @@ values, exact encoded-byte preservation for all three mappings, multiple
 mips, and the documented layout with gaps between mip spans. CLI tests
 cover extraction, accounting, refusals, verification, and source replay;
 public conformance expectations contain only metadata, spans, counts, and
-digests. GTEX read and export remain `partial`. No retail DDS parity or GPU
-compatibility is claimed.
+digests. GTEX read and export remain `partial`. These synthetic GTEX cases
+do not establish retail DDS parity or GPU compatibility.
 
 ## Decoded top-mip PNG preview
 
@@ -385,4 +409,6 @@ Authored pixel oracles cover channel order, both DXT1 modes, DXT5 color and
 alpha interpolation, transparency, rounding, and partial-block edges.
 Synthetic extraction tests cover resource and catalog requests, coexistence
 with raw and DDS artifacts, accounting, refusals, and missing or altered
-previews. No retail preview parity or GPU compatibility is claimed.
+previews. These synthetic GTEX cases do not establish retail preview parity
+or GPU compatibility. The selected PWIB replay above covers its pinned
+retail vector only.

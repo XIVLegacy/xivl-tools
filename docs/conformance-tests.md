@@ -87,6 +87,28 @@ tests cover raw, DDS, and PNG output, catalog selection, inventory failures,
 manifest consistency, and complete source replay. See the
 [selected PWIB contract](formats/gtex-pwib.md#selected-pwib-restxb-texture).
 
+Private selected-PWIB expectations replace every decoded entry name with
+`nameByteLength` and `nameSha256`, including repeated selected and metadata
+entries. The names remain in ordinary extraction manifests outside the
+repository. Public authored cases retain their synthetic names.
+
+The pinned m520 entry-6 cases reproduce selected structure, DDS, and PNG
+identities without retaining surface bytes or decoded samples. Supply a
+root containing the manifest's original client-relative path explicitly:
+
+```text
+conformance run --case pwib-retail-m520-entry6
+                --case pwib-retail-m520-entry6-dds
+                --case pwib-retail-m520-entry6-png
+                --fixture-root <explicit-snapshot-root> --require-private
+```
+
+The root may be an identity-verified private copy preserving that path.
+An arbitrary DAT alias for catalog testing retains the original provenance
+outside the repository and is selected by catalog path, not an inferred
+resource ID. The exact source and independent output checks are recorded
+in the selected PWIB contract above.
+
 `extract-directory` exercises the production whole-directory `extract`
 implementation for `ssd-sheet`. Its `public-tree` fixture names a generated
 JSON descriptor with `format: "ssd-extract"`, `schemaVersion: 1`, and a

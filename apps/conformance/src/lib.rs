@@ -276,7 +276,16 @@ fn run_case(
     let expect = case.get("expect").cloned().unwrap_or(Value::Null);
     let expected_outcome = string_field(&expect, "outcome");
     match (expected_outcome.as_str(), produced) {
-        ("ok", Ok(document)) => compare_expected(options, directory, &expect, document),
+        ("ok", Ok(mut document)) => {
+            if string_field(&case["fixture"], "kind") == "private"
+                && string_field(&document, "format") == "pwib"
+            {
+                if let Some(selection) = document.get_mut("selection") {
+                    normalize_private_pwib_names(selection);
+                }
+            }
+            compare_expected(options, directory, &expect, document)
+        }
         ("ok", Err(error)) => Outcome::Failed(format!("expected success, got {error}")),
         ("parse-error", Ok(_)) => Outcome::Failed(format!(
             "expected error kind '{}', the input parsed cleanly",
@@ -681,6 +690,32 @@ fn pwib_selected_export_document(
     Ok(document)
 }
 
+// Private expectations retain entry identity without publishing decoded names.
+fn normalize_private_pwib_names(value: &mut Value) {
+    match value {
+        Value::Object(object) => {
+            if let Some(name) = object
+                .get("name")
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+            {
+                object.remove("name");
+                object.insert("nameByteLength".into(), json!(name.len()));
+                object.insert("nameSha256".into(), json!(sha256_hex(name.as_bytes())));
+            }
+            for child in object.values_mut() {
+                normalize_private_pwib_names(child);
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                normalize_private_pwib_names(item);
+            }
+        }
+        _ => {}
+    }
+}
+
 /// Report the safe, normalized identity of a decoded XML export. The
 /// document bytes themselves stay in the CLI extraction payload; a public
 /// conformance expectation records only the path, role, length, and digest.
@@ -1008,6 +1043,35 @@ fn first_difference(expected: &Value, produced: &Value) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn private_pwib_names_keep_only_lengths_and_digests() {
+        let entry = json!({ "index": 6, "name": "authored-texture", "span": { "offset": 32, "length": 8 } });
+        let mut selection = json!({
+            "entries": [entry.clone()],
+            "selectedEntry": entry,
+            "resourceType": { "name": "RESOURCE_TYPE" },
+            "resourceId": null,
+            "descriptor": { "texture": { "kind": "2d" } }
+        });
+        normalize_private_pwib_names(&mut selection);
+        for entry in [&selection["entries"][0], &selection["selectedEntry"]] {
+            assert!(entry.get("name").is_none());
+            assert_eq!(entry["nameByteLength"], 16);
+            assert_eq!(entry["nameSha256"], sha256_hex(b"authored-texture"));
+            assert_eq!(entry["index"], 6);
+            assert_eq!(entry["span"], json!({ "offset": 32, "length": 8 }));
+        }
+        assert_eq!(selection["resourceType"]["nameByteLength"], 13);
+        assert_eq!(
+            selection["resourceType"]["nameSha256"],
+            sha256_hex(b"RESOURCE_TYPE")
+        );
+        assert_eq!(selection["resourceId"], Value::Null);
+        assert_eq!(selection["descriptor"]["texture"]["kind"], "2d");
+        assert!(!selection.to_string().contains("authored-texture"));
+        assert!(!selection.to_string().contains("RESOURCE_TYPE"));
+    }
 
     fn fixture() -> PrivateFixture {
         PrivateFixture {

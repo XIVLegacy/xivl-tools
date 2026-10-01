@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "pwib-retail-m520-entry6-dds",
+  "formatId": "pwib",
+  "operation": "extract",
+  "fixture": { "kind": "private", "fixtureId": "retail-pwib-m520-top-tex1" },
+  "arguments": ["--as", "pwib", "--pwib-entry", "6", "--export-dds"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "The raw source range and DDS payload share the independently checked encoded-surface digest; header and file identities remain normalized metadata."
+}
