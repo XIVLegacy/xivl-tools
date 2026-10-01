@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-retail-a8r8g8b8-1c59027e-dds",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": { "kind": "private", "fixtureId": "retail-gtex-a8r8g8b8-1c59027e" },
+  "arguments": ["--as", "gtex", "--export-dds"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Retail 1.23b one-mip A8R8G8B8 DDS identity, with encoded source and output spans and digests only."
+}

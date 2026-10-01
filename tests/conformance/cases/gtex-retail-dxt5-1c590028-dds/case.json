@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-retail-dxt5-1c590028-dds",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": { "kind": "private", "fixtureId": "retail-gtex-dxt5-1c590028" },
+  "arguments": ["--as", "gtex", "--export-dds"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Retail 1.23b four-mip DXT5 DDS identity. Every retained logical mip has an encoded source span, output span, and digest."
+}

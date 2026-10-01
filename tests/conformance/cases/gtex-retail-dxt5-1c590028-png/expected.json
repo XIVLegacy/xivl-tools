@@ -1,0 +1,36 @@
+{
+  "format": "gtex",
+  "height": 64,
+  "mipLevel": 0,
+  "operation": "extract",
+  "path": "payloads/preview.png",
+  "png": {
+    "format": {
+      "clientIndex": 26,
+      "d3dName": "D3DFMT_DXT5",
+      "d3dValue": 894720068
+    },
+    "height": 64,
+    "mipLevel": 0,
+    "rgbaSha256": "7e8f6d60258838ed0d6708d775bcc94feb0330f2b1ecb58cc4d1c760c13ba47c",
+    "sourceSha256": "f2e3b5b9ac4fd6b870d4f3ba2cab0411fedc240bfbb491a11053f53fef288fac",
+    "sourceSpan": {
+      "length": 4096,
+      "offset": 64
+    },
+    "width": 64
+  },
+  "role": "gtex-top-mip-png-preview",
+  "sha256": "cfef064295675c19a11bb52d2c3759c3db95af116c52524fdc4caf8d863ce9a5",
+  "size": 6047,
+  "texture": {
+    "format": {
+      "clientIndex": 26,
+      "d3dName": "D3DFMT_DXT5",
+      "d3dValue": 894720068
+    },
+    "height": 64,
+    "width": 64
+  },
+  "width": 64
+}

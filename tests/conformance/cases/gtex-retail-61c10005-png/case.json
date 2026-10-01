@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-retail-61c10005-png",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": { "kind": "private", "fixtureId": "retail-gtex-61c10005" },
+  "arguments": ["--as", "gtex", "--preview-png"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Retail 1.23b DXT1 top-mip preview identity. Encoded source, decoded RGBA, and PNG digests retain no samples."
+}

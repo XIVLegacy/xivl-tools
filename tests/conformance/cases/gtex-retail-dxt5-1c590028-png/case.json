@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-retail-dxt5-1c590028-png",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": { "kind": "private", "fixtureId": "retail-gtex-dxt5-1c590028" },
+  "arguments": ["--as", "gtex", "--preview-png"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Retail 1.23b DXT5 top-mip preview identity, retaining color and alpha conversion through the decoded RGBA digest without samples. Lower mips remain in the DDS case."
+}

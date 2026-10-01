@@ -246,6 +246,63 @@ face, mip, format mapping, source span, and digest; verification checks both
 the artifact and source replay. PWIB texture views require the explicit
 RES/txb entry selection described above.
 
+## Standalone retail export replays
+
+The three GTEX identities in the retail table above passed their inspect
+cases and separate DDS and PNG extract cases with an explicit frozen
+`client-install` root and `--require-private`. The snapshot retained each
+original `data/` path and matched its manifest size and SHA-256 before use.
+The extract case ids append `-dds` or `-png` to these stems:
+
+- `gtex-retail-61c10005`.
+- `gtex-retail-a8r8g8b8-1c59027e`.
+- `gtex-retail-dxt5-1c590028`.
+
+Each input passed `extract-resource` with `--materialize-payloads`,
+`--export-dds`, and `--preview-png` together, followed by inventory
+verification and complete source replay. `extract-catalog` repeated those
+outputs from the same frozen sources, selected explicitly by original
+catalog path. Its three-row JSON catalog had SHA-256
+`2194a02ff546cd957dfc195b2ca63721b11959c2fae384456d585e80c88240ce`.
+Catalog identity verification and complete batch source replay passed.
+The original DAT paths establish resource ids `0x61C10005`, `0x1C59027E`,
+and `0x1C590028`, respectively.
+
+An independent source-table oracle checked encoded sizes, source spans,
+and logical mip ordering. Raw files matched each complete encoded source
+span. A separately assembled legacy DDS header matched every field,
+including unused zero fields, pitch or linear size, pixel-format masks or
+FourCC, mip flags, and capabilities. The complete DDS payload matched the
+source mip bytes concatenated in logical order, without GTEX gaps.
+
+| Fixture suffix | Format | Top dimensions | Mips | Encoded source spans | DDS bytes |
+|---|---|---|---:|---|---:|
+| `61c10005` | DXT1 | 4 by 4 | 1 | `[32,40)` | 136 |
+| `a8r8g8b8-1c59027e` | A8R8G8B8 | 8 by 16 | 1 | `[32,544)` | 640 |
+| `dxt5-1c590028` | DXT5 | 64 by 64 | 4 | `[64,4160)`, `[4160,5184)`, `[5184,5440)`, `[5440,5504)` | 5568 |
+
+The DXT5 DDS retains the supplied 64, 32, 16, and 8 square mip levels.
+It does not extend this partial chain to 1 by 1. Each case expectation
+pins the complete DDS identity and every mip's source and output spans
+and encoded digest.
+
+An independent pixel oracle implemented the documented conversion below
+without using production texture decoding. It compared every top-mip
+RGBA sample from an independently decoded PNG for both command paths:
+16 DXT1 texels, 128 A8R8G8B8 texels, and 4096 DXT5 texels. Each PNG case
+pins the source, decoded RGBA, and complete PNG digests without retaining
+pixels. The comparison includes alpha and the BGRA-to-RGBA channel
+conversion. The DXT5 top mip exercised both alpha branches: 41 blocks
+with `a0 > a1` and 215 with `a0 <= a1`, using all eight alpha selectors.
+Existing authored public oracles retain coverage of both
+DXT1 modes, both DXT5 alpha branches, and partial-block edges.
+
+These replays establish byte preservation and the documented preview
+conversion for these three exact inputs. GTEX read and export remain
+`partial`. They do not establish GPU compatibility, runtime use, appearance
+selection, color space, or client premultiplication. The selected PWIB
+entry-6 evidence above is a separate retained check.
+
 ## Lossless DDS texture view
 
 `extract-resource` and selected `extract-catalog` extraction accept
@@ -328,8 +385,9 @@ values, exact encoded-byte preservation for all three mappings, multiple
 mips, and the documented layout with gaps between mip spans. CLI tests
 cover extraction, accounting, refusals, verification, and source replay;
 public conformance expectations contain only metadata, spans, counts, and
-digests. GTEX read and export remain `partial`. These synthetic GTEX cases
-do not establish retail DDS parity or GPU compatibility.
+digests. The standalone retail checks above reproduce DDS identities for
+their three pinned inputs. GTEX read and export remain `partial`, with no
+GPU compatibility claim.
 
 ## Decoded top-mip PNG preview
 
@@ -409,6 +467,7 @@ Authored pixel oracles cover channel order, both DXT1 modes, DXT5 color and
 alpha interpolation, transparency, rounding, and partial-block edges.
 Synthetic extraction tests cover resource and catalog requests, coexistence
 with raw and DDS artifacts, accounting, refusals, and missing or altered
-previews. These synthetic GTEX cases do not establish retail preview parity
-or GPU compatibility. The selected PWIB replay above covers its pinned
-retail vector only.
+previews. The standalone retail checks above reproduce the documented
+preview conversion for their three pinned inputs. GPU compatibility
+remains unproved. The selected PWIB replay above covers its pinned retail
+vector only.

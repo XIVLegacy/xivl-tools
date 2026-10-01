@@ -77,6 +77,30 @@ DXT1 modes, DXT5 alpha behavior, and partial-block cropping. CLI tests
 exercise both extraction commands and verification failures. See the
 [preview contract](formats/gtex-pwib.md#decoded-top-mip-png-preview).
 
+The three standalone retail GTEX inspect fixtures also have separate private
+DDS and PNG extract cases. Run all nine against a frozen root preserving the
+manifest's original `data/` paths:
+
+```text
+conformance run --case retail-gtex-61c10005
+                --case retail-gtex-a8r8g8b8-1c59027e
+                --case retail-gtex-dxt5-1c590028
+                --case gtex-retail-61c10005-dds
+                --case gtex-retail-61c10005-png
+                --case gtex-retail-a8r8g8b8-1c59027e-dds
+                --case gtex-retail-a8r8g8b8-1c59027e-png
+                --case gtex-retail-dxt5-1c590028-dds
+                --case gtex-retail-dxt5-1c590028-png
+                --fixture-root client-install=<explicit-snapshot-root>
+                --require-private
+```
+
+Expectations retain spans, dimensions, mip counts, sizes, and digests, including
+the decoded top-mip RGBA identity. They contain no encoded bytes or pixels.
+The [standalone GTEX replay record](formats/gtex-pwib.md#standalone-retail-export-replays)
+describes the independent raw, DDS, and PNG checks through both extraction
+commands. Missing unrelated fixtures do not stand in for these selected checks.
+
 PWIB `extract` cases use `--pwib-entry <index>` with the texture output
 options to exercise selected RES/txb extraction. Reports retain entry and
 type metadata, descriptor and table spans, second-relative offsets,

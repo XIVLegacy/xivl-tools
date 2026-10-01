@@ -1,0 +1,76 @@
+{
+  "format": "gtex",
+  "mipLevels": 4,
+  "mips": [
+    {
+      "ddsSpan": {
+        "length": 4096,
+        "offset": 128
+      },
+      "height": 64,
+      "mipLevel": 0,
+      "sha256": "f2e3b5b9ac4fd6b870d4f3ba2cab0411fedc240bfbb491a11053f53fef288fac",
+      "sourceSpan": {
+        "length": 4096,
+        "offset": 64
+      },
+      "width": 64
+    },
+    {
+      "ddsSpan": {
+        "length": 1024,
+        "offset": 4224
+      },
+      "height": 32,
+      "mipLevel": 1,
+      "sha256": "e27db01db335933a8696cb165b3e7496766d4d432751e8dd8f196566fe94e7d9",
+      "sourceSpan": {
+        "length": 1024,
+        "offset": 4160
+      },
+      "width": 32
+    },
+    {
+      "ddsSpan": {
+        "length": 256,
+        "offset": 5248
+      },
+      "height": 16,
+      "mipLevel": 2,
+      "sha256": "1017082a7c5f4140761be10e1f86b916985fe4dde43c03b6716b943815d4db17",
+      "sourceSpan": {
+        "length": 256,
+        "offset": 5184
+      },
+      "width": 16
+    },
+    {
+      "ddsSpan": {
+        "length": 64,
+        "offset": 5504
+      },
+      "height": 8,
+      "mipLevel": 3,
+      "sha256": "36c37bdbdeb8f7d20826cc1bce80e42e3f0c2ff6646ea921fc1669a771449c47",
+      "sourceSpan": {
+        "length": 64,
+        "offset": 5440
+      },
+      "width": 8
+    }
+  ],
+  "operation": "extract",
+  "path": "payloads/texture.dds",
+  "role": "gtex-dds-texture",
+  "sha256": "39bcce6db0e73ebe3c236dbb3afd144dfe9e27857cd21d1c575478260c1c5ea0",
+  "size": 5568,
+  "texture": {
+    "format": {
+      "clientIndex": 26,
+      "d3dName": "D3DFMT_DXT5",
+      "d3dValue": 894720068
+    },
+    "height": 64,
+    "width": 64
+  }
+}

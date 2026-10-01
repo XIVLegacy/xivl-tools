@@ -144,6 +144,11 @@ allocation limit. See the
 [PNG preview contract](formats/gtex-pwib.md#decoded-top-mip-png-preview) for
 channel, interpolation, alpha, and partial-block rules.
 
+The [standalone retail GTEX replays](formats/gtex-pwib.md#standalone-retail-export-replays)
+check raw surfaces, DDS, and PNG together through both extraction commands,
+inventory verification, and complete source replay for the three pinned
+representatives. GTEX support remains partial.
+
 For the bounded PWIB RES/txb path, select one visible entry explicitly:
 
 ```powershell
