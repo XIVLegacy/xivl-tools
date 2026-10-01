@@ -208,12 +208,13 @@
       "name": "Region definition",
       "category": "world",
       "phase": 1,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
       "export": "planned",
       "exportViews": [
         "json"
-      ]
+      ],
+      "notes": "Bounded RegionResourceData 1.1.0 root/child structure, with root count at +0x24, rows at +0x40, stride 0x30, and root-only following-child count at +0x0C. Retains duplicate rows, locations, membership, token spans, and opaque field boundaries; child +0x0C is never recursive. Public cases exercise structure and concrete header/count/truncation boundaries. The pinned 52336-byte private vector accounts for 61 roots and 1089 rows ending at EOF. Unknown field meanings, token rules, native size enforcement, trailing-byte legality, and other versions remain unresolved. Writing and resource export are outside this read claim. Evidence and limits: docs/formats/region.md."
     },
     {
       "id": "zone-geometry",

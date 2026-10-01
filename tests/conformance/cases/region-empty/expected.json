@@ -1,0 +1,77 @@
+{
+  "endsAtEof": true,
+  "format": "region",
+  "header": {
+    "declaredSize": {
+      "span": {
+        "length": 4,
+        "offset": 32
+      },
+      "value": 64
+    },
+    "nameSpan": {
+      "length": 19,
+      "offset": 0
+    },
+    "rootCount": {
+      "span": {
+        "length": 4,
+        "offset": 36
+      },
+      "value": 0
+    },
+    "span": {
+      "length": 64,
+      "offset": 0
+    },
+    "tableName": "RegionResourceData",
+    "unknown": [
+      {
+        "sha256": "188889c978c8a536e54c50e0c5e04aa460c5f2135705ed08c6a96f9354375bf0",
+        "span": {
+          "length": 5,
+          "offset": 19
+        }
+      },
+      {
+        "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153",
+        "span": {
+          "length": 2,
+          "offset": 30
+        }
+      },
+      {
+        "sha256": "1d64add2a6388367c9bc2d1f1b384b069a6ef382cdaaa89771dd103e28613a25",
+        "span": {
+          "length": 24,
+          "offset": 40
+        }
+      }
+    ],
+    "version": "1.1.0",
+    "versionSpan": {
+      "length": 6,
+      "offset": 24
+    }
+  },
+  "input": {
+    "length": 64
+  },
+  "operation": "inspect",
+  "rowCount": 0,
+  "rowStride": 48,
+  "rows": [],
+  "rowsEnd": 64,
+  "rowsSpan": {
+    "length": 0,
+    "offset": 64
+  },
+  "schemaVersion": 1,
+  "trailing": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "span": {
+      "length": 0,
+      "offset": 64
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "checks": [
+    {
+      "name": "parse",
+      "status": "pass"
+    },
+    {
+      "name": "round-trip",
+      "status": "not-applicable"
+    }
+  ],
+  "format": "region",
+  "input": {
+    "length": 52336
+  },
+  "operation": "validate",
+  "schemaVersion": 1,
+  "sha256": "c04b0d998aea4c1b13ed322292a5aa5af45485c698da2315171c3c024bcb9a74"
+}

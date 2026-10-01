@@ -13,6 +13,7 @@ repository makes.
 - [SQEX containers](formats/sqex.md)
 - [Configuration files](formats/configuration.md)
 - [Static-actor SAN records](formats/staticactor-san.md)
+- [RegionResourceData root and child rows](formats/region.md)
 - [Lua paths, LPB wrappers, and Lua 5.1](formats/lua-lpb.md)
 - [GTEX fields and PWIB segments](formats/gtex-pwib.md)
 - [Zone geometry export](formats/zone-geometry.md)
@@ -49,7 +50,8 @@ Specifically not handled:
   treating its SEDB prefix as a standalone child. Its separately documented
   selected RES/txb path resolves one DXT1 surface against the second span;
   MapLayout, zero-filled, and
-  unrecognized files still fail with `bad-magic`;
+  unrecognized files still fail with `bad-magic`. RegionResourceData has its
+  own bounded structural reader;
 - the `wrb` chunk tree, model, mesh, skeleton, and texture layouts, which are
   outside this support claim;
 - extraction and manifesting of subresource bytes, which are also outside this

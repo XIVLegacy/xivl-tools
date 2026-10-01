@@ -1,0 +1,304 @@
+{
+  "endsAtEof": true,
+  "format": "region",
+  "header": {
+    "declaredSize": {
+      "span": {
+        "length": 4,
+        "offset": 32
+      },
+      "value": 256
+    },
+    "nameSpan": {
+      "length": 19,
+      "offset": 0
+    },
+    "rootCount": {
+      "span": {
+        "length": 4,
+        "offset": 36
+      },
+      "value": 2
+    },
+    "span": {
+      "length": 64,
+      "offset": 0
+    },
+    "tableName": "RegionResourceData",
+    "unknown": [
+      {
+        "sha256": "188889c978c8a536e54c50e0c5e04aa460c5f2135705ed08c6a96f9354375bf0",
+        "span": {
+          "length": 5,
+          "offset": 19
+        }
+      },
+      {
+        "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153",
+        "span": {
+          "length": 2,
+          "offset": 30
+        }
+      },
+      {
+        "sha256": "1d64add2a6388367c9bc2d1f1b384b069a6ef382cdaaa89771dd103e28613a25",
+        "span": {
+          "length": 24,
+          "offset": 40
+        }
+      }
+    ],
+    "version": "1.1.0",
+    "versionSpan": {
+      "length": 6,
+      "offset": 24
+    }
+  },
+  "input": {
+    "length": 256
+  },
+  "operation": "inspect",
+  "rowCount": 4,
+  "rowStride": 48,
+  "rows": [
+    {
+      "datKey": {
+        "sha256": "c832fbe8a69c8694f85d3f3d6bdace5b99c4c4153c4f5ca5e3d21e22eb218ce3",
+        "span": {
+          "length": 4,
+          "offset": 72
+        }
+      },
+      "id": {
+        "sha256": "9d9f290527a6be626a8f5985b26e19b237b44872b03631811df4416fc1713178",
+        "span": {
+          "length": 4,
+          "offset": 64
+        }
+      },
+      "index": 0,
+      "membership": {
+        "childCount": {
+          "span": {
+            "length": 4,
+            "offset": 76
+          },
+          "value": 2
+        },
+        "kind": "root",
+        "rootIndex": 0
+      },
+      "sha256": "89b0b1bdad38a79f828808f8b9576d68b41f5b46bf70997d3f89e3c2793645a1",
+      "span": {
+        "length": 48,
+        "offset": 64
+      },
+      "token": {
+        "sha256": "faca1e303e2d62d8ffada9ea1cdd790a5a96012d337f3e89cbd607fe7d9974ad",
+        "span": {
+          "length": 16,
+          "offset": 80
+        }
+      },
+      "unknown": [
+        {
+          "sha256": "ca69e6e5bf63e8fd6638b316089df5454fcbb1c04cc2f8677dd4d7764a9414e8",
+          "span": {
+            "length": 4,
+            "offset": 68
+          }
+        },
+        {
+          "sha256": "be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991",
+          "span": {
+            "length": 16,
+            "offset": 96
+          }
+        }
+      ]
+    },
+    {
+      "datKey": {
+        "sha256": "00e2ec331be5d548287a2cf30919b7438f6b2f90df0c5438fc0503146c824da5",
+        "span": {
+          "length": 4,
+          "offset": 120
+        }
+      },
+      "id": {
+        "sha256": "84fc05949dc1e486652a4ed316afb6434e9437eb30b714594a1d0b4205776602",
+        "span": {
+          "length": 4,
+          "offset": 112
+        }
+      },
+      "index": 1,
+      "membership": {
+        "childIndex": 0,
+        "kind": "child",
+        "rootIndex": 0
+      },
+      "sha256": "e2f98b46ea6883f6ebb9b3e8e20cdfb66de0e24acf364cefcd2c19e911fe0643",
+      "span": {
+        "length": 48,
+        "offset": 112
+      },
+      "token": {
+        "sha256": "d2b497c2d06657c073de99a1727c383c799073cfb314d7530f883e1a84a668ee",
+        "span": {
+          "length": 16,
+          "offset": 128
+        }
+      },
+      "unknown": [
+        {
+          "sha256": "ca69e6e5bf63e8fd6638b316089df5454fcbb1c04cc2f8677dd4d7764a9414e8",
+          "span": {
+            "length": 4,
+            "offset": 116
+          }
+        },
+        {
+          "sha256": "ad95131bc0b799c0b1af477fb14fcf26a6a9f76079e48bf090acb7e8367bfd0e",
+          "span": {
+            "length": 4,
+            "offset": 124
+          }
+        },
+        {
+          "sha256": "be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991",
+          "span": {
+            "length": 16,
+            "offset": 144
+          }
+        }
+      ]
+    },
+    {
+      "datKey": {
+        "sha256": "00e2ec331be5d548287a2cf30919b7438f6b2f90df0c5438fc0503146c824da5",
+        "span": {
+          "length": 4,
+          "offset": 168
+        }
+      },
+      "id": {
+        "sha256": "84fc05949dc1e486652a4ed316afb6434e9437eb30b714594a1d0b4205776602",
+        "span": {
+          "length": 4,
+          "offset": 160
+        }
+      },
+      "index": 2,
+      "membership": {
+        "childIndex": 1,
+        "kind": "child",
+        "rootIndex": 0
+      },
+      "sha256": "e2f98b46ea6883f6ebb9b3e8e20cdfb66de0e24acf364cefcd2c19e911fe0643",
+      "span": {
+        "length": 48,
+        "offset": 160
+      },
+      "token": {
+        "sha256": "d2b497c2d06657c073de99a1727c383c799073cfb314d7530f883e1a84a668ee",
+        "span": {
+          "length": 16,
+          "offset": 176
+        }
+      },
+      "unknown": [
+        {
+          "sha256": "ca69e6e5bf63e8fd6638b316089df5454fcbb1c04cc2f8677dd4d7764a9414e8",
+          "span": {
+            "length": 4,
+            "offset": 164
+          }
+        },
+        {
+          "sha256": "ad95131bc0b799c0b1af477fb14fcf26a6a9f76079e48bf090acb7e8367bfd0e",
+          "span": {
+            "length": 4,
+            "offset": 172
+          }
+        },
+        {
+          "sha256": "be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991",
+          "span": {
+            "length": 16,
+            "offset": 192
+          }
+        }
+      ]
+    },
+    {
+      "datKey": {
+        "sha256": "157d490c2239fd0f26f3258501ee7384a1225a2d45b8b6b60c23900db29d187a",
+        "span": {
+          "length": 4,
+          "offset": 216
+        }
+      },
+      "id": {
+        "sha256": "2594b6a92ebfb1c3312deb7d01c015fb95e9fbe9bd7bc6b527af07813ec7b910",
+        "span": {
+          "length": 4,
+          "offset": 208
+        }
+      },
+      "index": 3,
+      "membership": {
+        "childCount": {
+          "span": {
+            "length": 4,
+            "offset": 220
+          },
+          "value": 0
+        },
+        "kind": "root",
+        "rootIndex": 1
+      },
+      "sha256": "a2df32e0f6d8ce45dd7c3a802946c3a8cf6571c7a5c5922a1d6b68db1b46471d",
+      "span": {
+        "length": 48,
+        "offset": 208
+      },
+      "token": {
+        "sha256": "a8a302cd2d8652b548906436bfea9884d7286f48f7cffba86ba600345086a21d",
+        "span": {
+          "length": 16,
+          "offset": 224
+        }
+      },
+      "unknown": [
+        {
+          "sha256": "ca69e6e5bf63e8fd6638b316089df5454fcbb1c04cc2f8677dd4d7764a9414e8",
+          "span": {
+            "length": 4,
+            "offset": 212
+          }
+        },
+        {
+          "sha256": "be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991",
+          "span": {
+            "length": 16,
+            "offset": 240
+          }
+        }
+      ]
+    }
+  ],
+  "rowsEnd": 256,
+  "rowsSpan": {
+    "length": 192,
+    "offset": 64
+  },
+  "schemaVersion": 1,
+  "trailing": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "span": {
+      "length": 0,
+      "offset": 256
+    }
+  }
+}

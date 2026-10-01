@@ -35,6 +35,7 @@ These pages describe the supported file formats.
 - [SQEX containers](formats/sqex.md)
 - [Configuration files](formats/configuration.md)
 - [Static-actor SAN records](formats/staticactor-san.md)
+- [RegionResourceData root and child rows](formats/region.md)
 - [GTEX fields and PWIB segments](formats/gtex-pwib.md)
 - [Zone geometry export](formats/zone-geometry.md)
 

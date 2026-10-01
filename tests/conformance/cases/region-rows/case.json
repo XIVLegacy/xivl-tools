@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "region-rows",
+  "formatId": "region",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/region/rows.bin"
+  },
+  "arguments": [],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Authored roots, duplicate children, and opaque nonzero child +0x0C; automatic recognition."
+}

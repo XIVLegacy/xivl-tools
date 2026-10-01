@@ -156,6 +156,23 @@ a `parse-error` expectation.
 
 ## Case outcomes
 
+The `region` cases exercise RegionResourceData 1.1.0 root and child walking
+through `inspect` and `validate`. Public fixtures include duplicate rows and
+a child with nonzero opaque `+0x0C`, plus concrete header and count boundaries.
+Private expectations retain membership, counts, spans, and digests rather than
+decoded tokens, row values, or recoverable payload bytes. Run the pinned vector
+against an explicit frozen root containing its original `data/` path:
+
+```text
+conformance run --case retail-region-03c00000-inspect
+                --case retail-region-03c00000-validate
+                --fixture-root client-install=<explicit-snapshot-root>
+                --require-private
+```
+
+The [region contract](formats/region.md) owns the vector identity, independent
+row accounting, and remaining evidence limits.
+
 A case expects `ok` with an expected output document, or `parse-error` with
 a stable `errorKind` and, optionally, the `errorOffset` the error must
 carry. Cases with malformed input are first class: the parser contract requires

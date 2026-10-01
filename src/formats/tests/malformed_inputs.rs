@@ -45,6 +45,7 @@ fn document_fixtures() -> Vec<(String, Vec<u8>)> {
         "config",
         "lpb",
         "staticactor",
+        "region",
     ]);
     // The 128-level nesting bomb has its own exact limit assertion. Mutating
     // each of its thousands of bytes would multiply the cross-reader sweep
@@ -146,6 +147,7 @@ fn deterministic_byte_mutations_are_handled() {
 fn read_every_way(data: &[u8], name: &str) {
     let readings = [
         InspectAs::Auto,
+        InspectAs::Region,
         InspectAs::Ssd,
         InspectAs::EnableFile,
         InspectAs::RowOffsets,

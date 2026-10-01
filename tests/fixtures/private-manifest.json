@@ -364,6 +364,17 @@
       "sha256": "56c9056d1e15006280a1fa5934bb8f25a82a583cea1c3366dc6bbb8883d2326b",
       "size": 1120,
       "sourcePath": "data/5D/20/00/06.DAT"
+    },
+    {
+      "formatIds": [
+        "region"
+      ],
+      "id": "retail-region-03c00000",
+      "notes": "RegionResourceData 1.1.0 native-loader vector: 61 roots, 1089 rows ending at EOF; xivl-decomp:docs/resource/region-weather-resource-rows.md at 8b62e88ecada59ef069fa20fa9c21554e1957c88.",
+      "root": "client-install",
+      "sha256": "c04b0d998aea4c1b13ed322292a5aa5af45485c698da2315171c3c024bcb9a74",
+      "size": 52336,
+      "sourcePath": "data/03/C0/00/00.DAT"
     }
   ],
   "rootEnvironmentVariable": "XIVL_TOOLS_FIXTURE_ROOT",

@@ -44,7 +44,7 @@ usage:
   xivl --version
 
 inspect prints the normalized structural report for one file. With no
---as it recognizes static-actor SAN tables, SEDB containers, SSD documents,
+--as it recognizes RegionResourceData, static-actor SAN tables, SEDB containers, SSD documents,
 SQEX containers, and scrambled documents, the last by decoding them rather
 than by one trailer byte.
 
@@ -92,7 +92,7 @@ lua-path applies the reversible ASCII resource-path transform. extract-lpb
 removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
 5.1 chunk without interpreting it. The output path must not already exist.
 
-  --as sedb | ssd | scrambled-xml | sqwt | lpb | lpb-bytecode | staticactor-san | gtex | pwib
+  --as sedb | ssd | scrambled-xml | sqwt | lpb | lpb-bytecode | staticactor-san | region | gtex | pwib
      | enable-file | row-offsets
      | sheet-data | config-sys | config-pad | config-lng | config-rgn
       Read the input as this format. Needed for enable-file and

@@ -20,6 +20,7 @@ use crate::lua51::{
     self, Lua51Instruction, Lua51Operand, Lua51Operands, Lua51Prototype, LuaConstant, LuaString,
 };
 use crate::reader::Span;
+use crate::region::{self, RegionMembership};
 use crate::richstring::{payload_hex, RichString, Segment};
 use crate::scrambled;
 use crate::sedb::{self, Container, Entry, EntryBody};
@@ -56,6 +57,8 @@ pub enum InspectAs {
     LpbBytecode,
     /// The XOR-0x73 static-actor SAN record table.
     StaticActorSan,
+    /// The RegionResourceData 1.1.0 root and child row table.
+    Region,
     /// A GTEX texture with loader-backed metadata and source addressing.
     Gtex,
     /// A PWIB resource with two loader-bounded segments.
@@ -73,7 +76,7 @@ pub enum InspectAs {
 
 impl InspectAs {
     /// Names accepted by the `--as` option.
-    pub const NAMES: [&'static str; 16] = [
+    pub const NAMES: [&'static str; 17] = [
         "sedb",
         "ssd",
         "scrambled-xml",
@@ -81,6 +84,7 @@ impl InspectAs {
         "lpb",
         "lpb-bytecode",
         "staticactor-san",
+        "region",
         "gtex",
         "pwib",
         "enable-file",
@@ -127,6 +131,7 @@ impl InspectAs {
             Some("lpb") => Self::Lpb,
             Some("lpb-bytecode") => Self::LpbBytecode,
             Some("staticactor-san") => Self::StaticActorSan,
+            Some("region") => Self::Region,
             Some("gtex") => Self::Gtex,
             Some("pwib") => Self::Pwib,
             Some("enable-file") => Self::EnableFile,
@@ -175,6 +180,8 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
                 inspect_tagged_resource(data, kind)
             } else if staticactor::has_signature(data) {
                 inspect_staticactor(data)
+            } else if region::has_signature(data) {
+                inspect_region(data)
             } else if ssd::has_document_signature(data) {
                 inspect_ssd(data)
             } else if sqwt::has_signature(data) {
@@ -198,6 +205,7 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
         InspectAs::Lpb => inspect_lpb(data),
         InspectAs::LpbBytecode => inspect_lpb_bytecode(data),
         InspectAs::StaticActorSan => inspect_staticactor(data),
+        InspectAs::Region => inspect_region(data),
         InspectAs::Gtex => inspect_tagged_resource(data, TaggedResourceKind::Gtex),
         InspectAs::Pwib => inspect_tagged_resource(data, TaggedResourceKind::Pwib),
         InspectAs::EnableFile => inspect_enable_file(data),
@@ -614,6 +622,53 @@ fn inspect_lpb(data: &[u8]) -> Result<Value> {
     object.insert("encodedPayload".into(), file.encoded_payload.to_json());
     object.insert("decodedLength".into(), json!(file.decoded.len() as u64));
     object.insert("decodedSha256".into(), json!(sha256_hex(&file.decoded)));
+    Ok(Value::Object(object))
+}
+
+fn inspect_region(data: &[u8]) -> Result<Value> {
+    let file = region::parse(data)?;
+    let digest_span = |span: Span| {
+        json!({
+            "span": span.to_json(), "sha256": span_sha256(data, span),
+        })
+    };
+    let rows: Vec<Value> = file.rows.iter().enumerate().map(|(index, row)| {
+        let membership = match row.membership {
+            RegionMembership::Root { index, child_count } => json!({
+                "kind": "root", "rootIndex": index,
+                "childCount": { "span": Span::new(row.span.offset + 0x0C, 4).to_json(), "value": child_count },
+            }),
+            RegionMembership::Child { root_index, index } => json!({
+                "kind": "child", "rootIndex": root_index, "childIndex": index,
+            }),
+        };
+        json!({
+            "index": index, "span": row.span.to_json(),
+            "sha256": span_sha256(data, row.span), "membership": membership,
+            "id": digest_span(Span::new(row.span.offset, 4)),
+            "datKey": digest_span(Span::new(row.span.offset + 0x08, 4)),
+            "token": digest_span(row.token),
+            "unknown": row.unknown.iter().copied().map(digest_span).collect::<Vec<_>>(),
+        })
+    }).collect();
+    let mut object = envelope("region", data);
+    object.insert(
+        "header".into(),
+        json!({
+            "span": file.header.to_json(), "tableName": "RegionResourceData", "version": "1.1.0",
+            "nameSpan": Span::new(0, 19).to_json(), "versionSpan": Span::new(0x18, 6).to_json(),
+            "declaredSize": { "span": Span::new(0x20, 4).to_json(), "value": file.declared_size },
+            "rootCount": { "span": Span::new(0x24, 4).to_json(), "value": file.root_count },
+            "unknown": file.unknown_header.into_iter().map(digest_span).collect::<Vec<_>>(),
+        }),
+    );
+    object.insert("rowStride".into(), json!(region::ROW_STRIDE));
+    object.insert("rowCount".into(), json!(rows.len()));
+    object.insert("rowsSpan".into(), file.rows_span.to_json());
+    object.insert("rowsEnd".into(), json!(file.rows_span.end()));
+    object.insert("endsAtEof".into(), json!(file.trailing.length == 0));
+    object.insert("rows".into(), json!(rows));
+    object.insert("trailing".into(), digest_span(file.trailing));
     Ok(Value::Object(object))
 }
 

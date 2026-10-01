@@ -117,6 +117,28 @@ def staticactor_san(
     return b"sane" + bytes(byte ^ 0x73 for byte in decoded)
 
 
+def region_row(row_id: int, dat_key: int, field_0c: int, token: bytes) -> bytes:
+    """Authored row values; child field_0c deliberately need not be zero."""
+    if len(token) > 16:
+        raise ValueError("region token exceeds its span")
+    return (
+        struct.pack("<IIII", row_id, 0x13579BDF, dat_key, field_0c)
+        + token.ljust(16, b"\x00")
+        + bytes(range(16))
+    )
+
+
+def region_table(rows: list[bytes], root_count: int) -> bytes:
+    header = bytearray(0x40)
+    header[:19] = b"RegionResourceData\x00"
+    header[19:24] = b"SYNTH"
+    header[24:30] = b"1.1.0\x00"
+    header[30:32] = b"AB"
+    struct.pack_into("<II", header, 0x20, 0x40 + 0x30 * len(rows), root_count)
+    header[0x28:0x40] = bytes(range(24))
+    return bytes(header) + b"".join(rows)
+
+
 def xml_document(body: str, declaration: bool = True, bom: bool = True) -> bytes:
     """An SSD document in the shape the client writes: BOM, declaration,
     CRLF line endings."""
@@ -1598,6 +1620,48 @@ def build_fixtures() -> dict[str, bytes]:
         "sqwt/unclosed-comment.bin",
         widget_document("<SyntheticRoot>\n\t<!-- never closed\n</SyntheticRoot>\n"),
     )
+
+    # -- RegionResourceData 1.1.0 ----------------------------------------
+    child = region_row(17, 0x10203040, 0xFFFFFFFF, b"SyntheticChild")
+    region = region_table(
+        [
+            region_row(3, 0x11223344, 2, b"SyntheticRoot"),
+            child,
+            child,
+            region_row(5, 0x55667788, 0, b"OtherRoot"),
+        ],
+        2,
+    )
+    fixtures["region/rows.bin"] = region
+    fixtures["region/empty.bin"] = region_table([], 0)
+    fixtures["region/bad-name.bin"] = b"X" + region[1:]
+    fixtures["region/bad-version.bin"] = region[:24] + b"2" + region[25:]
+    for name, length in [
+        ("name", 18),
+        ("name-padding", 23),
+        ("version", 29),
+        ("version-padding", 31),
+        ("size", 35),
+        ("count", 39),
+        ("tail", 63),
+    ]:
+        fixtures[f"region/truncated-{name}.bin"] = region[:length]
+    fixtures["region/root-count-bomb.bin"] = region_table([], 0xFFFFFFFF)
+    fixtures["region/missing-root.bin"] = region_table([], 1)
+    fixtures["region/partial-root.bin"] = region_table([child], 1)[:-1]
+    fixtures["region/child-count-bomb.bin"] = region_table(
+        [region_row(3, 0, 0xFFFFFFFF, b"Root")], 1
+    )
+    fixtures["region/partial-child.bin"] = region_table(
+        [region_row(3, 0, 1, b"Root"), child], 1
+    )[:-1]
+    fixtures["region/children-consume-roots.bin"] = region_table(
+        [region_row(3, 0, 1, b"Root"), child], 2
+    )
+    fixtures["region/trailing.bin"] = region + b"XYZ"
+    advisory = bytearray(region)
+    struct.pack_into("<I", advisory, 0x20, 1)
+    fixtures["region/advisory-size.bin"] = bytes(advisory)
 
     # -- the configuration files -----------------------------------------
     # The shapes come from docs/formats/configuration.md; every value is this

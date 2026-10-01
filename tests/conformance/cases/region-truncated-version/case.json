@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "region-truncated-version",
+  "formatId": "region",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/region/truncated-version.bin"
+  },
+  "arguments": [
+    "--as",
+    "region"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 24
+  }
+}

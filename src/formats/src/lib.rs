@@ -24,6 +24,7 @@ pub mod lua51;
 pub mod lua_path;
 pub mod normalize;
 pub mod reader;
+pub mod region;
 pub mod resource;
 pub mod richstring;
 pub mod scrambled;

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "region-empty",
+  "formatId": "region",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/region/empty.bin"
+  },
+  "arguments": [
+    "--as",
+    "region"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  }
+}
