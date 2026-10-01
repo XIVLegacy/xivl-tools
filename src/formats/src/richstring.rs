@@ -21,6 +21,8 @@ pub const TOKEN_END: u8 = 0x03;
 /// Lowest length byte that is an escape rather than a value.
 pub const LENGTH_ESCAPE_FLOOR: u8 = 0xF0;
 
+const MAX_EXPRESSION_NESTING: usize = 64;
+
 /// A control code present in the frozen 1.23b sheet corpus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MacroCode {
@@ -325,7 +327,7 @@ impl Token {
         let mut position = 0usize;
         while position < self.payload.len() {
             let (expression, consumed) =
-                parse_expression(&self.payload[position..]).ok_or(position)?;
+                parse_expression(&self.payload[position..], 0).ok_or(position)?;
             expressions.push(expression);
             position += consumed;
         }
@@ -333,7 +335,7 @@ impl Token {
     }
 }
 
-fn parse_expression(data: &[u8]) -> Option<(Expression, usize)> {
+fn parse_expression(data: &[u8], depth: usize) -> Option<(Expression, usize)> {
     let lead = *data.first()?;
     if (1..0xD0).contains(&lead) || (0xF0..=0xFE).contains(&lead) {
         let (value, consumed) = decode_integer(data)?;
@@ -349,7 +351,10 @@ fn parse_expression(data: &[u8]) -> Option<(Expression, usize)> {
         return Some((Expression::Placeholder(lead), 1));
     }
     if (0xE8..=0xEB).contains(&lead) {
-        let (operand, consumed) = parse_expression(data.get(1..)?)?;
+        if depth >= MAX_EXPRESSION_NESTING {
+            return None;
+        }
+        let (operand, consumed) = parse_expression(data.get(1..)?, depth + 1)?;
         return Some((
             Expression::Unary {
                 code: lead,
@@ -359,8 +364,11 @@ fn parse_expression(data: &[u8]) -> Option<(Expression, usize)> {
         ));
     }
     if (0xE0..=0xE5).contains(&lead) {
-        let (left, left_length) = parse_expression(data.get(1..)?)?;
-        let (right, right_length) = parse_expression(data.get(1 + left_length..)?)?;
+        if depth >= MAX_EXPRESSION_NESTING {
+            return None;
+        }
+        let (left, left_length) = parse_expression(data.get(1..)?, depth + 1)?;
+        let (right, right_length) = parse_expression(data.get(1 + left_length..)?, depth + 1)?;
         return Some((
             Expression::Binary {
                 code: lead,
@@ -590,6 +598,37 @@ mod tests {
             Expression::String { value, .. } => assert_eq!(value.text_only(), "hello"),
             other => panic!("string expression parsed as {other:?}"),
         }
+    }
+
+    #[test]
+    fn expression_nesting_allows_sixty_four_edges_and_rejects_sixty_five() {
+        let unary = |depth: usize| {
+            let mut payload = vec![0xE8; depth];
+            payload.push(0x01);
+            Token {
+                span: Span::new(0, 0),
+                code: 0x08,
+                encoding: LengthEncoding::Direct,
+                length_bytes: vec![1],
+                payload,
+            }
+        };
+        assert_eq!(unary(64).expressions().unwrap().len(), 1);
+        assert_eq!(unary(65).expressions(), Err(0));
+
+        let binary = |depth: usize| {
+            let mut payload = vec![0xE0; depth];
+            payload.extend(std::iter::repeat_n(0x01, depth + 1));
+            Token {
+                span: Span::new(0, 0),
+                code: 0x08,
+                encoding: LengthEncoding::Direct,
+                length_bytes: vec![1],
+                payload,
+            }
+        };
+        assert_eq!(binary(64).expressions().unwrap().len(), 1);
+        assert_eq!(binary(65).expressions(), Err(0));
     }
 
     #[test]

@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "malformed-rich-string-token",
+    "errorOffset": 4,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-frame-close.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-frame-close",
+  "notes": "A direct token with a non-terminator reports the closing byte offset.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

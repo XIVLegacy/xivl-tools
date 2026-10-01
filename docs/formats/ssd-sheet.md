@@ -13,9 +13,9 @@ That command is research only. It makes no support claim, never runs in
 CI, requires an explicit `--client-root`, and prints counts rather than
 bytes or text.
 
-Nothing in this section is promoted from another repository. Every
-statement below was established first-hand against the install named
-above.
+The retail observations below were established first-hand against the
+install named above. Public synthetic coverage checks the library contract
+separately and does not add retail observations.
 
 ## The documents
 
@@ -233,6 +233,61 @@ string from its text runs and tokens reproduces the input exactly for all
 310497 strings in the install, and the same round trip is asserted in
 `src/formats/tests/malformed_inputs.rs` on every truncation and byte
 mutation of every committed fixture.
+
+### Rich-string read and text-export contract
+
+Read is `supported` for UTF-8 text runs and the token framing described
+above. All 26 known codes have names. Unknown code bytes remain tokens
+with the name `unknown`; no code is executed or rendered. The direct,
+byte, byte-scaled, and word length bytes are retained verbatim, including
+noncanonical forms that frame correctly. Unestablished length leads,
+truncated frames, missing closing bytes, and invalid text outside tokens
+fail with typed errors and absolute source offsets.
+
+`Token::expressions` decodes a sequence of prefix expressions under this
+grammar. These rules specify the library's existing decoding contract,
+independently of any macro's runtime meaning:
+
+| Lead | Expression |
+|---|---|
+| `01..CF` | Integer with value `lead - 1`. |
+| `F0..FE` | Integer with mask `(lead + 1) & 0x0F`. Bits `8,4,2,1` select nonzero bytes at shifts `24,16,8,0`, read in that order. Unselected bytes are zero. |
+| `D0..DF`, `EC` | Placeholder retaining its code. |
+| `E8..EB` | Unary node followed by one expression. |
+| `E0..E5` | Binary node followed by left and right expressions. |
+| `FF` | String: an encoded integer byte length followed by that many rich-string bytes. |
+
+Integer expressions retain their raw bytes. String expressions retain
+their encoded length and framed rich-string body. Tokens inside a string
+body remain raw tokens; parsing the body does not evaluate their payloads.
+`00`, `E6`, `E7`, and `ED..EF` have no expression production. A missing
+operand, selected zero integer byte, invalid string body, or truncated
+integer or string fails expression decoding. Nesting permits 64
+unary/binary edges on either operand path and refuses deeper expressions
+before unbounded recursion.
+
+An expression failure returns the payload-relative start of the first
+undecodable top-level expression, not the innermost offending byte.
+Framing and expression decoding are separate: a framed token with a
+malformed expression remains available through its exact raw bytes.
+`RichString::encode` and text export retain it unchanged.
+
+Text export is independently `supported` for the lossless CSV cell view.
+Literal backslashes and opening brackets are escaped, and every token
+becomes `[@name:<exact-token-hex>]`, including unknown codes and malformed
+expression payloads. CSV fields containing commas, quotes, LF, or CR are
+quoted, with doubled quotes inside the field. UTF-8 text and line endings
+inside a field are preserved. Structural JSON reports are not a lossless
+export view, and `text_only` deliberately drops tokens.
+
+Public cases call production `Token::expressions` rather than only sheet
+framing. Independent literal tests specify all code names and token
+markers, integer masks, placeholders, operators, strings, failure
+offsets, nesting boundaries, exact re-encoding, and CSV bytes. See
+[conformance tests](../conformance-tests.md) for the dedicated operation.
+These synthetic checks do not strengthen the single-observation retail
+evidence for the `0xF1` token-length form. No rendering, execution,
+write-back, or `verified` claim follows from this coverage.
 
 ## Parser behavior over the install
 

@@ -1548,6 +1548,129 @@ def build_fixtures() -> dict[str, bytes]:
         b"start" + TOKEN_START + b"\x10\xf3\x00\x00\x00" + TOKEN_END
     )
 
+    # -- direct rich-string conformance fixtures ------------------------
+    # These files are decoded string bytes, without the SSD string framing.
+    # Their payloads are authored here independently of the Rust expression
+    # reader so the conformance operation tests that reader rather than the
+    # sheet stream.
+    rich_codes = [
+        0x07,
+        0x08,
+        0x09,
+        0x10,
+        0x11,
+        0x12,
+        0x13,
+        0x14,
+        0x16,
+        0x19,
+        0x1A,
+        0x1D,
+        0x1F,
+        0x20,
+        0x22,
+        0x24,
+        0x25,
+        0x28,
+        0x29,
+        0x2B,
+        0x2C,
+        0x2D,
+        0x2F,
+        0x31,
+        0x32,
+        0x33,
+    ]
+    fixtures["rich-string/public-vocabulary.bin"] = (
+        b"before" + b"".join(token(code, b"\x01") for code in rich_codes) + b"after"
+    )
+
+    # Keep the one synthetic F1 observation compact while exercising all four
+    # length encodings. The other payloads are deliberately small.
+    fixtures["rich-string/public-lengths.bin"] = b"".join(
+        [
+            token(0x07, b"\x01"),
+            token(0x08, b"\x01\x02\x03", encoding="byte"),
+            token(0x09, b"\x01" * 256, encoding="byte-scaled"),
+            token(0x10, b"\x01" * 300, encoding="word"),
+        ]
+    )
+
+    # Every established expression lead appears in a separate small token
+    # frame. The bytes are authored independently of the Rust expression
+    # reader, and direct lengths keep this fixture compact.
+    expression_tokens = [token(0x08, bytes([lead])) for lead in range(0x01, 0xD0)]
+    for lead in range(0xF0, 0xFF):
+        mask = (lead + 1) & 0x0F
+        lanes = [8, 4, 2, 1]
+        data = bytes(0x20 + index for index, bit in enumerate(lanes) if mask & bit)
+        expression_tokens.append(token(0x08, bytes([lead]) + data))
+    expression_tokens.extend(
+        token(0x08, bytes([lead])) for lead in list(range(0xD0, 0xE0)) + [0xEC]
+    )
+    expression_tokens.extend(
+        token(0x08, bytes([lead, 0xD0])) for lead in range(0xE8, 0xEC)
+    )
+    expression_tokens.extend(
+        token(0x08, bytes([lead, 0xD0, 0xD1])) for lead in range(0xE0, 0xE6)
+    )
+    expression_tokens.extend(
+        [
+            token(0x08, b"\xff\x01"),
+            token(0x08, b"\xff\x04A\\["),
+            token(0x08, b"\xff\xf0\x03A\\["),
+            token(0x08, b"\xff\x05\x02\x10\x01\x03"),
+        ]
+    )
+    fixtures["rich-string/public-expressions.bin"] = b"".join(expression_tokens)
+
+    # A plain sheet string with the literal CSV body used by the independent
+    # rich-string export oracle, including every named token and one unknown.
+    csv_body = bytearray(b'q,"\\[x]\n\r')
+    csv_body.extend(b"".join(token(code, b"\x01") for code in rich_codes))
+    csv_body.extend(token(0xAA, b"\x00"))
+    csv_body.extend("\u00e9".encode("utf-8"))
+    fixtures["rich-string/public-csv.bin"] = framed_string(
+        bytes(csv_body), scrambled=False
+    )
+
+    # Each malformed expression remains inside a valid token frame, so the
+    # conformance report can retain the payload-relative failure offset.
+    fixtures["rich-string/public-malformed-operands.bin"] = (
+        token(0x08, b"\x01\xe8") + token(0x09, b"\xe0\x01") + token(0x0A, b"\xe0")
+    )
+    fixtures["rich-string/public-malformed-integers.bin"] = (
+        token(0x08, b"\xf0\x00")
+        + token(0x09, b"\xf1\x00")
+        + token(0x0A, b"\xf2\x00\x01")
+        + token(0x0B, b"\xf0")
+    )
+    fixtures["rich-string/public-malformed-strings.bin"] = (
+        token(0x08, b"\xff\x02")
+        + token(0x09, b"\xff\x03\xc3\x28")
+        + token(0x0A, b"\xff\x02\x02")
+        + token(0x0B, b"\xff\xf0")
+    )
+    fixtures["rich-string/public-reserved-leads.bin"] = b"".join(
+        token(code, bytes([code])) for code in [0x00, 0xE6, 0xE7, 0xED, 0xEE, 0xEF]
+    )
+    fixtures["rich-string/public-unknown-raw.bin"] = (
+        b"literal" + token(0xAA, b"\xe7\x02\x03") + b"tail"
+    )
+
+    for depth in [64, 65]:
+        fixtures[f"rich-string/public-depth-{depth}.bin"] = token(
+            0x08, b"\xe8" * depth + b"\x01"
+        )
+
+    # Direct framing failures exercise the offset reported by RichString::parse.
+    fixtures["rich-string/public-frame-code.bin"] = b"\x02"
+    fixtures["rich-string/public-frame-length.bin"] = b"\x02\x10"
+    fixtures["rich-string/public-frame-lead.bin"] = b"\x02\x10\xf3\x00\x00\x00\x03"
+    fixtures["rich-string/public-frame-payload.bin"] = b"\x02\x10\x04A\x03"
+    fixtures["rich-string/public-frame-close.bin"] = b"\x02\x10\x02A\x04"
+    fixtures["rich-string/public-frame-zero.bin"] = b"\x02\x10\x00\x03"
+
     # -- typed rows ------------------------------------------------------
     # Two rows of str,s32,bool,float,u8. A string column is
     # self-delimiting and the rest are fixed width, so the column list

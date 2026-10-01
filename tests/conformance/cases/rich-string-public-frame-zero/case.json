@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "malformed-rich-string-token",
+    "errorOffset": 2,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-frame-zero.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-frame-zero",
+  "notes": "A zero direct length lead reports the length offset.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

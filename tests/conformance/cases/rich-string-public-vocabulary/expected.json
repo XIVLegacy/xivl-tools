@@ -1,0 +1,429 @@
+{
+  "format": "rich-string",
+  "input": {
+    "length": 141,
+    "sha256": "cf97499cfd1ba93399ad5e901fc8cf83ad250a001448bfad273620d755c708a4"
+  },
+  "losslessText": {
+    "length": 554,
+    "sha256": "5cbf38299849092daca995e89be0506e9e945e250845a8bd66561eabd803818b"
+  },
+  "operation": "rich-string",
+  "reencoded": {
+    "length": 141,
+    "matchesInput": true,
+    "sha256": "cf97499cfd1ba93399ad5e901fc8cf83ad250a001448bfad273620d755c708a4"
+  },
+  "schemaVersion": 1,
+  "segments": [
+    {
+      "characters": 6,
+      "kind": "text",
+      "sha256": "6db7d803e74f1ffa7d8f5adc0bf95b3e15bf4c8373fffadf546227cc6c6742cb",
+      "span": {
+        "length": 6,
+        "offset": 0
+      }
+    },
+    {
+      "code": 7,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "set-time",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "64acc54d175e0ef5c1ba4546b51455c02f8cdf9686489e59a9afcba40033b1b8",
+      "span": {
+        "length": 5,
+        "offset": 6
+      }
+    },
+    {
+      "code": 8,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "if",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "bf8ac831299b7c8a6a528d49eafa6054a8ffc224ac1d65138b9af8a8d2822510",
+      "span": {
+        "length": 5,
+        "offset": 11
+      }
+    },
+    {
+      "code": 9,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "switch",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "9447ded0f6d823478eee9a20549e2f8ebb34be217660d3e1b67718907f3429f2",
+      "span": {
+        "length": 5,
+        "offset": 16
+      }
+    },
+    {
+      "code": 16,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "newline",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "222cdb8aff7ce159d246cb832584906e241ec8053cba413f55072e2258a45a61",
+      "span": {
+        "length": 5,
+        "offset": 21
+      }
+    },
+    {
+      "code": 17,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "wait",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "8f8fcfe0598a7a9f054b83e1029244b19534ccf3db2e6e3df4719892aa2334a2",
+      "span": {
+        "length": 5,
+        "offset": 26
+      }
+    },
+    {
+      "code": 18,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "icon",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "3ca3b015f074c936082728a880341f47f90f1691a93b5274913a8ebc5c2458e2",
+      "span": {
+        "length": 5,
+        "offset": 31
+      }
+    },
+    {
+      "code": 19,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "color",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "592b1e6daca2ef7c9405eddd6490fd6255902f9fcc8e77fd68bb456352eba7f2",
+      "span": {
+        "length": 5,
+        "offset": 36
+      }
+    },
+    {
+      "code": 20,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "edge-color",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "27d91c4e22d8883e6864f9fed18c603cdcc53695077b1ee6565c7a1fbc1db1b2",
+      "span": {
+        "length": 5,
+        "offset": 41
+      }
+    },
+    {
+      "code": 22,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "soft-hyphen",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "d24a5774696b7ffea5787e120b3aac78f276c004960c3a6fbfcd4cc3357f1b47",
+      "span": {
+        "length": 5,
+        "offset": 46
+      }
+    },
+    {
+      "code": 25,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "bold",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "362f11b01ee2ba7ff7c5425b32c91b6abb317493af02b3d1b2f5203f152c4418",
+      "span": {
+        "length": 5,
+        "offset": 51
+      }
+    },
+    {
+      "code": 26,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "italic",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "4c71af6b2357ad06844180ba5fa8f96423eaf50e6ffb4e2bc8fec1354128911b",
+      "span": {
+        "length": 5,
+        "offset": 56
+      }
+    },
+    {
+      "code": 29,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "non-breaking-space",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "077c97be8051946e77fde92f3f38aa1c5ac33341a987ccf12db4d5176568f1e3",
+      "span": {
+        "length": 5,
+        "offset": 61
+      }
+    },
+    {
+      "code": 31,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "hyphen",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "44c3b70d267ee656c24d04a7ea493beeec5acf225b072a7d7873d0146b85412f",
+      "span": {
+        "length": 5,
+        "offset": 66
+      }
+    },
+    {
+      "code": 32,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "number",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "8d648b6c71dc7cd9fe25750afcfbea39bad4d9917ffdfc9748d6d52fe44b9708",
+      "span": {
+        "length": 5,
+        "offset": 71
+      }
+    },
+    {
+      "code": 34,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "kilo",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "6cd7c2625ea9cdf889be950ea032e544e9d6f5e0b3f06349637e31ed74274f58",
+      "span": {
+        "length": 5,
+        "offset": 76
+      }
+    },
+    {
+      "code": 36,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "seconds",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "70d01805b8e8f51b135aa6fee1cf081d8941721d04e553683e0b591a92a470ca",
+      "span": {
+        "length": 5,
+        "offset": 81
+      }
+    },
+    {
+      "code": 37,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "time",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "9208382ead8f3d712d3361ffcf9adecd0f44fb46eb6574a4c9b865d285084322",
+      "span": {
+        "length": 5,
+        "offset": 86
+      }
+    },
+    {
+      "code": 40,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "sheet",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "952c961b4b9812c4d16c096a292afae8d5432a515e34aaeab2449bf56066dc86",
+      "span": {
+        "length": 5,
+        "offset": 91
+      }
+    },
+    {
+      "code": 41,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "string",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "a1adf9fa29651962cefd0bc047947d331c6b136c91a4d224bf46b7d6da2ce2a8",
+      "span": {
+        "length": 5,
+        "offset": 96
+      }
+    },
+    {
+      "code": 43,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "head",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "be915bec14053fe05a66bd2a8c84756052d5861c9d6cb2cfa7156d9f3b8a450b",
+      "span": {
+        "length": 5,
+        "offset": 101
+      }
+    },
+    {
+      "code": 44,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "split",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "c0d6c3a8f936d612d807ff93f66eb7ebb7dc56be394bb7d1db5e8233fab45514",
+      "span": {
+        "length": 5,
+        "offset": 106
+      }
+    },
+    {
+      "code": 45,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "head-all",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "aabb98c792068f9b46179680713863635919e6d7344eec150955bcb465f4cd87",
+      "span": {
+        "length": 5,
+        "offset": 111
+      }
+    },
+    {
+      "code": 47,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "lower",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "c591f5bdade3155444bc52b702d6f88cf81697c9862f03593084ee3d2ca4bb2e",
+      "span": {
+        "length": 5,
+        "offset": 116
+      }
+    },
+    {
+      "code": 49,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "english-noun",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "a338741967e839cd4deb6edf473c3660f1771ba95fa37c3f6e7d08a11931e9b8",
+      "span": {
+        "length": 5,
+        "offset": 121
+      }
+    },
+    {
+      "code": 50,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "german-noun",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "57ad64219a8d8a89a3543e369949e86c26ea6f3be9e692ae48e505bbf632837b",
+      "span": {
+        "length": 5,
+        "offset": 126
+      }
+    },
+    {
+      "code": 51,
+      "expressionCount": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "french-noun",
+      "payloadLength": 1,
+      "payloadSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "rawSha256": "80df27e871c57bc08e790f35fd78834a135cc10cf86e4ae6c18ca653fd54ea53",
+      "span": {
+        "length": 5,
+        "offset": 131
+      }
+    },
+    {
+      "characters": 5,
+      "kind": "text",
+      "sha256": "f39592393ef0859cb196a52693d2cea00fb2df784b3c04ae54aa7cadb8e562f8",
+      "span": {
+        "length": 5,
+        "offset": 136
+      }
+    }
+  ],
+  "tokenCount": 26
+}

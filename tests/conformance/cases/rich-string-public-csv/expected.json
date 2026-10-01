@@ -1,0 +1,13 @@
+{
+  "columns": [
+    "str"
+  ],
+  "csv": " ,0\n ,str\n0,\"q,\"\"\\\\\\[x]\n\r[@set-time:0207020103][@if:0208020103][@switch:0209020103][@newline:0210020103][@wait:0211020103][@icon:0212020103][@color:0213020103][@edge-color:0214020103][@soft-hyphen:0216020103][@bold:0219020103][@italic:021a020103][@non-breaking-space:021d020103][@hyphen:021f020103][@number:0220020103][@kilo:0222020103][@seconds:0224020103][@time:0225020103][@sheet:0228020103][@string:0229020103][@head:022b020103][@split:022c020103][@head-all:022d020103][@lower:022f020103][@english-noun:0231020103][@german-noun:0232020103][@french-noun:0233020103][@unknown:02aa020003]\u00e9\"\n",
+  "format": "ssd-sheet",
+  "input": {
+    "length": 149
+  },
+  "operation": "extract",
+  "rowCount": 1,
+  "schemaVersion": 1
+}

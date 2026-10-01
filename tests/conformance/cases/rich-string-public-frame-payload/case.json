@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "malformed-rich-string-token",
+    "errorOffset": 3,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-frame-payload.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-frame-payload",
+  "notes": "A direct token payload that runs past the input reports its payload start.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

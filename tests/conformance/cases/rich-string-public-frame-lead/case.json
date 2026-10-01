@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "malformed-rich-string-token",
+    "errorOffset": 2,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-frame-lead.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-frame-lead",
+  "notes": "An unestablished length escape reports its lead byte offset.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

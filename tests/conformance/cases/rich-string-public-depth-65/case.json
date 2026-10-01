@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-depth-65.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-depth-65",
+  "notes": "The sixty-fifth unary edge reports failure at the start of the top-level expression while preserving raw bytes.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

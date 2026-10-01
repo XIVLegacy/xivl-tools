@@ -21,7 +21,7 @@ use xivl_cli::ExtractFailure;
 use xivl_formats::digest::sha256_hex;
 use xivl_formats::{
     inspect_named_bytes_as, lua_path_document, resource_path_listing, to_canonical_json,
-    validate_named_bytes_as, ErrorKind, FormatError, InspectAs,
+    validate_named_bytes_as, ErrorKind, FormatError, InspectAs, RichString, Segment,
 };
 
 /// Bounds allocation before parsing any fixture path.
@@ -165,6 +165,12 @@ fn run_case(
     directory: &Path,
     manifest: &BTreeMap<String, PrivateFixture>,
 ) -> Outcome {
+    let operation = string_field(case, "operation");
+    if operation == "rich-string" {
+        if let Err(reason) = validate_rich_string_case(case) {
+            return Outcome::Failed(reason);
+        }
+    }
     if string_field(case.get("fixture").unwrap_or(&Value::Null), "kind") == "public-tree" {
         return run_public_tree_case(options, case, directory);
     }
@@ -177,8 +183,8 @@ fn run_case(
         Err(reason) => return Outcome::Failed(reason),
     };
 
-    let operation = string_field(case, "operation");
     let produced = match operation.as_str() {
+        "rich-string" => rich_string_document(&input),
         "inspect" | "validate" | "extract" => {
             let arguments = case_arguments(case);
             let export_dds = arguments.iter().any(|argument| argument == "--export-dds");
@@ -294,6 +300,19 @@ fn run_case(
         ("parse-error", Err(error)) => compare_error(&expect, &error),
         (other, _) => Outcome::Failed(format!("unknown expected outcome '{other}'")),
     }
+}
+
+fn validate_rich_string_case(case: &Value) -> Result<(), String> {
+    if string_field(case, "formatId") != "rich-string" {
+        return Err("rich-string operation requires formatId 'rich-string'".into());
+    }
+    if string_field(case.get("fixture").unwrap_or(&Value::Null), "kind") != "public" {
+        return Err("rich-string operation requires an ordinary public fixture".into());
+    }
+    if !case_arguments(case).is_empty() {
+        return Err("rich-string operation does not accept arguments".into());
+    }
+    Ok(())
 }
 
 fn run_public_tree_case(options: &Options, case: &Value, directory: &Path) -> Outcome {
@@ -756,6 +775,67 @@ fn decoded_document_export(
     }))
 }
 
+fn rich_string_document(input: &[u8]) -> Result<Value, FormatError> {
+    let rich = RichString::parse(input, 0)?;
+    let encoded = rich.encode();
+    let lossless = rich.to_lossless_text();
+    let segments = rich
+        .segments
+        .iter()
+        .map(|segment| match segment {
+            Segment::Text { span, text } => json!({
+                "characters": text.chars().count() as u64,
+                "kind": "text",
+                "sha256": sha256_hex(text.as_bytes()),
+                "span": span.to_json(),
+            }),
+            Segment::Token(token) => {
+                let expression = match token.expressions() {
+                    Ok(expressions) => json!({ "expressionCount": expressions.len() as u64 }),
+                    Err(offset) => json!({ "expressionFailureOffset": offset }),
+                };
+                let mut object = serde_json::Map::new();
+                object.insert("code".into(), json!(token.code));
+                object.insert("kind".into(), json!("token"));
+                object.insert("lengthEncoding".into(), json!(token.encoding.name()));
+                object.insert(
+                    "lengthByteLength".into(),
+                    json!(token.length_bytes.len() as u64),
+                );
+                object.insert("name".into(), json!(token.macro_code().name()));
+                object.insert("payloadLength".into(), json!(token.payload.len() as u64));
+                object.insert("payloadSha256".into(), json!(sha256_hex(&token.payload)));
+                object.insert("rawSha256".into(), json!(sha256_hex(&token.raw_bytes())));
+                object.insert("span".into(), token.span.to_json());
+                if let Value::Object(fields) = expression {
+                    object.extend(fields);
+                }
+                Value::Object(object)
+            }
+        })
+        .collect::<Vec<_>>();
+    Ok(json!({
+        "format": "rich-string",
+        "input": {
+            "length": input.len() as u64,
+            "sha256": sha256_hex(input),
+        },
+        "losslessText": {
+            "length": lossless.len() as u64,
+            "sha256": sha256_hex(lossless.as_bytes()),
+        },
+        "operation": "rich-string",
+        "reencoded": {
+            "length": encoded.len() as u64,
+            "matchesInput": encoded == input,
+            "sha256": sha256_hex(&encoded),
+        },
+        "schemaVersion": 1,
+        "segments": segments,
+        "tokenCount": rich.tokens().count() as u64,
+    }))
+}
+
 fn compare_expected(
     options: &Options,
     directory: &Path,
@@ -1161,6 +1241,56 @@ mod tests {
         let left = serde_json::json!({ "a": { "b": 1 } });
         let right = serde_json::json!({ "a": { "b": 2 } });
         assert_eq!(first_difference(&left, &right), "/a/b: expected 1, got 2");
+    }
+
+    #[test]
+    fn rich_string_cases_reject_non_public_or_misconfigured_inputs_before_resolution() {
+        let cases = [
+            (
+                json!({
+                    "formatId": "rich-string",
+                    "fixture": { "kind": "private", "fixtureId": "owned" }
+                }),
+                "ordinary public fixture",
+            ),
+            (
+                json!({
+                    "formatId": "rich-string",
+                    "fixture": { "kind": "public-tree", "format": "ssd-extract", "path": "tree.json" }
+                }),
+                "ordinary public fixture",
+            ),
+            (
+                json!({
+                    "formatId": "ssd-sheet",
+                    "fixture": { "kind": "public", "path": "tests/fixtures/public/rich-string/input.bin" }
+                }),
+                "formatId 'rich-string'",
+            ),
+            (
+                json!({
+                    "formatId": "rich-string",
+                    "arguments": ["--as", "sheet-data"],
+                    "fixture": { "kind": "public", "path": "tests/fixtures/public/rich-string/input.bin" }
+                }),
+                "does not accept arguments",
+            ),
+        ];
+        for (case, expected) in cases {
+            let Err(reason) = validate_rich_string_case(&case) else {
+                panic!("rich-string case unexpectedly passed: {case}");
+            };
+            assert!(reason.contains(expected), "{reason}");
+        }
+        let private = json!({
+            "formatId": "rich-string",
+            "fixture": { "kind": "private", "fixtureId": "owned" },
+            "operation": "rich-string"
+        });
+        assert!(matches!(
+            run_case(&Options::default(), &private, Path::new("."), &BTreeMap::new()),
+            Outcome::Failed(reason) if reason.contains("ordinary public fixture")
+        ));
     }
 
     #[test]

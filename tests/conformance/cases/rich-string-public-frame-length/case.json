@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "malformed-rich-string-token",
+    "errorOffset": 2,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-frame-length.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-frame-length",
+  "notes": "A direct token frame missing its length reports the length offset.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

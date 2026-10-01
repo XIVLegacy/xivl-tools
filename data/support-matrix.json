@@ -141,14 +141,13 @@
       "name": "Rich strings and control codes",
       "category": "text",
       "phase": 1,
-      "read": "partial",
+      "read": "supported",
       "write": "none",
-      "export": "partial",
+      "export": "supported",
       "exportViews": [
-        "json",
         "text"
       ],
-      "notes": "Lossless token intermediate representation preserving raw control tokens: a decoded string becomes text runs and tokens, a token keeps its code and payload bytes verbatim, and re-encoding reproduces the input byte for byte. All 26 retail codes are named and their recursive expression payloads parse; an independent pass consumed all 223513 retail token payloads without error. The public CSV case preserves exact token bytes in named hexadecimal markers, moving text export from planned to partial. Read and export remain partial until public conformance covers the full 26-code vocabulary, expression forms, and malformed-expression space. The 0xF1 payload-length escape is still evidenced by one retail occurrence. Evidence: docs/formats/ssd-sheet.md."
+      "notes": "Read is supported for the documented UTF-8/token framing and bounded prefix-expression contract. Public authored cases invoke Token::expressions and cover all 26 known code names, established length forms, compact and packed integers, placeholders, unary/binary operators, strings, malformed expressions, unknown tokens, and nesting limits. Raw tokens remain lossless when expressions fail. Text export is independently supported: literal tests assert exact token markers, re-encoding, UTF-8 preservation, and CSV escaping through the production sheet exporter. Structural JSON is a report, not a lossless export view. The 0xF1 token-length form still rests on one retail observation; synthetic coverage adds no retail confidence. No rendering, execution, write-back, or verified claim is established. Evidence: docs/formats/ssd-sheet.md."
     },
     {
       "id": "config-sys",

@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-expressions.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-expressions",
+  "notes": "The compact, integer, placeholder, unary, binary, and framed-string productions parse without exporting AST payload values.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

@@ -85,14 +85,14 @@ declared columns in the CSV header. A partially present triple fails.
 Direct cataloging and the comparison corpus both confirm that the complete
 triples are absent rather than reachable through another path.
 
-The `partial` read status for `rich-string` covers framing, the 26-code
-vocabulary, and payload expressions. It remains partial because the full
-retail vocabulary and malformed expression space are not yet represented by
-public conformance cases:
-
-- nested `0x02 .. 0x03` framing inside a payload is kept whole rather than
-  replacing the raw payload, even when expressions are also decoded;
-- the 0xF1 payload-length escape rests on one occurrence in the install.
+The `supported` rich-string read contract covers framing, all 26 code
+names, bounded prefix expressions, unknown tokens, and malformed input.
+Its separately supported text export retains literal text and exact raw
+tokens through CSV escaping, including tokens whose expressions fail.
+The [rich-string contract](formats/ssd-sheet.md#rich-string-read-and-text-export-contract)
+owns the grammar, public coverage, and limits. Structural JSON remains a
+report. The `0xF1` token-length form still rests on one retail occurrence;
+synthetic coverage adds no retail confidence or `verified` claim.
 
 The `verified` read status for `scrambled-xml` covers the container and
 nothing above it. Specifically not handled:

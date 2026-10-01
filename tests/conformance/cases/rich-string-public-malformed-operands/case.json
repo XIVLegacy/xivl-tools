@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-malformed-operands.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-malformed-operands",
+  "notes": "Unary and binary operands that end or become undecodable report payload-relative failure offsets.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

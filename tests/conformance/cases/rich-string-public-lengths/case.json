@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-lengths.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-lengths",
+  "notes": "Direct, F0, F1, and F2 token payload lengths retain their encoding names and exact spans.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

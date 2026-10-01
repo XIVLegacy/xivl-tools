@@ -1,0 +1,66 @@
+{
+  "format": "rich-string",
+  "input": {
+    "length": 17,
+    "sha256": "fe648ca184eb67806c878f6ba827b4e0baef5ae5ba4d05f521f352c7b2731f3e"
+  },
+  "losslessText": {
+    "length": 61,
+    "sha256": "221daf81b3ddadec91dfec6a419e80d43c29cec7fff3df0e03baec05e9ca6f08"
+  },
+  "operation": "rich-string",
+  "reencoded": {
+    "length": 17,
+    "matchesInput": true,
+    "sha256": "fe648ca184eb67806c878f6ba827b4e0baef5ae5ba4d05f521f352c7b2731f3e"
+  },
+  "schemaVersion": 1,
+  "segments": [
+    {
+      "code": 8,
+      "expressionFailureOffset": 1,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "if",
+      "payloadLength": 2,
+      "payloadSha256": "8e0bea0d0ec472af6cc31df4db1eeeb5aac20d3a22a97361c56491359c1a6252",
+      "rawSha256": "16088cc038abe5889de77f4b3fd00c0407dcc736fe4655a20bb2f07addfe840c",
+      "span": {
+        "length": 6,
+        "offset": 0
+      }
+    },
+    {
+      "code": 9,
+      "expressionFailureOffset": 0,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "switch",
+      "payloadLength": 2,
+      "payloadSha256": "f5e0da8d7a9a79e7141b9e674d0d70eefd2f5416fda74ef18c8665bfc3812a54",
+      "rawSha256": "ffb68a4ae198969293c14a068d9eaa8c28ecc486c12dc46675e25dea4a4540c8",
+      "span": {
+        "length": 6,
+        "offset": 6
+      }
+    },
+    {
+      "code": 10,
+      "expressionFailureOffset": 0,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "unknown",
+      "payloadLength": 1,
+      "payloadSha256": "7d8c5da7fd418379048e430b33dc8ffcda739e44326b8a5d647dc0ad81ed2157",
+      "rawSha256": "44a857d72c447eb0cfa84ea596cfdcc66bd24b6889f3f1b8e7404bec4c0bc61f",
+      "span": {
+        "length": 5,
+        "offset": 12
+      }
+    }
+  ],
+  "tokenCount": 3
+}

@@ -10,7 +10,7 @@
     "id": { "$ref": "#/$defs/id" },
     "formatId": { "$ref": "#/$defs/id" },
     "operation": {
-      "enum": ["inspect", "validate", "extract", "extract-directory", "resource-path", "lua-path"]
+      "enum": ["inspect", "validate", "extract", "extract-directory", "resource-path", "lua-path", "rich-string"]
     },
     "fixture": {
       "oneOf": [
@@ -91,6 +91,26 @@
     "notes": { "type": "string", "minLength": 1 }
   },
   "allOf": [
+    {
+      "if": { "properties": { "operation": { "const": "rich-string" } } },
+      "then": {
+        "properties": {
+          "formatId": { "const": "rich-string" },
+          "fixture": {
+            "type": "object",
+            "properties": {
+              "kind": { "const": "public" },
+              "path": {
+                "type": "string",
+                "pattern": "^tests/fixtures/public/rich-string/[A-Za-z0-9._/-]+$"
+              }
+            },
+            "required": ["kind", "path"]
+          },
+          "arguments": { "maxItems": 0 }
+        }
+      }
+    },
     {
       "if": { "properties": { "operation": { "const": "extract-directory" } } },
       "then": {

@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "malformed-rich-string-token",
+    "errorOffset": 1,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-frame-code.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-frame-code",
+  "notes": "A direct token frame missing its code reports the code offset.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

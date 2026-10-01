@@ -1,0 +1,111 @@
+{
+  "format": "rich-string",
+  "input": {
+    "length": 30,
+    "sha256": "7e59e6915bf75e63027ca52dd40834adebdadef7424d2f929758cb86bdfb3484"
+  },
+  "losslessText": {
+    "length": 126,
+    "sha256": "ab2743d371e8d425b687265c74a7daa140a09d0a77342f2d227039e5af5a5bda"
+  },
+  "operation": "rich-string",
+  "reencoded": {
+    "length": 30,
+    "matchesInput": true,
+    "sha256": "7e59e6915bf75e63027ca52dd40834adebdadef7424d2f929758cb86bdfb3484"
+  },
+  "schemaVersion": 1,
+  "segments": [
+    {
+      "code": 0,
+      "expressionFailureOffset": 0,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "unknown",
+      "payloadLength": 1,
+      "payloadSha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "rawSha256": "7a2cd880d6d266b6cafb0bcc7cf521167d4c4459500eea84d78c2a3ee97b8c35",
+      "span": {
+        "length": 5,
+        "offset": 0
+      }
+    },
+    {
+      "code": 230,
+      "expressionFailureOffset": 0,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "unknown",
+      "payloadLength": 1,
+      "payloadSha256": "0a3aaee7ccfb1a64f6d7bcd46657c27cb1f4569ae9e7c03445bd6c6fd013109b",
+      "rawSha256": "4876f130a977cc869bd41d103589716825ef01201967ce60fc8ac99a08351f3b",
+      "span": {
+        "length": 5,
+        "offset": 5
+      }
+    },
+    {
+      "code": 231,
+      "expressionFailureOffset": 0,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "unknown",
+      "payloadLength": 1,
+      "payloadSha256": "d0752b60adb148ca0b3b4d2591874e2dabd346373e731c27463d65b449cc234c",
+      "rawSha256": "14b994938e2c2e4d3d70647fe7c1342b1f8317630d974f619ce461e1e8efc7f0",
+      "span": {
+        "length": 5,
+        "offset": 10
+      }
+    },
+    {
+      "code": 237,
+      "expressionFailureOffset": 0,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "unknown",
+      "payloadLength": 1,
+      "payloadSha256": "f3df1f9c358ae8eceb8fce7c00614288d113ad55315f4ebb909774a7daadfc84",
+      "rawSha256": "362c694ce60c6f1020cb53a1f9eeb23a3ce68f6b3b0bdd218e42cb631e72c514",
+      "span": {
+        "length": 5,
+        "offset": 15
+      }
+    },
+    {
+      "code": 238,
+      "expressionFailureOffset": 0,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "unknown",
+      "payloadLength": 1,
+      "payloadSha256": "94455e3ed9f716bea425ef99b51fae47128769a1a0cd04244221e4e14631ab83",
+      "rawSha256": "a40c833ff529956c06e1f422cd11ea0adea7569fe9cd91012e3dc2fc986d78c2",
+      "span": {
+        "length": 5,
+        "offset": 20
+      }
+    },
+    {
+      "code": 239,
+      "expressionFailureOffset": 0,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "unknown",
+      "payloadLength": 1,
+      "payloadSha256": "4d4d75d742863ab9656f3d5f76dff8589c3922e95a24ea6812157ffe4aaa3b6b",
+      "rawSha256": "bf31fa35e248f223f7666c0a7d57ae7ea85fd3549fc74a2efc8382af5e5c9416",
+      "span": {
+        "length": 5,
+        "offset": 25
+      }
+    }
+  ],
+  "tokenCount": 6
+}

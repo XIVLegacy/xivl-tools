@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-unknown-raw.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-unknown-raw",
+  "notes": "An unknown token code and reserved raw payload remain represented by digests and exact re-encoding.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

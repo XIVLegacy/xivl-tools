@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-malformed-integers.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-malformed-integers",
+  "notes": "Integer masks with zero or missing selected bytes report expression failures while token bytes remain lossless.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

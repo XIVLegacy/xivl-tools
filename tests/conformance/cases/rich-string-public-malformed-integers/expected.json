@@ -1,0 +1,81 @@
+{
+  "format": "rich-string",
+  "input": {
+    "length": 24,
+    "sha256": "519f22be2f9fac1eda57ab310838a2fb474627a41923a66ee4084a826121a9dc"
+  },
+  "losslessText": {
+    "length": 86,
+    "sha256": "9ceb4b0174ecfc40efe3713b62f44e0a8cd39a3d62ddd2abaf123652f39b9ef9"
+  },
+  "operation": "rich-string",
+  "reencoded": {
+    "length": 24,
+    "matchesInput": true,
+    "sha256": "519f22be2f9fac1eda57ab310838a2fb474627a41923a66ee4084a826121a9dc"
+  },
+  "schemaVersion": 1,
+  "segments": [
+    {
+      "code": 8,
+      "expressionFailureOffset": 0,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "if",
+      "payloadLength": 2,
+      "payloadSha256": "66be4fb32e22c1b58f5e105ca6fbff5297c6a1e18b7378d346f56f2e79714ba1",
+      "rawSha256": "72f4c30c0f54813351831283331f9027f75468af3408e6a57f28f056ffead1d7",
+      "span": {
+        "length": 6,
+        "offset": 0
+      }
+    },
+    {
+      "code": 9,
+      "expressionFailureOffset": 0,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "switch",
+      "payloadLength": 2,
+      "payloadSha256": "079950a589d9712d69c276de82c668764cb30dc8940d56fe01d076b333df29b7",
+      "rawSha256": "714e27c8ea811bf0f66c178583ee62d162230be5ca4119d278fd1639ab7cf5f4",
+      "span": {
+        "length": 6,
+        "offset": 6
+      }
+    },
+    {
+      "code": 10,
+      "expressionFailureOffset": 0,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "unknown",
+      "payloadLength": 3,
+      "payloadSha256": "2103b5dabb5c1b7b6cefecf1b5fd738d19d99a7f917fdfe1eadaf2600fe58821",
+      "rawSha256": "bb8995ea03c85c46ef02e5982c5ed4820c6e84cbcd218905b94fe777ba2edc03",
+      "span": {
+        "length": 7,
+        "offset": 12
+      }
+    },
+    {
+      "code": 11,
+      "expressionFailureOffset": 0,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "unknown",
+      "payloadLength": 1,
+      "payloadSha256": "fde502858306c235a3121e42326b53228b7ef4690eeed92a2b2eafe73c03a3ef",
+      "rawSha256": "5424e9482ca6b3e4297ad069cc2ec6225ad66712d15827ee5a05c6ded0263960",
+      "span": {
+        "length": 5,
+        "offset": 19
+      }
+    }
+  ],
+  "tokenCount": 4
+}

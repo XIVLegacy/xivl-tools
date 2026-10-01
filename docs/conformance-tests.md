@@ -61,6 +61,26 @@ selection, output accounting, destination protection, and verification
 failures. Private fixtures whose root was not supplied are skipped with a
 reason.
 
+`rich-string` is a conformance-only operation for an authored public
+decoded rich-string fixture. It accepts no arguments and calls production
+`RichString::parse` and `Token::expressions` for every token. Its normalized
+report retains framing metadata, spans, digests, expression counts or
+payload-relative failure offsets, exact re-encoding status, and the length
+and digest of lossless text. It retains no text, raw token hex, or decoded
+expression values. A malformed expression is a per-token result, so the
+raw token remains accounted for rather than turning framing into a failure.
+Malformed framing uses the ordinary typed `parse-error` expectation.
+
+The rich-string public cases cover all known macro names, established
+length forms, expression productions, unknown codes, malformed expressions,
+and bounded nesting. Ordinary `extract --as sheet-data` cases check the
+CSV path. Separate literal tests specify expression trees, exact
+re-encoding, failure offsets, literal escaping, and complete CSV bytes
+without deriving expectations from production decoding. See the
+[rich-string contract](formats/ssd-sheet.md#rich-string-read-and-text-export-contract).
+The dedicated operation is restricted to public fixtures and establishes
+no retail expression parity.
+
 For `gtex`, `extract` with `--export-dds` exercises the DDS texture view.
 Reports retain header metadata, mip source and output spans, counts, and SHA-256 digests rather
 than encoded pixels. Authored tests check header fields independently

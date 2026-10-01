@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-depth-64.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-depth-64",
+  "notes": "Sixty-four unary expression edges remain within the bounded expression reader.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

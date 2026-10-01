@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-vocabulary.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-vocabulary",
+  "notes": "All 26 named control codes retain token names, spans, payload digests, and lossless re-encoding metadata.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

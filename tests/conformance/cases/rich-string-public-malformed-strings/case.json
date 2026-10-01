@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-malformed-strings.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-malformed-strings",
+  "notes": "Framed string expressions with missing bodies, invalid text, incomplete frames, or missing length bytes retain failure offsets.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

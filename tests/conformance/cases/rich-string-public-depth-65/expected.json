@@ -1,0 +1,36 @@
+{
+  "format": "rich-string",
+  "input": {
+    "length": 70,
+    "sha256": "c8a10aa0d2700d1ba435a59d4504e7ec33230e1b4e3d9b1c64abc9039ad2b157"
+  },
+  "losslessText": {
+    "length": 146,
+    "sha256": "6c619938b5e137d7f4e5a79bd44ab8d6c055059ef10217c36e627a99d16d9a7e"
+  },
+  "operation": "rich-string",
+  "reencoded": {
+    "length": 70,
+    "matchesInput": true,
+    "sha256": "c8a10aa0d2700d1ba435a59d4504e7ec33230e1b4e3d9b1c64abc9039ad2b157"
+  },
+  "schemaVersion": 1,
+  "segments": [
+    {
+      "code": 8,
+      "expressionFailureOffset": 0,
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "if",
+      "payloadLength": 66,
+      "payloadSha256": "cc30d15380559bb630a94377fe532504656834b20c3ef37cad2ce2a88baedc5f",
+      "rawSha256": "c8a10aa0d2700d1ba435a59d4504e7ec33230e1b4e3d9b1c64abc9039ad2b157",
+      "span": {
+        "length": 70,
+        "offset": 0
+      }
+    }
+  ],
+  "tokenCount": 1
+}

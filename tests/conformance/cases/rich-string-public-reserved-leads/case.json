@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-reserved-leads.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-reserved-leads",
+  "notes": "Reserved expression leads 00, E6, E7, and ED through EF are reported as undecodable payload positions.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}
