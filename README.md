@@ -1,8 +1,7 @@
 <h1 align="center">XIVLegacy Tools</h1>
 
 <p align="center">
-Command line tools for inspecting FFXIV 1.23b DAT files<br>
-and exporting sheet CSVs, selected resources, and map collision meshes.
+Inspect Final Fantasy XIV 1.23b DAT files and export sheet CSVs, resources, and collision meshes.
 </p>
 
 <p align="center">
@@ -22,11 +21,14 @@ cargo run --locked -p xivl-cli -- catalog "C:\path\to\FINAL FANTASY XIV" --outpu
 
 ## Commands
 
-`inspect` and `validate` print a report for one file. `catalog` lists DAT
-resources; `extract-resource` and `extract-catalog` write selected outputs;
-`verify-extraction` checks them later. `extract` writes sheet CSVs,
-`export-zones` writes collision OBJ files, and the other commands handle Lua
-wrappers and command data.
+- `inspect` and `validate`: report on one file
+- `catalog`: list DAT resources
+- `extract-resource` and `extract-catalog`: export selected resources
+- `verify-extraction`: check an export
+- `extract`: export sheet CSVs
+- `export-zones`: export collision OBJ files
+
+The [CLI guide](docs/cli.md) also covers Lua wrappers and command data.
 
 ## Documentation
 

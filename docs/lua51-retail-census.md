@@ -1,10 +1,10 @@
 # Lua 5.1 retail census
 
-This page records aggregate-only validation of the complete FFXIV 1.23b
-compiled-script inventory owned by `XIVLegacy/xivl-client-scripts`.
-The canonical exact result is `data/lua51-retail-census.json`. It contains no
-resource path, script path, source or constant string, payload bytes, private
-root, host name, timestamp, or per-file row.
+The complete FFXIV 1.23b compiled-script inventory in
+`XIVLegacy/xivl-client-scripts` was validated using aggregate results only.
+`data/lua51-retail-census.json` holds the exact results. It contains no resource
+or script paths, source or constant strings, payload bytes, private roots,
+host names, timestamps, or individual file rows.
 
 The source inventory is identified by the
 [retail Lua coverage census](https://github.com/XIVLegacy/xivl-client-scripts/blob/da2ecbf8e8d80a07988fef80c2a8af716539d7fe/docs/retail-lua-coverage.md).

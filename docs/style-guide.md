@@ -17,10 +17,9 @@ evidence strength, fixture provenance, or compatibility claims.
 
 ### Documentation
 
-The public [documentation policy](ai_agents/README.md#public-documentation) is
-canonical for authored documentation. The
-[evidence policy](ai_agents/evidence-and-claims.md) owns claim wording,
-citations, confidence, and provenance.
+The public [documentation policy](ai_agents/README.md#public-documentation) covers authored documentation. The
+[evidence policy](ai_agents/evidence-and-claims.md) explains claims, citations,
+confidence, and provenance.
 
 ## Rust
 

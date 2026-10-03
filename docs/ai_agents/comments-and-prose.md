@@ -13,7 +13,7 @@ Deletion is the default. Keep a comment only when it records one of these:
 - an API contract not inferable from types and names.
 
 Keep source and evidence identifiers verbatim, including their dates. Compress
-other survivors to about one line at the use site. Move a longer contract to a
+other retained comments to about one line at the use site. Move a longer contract to a
 public declaration or a documentation page and leave a short pointer.
 
 Comment length and punctuation are style guidelines. Clarity, correctness,
@@ -44,8 +44,9 @@ batch-processing history. Retain dates that belong to external source or
 provenance metadata, actual evidence observations or captures, retail build or
 source identity, legal metadata, or required vendor artifact names.
 
-- Avoid over-hyphenation and invented compound modifiers. Established
-  technical terms keep their hyphens.
+- Avoid awkward compounds and strings of modifiers. Rewrite the sentence
+  rather than joining more words with hyphens. Preserve established technical
+  terms, identifiers, and quoted source text.
 - Use semicolons sparingly, preferring periods, commas, or short lists.
 
 Every tracked authored prose or structured description contains current

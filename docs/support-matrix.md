@@ -22,12 +22,9 @@ python tools/check_contract.py --print-matrix
 The target is Final Fantasy XIV 1.23b and nothing else. The static sheet
 data reference is extraction `2012.09.19.0001`.
 
-The target is frozen in the strong sense: no other 1.x version is a support
-target, and no multi-version scaffolding is added in anticipation of one.
-`version` is metadata, never a tooling branch key, a path segment, or a
-schema key. If a second target ever genuinely emerges, it reopens this
-decision rather than quietly using scaffolding that was built for it in
-advance.
+Only this version is supported. Do not add infrastructure for hypothetical
+versions. `version` is metadata, never a tooling branch key, path segment, or
+schema key. Supporting another version requires an explicit new decision.
 
 Lawfully held other 1.x versions may still be read by an explicit,
 non-gating research invocation. Reading a file is not supporting a version:

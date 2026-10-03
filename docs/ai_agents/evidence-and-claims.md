@@ -1,7 +1,7 @@
 # Evidence and claims
 
 Repository code, tests, and documentation establish this project's
-implementation contracts. They do not by themselves establish retail
+implementation contracts. They alone do not establish retail
 behavior. A claim about a frozen client format needs the evidence and
 conformance coverage recorded by the repository's technical documents.
 
@@ -19,10 +19,8 @@ Figures that are themselves claims stay verbatim. Row counts, coverage ratios, p
 sizes and hashes, offsets, and extraction diffs are the claim itself - the
 sentence exists to state them. Removing one destroys evidence.
 
-Incidental figures go and the claim stays. When the sentence is about
-something else, a count is unnecessary context: it tells the reader nothing they
-can act on, and it invites doubt when their own run differs by one. Keep what
-was found. Drop the size of the haystack.
+Omit counts that do not support the claim. They add maintenance work
+without helping the reader assess the finding.
 
 Use an exact value when the source establishes one. Preserve approximate
 observations and bounded estimates when they carry the claim, and state the
