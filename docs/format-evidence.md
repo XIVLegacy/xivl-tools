@@ -38,9 +38,10 @@ repository makes.
 
 ## What this repository does not claim
 
-The `partial` read statuses for `sedb` and `res` in
-`data/support-matrix.json` cover container enumeration and nothing else.
-Specifically not handled:
+The `partial` read and export statuses for `sedb` and `res` in
+`data/support-matrix.json` cover bounded container enumeration and exact
+direct-root payload materialization. The [SEDB/RES contract](formats/sedb-res.md#exact-payload-materialization)
+owns the accepted spans and refusal rules. Outside this claim:
 
 
 - payload interpretation for any subtype. A non-composite container's
@@ -56,9 +57,9 @@ Specifically not handled:
   own bounded structural reader;
 - the `wrb` chunk tree, model, mesh, skeleton, and texture layouts, which are
   outside this support claim;
-- extraction and manifesting of subresource bytes, which are also outside this
-  support claim. The `inspect` document is a structural report, not an export: it
-  carries spans, counts, and digests, never payload bytes.
+- recursive extraction of nested subresource payloads. The `inspect`
+  document remains a structural report: it carries spans, counts, and
+  digests, never payload bytes.
 
 The `supported` read and export statuses for `ssd-sheet` cover the schema
 document, the data stack, binary16 values, the bounded `xtx/quest` trailing omission, and
