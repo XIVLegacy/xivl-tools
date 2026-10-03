@@ -1,10 +1,8 @@
-//! No-panic sweep over mutated public fixtures.
+//! Check that malformed public fixtures parse or return typed errors.
 //!
-//! The parser contract requires no panics on malformed input. Asserting the
-//! absence of a crash on hand-written inputs alone would not hold that line,
-//! so this walks every truncation and a deterministic set of byte mutations
-//! of every committed fixture and requires each one to either parse or return
-//! a typed error with an in-range offset.
+//! Test every truncation and a deterministic set of byte mutations for each
+//! committed fixture. Errors must have an offset within the input; parsing must
+//! not panic.
 
 use std::path::{Path, PathBuf};
 

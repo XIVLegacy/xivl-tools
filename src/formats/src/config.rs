@@ -1,21 +1,15 @@
-//! The client's own configuration files.
+//! Read the client's configuration files without interpreting settings.
 //!
-//! Four files sit in the client's user directory rather than under the
-//! install: `config.sys`, `config.pad`, `config.lng`, and `config.rgn`.
-//! Three of them are a grid of little-endian 32-bit words, two of those
-//! behind a leading word that is a compiled-in format stamp. The fourth is
-//! five bytes that are not a grid at all.
+//! `config.sys`, `config.pad`, `config.lng`, and `config.rgn` live in the user
+//! directory. Three contain little-endian 32-bit words, two with a leading
+//! format stamp. The fourth contains five bytes.
 //!
-//! This reading stops at structure. There is exactly one sample of each
-//! file, so no field's meaning is claimed: a word is carried with its
-//! offset and value, and a run of bytes that reads as printable text is
-//! counted rather than named. What that buys is the thing this reading is
-//! for - [`ConfigFile::encode`] reproduces the input byte for byte, so
-//! nothing has to be understood to be preserved.
+//! The evidence contains one sample per file, so field meanings remain unresolved.
+//! Words retain their offsets and values. Printable runs are counted without
+//! assuming they are text. [`ConfigFile::encode`] reproduces the input exactly.
 //!
-//! These files are the owner's own settings rather than client assets, so
-//! nothing here goes into a report: the values reach a caller through this
-//! type, and `inspect` carries spans, counts, and digests only.
+//! Library callers can access the values. The `inspect` report contains only
+//! spans, counts, and digests to keep user settings private.
 //!
 //! Byte-layout evidence and its retail citation: `docs/formats/configuration.md`.
 
@@ -30,7 +24,7 @@ pub const WORD_SIZE: usize = 4;
 /// Below four, ordinary binary fields qualify constantly: the `config.sys`
 /// stamp alone reads as two printable UTF-16 units. Four is short enough to
 /// catch the four-byte tags these files carry and long enough that the
-/// census says something.
+/// census can distinguish longer runs.
 pub const MIN_RUN_UNITS: usize = 4;
 
 /// Which configuration file an input is being read as.
@@ -153,8 +147,7 @@ impl ConfigFile {
     /// Absolute offsets of the words that are not zero.
     ///
     /// The values are the owner's settings and stay out of every report.
-    /// which slots an install has ever written is structure and is what
-    /// this list carries.
+    /// This list reports only which word positions are nonzero.
     pub fn non_zero_word_offsets(&self) -> Vec<u64> {
         self.words
             .iter()

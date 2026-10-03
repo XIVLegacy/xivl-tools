@@ -1,8 +1,8 @@
-//! The one canonical JSON form every comparison happens on.
+//! Normalize JSON for conformance comparisons.
 //!
-//! Rules from `docs/conformance-tests.md`: UTF-8 restricted to ASCII,
-//! sorted object keys, two-space indent, LF line endings, trailing newline.
-//! Key sorting comes from `serde_json`'s default map, which is ordered.
+//! Rules from `docs/conformance-tests.md`: ASCII-only UTF-8, sorted object keys,
+//! two-space indentation, LF endings, and a trailing newline.
+//! `serde_json`'s ordered default map provides key sorting.
 
 /// Render a value in the normalized form, trailing newline included.
 pub fn to_canonical_json(value: &serde_json::Value) -> String {

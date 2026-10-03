@@ -1,14 +1,10 @@
-//! SEDB containers and the RES subresource directory.
+//! Read SEDB headers, RES directories, and subresource extents.
 //!
-//! Bounded enumeration only: the parser resolves the container header, the
-//! RES directory, and the extent of every subresource, and it accounts for
-//! every payload byte. It does not interpret a payload. Payload internals
-//! are outside this parser's scope. See `docs/formats/sedb-res.md` for the byte
-//! layout evidence and for what this parser does not claim to understand.
+//! The parser accounts for every payload byte without interpreting its contents.
+//! Output entries cover the payload without gaps or overlaps. Unclaimed bytes
+//! appear as unknown entries.
 //!
-//! The accounting rule is the point: entries tile the payload region with
-//! no holes and no overlap in the output, so a byte this parser does not
-//! understand appears as an unknown entry rather than disappearing.
+//! See `docs/formats/sedb-res.md` for byte-layout evidence and parsing limits.
 
 use crate::digest::sha256_hex;
 use crate::error::{ErrorKind, FormatError, Result};
@@ -202,7 +198,7 @@ fn parse_container_at_depth(data: &[u8], base: u64, depth: u32) -> Result<Contai
     // the 145 mtb. See docs/formats/sedb-res.md, "The 0x10 field". A value
     // below the header cannot describe a container, so the parser falls
     // back to the header extent and says so rather than rejecting a file
-    // the client reads happily.
+    // the client accepts.
     let total_size = if declared_size < u32::from(header_size) {
         anomalies.push(Anomaly {
             kind: "declared-size-below-header",
@@ -519,7 +515,7 @@ fn parse_res_payload(
         )?);
     } else if cursor > container_end {
         // A clamped or overlong subresource already carries its own
-        // anomaly. The container span grows to keep the tiling honest.
+        // anomaly. Extend the container span to account for those bytes.
         anomalies.push(Anomaly {
             kind: "payload-past-container-end",
             span: Span::new(base + container_end as u64, (cursor - container_end) as u64),

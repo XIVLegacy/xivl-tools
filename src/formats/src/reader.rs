@@ -1,15 +1,11 @@
-//! Bounded, endian-explicit reads over a byte slice.
+//! Read a bounded byte slice with an explicit byte order.
 //!
-//! The client formats mix endianness within one file (SEDB headers are
-//! little-endian, the chunk trees inside some payloads are big-endian), so
-//! there is no default: every integer read names its byte order at the call
-//! site.
+//! SEDB headers are little-endian, while some payload chunk trees are big-endian.
+//! Each integer read therefore specifies its byte order.
 //!
-//! A reader carries the absolute offset of its slice within the original
-//! input, so a nested reader over a subresource still reports offsets a
-//! reader of the whole file would recognize. Every read is bounds-checked
-//! and returns `UnexpectedEndOfInput` at the offset the read started from.
-//! nothing here can panic on hostile input.
+//! Nested readers preserve absolute offsets into the original input. Every read
+//! checks bounds and returns `UnexpectedEndOfInput` at its starting offset if
+//! there are too few bytes.
 
 use crate::error::{ErrorKind, FormatError, Result};
 

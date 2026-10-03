@@ -10,7 +10,7 @@ makes no support claim, and it never runs in CI.
 `--client-root` is required and has no default: there is no client-install
 search, no environment fallback, and no workspace-relative path.
 
-The command walks the resource tree once, then runs both independent views:
+The command walks the resource tree once, then runs three checks:
 
 - the scrambled census recognizes and decodes the document containers, checks
   their key derivation, inventories the sheet declarations, and checks row

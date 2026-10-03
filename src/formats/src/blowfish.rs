@@ -117,8 +117,7 @@ impl Blowfish {
         });
     }
 
-    /// The inverse of [`Blowfish::decrypt_blocks`], which is what makes the
-    /// container's losslessness a checked property rather than a claim.
+    /// Invert [`Blowfish::decrypt_blocks`] for byte-exact round-trip checks.
     pub fn encrypt_blocks(&self, buffer: &mut [u8]) {
         self.map_blocks(buffer, |cipher, left, right| {
             cipher.encrypt_words(left, right)

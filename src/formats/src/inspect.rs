@@ -1,6 +1,6 @@
 //! `inspect`: a structural report of one input, in the normalized form.
 //!
-//! The report is a report, not an export: it never carries payload bytes,
+//! Reports omit payload bytes,
 //! sheet-row text, or configuration values. The explicit SSD document view
 //! preserves sheet names and attribute values because they are part of that
 //! format's structural contract. Retail expectations use the redacted
@@ -37,7 +37,7 @@ pub const DOCUMENT_SCHEMA_VERSION: u64 = 1;
 /// How the caller wants an input read.
 ///
 /// An enable file and a row-offset array are headerless arrays of 32-bit
-/// values, so no amount of sniffing tells them apart. The caller names the
+/// values and cannot be distinguished by their bytes. The caller names the
 /// format for those. SEDB containers and SSD documents carry a signature
 /// and are recognized.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -363,8 +363,7 @@ pub fn validate_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resu
             }));
         }
         _ => checks.push(json!({
-            // No writer, so nothing to round trip. Saying so beats an
-            // absent check a reader could mistake for a passed one.
+            // Report the unavailable round-trip check explicitly; no writer exists.
             "name": "round-trip",
             "status": "not-applicable",
         })),
@@ -692,7 +691,7 @@ fn container_facts(decoded: &scrambled::ScrambledXml) -> Value {
 
 /// The container view: what the decode establishes, and a census of the
 /// document's shape. Element and attribute names and their counts are retained.
-/// attribute values and element text are omitted so the report stays
+/// Attribute values and element text are omitted so the report stays
 /// committable for a retail fixture. Reading the document itself is `--as ssd`.
 fn inspect_scrambled(data: &[u8]) -> Result<Value> {
     let decoded = scrambled::decode(data)?;

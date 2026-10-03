@@ -16,9 +16,8 @@
 //! text a caller gets back is the text the file holds.
 //!
 //! Each profile accepts exactly what its family uses and refuses the rest
-//! with `unsupported-xml-construct`, because a parser that accepts more
-//! than the format uses is a parser whose behavior nobody has evidence
-//! for.
+//! with `unsupported-xml-construct`. Unsupported constructs remain outside
+//! the evidenced grammar.
 //!
 //! The reader is byte-oriented so every error carries a byte offset into
 //! the original input. Names and values are cut at ASCII delimiters, which
@@ -88,9 +87,7 @@ pub struct Document {
     pub byte_order_mark: bool,
     pub declaration: Option<Declaration>,
     pub root: Element,
-    /// How many comments the document held. A comment is neither element
-    /// nor content, so it is counted rather than kept. A count still says
-    /// the document had them.
+    /// Number of comments. Their text is not retained.
     pub comments: u64,
 }
 

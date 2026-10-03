@@ -1,4 +1,4 @@
-//! Agent-friendly queries over the explicit command battle-parameter catalog.
+//! Query the supplied command battle-parameter catalog.
 
 mod input;
 mod loadout;

@@ -1,4 +1,4 @@
-//! Explicit-client-root world geometry export.
+//! Export world geometry from an explicitly supplied client root.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;

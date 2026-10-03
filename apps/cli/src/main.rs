@@ -1,13 +1,11 @@
-//! `xivl`: the command line over the format libraries.
+//! `xivl`: inspect client files and extract sheets from a supplied install.
 //!
-//! File inspection and game-install sheet extraction.
-//! The option exists because two of these formats have no signature: an
-//! enable file and a row-offset array are bare arrays of 32-bit values, so
-//! nothing in the bytes distinguishes them and a sniffing parser would be
-//! guessing. Formats that do carry a signature are recognized.
+//! Enable files and row-offset arrays have no signature. Both contain bare
+//! 32-bit values, so callers must select their format. Formats with a signature
+//! are recognized automatically.
 //!
-//! Every input path is supplied by the caller. There is no default
-//! location, no client-install search, and no workspace-relative fallback.
+//! Callers supply every input path. The CLI does not search for a client install
+//! or use a default or workspace-relative location.
 
 use std::io::{Read, Write};
 use std::process::ExitCode;

@@ -1,16 +1,10 @@
-//! The conformance runner.
+//! Run the conformance cases described in `docs/conformance-tests.md`.
 //!
-//! Interface: `docs/conformance-tests.md`. The runner reads case manifests
-//! from this checkout, resolves each fixture, runs the operation through
-//! the format libraries, and compares against the expected normalized
-//! document.
+//! The runner resolves each case's fixture, calls the format library, and compares
+//! the result with the expected normalized document.
 //!
-//! Two rules shape the code. A private case whose bytes are not available
-//! reports itself skipped with a reason and the run stays green, because
-//! the bytes are the owner's and cannot be published. `--require-private`
-//! turns that into a failure for the owner's own runs. And a run that
-//! silently skips everything and exits zero is the outcome this interface
-//! exists to prevent, so every skip is printed with its reason and counted.
+//! Unavailable private fixtures are skipped with a printed reason and count.
+//! Use `--require-private` to make missing private fixtures fail the run.
 
 use std::collections::BTreeMap;
 use std::io::Read;

@@ -1,9 +1,7 @@
-//! Structural oddities that are reported rather than repaired.
+//! Report structural anomalies without repairing the input.
 //!
-//! An anomaly is what this crate says instead of quietly fixing something:
-//! the bytes stay accounted for, the parse continues, and the report names
-//! what was odd and where. Rejecting these inputs would refuse files the
-//! client reads. Repairing them silently would hide a format fact.
+//! Parsing continues while every byte remains accounted for. Each anomaly records
+//! its location so callers can inspect irregularities in files the client reads.
 
 use crate::reader::Span;
 

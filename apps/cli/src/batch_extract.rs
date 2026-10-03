@@ -1,4 +1,4 @@
-//! Catalog-driven bounded extraction of an explicit resource selection.
+//! Extract a selected set of resources from a catalog with bounded input reads.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;

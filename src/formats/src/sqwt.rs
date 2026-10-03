@@ -102,8 +102,7 @@ pub fn decode(data: &[u8], name: &str) -> Result<SqwtFile> {
     })
 }
 
-/// Build a container from a document, which is what makes the decode a
-/// checked round trip rather than a claim about itself.
+/// Build a container from a document for byte-exact round-trip checks.
 pub fn encode(document: &[u8], name: &str) -> Result<Vec<u8>> {
     let cipher = Blowfish::new(name.as_bytes())?;
     let mut body = document.to_vec();
