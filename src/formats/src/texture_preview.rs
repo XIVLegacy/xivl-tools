@@ -289,7 +289,12 @@ fn decode_a8r8g8b8(width: u32, height: u32, encoded: &[u8], rgba: &mut [u8]) -> 
     if encoded.len() != expected {
         return Err(invalid_preview("A8R8G8B8 surface size is inconsistent"));
     }
-    for (source, destination) in encoded.chunks_exact(4).zip(rgba.chunks_exact_mut(4)) {
+    for (source, destination) in encoded
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(rgba.as_chunks_mut::<4>().0)
+    {
         destination.copy_from_slice(&[source[2], source[1], source[0], source[3]]);
     }
     Ok(())

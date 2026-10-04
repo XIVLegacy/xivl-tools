@@ -222,7 +222,7 @@ fn bounds(vertices: &[Vec3]) -> Result<(Vec3, Vec3)> {
 fn geometry_normals(vertices: &[Vec3], indices: &[u32]) -> Result<Vec<Option<Vec3>>> {
     let mut sums = vec![Vec3::ZERO; vertices.len()];
     let mut referenced = vec![false; vertices.len()];
-    for triangle in indices.chunks_exact(3) {
+    for triangle in indices.as_chunks::<3>().0 {
         let a = vertices[triangle[0] as usize];
         let b = vertices[triangle[1] as usize];
         let c = vertices[triangle[2] as usize];
