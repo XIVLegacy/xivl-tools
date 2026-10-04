@@ -13,7 +13,7 @@
   },
   "formatId": "ssd-sheet",
   "id": "sheet-row-offsets-backward",
-  "notes": "An entry that goes backwards, which cannot be an end offset. The entry survives verbatim and the slot is reported empty.",
+  "notes": "An entry decreases, so it cannot be an end offset. The entry is preserved verbatim and its slot is reported empty.",
   "operation": "inspect",
   "schemaVersion": 1
 }

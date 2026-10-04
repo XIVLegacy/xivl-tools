@@ -187,7 +187,7 @@
       "read": "partial",
       "write": "supported",
       "export": "not-applicable",
-      "notes": "The client's region setting, and the thinnest row in the matrix: the one retail sample is five bytes, all zero, and is not a word grid at all. The read carries the body whole as one span with a digest and interprets nothing, which is the entire claim; there is no malformed input for it, because every byte string is a valid body. Read to structure only: there is exactly one sample of each configuration file, so no field's meaning is claimed. A printable run is counted rather than named; the report carries the shape and never a value, because these files are the owner's own settings rather than client assets. Write is a byte-exact round trip: parsing a file and writing the model back reproduces the input byte for byte, proved by validate cases over the public fixtures and the retail files. Not claimed: what any field means, and that the client accepts a file this tool wrote after a value was changed - nothing here has been through the game. Evidence: docs/formats/configuration.md."
+      "notes": "The client's region setting has one retail sample: five bytes, all zero, with no word grid. The read carries the body whole as one span with a digest and interprets nothing, which is the entire claim; there is no malformed input for it, because every byte string is a valid body. Read to structure only: there is exactly one sample of each configuration file, so no field's meaning is claimed. A printable run is counted rather than named; the report carries the shape and never a value, because these files are the owner's own settings rather than client assets. Write is a byte-exact round trip: parsing a file and writing the model back reproduces the input byte for byte, proved by validate cases over the public fixtures and the retail files. Not claimed: what any field means, and that the client accepts a file this tool wrote after a value was changed - nothing here has been through the game. Evidence: docs/formats/configuration.md."
     },
     {
       "id": "staticactor-san",
@@ -251,7 +251,7 @@
       "read": "supported",
       "write": "supported",
       "export": "not-applicable",
-      "notes": "Encode and decode are the same primitive pair, so write support arrives with read."
+      "notes": "Encoding and decoding use the same primitive pair, so read and write are both supported."
     },
     {
       "id": "client-lua",

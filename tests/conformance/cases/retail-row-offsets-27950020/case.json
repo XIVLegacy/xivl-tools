@@ -13,7 +13,7 @@
   },
   "formatId": "ssd-sheet",
   "id": "retail-row-offsets-27950020",
-  "notes": "A 10011-slot row-offset array in which seven slots carry data, which is what a sparse sheet looks like.",
+  "notes": "A sparse 10011-slot row-offset array in which seven slots carry data.",
   "operation": "inspect",
   "schemaVersion": 1
 }

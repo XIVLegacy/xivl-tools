@@ -14,7 +14,7 @@
   },
   "formatId": "sqwt",
   "id": "sqwt-cdata",
-  "notes": "A CDATA section: inside the widget profile's reach and outside its grammar, so the profile stays bounded by what the install uses.",
+  "notes": "A CDATA section is outside the widget profile's grammar. The profile accepts only constructs evidenced in the install.",
   "operation": "inspect",
   "schemaVersion": 1
 }

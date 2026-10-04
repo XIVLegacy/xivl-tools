@@ -14,7 +14,7 @@
   },
   "formatId": "config-lng",
   "id": "config-lng-partial-word",
-  "notes": "The same leftover run in a file with no stamp, so the failure is the grid's and not the stamp's.",
+  "notes": "A partial word in an unstamped file fails the grid check.",
   "operation": "inspect",
   "schemaVersion": 1
 }

@@ -13,7 +13,7 @@
   },
   "formatId": "config-lng",
   "id": "retail-config-lng-round-trip",
-  "notes": "The write half: the model is encoded back and the bytes must reproduce the input exactly. That is what a write status of supported claims.",
+  "notes": "Encoding the parsed model must reproduce the input bytes exactly. This is the guarantee behind the supported write status.",
   "operation": "validate",
   "schemaVersion": 1
 }

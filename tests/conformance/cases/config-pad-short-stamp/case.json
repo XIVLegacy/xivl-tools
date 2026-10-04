@@ -14,7 +14,7 @@
   },
   "formatId": "config-pad",
   "id": "config-pad-short-stamp",
-  "notes": "Less than the leading stamp the pad file opens with.",
+  "notes": "The input is shorter than the pad file's leading stamp.",
   "operation": "inspect",
   "schemaVersion": 1
 }

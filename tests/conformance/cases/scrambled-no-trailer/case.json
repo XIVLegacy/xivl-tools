@@ -14,7 +14,7 @@
   },
   "formatId": "scrambled-xml",
   "id": "scrambled-no-trailer",
-  "notes": "The trailer byte removed. Without it the client's own reader hands the file on untouched, so decoding it anyway would be an invention.",
+  "notes": "The trailer byte is absent. The client reader passes the file through unchanged rather than decoding it.",
   "operation": "inspect",
   "schemaVersion": 1
 }

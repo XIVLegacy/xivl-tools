@@ -14,7 +14,7 @@
   },
   "formatId": "sqwt",
   "id": "sqwt-truncated-header",
-  "notes": "Half a signature.",
+  "notes": "The input contains only half of the signature.",
   "operation": "inspect",
   "schemaVersion": 1
 }

@@ -10,7 +10,7 @@
   },
   "formatId": "ssd-master",
   "id": "ssd-entity",
-  "notes": "An entity reference in an attribute value. Refused for the same reason as the comment.",
+  "notes": "An entity reference in an attribute value is rejected because it is outside the evidenced grammar.",
   "operation": "inspect",
   "schemaVersion": 1
 }

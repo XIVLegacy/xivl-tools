@@ -13,7 +13,7 @@
   },
   "formatId": "config-pad",
   "id": "retail-config-pad",
-  "notes": "Retail parity for the pad file. Its identifiers stay out of the expected output; what is recorded is where they sit.",
+  "notes": "Retail parity for the pad file. The expected output records identifier locations without retaining their values.",
   "operation": "inspect",
   "schemaVersion": 1
 }

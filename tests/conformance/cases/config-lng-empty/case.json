@@ -13,7 +13,7 @@
   },
   "formatId": "config-lng",
   "id": "config-lng-empty",
-  "notes": "A grid with no words. An unstamped file accepts it; a stamped one does not, which is the difference between the two shapes.",
+  "notes": "A grid with no words is valid without a stamp and invalid with a stamp.",
   "operation": "inspect",
   "schemaVersion": 1
 }

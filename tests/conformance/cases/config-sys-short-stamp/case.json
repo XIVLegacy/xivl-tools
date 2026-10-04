@@ -14,7 +14,7 @@
   },
   "formatId": "config-sys",
   "id": "config-sys-short-stamp",
-  "notes": "Less than the leading stamp the system file opens with.",
+  "notes": "The input is shorter than the system file's leading stamp.",
   "operation": "inspect",
   "schemaVersion": 1
 }

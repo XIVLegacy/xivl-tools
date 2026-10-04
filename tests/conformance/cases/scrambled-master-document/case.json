@@ -13,7 +13,7 @@
   },
   "formatId": "ssd-master",
   "id": "scrambled-master-document",
-  "notes": "A scrambled master. The decode hands plain bytes to the same reader a plaintext document gets, so the two cannot drift.",
+  "notes": "A scrambled master uses the same document reader as plaintext input after decoding.",
   "operation": "inspect",
   "schemaVersion": 1
 }

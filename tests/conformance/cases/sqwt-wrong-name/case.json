@@ -14,7 +14,7 @@
   },
   "formatId": "sqwt",
   "id": "sqwt-wrong-name",
-  "notes": "Enciphered under a name that is not the one it is stored under, which is what reading a renamed container amounts to. The key is wrong, so the body is not text.",
+  "notes": "The container is stored under a different name from the one used to encipher it. The resulting key is wrong, so the decoded body is not text.",
   "operation": "inspect",
   "schemaVersion": 1
 }

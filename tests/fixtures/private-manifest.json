@@ -170,7 +170,7 @@
         "scrambled-xml"
       ],
       "id": "retail-scrambled-master-03a70000",
-      "notes": "A scrambled master, and the one encoded length 1 modulo 4 among the small documents: its final byte takes the correction.",
+      "notes": "A scrambled master is the only small document with encoded length 1 modulo 4. Its final byte requires correction.",
       "sha256": "6861b8c1b455fab0b6eafb3f74ea2aa2432cc67ef55e473a5a7b17d4c0461d99",
       "size": 218,
       "sourcePath": "data/03/A7/00/00.DAT"
@@ -190,7 +190,7 @@
         "scrambled-xml"
       ],
       "id": "retail-scrambled-schema-0103018d",
-      "notes": "A scrambled schema, encoded length 3 modulo 4, the residue 632 of the 799 documents have.",
+      "notes": "A scrambled schema with encoded length 3 modulo 4, the residue found in 632 of the 799 documents.",
       "sha256": "9dacd6dc8b4b8b5966d4aa83b673653cf375c7f5128514701d57264cd4e74703",
       "size": 388,
       "sourcePath": "data/01/03/01/8D.DAT"

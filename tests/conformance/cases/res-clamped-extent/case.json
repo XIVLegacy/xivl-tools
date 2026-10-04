@@ -9,7 +9,7 @@
   },
   "formatId": "res",
   "id": "res-clamped-extent",
-  "notes": "A subresource whose declared extent runs past the end of the file, the alignment slack the evidence document records. The parser clamps and reports it.",
+  "notes": "A subresource declares an extent past the end of the file, matching the alignment slack recorded in the evidence document. The parser clamps and reports it.",
   "operation": "inspect",
   "schemaVersion": 1
 }

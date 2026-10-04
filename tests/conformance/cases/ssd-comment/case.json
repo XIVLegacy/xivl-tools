@@ -10,7 +10,7 @@
   },
   "formatId": "ssd-master",
   "id": "ssd-comment",
-  "notes": "A comment. No document in the install has one, so the reader refuses it rather than accepting a construct this project has no evidence for.",
+  "notes": "An XML comment is rejected because no document in the install contains one.",
   "operation": "inspect",
   "schemaVersion": 1
 }
