@@ -112,12 +112,27 @@ cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 05 15 F2 05 DE 03" -
 The [control-stream contract](formats/fixed-control.md#copied-control-streams)
 owns the supported forms, exact output bytes and remaining rendering boundary.
 
-This model assumes a fresh, successful full metadata load. It reports other
-named tables with `unsupported-key-association` rather than returning source
-cells. Unmapped and dynamic categories, missing rows and refused ordinary
+This model assumes a fresh, successful full metadata load. Without explicit
+noun inputs, it reports other named tables with `unsupported-key-association`
+rather than returning source cells. Unmapped and dynamic categories, missing rows and refused ordinary
 phrases exit 2. The [initial-registry contract](formats/fixed-control.md#conditional-initial-registry-lookup)
 owns the assumptions, resource identities and remaining provider/rendering
 limits. Choose this option or `--fixed-phrase-csv`; either requires `--locale`.
+
+For an explicit fresh English NounEn context, supply its remaining four
+metadata words. This constructed `[21,1000001]` example uses configuration 0,
+count 1, attributive key 5 and retained word 0:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 16 F6 0F 42 41 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en --noun-inputs 0:1:5:0
+```
+
+It selects the noun `xtx/displayName` descriptor and returns its authenticated
+source fields plus conditional singular output in `textResolution.text`.
+`nounContext` records the caller-declared provider and all five input words.
+The [English noun contract](formats/fixed-control.md#conditional-english-noun-identity)
+owns the supported inputs, source-key assumptions and native caller boundary.
+This option does not establish automatic English dispatch from the control.
 
 ## Inspect one file
 

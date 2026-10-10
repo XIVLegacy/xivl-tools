@@ -66,6 +66,47 @@ fn command_inputs() -> Vec<CommandLocale<'static>> {
         .expect("validated embedded command metadata")
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NounInputs<'a> {
+    #[serde(borrow)]
+    target: ItemBlock<'a>,
+    #[serde(borrow)]
+    attributive: ItemBlock<'a>,
+    #[serde(borrow)]
+    configuration_pins: [Pin<'a>; 3],
+}
+
+fn noun_inputs() -> NounInputs<'static> {
+    serde_json::from_str(include_str!("english_noun_inputs.json"))
+        .expect("validated embedded English noun metadata")
+}
+
+fn english_noun_text(row: &Row, attributive: Option<&Row>, inputs: [u32; 4]) -> Value {
+    let deferred = |reason| json!({"status": "requires-evaluation", "reason": reason});
+    if inputs != [0, 1, 5, 0] {
+        return deferred("unsupported-noun-inputs");
+    }
+    if attributive.is_none() {
+        return deferred("attributive-row-not-found");
+    }
+    // Conditional English noun identity owns the pinned configuration and branch.
+    let [ColumnValue::Text(singular), ColumnValue::Text(_), ColumnValue::Signed8 { value: 0, .. }, ColumnValue::Signed8 { value: 0, .. }, ColumnValue::Signed8 { value: 1, .. }] =
+        row.values.as_slice()
+    else {
+        return deferred("unsupported-noun-row");
+    };
+    if singular.rich.tokens().next().is_some() {
+        return deferred("embedded-controls");
+    }
+    let value = singular.rich.text_only();
+    if value.contains("[n]") {
+        return deferred("noun-count-replacement");
+    }
+    json!({"status": "resolved", "association": "conditional-explicit-NounEn",
+        "column": 1, "text": value, "textEncoding": "utf-8"})
+}
+
 fn command_query(
     root: &Path,
     input: &CommandLocale<'_>,
@@ -329,16 +370,8 @@ fn load(
     let mut inputs = Vec::new();
     let mut sources = Vec::new();
     for pin in pins {
-        let id = ResourceId::new(pin.id);
-        let path = root.join(id.dat_path());
-        let data = read_capped(&path.to_string_lossy())?;
-        if data.len() != pin.size || sha256_hex(&data) != pin.sha256 {
-            return Err(Failure::parse(format!(
-                "{}: size or SHA-256 differs from authenticated 1.23b input",
-                id.to_hex()
-            )));
-        }
-        sources.push(json!({"resourceId": id.to_hex(), "bytes": pin.size, "sha256": pin.sha256}));
+        let data = read_pin(root, pin)?;
+        sources.push(pin_source(pin));
         inputs.push(data);
     }
     let rows = parse_backing(&inputs[0], &inputs[1], &inputs[2], columns, begin, count).map_err(
@@ -357,11 +390,34 @@ fn load(
     })
 }
 
+fn pin_source(pin: &Pin<'_>) -> Value {
+    json!({"resourceId": ResourceId::new(pin.id).to_hex(), "bytes": pin.size, "sha256": pin.sha256})
+}
+
+fn read_pin(root: &Path, pin: &Pin<'_>) -> std::result::Result<Vec<u8>, Failure> {
+    let id = ResourceId::new(pin.id);
+    let path = root.join(id.dat_path());
+    let data = read_capped(&path.to_string_lossy())?;
+    if data.len() != pin.size || sha256_hex(&data) != pin.sha256 {
+        return Err(Failure::parse(format!(
+            "{}: size or SHA-256 differs from authenticated 1.23b input",
+            id.to_hex()
+        )));
+    }
+    Ok(data)
+}
+
 pub fn report(
     root: &str,
     numbers: [u32; 2],
     locale: Locale,
+    noun_source: Option<[u32; 4]>,
 ) -> std::result::Result<(Value, bool), Failure> {
+    if noun_source.is_some() && !matches!(locale, Locale::En) {
+        return Err(Failure::usage(
+            "explicit NounEn context requires English source rows",
+        ));
+    }
     let (locale_name, fixed_columns) = locale.columns();
     let index = locale_index(locale);
     let fixed = load(
@@ -426,6 +482,16 @@ pub fn report(
         "query"
     });
     document["status"] = json!("selected");
+    if let Some([configuration, count, attributive, retained]) = noun_source {
+        document["nounContext"] = json!({"context": "explicit-fresh-NounEn", "providerType": 1,
+            "sourceWords": [configuration, key, count, attributive, retained],
+            "rowAssociation": "assumed-ready-named-source-keys"});
+        if !descriptor.noun || descriptor.sheet != "xtx/displayName" {
+            document["textResolution"] =
+                json!({"status": "requires-evaluation", "reason": "noun-context-not-applicable"});
+            return Ok((document, true));
+        }
+    }
     let (rows, fields) = match descriptor.sheet.as_str() {
         "xtx/_fixedPhrase" => (fixed.rows, fixed_columns.to_vec()),
         "xtx/placeName" => {
@@ -465,6 +531,66 @@ pub fn report(
             document["targetSources"] = item.sources;
             document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
             (item.rows, input.columns.clone())
+        }
+        "xtx/displayName" if noun_source.is_some() => {
+            let inputs = noun_inputs();
+            if !inputs.target.contains(key) {
+                document["sourceLookup"] = json!({"status": "unsupported-noun-block"});
+                return Ok((document, true));
+            }
+            for pin in &inputs.configuration_pins {
+                read_pin(Path::new(root), pin)?;
+            }
+            document["nounConfigurationSources"] = json!(inputs
+                .configuration_pins
+                .iter()
+                .map(pin_source)
+                .collect::<Vec<_>>());
+            let target = load(
+                Path::new(root),
+                &inputs.target.pins,
+                &[
+                    ColumnType::Text,
+                    ColumnType::Text,
+                    ColumnType::Signed8,
+                    ColumnType::Signed8,
+                    ColumnType::Signed8,
+                ],
+                inputs.target.begin,
+                inputs.target.count,
+            )?;
+            let attributive = load(
+                Path::new(root),
+                &inputs.attributive.pins,
+                &[
+                    ColumnType::Signed8,
+                    ColumnType::Text,
+                    ColumnType::Text,
+                    ColumnType::Text,
+                    ColumnType::Text,
+                    ColumnType::Text,
+                    ColumnType::Text,
+                ],
+                inputs.attributive.begin,
+                inputs.attributive.count,
+            )?;
+            document["targetSources"] = target.sources;
+            document["targetBlock"] =
+                json!({"begin": inputs.target.begin, "count": inputs.target.count});
+            document["attributiveSources"] = attributive.sources;
+            if let Some((_, row)) = target.rows.iter().find(|(row_key, _)| *row_key == key) {
+                let source = noun_source.unwrap();
+                document["textResolution"] = english_noun_text(
+                    row,
+                    attributive
+                        .rows
+                        .iter()
+                        .find(|(row_key, _)| *row_key == source[2])
+                        .map(|(_, row)| row),
+                    source,
+                );
+            }
+            (target.rows, vec![1, 2, 3, 4, 5])
         }
         _ => {
             document["sourceLookup"] = json!({"status": "unsupported-key-association"});
@@ -520,13 +646,106 @@ pub fn report(
             json!({"column": column, "value": value})
         })
         .collect();
-    document["sourceLookup"] = json!({"status": "matched", "association": "conditional-backing-key", "rowKey": key, "textEncoding": "ssd-lossless-csv", "fields": cells});
+    let association = if noun_source.is_some() {
+        "conditional-named-noun-key"
+    } else {
+        "conditional-backing-key"
+    };
+    document["sourceLookup"] = json!({"status": "matched", "association": association, "rowKey": key, "textEncoding": "ssd-lossless-csv", "fields": cells});
     Ok((document, false))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn noun_row(singular: &[u8], flags: [u8; 3]) -> Row {
+        let mut data = Vec::new();
+        for value in [singular, b"Authored plural"] {
+            data.extend_from_slice(&((value.len() + 1) as u16).to_le_bytes());
+            data.extend_from_slice(value);
+            data.push(0);
+        }
+        data.extend_from_slice(&flags);
+        sheet::parse_rows(
+            &data,
+            &[
+                ColumnType::Text,
+                ColumnType::Text,
+                ColumnType::Signed8,
+                ColumnType::Signed8,
+                ColumnType::Signed8,
+            ],
+        )
+        .unwrap()
+        .remove(0)
+    }
+
+    #[test]
+    fn explicit_english_noun_copies_singular_with_literal_identity_replacement() {
+        let row = noun_row(b"Authored [literal]\\name", [0, 0, 1]);
+        let resolved = english_noun_text(&row, Some(&row), [0, 1, 5, 0]);
+        assert_eq!(resolved["text"], "Authored [literal]\\name");
+        assert_eq!(resolved["association"], "conditional-explicit-NounEn");
+        assert_eq!(resolved["column"], 1);
+        assert_eq!(
+            english_noun_text(&noun_row(b"", [0, 0, 1]), Some(&row), [0, 1, 5, 0])["text"],
+            ""
+        );
+    }
+
+    #[test]
+    fn explicit_english_noun_defers_other_branches_and_missing_admission() {
+        let row = noun_row(b"Authored", [0, 0, 1]);
+        for (candidate, admitted, inputs, reason) in [
+            (row.clone(), None, [0, 1, 5, 0], "attributive-row-not-found"),
+            (
+                row.clone(),
+                Some(&row),
+                [1, 1, 5, 0],
+                "unsupported-noun-inputs",
+            ),
+            (
+                row.clone(),
+                Some(&row),
+                [0, 2, 5, 0],
+                "unsupported-noun-inputs",
+            ),
+            (
+                row.clone(),
+                Some(&row),
+                [0, 1, 1, 0],
+                "unsupported-noun-inputs",
+            ),
+            (
+                noun_row(b"Authored", [0, 1, 0]),
+                Some(&row),
+                [0, 1, 5, 0],
+                "unsupported-noun-row",
+            ),
+            (
+                noun_row(b"Authored [n]", [0, 0, 1]),
+                Some(&row),
+                [0, 1, 5, 0],
+                "noun-count-replacement",
+            ),
+            (
+                noun_row(b"A\x02\x1f\x01\x03B", [0, 0, 1]),
+                Some(&row),
+                [0, 1, 5, 0],
+                "embedded-controls",
+            ),
+        ] {
+            let result = english_noun_text(&candidate, admitted, inputs);
+            assert_eq!(result["reason"], reason);
+            assert!(result.get("text").is_none());
+        }
+        assert_eq!(text(&row.values[0]), "Authored");
+        let inputs = noun_inputs();
+        assert_eq!((inputs.target.begin, inputs.target.count), (1_000_000, 601));
+        assert!(!inputs.target.contains(1_000_601));
+        assert!(inputs.attributive.contains(5));
+    }
 
     const COLUMNS: [ColumnType; 4] = [
         ColumnType::Unsigned32,

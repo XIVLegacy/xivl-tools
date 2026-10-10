@@ -1,0 +1,61 @@
+{
+  "target": {
+    "begin": 1000000,
+    "count": 601,
+    "pins": [
+      {
+        "id": 189072515,
+        "size": 9745,
+        "sha256": "185eb5d8468eeaed07b67194e41ce004a3c50f3095fd589ed81c18cb8e78c241"
+      },
+      {
+        "id": 189072516,
+        "size": 104,
+        "sha256": "8178c70cc9b70bb08d2b3aaadb4c7ff4e22e9912133d32c6574f01009fe02ef2"
+      },
+      {
+        "id": 189072517,
+        "size": 2404,
+        "sha256": "7fad7015a65cd5e59f910a91a2311df32c89ad5da642c0069f7544e319c21bfc"
+      }
+    ]
+  },
+  "attributive": {
+    "begin": 1,
+    "count": 35,
+    "pins": [
+      {
+        "id": 189071566,
+        "size": 896,
+        "sha256": "174978c81481669878759f3113c8181fd23a5d6c90bbe9b7fb0b8cea11b4c8b6"
+      },
+      {
+        "id": 189071567,
+        "size": 8,
+        "sha256": "80cd495a76d3580a2ca4f66831affcba63aac837f19c990888a8da58cc51fd02"
+      },
+      {
+        "id": 189071568,
+        "size": 140,
+        "sha256": "161cd7ef81102244f6fe9b1bc0a3297b09c65c486681340313e913364ebf59f8"
+      }
+    ]
+  },
+  "configurationPins": [
+    {
+      "id": 16973824,
+      "size": 7044,
+      "sha256": "860023878f9ad1e98fd1baa3e3380f971f86bf1f7747043cf0c3c7459cee2eb4"
+    },
+    {
+      "id": 189071360,
+      "size": 16987,
+      "sha256": "7c9b77f9e5989c1c85bbd8152162160cc423f1a6ca17b730f51b5ddc5e4ff866"
+    },
+    {
+      "id": 189071562,
+      "size": 3516,
+      "sha256": "e292f595d63e2f1002ddaf3be5248e8f8561259a0df50ec85b0eab299b30e6cb"
+    }
+  ]
+}

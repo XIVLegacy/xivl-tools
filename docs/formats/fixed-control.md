@@ -191,7 +191,8 @@ and u8 value 1. Code 31 and codes 41..48 report `unmapped-category`; code 49
 reports `dynamic-category`. These are static checks, without captured control
 provenance or observed rendering.
 
-Other named sheets report `sourceLookup.status = unsupported-key-association`
+Without explicit noun inputs, other named sheets report
+`sourceLookup.status = unsupported-key-association`
 while preserving the successful table selection. Missing rows, unmapped codes,
 dynamic categories and refused ordinary phrases exit 2. Resource identity and
 parse failures exit 2 with a diagnostic on stderr; file-read failures exit 1.
@@ -317,6 +318,56 @@ The constructed control `[20,1502]` selects English placeName field 1.
 Its output contains `The Astalicia`, unchanged bytes `02 10 01 03`, then
 `(Marauders' Guild)`. It returns `resolved-control-stream` without plain text.
 
+### Conditional English noun identity
+
+`--noun-inputs <config>:<count>:<attributive-key>:<retained-word>` supplies
+explicit metadata for a fresh type-1 NounEn evaluation. It requires
+`--initial-registry` and `--locale en`. The initial registry must select the
+noun descriptor for `xtx/displayName`. The second decoded number supplies
+the target key, and `nounContext.sourceWords` reports the complete five-word
+input. The tool does not infer these words or the provider type from a control.
+
+The bounded case is `0:1:5:0`, target block `(1000000,601)`, configuration
+`NOUN|SGL;1/PLR;2/VOW;3/CNT;4/DEF;5`, and target fields VOW=0, CNT=0, DEF=1.
+Both target and attributive key 5 must exist in the authenticated source
+blocks. Under successful English construction and admission of those named
+rows, the nonzero DEF branch copies SGL column 1. With no `[n]` placeholder,
+the later count replacement leaves that string unchanged. Token-free output
+returns `textResolution.status = resolved` and association
+`conditional-explicit-NounEn`. All five target fields remain in `sourceLookup`.
+
+The native rule is owned by
+`xivl-client-structs:docs/autotranslate-selection-contract.md`, Conditional
+English noun identity, at revision `96583a1a35426f19adab1b903879353eb72496ee`.
+NounEn construction, valid retained configuration,
+initialized needle and ready rows remain explicit conditions. The static
+backing keys are assumed to identify the admitted named rows. The declared
+displayName `cache=100,type=map` is distinct from CacheAll, so the completed
+CacheAll inverse is not applied. A stable English CA00C0 caller join and
+runtime row-cache admission are not established by this result.
+
+Other metadata words, row flags, controls or count placeholders return
+`requires-evaluation` without a `text` value. An unavailable source row, an
+unsupported target block or an inapplicable descriptor exits 2. These safe
+diagnostic refusals do not claim native handling of invalid configuration.
+Without this option, automatic noun dispatch remains deferred.
+
+`apps/cli/src/english_noun_inputs.json` retains only block coordinates and nine
+resource identities. The pinned master names displayName definition
+`0x0B450000` (16987 bytes, SHA-256
+`7C9B77F9E5989C1C85BBD8152162160CC423F1A6CA17B730F51B5DDC5E4FF866`).
+Its English columns 1..5 have types `str,str,s8,s8,s8`. The selected block's
+418 enabled rows and all 2090 fields match authenticated `xtx_displayName.csv`
+(838262 bytes, SHA-256
+`36C5DFBA312695D9F4EE090DBA123DFD7792FEBA55D88B0062C070D98ABC0505`),
+identified by `xivl-client-data:manifests/manifest.json`, its table entry at
+revision `06f6687b4e0adc24e7f38f3105ae9fc237de3eda`.
+The English attributive block and definition identities come from
+`xivl-client-data:manifests/attributive_backing_rows.json`, en and
+sourceDefinition. All 245 English fields were compared to its authenticated
+CSV. The CLI verifies the master, both definitions and each block's
+data/enable/offset resources before using their pinned layouts.
+
 ### Initial registry inputs
 
 `apps/cli/src/initial_registry_inputs.rs` owns the immutable resource IDs,
@@ -385,5 +436,8 @@ whole-field refusal, cycles, reference counts and expansion budgets.
 Control-stream tests check exact copied envelopes, both italic payloads,
 literal escaping, output order through nested sheet references, refusal of
 unsupported controls and forms, and exact output-byte budget boundaries.
+English noun tests check explicit metadata parsing and locale requirements,
+singular identity, literal escaping, empty output, required attributive presence,
+other inputs and flags, count placeholders and whole-field control deferral.
 Private manual checks compare source cells with the authenticated extraction
 and exercise identity rejection; they are not required public CI inputs.

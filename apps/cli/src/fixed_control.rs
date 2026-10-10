@@ -20,7 +20,7 @@ pub fn run(arguments: &[String]) -> Result<(), Failure> {
 }
 
 fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
-    let usage = "usage: xivl decode-fixed (<file> | --hex <bytes>) [--offset <decimal>] [--fixed-phrase-csv <file> | --initial-registry <client-root>] [--locale ja|en|de|fr]";
+    let usage = "usage: xivl decode-fixed (<file> | --hex <bytes>) [--offset <decimal>] [--fixed-phrase-csv <file> | --initial-registry <client-root>] [--locale ja|en|de|fr] [--noun-inputs <config>:<count>:<attributive-key>:<retained-word>]";
     let mut index = 0;
     let data = match arguments.first().map(String::as_str) {
         Some("--hex") => {
@@ -38,6 +38,7 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
     let mut table = None;
     let mut locale = None;
     let mut registry = None;
+    let mut noun_source = None;
     while index < arguments.len() {
         let value = arguments
             .get(index + 1)
@@ -55,6 +56,9 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
                     Failure::usage("fixedPhrase locale must be ja, en, de or fr")
                 })?);
             }
+            "--noun-inputs" if noun_source.is_none() => {
+                noun_source = Some(parse_noun_inputs(value)?);
+            }
             _ => return Err(Failure::usage(usage)),
         }
         index += 2;
@@ -67,6 +71,13 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
     if (table.is_some() || registry.is_some()) != locale.is_some() {
         return Err(Failure::usage(
             "a lookup source and --locale must be supplied together",
+        ));
+    }
+    if noun_source.is_some()
+        && (registry.is_none() || !matches!(locale, Some(fixed_phrase::Locale::En)))
+    {
+        return Err(Failure::usage(
+            "--noun-inputs requires --initial-registry and --locale en",
         ));
     }
     let offset = offset.unwrap_or(0);
@@ -93,7 +104,8 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
             }
             if let (Some(root), Some(locale)) = (registry, locale) {
                 if let Some(numbers) = control.numeric_fields {
-                    let (lookup, lookup_failed) = initial_registry::report(root, numbers, locale)?;
+                    let (lookup, lookup_failed) =
+                        initial_registry::report(root, numbers, locale, noun_source)?;
                     document["registryLookup"] = lookup;
                     failed = lookup_failed;
                 } else {
@@ -118,6 +130,24 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
             ))
         }
     }
+}
+
+fn parse_noun_inputs(value: &str) -> Result<[u32; 4], Failure> {
+    let invalid =
+        || Failure::usage("noun inputs must be four unsigned decimal words separated by colons");
+    let mut parts = value.split(':');
+    let mut result = [0; 4];
+    for slot in &mut result {
+        let word = parts.next().ok_or_else(invalid)?;
+        if word.is_empty() || !word.bytes().all(|byte| byte.is_ascii_digit()) {
+            return Err(invalid());
+        }
+        *slot = word.parse::<u32>().map_err(|_| invalid())?;
+    }
+    if parts.next().is_some() {
+        return Err(invalid());
+    }
+    Ok(result)
 }
 
 fn parse_hex(text: &str) -> Result<Vec<u8>, Failure> {
@@ -177,6 +207,48 @@ mod tests {
         assert_eq!(document["errorOffset"], 6);
         assert_eq!(document["errorKind"], "malformed-rich-string-token");
         assert_eq!(document["rawHex"], "022e0401f1030103");
+    }
+
+    #[test]
+    fn noun_inputs_require_explicit_english_registry_context() {
+        assert_eq!(parse_noun_inputs("0:1:5:0").unwrap(), [0, 1, 5, 0]);
+        for value in [
+            "0:1:5",
+            "0:1:5:0:0",
+            "0:+1:5:0",
+            "0:1:5:",
+            "0:1:4294967296:0",
+        ] {
+            assert!(parse_noun_inputs(value).is_err());
+        }
+        for values in [
+            vec!["--hex", "02 37 ff", "--noun-inputs", "0:1:5:0"],
+            vec![
+                "--hex",
+                "02 37 ff",
+                "--initial-registry",
+                "unused",
+                "--locale",
+                "de",
+                "--noun-inputs",
+                "0:1:5:0",
+            ],
+        ] {
+            assert_eq!(report(&args(&values)).unwrap_err().code, 1);
+        }
+        let (result, failed) = report(&args(&[
+            "--hex",
+            "02 37 ff",
+            "--initial-registry",
+            "not-loaded",
+            "--locale",
+            "en",
+            "--noun-inputs",
+            "0:1:5:0",
+        ]))
+        .unwrap();
+        assert!(!failed);
+        assert_eq!(result["registryLookup"]["status"], "unsupported-control");
     }
 
     #[test]
