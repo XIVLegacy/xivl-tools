@@ -4,6 +4,20 @@ use super::initial_registry::Pin;
 // Constructor defaults: docs/formats/fixed-control.md, Conditional plain text.
 pub const PLACE_DEFAULT_FIELDS: [usize; 4] = [0, 1, 4, 6];
 pub const ITEM_DEFAULT_FIELDS: [usize; 4] = [4, 5, 11, 19];
+pub const FIXED_DEFAULT_FIELDS: [usize; 4] = [2, 4, 6, 8];
+
+pub const FIXED_CONFIGURATION: [Pin<'static>; 2] = [
+    Pin {
+        id: 0x01030000,
+        size: 7044,
+        sha256: "860023878f9ad1e98fd1baa3e3380f971f86bf1f7747043cf0c3c7459cee2eb4",
+    },
+    Pin {
+        id: 0x0B4508E6,
+        size: 2571,
+        sha256: "5ea94396d7b2daa6c2e516d6abc533bc841109820cba3fa5b661306ec6061593",
+    },
+];
 
 pub const COMMAND_CONFIGURATION: [Pin<'static>; 2] = [
     Pin {

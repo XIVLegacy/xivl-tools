@@ -181,6 +181,16 @@ text:
 cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 16 F6 0F 42 41 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
 ```
 
+This constructed ordinary phrase `[8,974]` lookup selects English field 4:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 05 09 F2 03 CE 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
+```
+
+The [ordinary phrase contract](formats/fixed-control.md#ordinary-fixedphrase-output)
+owns locale defaults, text/control-stream output and row refusal. Both locale
+source cells remain in the report.
+
 The [English query contract](formats/fixed-control.md#automatic-english-displayname-query)
 owns all 32 supported English blocks, type-1 dispatch and the conditional
 ready map-key join.

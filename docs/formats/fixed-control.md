@@ -166,7 +166,8 @@ The numeric control fields do not establish a historical provider type.
 
 For `xtx/_fixedPhrase`, the second number selects a backing row under the
 existing AT-COMP-016 key conditions. The tool requires matching field 0 minus
-one and empty field 1, then reports its two locale source cells. For
+one and empty field 1, then reports its two locale source cells and the
+ordinary phrase output below. For
 `xtx/placeName`, AT-COMP-017/018 supply conditional target-key equality with
 block `(0,8002)`. Its reported source columns are ja0, en1-3, de4-5 or fr6-7;
 the English u8 field stays numeric. Source strings use SSD lossless CSV text,
@@ -302,9 +303,35 @@ CacheAll conditions apply to these `cache=0,type=all` definitions. The diagnosti
 data without observing selection, runtime cache state or rendering.
 Initial registry inputs owns configuration and block identities.
 
+### Ordinary fixedPhrase output
+
+For an admitted ordinary row under descriptor zero, the default query selects
+ja2/en4/de6/fr8, the first of the two reported locale text cells. The tool
+authenticates master 0x01030000 and definition 0x0B4508E6 by size and SHA-256
+and reports them in `configurationSources`. The definition's explicit
+SHEET DEF override supplies this selection under matching constructor and
+retained-state conditions. Its sourceDefinition/sourceMaster identities are
+owned by `xivl-client-data:manifests/fixed_phrase_backing_rows.json` at revision
+`06f6687b4e0adc24e7f38f3105ae9fc237de3eda`.
+
+Each locale has 715 ordinary backing rows. The query preserves literal UTF-8
+or applies the literal sheet-reference and copied-control evaluator below.
+Both source cells remain available. Only the selected field is evaluated;
+controls in the second field do not affect the result. A mismatched category
+or nonempty metadata field reports `not-ordinary-phrase` and exits 2, without
+`textResolution`. Missing rows and unmapped/dynamic categories retain their
+existing refusal behavior. The explicit `--fixed-phrase-csv` path remains
+a source-cell diagnostic.
+
+The native owner is Ordinary fixedPhrase default query in
+`xivl-client-structs:docs/autotranslate-selection-contract.md` at revision
+`18156e5d6510ed0c039fa2379a2d820fb40fd04d`. Conditional backing-key admission,
+initial registry and retained constructor state remain required; this result
+does not establish wrappers or rendering.
+
 ### Conditional plain text
 
-Supported default-name queries also report `registryLookup.textResolution`.
+Supported default queries also report `registryLookup.textResolution`.
 The promoted constructor defaults select placeName fields ja0/en1/de4/fr6 and
 itemName fields ja4/en5/de11/fr19. These are global sheet column indexes,
 mapped through the authenticated locale layout to the corresponding row value.
