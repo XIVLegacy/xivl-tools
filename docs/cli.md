@@ -72,8 +72,8 @@ The first selects `xtx/_fixedPhrase` and returns the same `Map` source cells.
 The second decodes `[20,1051]`, selects `xtx/placeName` and returns English
 source fields `Limsa Lominsa`, `Limsa Lominsa` and numeric value 1. The third
 decodes `[22,1000002]`, selects `xtx/itemName` and returns its English source
-fields, beginning with `Crystal`. Signed-byte fields stay numeric and embedded
-controls stay opaque. Results are
+fields, beginning with `Crystal`. Signed-byte fields stay numeric and source
+controls retain their lossless bytes. Results are
 under `registryLookup`, with `status: "selected"` and
 `sourceLookup.status: "matched"`. Resource sizes and hashes are checked before
 parsing. A changed or unavailable install fails explicitly.
@@ -81,10 +81,22 @@ parsing. A changed or unavailable install fails explicitly.
 For the second and third examples, `registryLookup.textResolution` also
 returns `status: "resolved"` and conditional default text `Limsa Lominsa` or
 `Crystal`, with the selected column. Only mode-zero placeName and itemName
-rows with a token-free default field receive text. Embedded controls report
-`requires-evaluation` without text; the raw source fields stay available.
+rows with a token-free default field or supported literal sheet references
+receive text. Other embedded controls report `requires-evaluation` without
+text; the raw source fields stay available.
 The [plain-text contract](formats/fixed-control.md#conditional-plain-text)
 owns field selection and its limits.
+
+This example decodes `[22,13000001]` and resolves English itemName field 5's
+literal `xtx/command` reference to row 26679, field 2, returning `Pummel`:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 17 F6 C6 5D 41 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
+```
+
+`textResolution.references` includes each source cell and its resource pins.
+The [sheet-reference contract](formats/fixed-control.md#literal-sheet-references)
+owns supported arguments, recursion budgets and whole-field deferral.
 
 This model assumes a fresh, successful full metadata load. It reports other
 named tables with `unsupported-key-association` rather than returning source

@@ -215,7 +215,8 @@ backslashes retain their decoded values rather than CSV escaping. An empty
 literal returns empty text; it does not trigger a fallback. The source fields
 remain available in their SSD lossless CSV representation.
 
-A selected field with controls reports `requires-evaluation` with reason
+A selected field with supported literal sheet references uses the evaluation
+below. Other controls report `requires-evaluation` with reason
 `embedded-controls`, its column and no text. Controls in other fields do not
 prevent a plain result. A noun descriptor is deferred with reason
 `provider-dependent-noun`. A missing or non-string default field reports
@@ -232,8 +233,48 @@ default fields. Matching pinned definition/index/parameter inputs, successful
 construction and unchanged selected-field state are additional conditions.
 The CLI uses promoted defaults; it does not inspect a retained native sheet.
 This resolves the conditional default text source, without claiming full
-TextModule query/conversion, embedded expression or noun evaluation,
+all TextModule query/conversion paths, arbitrary expression or noun evaluation,
 Completion admission, output wrappers or client rendering.
+
+### Literal sheet references
+
+For a mode-zero default field, the CLI evaluates selector `0x28` only when its
+payload contains exactly a token-free string, integer row key and integer global
+column index. The supported target is `xtx/command`. A column in `[0,255)` must
+be declared as `str` in the selected locale layout. Selector 255 uses the
+promoted command default: ja1/en2/de8/fr16. Other targets, numeric or missing
+columns, parameters, negative selectors and additional arguments are deferred.
+
+Each requested command block is checked by size and SHA-256 before the existing
+bounded sheet parser verifies offsets, enable keys and row spans. The requested
+key must be an enabled, nonempty slot strictly within the block. String fields
+are evaluated recursively under the same restricted rule. Literal text is
+appended in order, preserving brackets, backslashes and empty strings.
+
+A complete result has `association: "conditional-sheet-reference"`, UTF-8
+`text` and `references`. Each reference records sheet, row key, requested and
+selected columns, block begin/count, resource identities and the original
+lossless source cell. The outer source fields are unchanged. Any unsupported
+control or reference prevents text output for the whole selected field; partial
+reference evidence may remain. Reasons are `embedded-controls`,
+`unsupported-sheet-expression`, `unsupported-sheet-target`,
+`unsupported-sheet-column`, `sheet-row-not-found` or `sheet-expansion-limit`.
+The diagnostic permits at most 16 nested references, 128 reference occurrences
+and 1 MiB of expanded UTF-8 text. These are tool budgets. Source-lookup exit
+codes stay unchanged; resource identity, parse and IO failures retain their
+existing explicit failures.
+
+The native argument and recursive string association is promoted from
+`xivl-client-structs:docs/autotranslate-selection-contract.md`, Literal sheet
+references, at revision `ea118f61c6d4f2a581ea4a47cdda701b15a388e4`.
+It requires the pinned executable, retained dispatch/provider,
+ready admitted rows and matching named resources. It does not establish all
+expression, numeric conversion or noun paths, Completion admission, output
+wrappers or rendering.
+
+For the constructed control `[22,13000001]`, English itemName field 5 contains
+a literal reference to `xtx/command`, row 26679, field 2. With the pinned inputs
+it returns `Pummel`. This is a verified static lookup, not a captured selection.
 
 ### Initial registry inputs
 
@@ -255,6 +296,23 @@ and locales/blocks/sources. The report has 386556 bytes and SHA-256
 Each supported locale has 50 disjoint blocks;
 offset counts match their declared counts. The shipped chs definition is
 documented by the source report and is outside the CLI's locale choices.
+
+`apps/cli/src/command_inputs.json` owns only four command locale layouts,
+selected defaults and 23 disjoint blocks per locale, with 276 resource pins.
+The source is the preserved 1.23b install's game master `0x01030000`
+(7044 bytes, SHA-256
+`860023878F9AD1E98FD1BAA3E3380F971F86BF1F7747043CF0C3C7459CEE2EB4`),
+which names `xtx/command` definition `0x0B450017` (12993 bytes, SHA-256
+`99762442C38144D8AE82C83B24265C4B1AFE3050AAB769DC7AE2CADDEB12B3E5`).
+The definition's client/all locale indexes, types, SHEET DEF parameters and
+explicit data/enable/offset IDs supply this metadata. The same constructor
+rules select its defaults. Each supported locale has 1662 enabled rows; all
+41550 declared cells were compared to the authenticated merged
+`xtx_command.csv` (987740 bytes, SHA-256
+`2AA0B20822DF0B2270918D9AC5525C86A34A941D7C66D17A106ADD1B2D6567D3`),
+identified by `xivl-client-data:manifests/manifest.json`, its table entry at
+revision `06f6687b4e0adc24e7f38f3105ae9fc237de3eda`.
+No decoded row text is embedded. chs remains outside the CLI's locale choices.
 
 ## Verification
 
@@ -280,5 +338,8 @@ keys across multiple blocks; private CLI checks compare selected cells in
 every supported block with the authenticated extraction.
 Plain-text tests check column mapping, literal escaping, empty fields,
 control deferral, noun deferral and refusal of an unavailable string default.
+Sheet-reference tests cover exact literal arguments, explicit/default column
+mapping, unsupported targets and numeric columns, missing keys, nested controls,
+whole-field refusal, cycles, reference counts and expansion budgets.
 Private manual checks compare source cells with the authenticated extraction
 and exercise identity rejection; they are not required public CI inputs.

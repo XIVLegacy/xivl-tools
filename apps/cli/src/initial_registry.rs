@@ -11,6 +11,7 @@ use xivl_formats::sheet::{self, ColumnType, ColumnValue, Row};
 
 use crate::fixed_phrase::Locale;
 use crate::initial_registry_inputs::{FIXED, ITEM_DEFAULT_FIELDS, PLACE, PLACE_DEFAULT_FIELDS};
+use crate::sheet_reference::{self, Cell, QueryResult};
 use crate::{read_capped, Failure};
 
 #[derive(Deserialize)]
@@ -48,6 +49,74 @@ fn item_inputs() -> Vec<ItemLocale<'static>> {
     // Identities and layouts only; provenance is owned by Initial registry inputs.
     serde_json::from_str(include_str!("item_name_inputs.json"))
         .expect("validated embedded itemName metadata")
+}
+
+#[derive(Deserialize)]
+struct CommandLocale<'a> {
+    locale: &'a str,
+    columns: Vec<usize>,
+    types: Vec<&'a str>,
+    default: usize,
+    #[serde(borrow)]
+    blocks: Vec<ItemBlock<'a>>,
+}
+
+fn command_inputs() -> Vec<CommandLocale<'static>> {
+    serde_json::from_str(include_str!("command_inputs.json"))
+        .expect("validated embedded command metadata")
+}
+
+fn command_query(
+    root: &Path,
+    input: &CommandLocale<'_>,
+    cache: &mut Vec<(usize, Loaded)>,
+    name: &str,
+    key: u32,
+    column: usize,
+) -> std::result::Result<QueryResult, Failure> {
+    if name != "xtx/command" {
+        return Ok(Err("unsupported-sheet-target"));
+    }
+    let selected = if column == 255 { input.default } else { column };
+    let Some(position) = input.columns.iter().position(|&field| field == selected) else {
+        return Ok(Err("unsupported-sheet-column"));
+    };
+    if input.types[position] != "str" {
+        return Ok(Err("unsupported-sheet-column"));
+    }
+    let Some(block_index) = input.blocks.iter().position(|block| block.contains(key)) else {
+        return Ok(Err("sheet-row-not-found"));
+    };
+    let block = &input.blocks[block_index];
+    if !cache.iter().any(|(index, _)| *index == block_index) {
+        let columns: Vec<_> = input
+            .types
+            .iter()
+            .map(|kind| ColumnType::parse(kind, 0).expect("validated embedded command type"))
+            .collect();
+        cache.push((
+            block_index,
+            load(root, &block.pins, &columns, block.begin, block.count)?,
+        ));
+    }
+    let loaded = &cache
+        .iter()
+        .find(|(index, _)| *index == block_index)
+        .unwrap()
+        .1;
+    let Some((_, row)) = loaded.rows.iter().find(|(row_key, _)| *row_key == key) else {
+        return Ok(Err("sheet-row-not-found"));
+    };
+    let ColumnValue::Text(value) = &row.values[position] else {
+        unreachable!("validated command string column")
+    };
+    Ok(Ok(Cell {
+        rich: value.rich.clone(),
+        evidence: json!({"sheet": name, "rowKey": key, "requestedColumn": column,
+            "column": selected, "sources": loaded.sources,
+            "block": {"begin": block.begin, "count": block.count},
+            "sourceValue": value.rich.to_lossless_text(), "sourceEncoding": "ssd-lossless-csv"}),
+    }))
 }
 
 struct Loaded {
@@ -413,6 +482,20 @@ pub fn report(
     };
     if let Some(column) = default_field {
         document["textResolution"] = plain_text(row, &fields, column, descriptor.noun);
+        if document["textResolution"]["reason"] == "embedded-controls" {
+            let position = fields.iter().position(|&field| field == column).unwrap();
+            let ColumnValue::Text(value) = &row.values[position] else {
+                unreachable!("plain_text admitted selected string")
+            };
+            let inputs = command_inputs();
+            let input = &inputs[index];
+            debug_assert_eq!(input.locale, locale_name);
+            let mut cache = Vec::new();
+            document["textResolution"] =
+                sheet_reference::resolve(&value.rich, column, |name, key, field| {
+                    command_query(Path::new(root), input, &mut cache, name, key, field)
+                })?;
+        }
     }
     let values = if descriptor_index == 0 {
         let (field0, metadata) = metadata(row).map_err(|error| Failure::parse(error.detail()))?;
@@ -608,5 +691,104 @@ mod tests {
             plain_text(&numeric, &[8], 8, false)["status"],
             "unsupported-default-field"
         );
+    }
+
+    #[test]
+    fn command_query_maps_explicit_and_default_columns_and_refuses_unsupported_inputs() {
+        let inputs = command_inputs();
+        for (input, (locale, default)) in
+            inputs
+                .iter()
+                .zip([("ja", 1), ("en", 2), ("de", 8), ("fr", 16)])
+        {
+            assert_eq!((input.locale, input.default), (locale, default));
+            assert_eq!(input.blocks.len(), 23);
+            assert_eq!(input.columns.len(), input.types.len());
+            assert!(input.blocks.windows(2).all(|pair| {
+                u64::from(pair[0].begin) + pair[0].count as u64 <= u64::from(pair[1].begin)
+            }));
+            let mut row = text_row(&[b"Authored"]);
+            row.values
+                .resize(input.columns.len(), row.values[0].clone());
+            let mut cache = vec![(
+                1,
+                Loaded {
+                    rows: vec![(10_042, row)],
+                    sources: json!([]),
+                },
+            )];
+            for requested in [default, 255] {
+                let cell = command_query(
+                    Path::new("unused"),
+                    input,
+                    &mut cache,
+                    "xtx/command",
+                    10_042,
+                    requested,
+                )
+                .unwrap()
+                .unwrap();
+                assert_eq!(cell.rich.text_only(), "Authored");
+                assert_eq!(cell.evidence["column"], default);
+                assert_eq!(cell.evidence["requestedColumn"], requested);
+            }
+            assert!(matches!(
+                command_query(
+                    Path::new("unused"),
+                    input,
+                    &mut cache,
+                    "xtx/command",
+                    10_043,
+                    default
+                ),
+                Ok(Err("sheet-row-not-found"))
+            ));
+            assert!(matches!(
+                command_query(
+                    Path::new("unused"),
+                    input,
+                    &mut cache,
+                    "xtx/command",
+                    9_999,
+                    default
+                ),
+                Ok(Err("sheet-row-not-found"))
+            ));
+            assert!(matches!(
+                command_query(
+                    Path::new("unused"),
+                    input,
+                    &mut cache,
+                    "xtx/other",
+                    10_042,
+                    default
+                ),
+                Ok(Err("unsupported-sheet-target"))
+            ));
+            assert!(matches!(
+                command_query(
+                    Path::new("unused"),
+                    input,
+                    &mut cache,
+                    "xtx/command",
+                    10_042,
+                    254
+                ),
+                Ok(Err("unsupported-sheet-column"))
+            ));
+            if let Some(position) = input.types.iter().position(|kind| *kind == "s32") {
+                assert!(matches!(
+                    command_query(
+                        Path::new("unused"),
+                        input,
+                        &mut cache,
+                        "xtx/command",
+                        10_042,
+                        input.columns[position]
+                    ),
+                    Ok(Err("unsupported-sheet-column"))
+                ));
+            }
+        }
     }
 }

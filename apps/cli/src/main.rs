@@ -22,6 +22,7 @@ mod initial_registry;
 mod initial_registry_inputs;
 mod resource_export;
 mod scan;
+mod sheet_reference;
 mod verify_extract;
 mod zone_export;
 
