@@ -556,9 +556,11 @@ rows are present, but source availability does not prove complete noun output.
 
 The native owner is German displayName noun boundary in
 `xivl-client-structs:docs/autotranslate-selection-contract.md` at revision
-`70e8168cd999aedda3b31b9e4eeed8984d2fe4a4`. The German replacement-needle
-values and complete output/return sequence are required before promoting a
-bounded noun result. The tool retains noun deferral and the existing source
+`b298fb9bd685de5eb8148756d6485e8e1de1e6c7`. Its German needle initializer
+inputs section establishes conditional initial strings `[a]`, `[p]` and
+`[pa]` under successful construction and retained state. Selected grammatical
+fields and the complete output/return sequence are required before promoting
+a bounded noun result. The tool retains noun deferral and the existing source
 lookup behavior; `--noun-inputs` remains English-only.
 
 ### Conditional English noun identity
