@@ -18,6 +18,19 @@ pub(super) struct Cell {
 
 pub(super) type QueryResult = std::result::Result<Cell, &'static str>;
 
+pub(super) fn is_copied_control(token: &Token) -> bool {
+    // AT-COMP-020: these constructor slots stay null. Restrict preservation
+    // to the observed direct-length forms.
+    matches!(
+        (
+            token.code,
+            token.length_bytes.as_slice(),
+            token.payload.as_slice()
+        ),
+        (0x10 | 0x16 | 0x1D | 0x1F, [1], []) | (0x1A, [2], [1 | 2])
+    )
+}
+
 fn arguments(token: &Token) -> Option<(String, u32, usize)> {
     if token.code != 0x28 {
         return None;
@@ -62,16 +75,7 @@ fn evaluate(
                 }
             }
             Segment::Token(token) => {
-                // AT-COMP-020: these constructor slots stay null. Restrict
-                // preservation to the observed direct-length forms.
-                if matches!(
-                    (
-                        token.code,
-                        token.length_bytes.as_slice(),
-                        token.payload.as_slice()
-                    ),
-                    (0x10 | 0x16 | 0x1D | 0x1F, [1], []) | (0x1A, [2], [1 | 2])
-                ) {
+                if is_copied_control(token) {
                     if let Err(reason) = append(output, &token.raw_bytes()) {
                         return Ok(Err(reason));
                     }

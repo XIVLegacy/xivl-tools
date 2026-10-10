@@ -214,9 +214,16 @@ cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 16 F6 0F 42 41 03
 ```
 
 The [German singular contract](formats/fixed-control.md#conditional-german-singular-output)
-owns prefix selection, the empty suffix, literal replacements and source
-conditions. `nounContext` records the preset and assumptions. Rows outside
-this case retain their source fields and return `requires-evaluation`.
+owns prefix selection, the empty suffix, literal replacements, preserved
+controls and source conditions. `nounContext` records the preset and assumptions.
+Rows outside this case retain their source fields and return `requires-evaluation`.
+
+This constructed `[21,1200024]` lookup returns `resolved-control-stream` with
+three preserved soft-hyphen envelopes in the conditional noun output:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 16 F6 12 4F 98 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale de
+```
 
 For a separate explicit fresh English NounEn context, supply its remaining four
 metadata words. This constructed `[21,1000001]` example uses configuration 0,

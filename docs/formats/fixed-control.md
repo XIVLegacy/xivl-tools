@@ -552,33 +552,43 @@ type-2 provider in `providerContext` and selects `dispatch = noun`.
 destination and retained initializer strings. The control and locale do not
 establish actual provider/cache state. This context covers displayName only.
 
-The bounded result requires token-free SGL column 6 and an empty suffix at
+The bounded result requires SGL column 6 and an empty suffix at
 attributive row `26 + SGG` (SGG column 7), column `11 + GEN` (GEN column 11).
 The selected column must lie in the authenticated string layout 11..26.
 Attributive rows 5, 24, 25, 26 and the suffix row must all be present.
 With zero DEF column 12, the selected string from attributive row 5,
-column `11 + GEN`, is copied
-before SGL is appended. Nonzero DEF skips this prefix field. A selected prefix
-must also be token-free. In the composed prefix plus SGL, `[p]` is replaced
-with the empty suffix instead of appending it. `[pa]` is then replaced with
-row 24's selected field, followed by `[a]` with row 26's field. Each search
-restarts at zero until the needle is absent, so a removal can expose another
-match. Used replacement fields must be token-free and contain no `[`, which
+column `11 + GEN`, is copied before SGL is appended. Nonzero DEF skips this
+prefix field. SGL and a selected prefix may contain the exact envelopes listed
+in Copied control streams; other embedded controls defer the result.
+In the composed prefix plus SGL,
+`[p]` is replaced with the empty suffix instead of appending it. `[pa]` is then
+replaced with row 24's selected field, followed by `[a]` with row 26's field.
+Each search restarts at zero until the needle is absent, so a removal can
+expose another match. Used replacement fields must be token-free and contain no `[`, which
 keeps each loop finite. Fields for absent needles are not evaluated. The
 result must contain no `[n]`; count spelling remains deferred.
 The native success byte is set after admission of the common rows.
 This is a noun result, not a default query.
 
 All 5812 target rows in the 32 German blocks are supported as source inputs.
-The authenticated corpus yields 5800 singular text results and 12
-control-bearing refusals. Of the resolved rows, 1131 require `[p]`, `[a]`
-or both; none use `[pa]` or `[n]`. All 2787 DEF-zero rows select empty prefix
-and suffix fields in this preset; 2778 return singular text.
+The authenticated corpus yields 5800 singular text results and 12 resolved
+control streams. Ten streams preserve 41 soft-hyphen envelopes; two preserve
+two italic envelopes each. Across all 5812 results, 1138 rows require `[p]`,
+`[a]` or both; none use `[pa]` or `[n]`. All 2787 DEF-zero rows select empty
+prefix and suffix fields in this preset; 2778 return singular text and nine
+return control streams.
 Resolved output has association `conditional-preset-NounDe`, column 6 and
 the selected `grammaticalRowKey`/`grammaticalColumn`. Other rows return
 `requires-evaluation` and a reason without `text`. Missing target rows exit 2.
 `--noun-inputs` remains English-only; the German preset is supplied by this
 declared caller path.
+
+For a result with preserved envelopes, `status` is `resolved-control-stream`
+with the same noun association and grammatical metadata, `outputHex`,
+`outputEncoding: "rich-string-control-bytes"` and `preservedControls`.
+The stream includes literal noun replacements and exact envelope bytes in
+order, with no plain `text` or partial byte result. This is the conditional
+NounDe output, before subsequent control evaluation or rendering.
 
 `apps/cli/src/german_noun_inputs.json` owns the German attributive block
 `(1,35)` identities and configuration pins. Its 35 rows and 595 fields match
@@ -591,7 +601,7 @@ does not prove runtime admission; ready named rows remain an assumption.
 
 The native owner is Conditional German singular output in
 `xivl-client-structs:docs/autotranslate-selection-contract.md` at revision
-`33b7b2fd8375bbab354d7a118d4959c90c1e9207`. Its German needle initializer
+`26e554a246d8c89f23b2c26aca43bd56132e7ee1`. Its German needle initializer
 inputs section owns `[a]`, `[p]` and `[pa]`; AT-COMP-023 owns `[n]`.
 Successful fresh construction, valid retained configuration, string operations,
 matching ready map-key associations and named-row admission remain explicit.
@@ -796,7 +806,10 @@ English query tests check that a noun flag does not select noun mode and that
 column 1 preserves literal count placeholders regardless of noun row flags.
 Japanese query tests check field-0 literal preservation and the displayName
 scope. French query tests preserve field 13 despite distinct plural and noun
-flag fields. Other Japanese/French noun families and German output stay deferred.
+flag fields. German noun tests preserve admitted envelopes through prefix and
+replacement operations and refuse unsupported envelopes without partial output.
+Other Japanese/French noun families and German branches outside this preset
+retain their separate evidence requirements.
 Command source tests check signed 32-bit fields and default-name selection.
 Private manual checks compare source cells with the authenticated extraction
 and exercise identity rejection; they are not required public CI inputs.

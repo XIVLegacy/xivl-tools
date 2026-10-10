@@ -6,7 +6,9 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use xivl_formats::digest::sha256_hex;
 use xivl_formats::error::{ErrorKind, FormatError, Result};
+use xivl_formats::reader::to_hex;
 use xivl_formats::resource::ResourceId;
+use xivl_formats::richstring::RichString;
 use xivl_formats::sheet::{self, ColumnType, ColumnValue, Row};
 
 use crate::fixed_phrase::Locale;
@@ -182,6 +184,22 @@ fn german_noun_inputs() -> GermanNounInputs<'static> {
         .expect("validated embedded German noun metadata")
 }
 
+fn german_literal_input(rich: &RichString) -> Option<(String, usize)> {
+    let mut preserved = 0;
+    for token in rich.tokens() {
+        if !sheet_reference::is_copied_control(token) {
+            return None;
+        }
+        preserved += 1;
+    }
+    // The admitted envelopes contain ASCII bytes without '['. Native string
+    // operations preserve them and cannot find a noun needle inside them.
+    Some((
+        String::from_utf8(rich.encode()).expect("literal UTF-8 and admitted ASCII envelopes"),
+        preserved,
+    ))
+}
+
 fn german_noun_text(row: &Row, attributive: &[(u32, Row)]) -> Value {
     let deferred = |reason| json!({"status": "requires-evaluation", "reason": reason});
     // Conditional German singular output owns this preset's output sequence.
@@ -190,10 +208,9 @@ fn german_noun_text(row: &Row, attributive: &[(u32, Row)]) -> Value {
     else {
         return deferred("unsupported-noun-row");
     };
-    if singular.rich.tokens().next().is_some() {
+    let Some((value, mut preserved_controls)) = german_literal_input(&singular.rich) else {
         return deferred("embedded-controls");
-    }
-    let value = singular.rich.text_only();
+    };
     let Ok(grammatical_key) = u32::try_from(26 + i32::from(*sgg)) else {
         return deferred("attributive-row-not-found");
     };
@@ -231,10 +248,11 @@ fn german_noun_text(row: &Row, attributive: &[(u32, Row)]) -> Value {
         let Some(ColumnValue::Text(prefix)) = field(5) else {
             return deferred("unsupported-noun-column");
         };
-        if prefix.rich.tokens().next().is_some() {
+        let Some((prefix, controls)) = german_literal_input(&prefix.rich) else {
             return deferred("embedded-controls");
-        }
-        output.push_str(&prefix.rich.text_only());
+        };
+        output.push_str(&prefix);
+        preserved_controls += controls;
     }
     output.push_str(&value);
     for (needle, key) in [("[p]", grammatical_key), ("[pa]", 24), ("[a]", 26)] {
@@ -260,9 +278,19 @@ fn german_noun_text(row: &Row, attributive: &[(u32, Row)]) -> Value {
     if output.contains("[n]") {
         return deferred("noun-replacement");
     }
-    json!({"status": "resolved", "association": "conditional-preset-NounDe",
-        "column": 6, "text": output, "textEncoding": "utf-8",
-        "grammaticalRowKey": grammatical_key, "grammaticalColumn": 11 + position})
+    let mut result = json!({"association": "conditional-preset-NounDe", "column": 6,
+        "grammaticalRowKey": grammatical_key, "grammaticalColumn": 11 + position});
+    if preserved_controls == 0 {
+        result["status"] = json!("resolved");
+        result["text"] = json!(output);
+        result["textEncoding"] = json!("utf-8");
+    } else {
+        result["status"] = json!("resolved-control-stream");
+        result["outputHex"] = json!(to_hex(output.as_bytes()));
+        result["outputEncoding"] = json!("rich-string-control-bytes");
+        result["preservedControls"] = json!(preserved_controls);
+    }
+    result
 }
 
 fn command_query(
@@ -1332,7 +1360,7 @@ mod tests {
             (german_row(b"Authored", 1, -1, 1), "unsupported-noun-column"),
             (german_row(b"Authored", 1, 16, 1), "unsupported-noun-column"),
             (
-                german_row(b"A\x02\x1f\x01\x03B", 1, 0, 1),
+                german_row(b"A\x02\x12\x01\x03B", 1, 0, 1),
                 "embedded-controls",
             ),
         ] {
@@ -1386,7 +1414,7 @@ mod tests {
     fn german_prefix_controls_and_count_placeholders_remain_deferred() {
         for (prefix, singular, reason) in [
             (
-                b"A\x02\x1f\x01\x03B".as_slice(),
+                b"A\x02\x12\x01\x03B".as_slice(),
                 b"Name".as_slice(),
                 "embedded-controls",
             ),
@@ -1477,6 +1505,58 @@ mod tests {
                     "Name"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn german_preserves_admitted_envelopes_through_noun_replacements() {
+        let mut rows = german_attributive(27, 0, b"");
+        set_german_field(&mut rows, 5, 0, b"P\x02\x1a\x02\x02\x03");
+        set_german_field(&mut rows, 24, 0, b"Middle");
+        set_german_field(&mut rows, 26, 0, b"Article");
+        let singular = b"\xc3\xa4[a][p]\x02\x16\x01\x03[pa]\x02\x1a\x02\x01\x03";
+        let result = german_noun_text(&german_row(singular, 1, 0, 0), &rows);
+        assert_eq!(result["status"], "resolved-control-stream");
+        assert_eq!(result["association"], "conditional-preset-NounDe");
+        assert_eq!(result["column"], 6);
+        assert_eq!(result["grammaticalRowKey"], 27);
+        assert_eq!(result["grammaticalColumn"], 11);
+        assert_eq!(result["preservedControls"], 3);
+        assert_eq!(result["outputEncoding"], "rich-string-control-bytes");
+        assert_eq!(
+            result["outputHex"],
+            "50021a020203c3a441727469636c65021601034d6964646c65021a020103"
+        );
+        assert!(result.get("text").is_none());
+        let skipped = german_noun_text(&german_row(b"Name", 1, 0, 1), &rows);
+        assert_eq!(skipped["text"], "Name");
+        assert!(skipped.get("outputHex").is_none());
+    }
+
+    #[test]
+    fn german_stream_refusals_never_return_partial_bytes() {
+        let rows = german_attributive(27, 0, b"");
+        for singular in [
+            b"A\x02\x16\x01\x03B\x02\x12\x01\x03".as_slice(),
+            b"\x02\x16\x02\x01\x03",
+            b"\x02\x1a\x01\x03",
+            b"\x02\x1a\xf0\x01\x02\x03",
+            b"\x02\x28\x01\x03",
+        ] {
+            let result = german_noun_text(&german_row(singular, 1, 0, 1), &rows);
+            assert_eq!(result["reason"], "embedded-controls");
+            assert!(result.get("text").is_none());
+            assert!(result.get("outputHex").is_none());
+        }
+        let result = german_noun_text(&german_row(b"\x02\x16\x01\x03[n]", 1, 0, 1), &rows);
+        assert_eq!(result["reason"], "noun-replacement");
+        assert!(result.get("outputHex").is_none());
+        for key in [5, 24, 25, 26, 27] {
+            let mut missing = rows.clone();
+            missing.retain(|(row_key, _)| *row_key != key);
+            let result = german_noun_text(&german_row(b"\x02\x16\x01\x03", 1, 0, 1), &missing);
+            assert_eq!(result["reason"], "attributive-row-not-found");
+            assert!(result.get("outputHex").is_none());
         }
     }
 
