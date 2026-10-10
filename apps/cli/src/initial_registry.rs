@@ -84,6 +84,21 @@ fn guildleve_inputs() -> Vec<SheetLocale<'static>> {
         .expect("validated embedded guildleve metadata")
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ReferenceSheet<'a> {
+    sheet: &'a str,
+    #[serde(borrow)]
+    configuration_pins: [Pin<'a>; 2],
+    #[serde(borrow)]
+    locales: Vec<SheetLocale<'a>>,
+}
+
+fn reference_inputs() -> Vec<ReferenceSheet<'static>> {
+    serde_json::from_str(include_str!("reference_name_inputs.json"))
+        .expect("validated embedded reference name metadata")
+}
+
 fn load_sheet_block(
     root: &Path,
     input: &SheetLocale<'_>,
@@ -581,13 +596,26 @@ pub fn report(
             document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
             (item.rows, input.columns.clone())
         }
-        "xtx/command" | "xtx/status" | "xtx/quest" | "xtx/guildleve" => {
+        "xtx/command"
+        | "xtx/status"
+        | "xtx/quest"
+        | "xtx/guildleve"
+        | "xtx/text_guardian"
+        | "xtx/text_equipPtName"
+        | "xtx/text_skillName"
+        | "xtx/text_jobName" => {
             let (inputs, configuration) = match descriptor.sheet.as_str() {
-                "xtx/command" => (command_inputs(), &COMMAND_CONFIGURATION),
-                "xtx/status" => (status_inputs(), &STATUS_CONFIGURATION),
-                "xtx/quest" => (quest_inputs(), &QUEST_CONFIGURATION),
-                "xtx/guildleve" => (guildleve_inputs(), &GUILDLEVE_CONFIGURATION),
-                _ => unreachable!("selected supported sheet"),
+                "xtx/command" => (command_inputs(), COMMAND_CONFIGURATION),
+                "xtx/status" => (status_inputs(), STATUS_CONFIGURATION),
+                "xtx/quest" => (quest_inputs(), QUEST_CONFIGURATION),
+                "xtx/guildleve" => (guildleve_inputs(), GUILDLEVE_CONFIGURATION),
+                name => {
+                    let reference = reference_inputs()
+                        .into_iter()
+                        .find(|input| input.sheet == name)
+                        .expect("selected supported reference sheet");
+                    (reference.locales, reference.configuration_pins)
+                }
             };
             let input = &inputs[index];
             debug_assert_eq!(input.locale, locale_name);
@@ -595,12 +623,15 @@ pub fn report(
                 document["sourceLookup"] = json!({"status": "not-found"});
                 return Ok((document, true));
             };
-            for pin in configuration {
+            for pin in &configuration {
                 read_pin(Path::new(root), pin)?;
             }
             document["configurationSources"] =
                 json!(configuration.iter().map(pin_source).collect::<Vec<_>>());
-            if descriptor.sheet != "xtx/command" {
+            if matches!(
+                descriptor.sheet.as_str(),
+                "xtx/status" | "xtx/quest" | "xtx/guildleve"
+            ) {
                 // The declared none policy does not establish a ready full-load backend.
                 document["nativeConditions"] = json!({"sheetCacheState": 0,
                     "backend": "matching-ready-CacheAll", "association": "assumed-completed-full-load"});
@@ -692,6 +723,17 @@ pub fn report(
         "xtx/status" => Some(status_inputs()[index].default),
         "xtx/quest" => Some(quest_inputs()[index].default),
         "xtx/guildleve" => Some(guildleve_inputs()[index].default),
+        "xtx/text_guardian"
+        | "xtx/text_equipPtName"
+        | "xtx/text_skillName"
+        | "xtx/text_jobName" => Some(
+            reference_inputs()
+                .into_iter()
+                .find(|input| input.sheet == descriptor.sheet)
+                .expect("selected supported reference sheet")
+                .locales[index]
+                .default,
+        ),
         "xtx/displayName" if noun_source.is_none() => Some(1),
         _ => None,
     };
@@ -740,6 +782,53 @@ pub fn report(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reference_names_keep_first_index_defaults_and_signed_noun_fields() {
+        for (reference, defaults) in reference_inputs().iter().zip([
+            [0, 1, 2, 3],
+            [0, 1, 6, 13],
+            [0, 1, 3, 4],
+            [0, 1, 6, 12],
+        ]) {
+            for (input, default) in reference.locales.iter().zip(defaults) {
+                let mut data = Vec::new();
+                for (&column, kind) in input.columns.iter().zip(&input.types) {
+                    match *kind {
+                        "str" => {
+                            let value: &[u8] = if column == default {
+                                b"Authored [first]\\name"
+                            } else {
+                                b"Other noun field"
+                            };
+                            data.extend_from_slice(&((value.len() + 1) as u16).to_le_bytes());
+                            data.extend_from_slice(value);
+                            data.push(0);
+                        }
+                        "s8" => data.push((-7i8) as u8),
+                        _ => unreachable!("supported reference schema"),
+                    }
+                }
+                let types: Vec<_> = input
+                    .types
+                    .iter()
+                    .map(|kind| ColumnType::parse(kind, 0).unwrap())
+                    .collect();
+                let row = sheet::parse_rows(&data, &types).unwrap().remove(0);
+                let resolved = plain_text(&row, &input.columns, input.default, false);
+                assert_eq!(resolved["column"], default);
+                assert_eq!(resolved["text"], "Authored [first]\\name");
+                for (cell, kind) in source_cells(&row.values, &input.columns)
+                    .iter()
+                    .zip(&input.types)
+                {
+                    if *kind == "s8" {
+                        assert_eq!(cell["value"], -7);
+                    }
+                }
+            }
+        }
+    }
 
     #[test]
     fn quest_and_leve_names_select_names_without_evaluating_descriptions() {

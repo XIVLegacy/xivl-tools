@@ -275,18 +275,41 @@ quest and leve source keys, at revision
 observing native cache state, selection, journal output or rendering.
 Initial registry inputs owns resource identities.
 
+### Conditional reference-name lookup
+
+Initial categories 16/17/18 select guardian/equipment-slot/skill sheets;
+19 and 40 select the job-name sheet. Each ja/en/de/fr locale has 12 guardian,
+48 equipment-slot, 82 skill and 58 job rows. Every backing key in those blocks
+can be queried; descriptor candidate ranges do not filter the supplied key.
+All five descriptors use ordinary queries without noun mode.
+
+The lookup verifies the master and selected definition in
+`configurationSources` and the block's data/enable/offset resources in
+`targetSources`. It reports every declared locale field, including signed
+8-bit values and lossless controls. First-index defaults select guardian
+columns ja0/en1/de2/fr3, equipment ja0/en1/de6/fr13, skill ja0/en1/de3/fr4 and
+job ja0/en1/de6/fr12. French equipment's NOUN SGL setting for column 14 does
+not override default column 13.
+
+The native key/default association is owned by
+`xivl-client-structs:docs/autotranslate-selection-contract.md`, Conditional
+reference-name source keys at revision
+`3727e065dfc38f87236b59cdf612bfa4a7761b8d`. The completed matching ready
+CacheAll conditions apply to these `cache=0,type=all` definitions. The diagnostic reads backing
+data without observing selection, runtime cache state or rendering.
+Initial registry inputs owns configuration and block identities.
+
 ### Conditional plain text
 
-A matched placeName, itemName, command, status, quest or guildleve row also reports
-`registryLookup.textResolution`.
+Supported default-name queries also report `registryLookup.textResolution`.
 The promoted constructor defaults select placeName fields ja0/en1/de4/fr6 and
 itemName fields ja4/en5/de11/fr19. These are global sheet column indexes,
 mapped through the authenticated locale layout to the corresponding row value.
 The itemName SHEET DEF settings select those indexes; its NOUN settings are
 separate. The placeName first-index defaults retain AT-COMP-021's existing
 constructor-local result, including English field 1 rather than noun DEF 3.
-Command, status, quest and guildleve defaults and native associations are
-described above.
+Command, status, quest, guildleve and reference-name defaults and native
+associations are described above.
 
 For a mode-zero descriptor and a selected field containing no control tokens,
 the result has `status: "resolved"`, `association: "conditional-default-field"`,
@@ -558,6 +581,32 @@ the locale cells; column 56 has 2556 missing-locale annotations. Comparing
 the actual backing values accounts for these CSV merge annotations; the CLI
 reports the selected locale's actual fields. Default names have no such
 annotations. No decoded row text is embedded. chs is outside CLI locale choices.
+
+`apps/cli/src/reference_name_inputs.json` owns the four reference-sheet
+identifiers, master/definition pins, four locale layouts per family, selected
+defaults and 48 data/enable/offset pins. It embeds no decoded row text.
+The same master above names these client/all definitions:
+
+| Sheet suffix | Definition ID | Bytes | SHA-256 |
+|---|---|---|---|
+| `text_guardian` | `0x0B4509B9` | 1724 | `25BC2D1A6A1E55CA67BE20322C4DDF291FD93AA841A670A2E2601281B70A2C16` |
+| `text_equipPtName` | `0x0B450096` | 2606 | `8CAB4F8821DEECD5740C6FC1F40152FDA2C49B3A299212BFD91E54BCC66D5E74` |
+| `text_skillName` | `0x0B45008A` | 2356 | `918C487A9471E86CAE48C510E10884ED3738A338DC2C853E20F3B1D14574315A` |
+| `text_jobName` | `0x0B450269` | 2480 | `73BC2785DA4C4F6711E3C9EBCED18F03DD2483B0805CBE5BE12F4CDAD49B80D7` |
+
+Definition indexes, types, parameters and explicit block coordinates/IDs
+supplied the promoted metadata. All 3572 declared backing cells matched the
+authenticated merged CSVs in the same manifest revision above:
+
+| CSV | Bytes | SHA-256 |
+|---|---|---|
+| `xtx_text_guardian.csv` | 998 | `FFDB938DD7D390F0680FE9A88DFEE8B845A4F9CE5005226813B4A33350B817A0` |
+| `xtx_text_equipPtName.csv` | 6857 | `F32C026BC2FE47D05B80A7E64F7F122E16187C2E8F50424B9B9BC83248623606` |
+| `xtx_text_skillName.csv` | 14017 | `170FD51685AB160989DD836C1D67DDF87E95627180CF17AB86DEE271D04AB746` |
+| `xtx_text_jobName.csv` | 12555 | `61535798445DDB716CD16E8B68B06D9C6A67F76C321FE0DD5E9840C143DE8B57` |
+
+The cells have no duplicate or missing-locale merge annotations. chs is
+outside CLI locale choices.
 
 ## Verification
 

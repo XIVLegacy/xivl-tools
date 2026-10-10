@@ -113,8 +113,9 @@ The [control-stream contract](formats/fixed-control.md#copied-control-streams)
 owns the supported forms, exact output bytes and remaining rendering boundary.
 
 This model assumes a fresh, successful full metadata load. It supports
-fixedPhrase, placeName, itemName, command, status, quest, guildleve and the
-bounded English displayName block;
+fixedPhrase, placeName, itemName, command, status, quest, guildleve, guardian,
+equipment-slot, skill and job name sheets, and the bounded English displayName
+block;
 other named tables report `unsupported-key-association`. Unmapped and
 dynamic categories, missing rows and refused ordinary
 phrases exit 2. The [initial-registry contract](formats/fixed-control.md#conditional-initial-registry-lookup)
@@ -160,6 +161,18 @@ cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 05 25 F2 03 E9 03" -
 Both families support `ja`, `de` and `fr`. The
 [quest and leve contract](formats/fixed-control.md#conditional-quest-and-leve-lookup)
 owns category coverage, defaults, backing blocks and completed-cache assumptions.
+
+For guardian-name lookup, this constructed `[16,1]` control selects
+`xtx/text_guardian` and its English default column 1:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 03 11 02 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
+```
+
+Equipment slots use category 17, skills use 18, and jobs use 19 or 40.
+All four families support `ja`, `en`, `de` and `fr`. The
+[reference-name contract](formats/fixed-control.md#conditional-reference-name-lookup)
+owns backing blocks, defaults and source-field behavior.
 
 For automatic English displayName lookup, this constructed `[21,1000001]`
 control returns five authenticated source fields and conditional column-1
