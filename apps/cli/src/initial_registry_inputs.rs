@@ -31,6 +31,32 @@ pub const STATUS_CONFIGURATION: [Pin<'static>; 2] = [
     },
 ];
 
+pub const QUEST_CONFIGURATION: [Pin<'static>; 2] = [
+    Pin {
+        id: 0x01030000,
+        size: 7044,
+        sha256: "860023878f9ad1e98fd1baa3e3380f971f86bf1f7747043cf0c3c7459cee2eb4",
+    },
+    Pin {
+        id: 0x0B450459,
+        size: 5555,
+        sha256: "f15a895b3658ab56ca42b0d632f43e5d5b2d31506686de56ee7fba1dfb6004d6",
+    },
+];
+
+pub const GUILDLEVE_CONFIGURATION: [Pin<'static>; 2] = [
+    Pin {
+        id: 0x01030000,
+        size: 7044,
+        sha256: "860023878f9ad1e98fd1baa3e3380f971f86bf1f7747043cf0c3c7459cee2eb4",
+    },
+    Pin {
+        id: 0x0B450013,
+        size: 2423,
+        sha256: "a649acc74ef0d9e62b4aa005c1ce7663defa51af5a42a42481434406aab192e5",
+    },
+];
+
 pub const FIXED: [[Pin<'static>; 3]; 4] = [
     [
         // ja

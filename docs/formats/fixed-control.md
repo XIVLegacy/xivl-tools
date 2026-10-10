@@ -251,9 +251,33 @@ status-name source keys, at revision
 `6a840194cf73a14f23cd636915ad3fead9ac9310`. Runtime state, selection production and rendering
 remain qualified. Initial registry inputs owns resource identities.
 
+### Conditional quest and leve lookup
+
+Initial category 36 selects `xtx/guildleve`; categories 37/38 select
+`xtx/quest` in ja/en/de/fr. None uses noun mode. Each locale has 735 quest
+rows in four blocks and 624 leve rows in two blocks. Both quest categories
+can query every supported quest backing key; descriptor UI ranges do not
+filter the supplied query. Missing rows and out-of-block keys exit 2.
+
+The lookup verifies the pinned master and selected family definition in
+`configurationSources` and the block's data/enable/offset resources in
+`targetSources`. It reports all declared locale fields, preserving numeric
+values and lossless controls. The first-column defaults select quest names
+ja1/en2/de3/fr4 and leve names ja9/en10/de11/fr12. Other fields remain source
+data and do not change name resolution.
+
+Both definitions declare `cache=-1,type=none`. `nativeConditions` reports
+the assumed completed local cache state zero and matching ready CacheAll
+pairs. The native key/default association is owned by
+`xivl-client-structs:docs/autotranslate-selection-contract.md`, Conditional
+quest and leve source keys, at revision
+`f16bdd2b73e1d0b27a9306a4e7293b7507487eb4`. The diagnostic reads backing data without
+observing native cache state, selection, journal output or rendering.
+Initial registry inputs owns resource identities.
+
 ### Conditional plain text
 
-A matched placeName, itemName, command or status row also reports
+A matched placeName, itemName, command, status, quest or guildleve row also reports
 `registryLookup.textResolution`.
 The promoted constructor defaults select placeName fields ja0/en1/de4/fr6 and
 itemName fields ja4/en5/de11/fr19. These are global sheet column indexes,
@@ -261,7 +285,8 @@ mapped through the authenticated locale layout to the corresponding row value.
 The itemName SHEET DEF settings select those indexes; its NOUN settings are
 separate. The placeName first-index defaults retain AT-COMP-021's existing
 constructor-local result, including English field 1 rather than noun DEF 3.
-Command and status defaults and their native associations are described above.
+Command, status, quest and guildleve defaults and native associations are
+described above.
 
 For a mode-zero descriptor and a selected field containing no control tokens,
 the result has `status: "resolved"`, `association: "conditional-default-field"`,
@@ -507,6 +532,32 @@ matched one of the merged CSV's retained locale variants; the CLI reports
 the actual selected locale's backing value. Default name columns have no
 such duplicate annotations. No row text is embedded; chs is outside the
 CLI's locale choices.
+
+`apps/cli/src/quest_inputs.json` and `guildleve_inputs.json` own four locale
+layouts per family, first-column defaults and block identities: 48 quest
+resource pins and 24 guildleve resource pins. `QUEST_CONFIGURATION` and
+`GUILDLEVE_CONFIGURATION` pin the same master and the definitions:
+
+- Quest `0x0B450459`: 5555 bytes, SHA-256
+  `F15A895B3658AB56CA42B0D632F43E5D5B2D31506686DE56EE7FBA1DFB6004D6`.
+- Guildleve `0x0B450013`: 2423 bytes, SHA-256
+  `A649ACC74EF0D9E62B4AA005C1CE7663DEFA51AF5A42A42481434406AAB192E5`.
+
+Their client/none locale metadata supplies the indexes, types and explicit
+block coordinates and IDs. Neither has a parameter override. All 35280 quest
+backing cells and 4992 guildleve cells were checked against the authenticated
+merged CSVs in the same manifest revision above:
+
+- `xtx_quest.csv`: 2953504 bytes, SHA-256
+  `938640466B314242916F1F8877A90154C4F4DB7AA63DE6223E6AF4AA194E6719`.
+- `xtx_guildleve.csv`: 921273 bytes, SHA-256
+  `D14826E8D222AEB8BEC8607E5FBE2CAD6E0605A429753CDFB38E780C69FB84B6`.
+
+Quest shared columns 26/27 contain 104 retained variant annotations across
+the locale cells; column 56 has 2556 missing-locale annotations. Comparing
+the actual backing values accounts for these CSV merge annotations; the CLI
+reports the selected locale's actual fields. Default names have no such
+annotations. No decoded row text is embedded. chs is outside CLI locale choices.
 
 ## Verification
 

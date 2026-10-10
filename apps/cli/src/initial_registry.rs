@@ -11,8 +11,8 @@ use xivl_formats::sheet::{self, ColumnType, ColumnValue, Row};
 
 use crate::fixed_phrase::Locale;
 use crate::initial_registry_inputs::{
-    COMMAND_CONFIGURATION, FIXED, ITEM_DEFAULT_FIELDS, PLACE, PLACE_DEFAULT_FIELDS,
-    STATUS_CONFIGURATION,
+    COMMAND_CONFIGURATION, FIXED, GUILDLEVE_CONFIGURATION, ITEM_DEFAULT_FIELDS, PLACE,
+    PLACE_DEFAULT_FIELDS, QUEST_CONFIGURATION, STATUS_CONFIGURATION,
 };
 use crate::sheet_reference::{self, Cell, QueryResult};
 use crate::{read_capped, Failure};
@@ -72,6 +72,16 @@ fn command_inputs() -> Vec<SheetLocale<'static>> {
 fn status_inputs() -> Vec<SheetLocale<'static>> {
     serde_json::from_str(include_str!("status_inputs.json"))
         .expect("validated embedded status metadata")
+}
+
+fn quest_inputs() -> Vec<SheetLocale<'static>> {
+    serde_json::from_str(include_str!("quest_inputs.json"))
+        .expect("validated embedded quest metadata")
+}
+
+fn guildleve_inputs() -> Vec<SheetLocale<'static>> {
+    serde_json::from_str(include_str!("guildleve_inputs.json"))
+        .expect("validated embedded guildleve metadata")
 }
 
 fn load_sheet_block(
@@ -571,12 +581,13 @@ pub fn report(
             document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
             (item.rows, input.columns.clone())
         }
-        "xtx/command" | "xtx/status" => {
-            let is_status = descriptor.sheet == "xtx/status";
-            let (inputs, configuration) = if is_status {
-                (status_inputs(), &STATUS_CONFIGURATION)
-            } else {
-                (command_inputs(), &COMMAND_CONFIGURATION)
+        "xtx/command" | "xtx/status" | "xtx/quest" | "xtx/guildleve" => {
+            let (inputs, configuration) = match descriptor.sheet.as_str() {
+                "xtx/command" => (command_inputs(), &COMMAND_CONFIGURATION),
+                "xtx/status" => (status_inputs(), &STATUS_CONFIGURATION),
+                "xtx/quest" => (quest_inputs(), &QUEST_CONFIGURATION),
+                "xtx/guildleve" => (guildleve_inputs(), &GUILDLEVE_CONFIGURATION),
+                _ => unreachable!("selected supported sheet"),
             };
             let input = &inputs[index];
             debug_assert_eq!(input.locale, locale_name);
@@ -589,7 +600,7 @@ pub fn report(
             }
             document["configurationSources"] =
                 json!(configuration.iter().map(pin_source).collect::<Vec<_>>());
-            if is_status {
+            if descriptor.sheet != "xtx/command" {
                 // The declared none policy does not establish a ready full-load backend.
                 document["nativeConditions"] = json!({"sheetCacheState": 0,
                     "backend": "matching-ready-CacheAll", "association": "assumed-completed-full-load"});
@@ -679,6 +690,8 @@ pub fn report(
         "xtx/itemName" => Some(ITEM_DEFAULT_FIELDS[index]),
         "xtx/command" => Some(command_inputs()[index].default),
         "xtx/status" => Some(status_inputs()[index].default),
+        "xtx/quest" => Some(quest_inputs()[index].default),
+        "xtx/guildleve" => Some(guildleve_inputs()[index].default),
         "xtx/displayName" if noun_source.is_none() => Some(1),
         _ => None,
     };
@@ -727,6 +740,47 @@ pub fn report(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn quest_and_leve_names_select_names_without_evaluating_descriptions() {
+        for (inputs, defaults) in [
+            (quest_inputs(), [1, 2, 3, 4]),
+            (guildleve_inputs(), [9, 10, 11, 12]),
+        ] {
+            for (input, default) in inputs.iter().zip(defaults) {
+                let mut data = Vec::new();
+                for (&column, kind) in input.columns.iter().zip(&input.types) {
+                    if *kind == "s32" {
+                        data.extend_from_slice(&(-9i32).to_le_bytes());
+                    } else {
+                        assert_eq!(*kind, "str");
+                        let value: &[u8] = if column == default {
+                            b"Authored [name]\\title"
+                        } else {
+                            b"Description\x02\x1f\x01\x03field"
+                        };
+                        data.extend_from_slice(&((value.len() + 1) as u16).to_le_bytes());
+                        data.extend_from_slice(value);
+                        data.push(0);
+                    }
+                }
+                let types: Vec<_> = input
+                    .types
+                    .iter()
+                    .map(|kind| ColumnType::parse(kind, 0).unwrap())
+                    .collect();
+                let row = sheet::parse_rows(&data, &types).unwrap().remove(0);
+                let resolved = plain_text(&row, &input.columns, input.default, false);
+                assert_eq!(resolved["column"], default);
+                assert_eq!(resolved["text"], "Authored [name]\\title");
+                let cells = source_cells(&row.values, &input.columns);
+                assert_eq!(cells[1]["value"], "Description[@hyphen:021f0103]field");
+                if input.columns.contains(&26) {
+                    assert_eq!(cells[6], json!({"column": 26, "value": -9}));
+                }
+            }
+        }
+    }
 
     #[test]
     fn status_names_use_explicit_defaults_and_preserve_other_source_fields() {

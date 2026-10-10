@@ -113,7 +113,8 @@ The [control-stream contract](formats/fixed-control.md#copied-control-streams)
 owns the supported forms, exact output bytes and remaining rendering boundary.
 
 This model assumes a fresh, successful full metadata load. It supports
-fixedPhrase, placeName, itemName, command, status and the bounded English displayName block;
+fixedPhrase, placeName, itemName, command, status, quest, guildleve and the
+bounded English displayName block;
 other named tables report `unsupported-key-association`. Unmapped and
 dynamic categories, missing rows and refused ordinary
 phrases exit 2. The [initial-registry contract](formats/fixed-control.md#conditional-initial-registry-lookup)
@@ -142,6 +143,23 @@ cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 18 F6 03 5F 5D 03
 The same lookup supports `ja`, `de` and `fr`. The
 [status-name contract](formats/fixed-control.md#conditional-status-name-lookup)
 owns the three blocks, explicit defaults and assumed completed CacheAll state.
+
+For quest-name lookup, this constructed `[37,120001]` control selects
+`xtx/quest` and its English name column 2:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 26 F6 01 D4 C1 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
+```
+
+For leve-name lookup, `[36,1001]` selects `xtx/guildleve` and English column 10:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 05 25 F2 03 E9 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
+```
+
+Both families support `ja`, `de` and `fr`. The
+[quest and leve contract](formats/fixed-control.md#conditional-quest-and-leve-lookup)
+owns category coverage, defaults, backing blocks and completed-cache assumptions.
 
 For automatic English displayName lookup, this constructed `[21,1000001]`
 control returns five authenticated source fields and conditional column-1
