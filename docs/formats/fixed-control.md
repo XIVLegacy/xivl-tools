@@ -195,7 +195,7 @@ and u8 value 1. Code 31 and codes 41..48 report `unmapped-category`; code 49
 reports `dynamic-category`. These are static checks, without captured control
 provenance or observed rendering.
 
-Beyond these families and the bounded English displayName query below,
+Beyond these families and the English displayName query below,
 other named sheets report
 `sourceLookup.status = unsupported-key-association`
 while preserving the successful table selection. Missing rows, unmapped codes,
@@ -431,17 +431,28 @@ has no SHEET override. No noun input words or attributive rows are required.
 The query preserves the singular field without applying noun flags or
 count replacement.
 
-The bounded target is block `(1000000,601)`, with 418 enabled rows. The CLI
-authenticates the master, displayName definition and three target resources.
+The lookup covers all 32 English blocks, with 5812 enabled backing rows.
+The CLI authenticates the master, displayName definition and the selected
+block's three target resources.
 It returns all five fields with `sourceLookup.association` equal to
 `conditional-ready-map-key`, and token-free column 1 as conditional default
-text. Missing enabled rows and keys outside this block exit 2. Other
+text. Supported copied controls retain exact control bytes. Missing enabled
+rows and keys outside the backing slots exit 2. Other
 displayName locales remain outside this source lookup.
+
+`apps/cli/src/english_display_inputs.json` owns the English layout and all 96
+block identities. The definition declares 26 slots at begin 2700000 and 12 at
+begin 3290000, while their authenticated offset files contain 21 and 11 slots.
+The diagnostic bounds those blocks by the offset extents; it does not invent
+rows for the missing tails. The other 30 block extents match their declarations.
+All 29060 English backing fields match `xtx_displayName.csv`, whose identity
+is retained in Conditional English noun identity below. One CSV row has no
+enabled English backing slot and is not returned by this source lookup.
 
 The native owners are English displayName fixed-control query and English
 displayName map admission in
 `xivl-client-structs:docs/autotranslate-selection-contract.md` at revision
-`2f72fbe09c78c6692b46fb9e7a677fd72964eb5d`. The source key is conditional
+`1d7accd4eb42d5ad4df07593fbf896c280fb9d26`. The source key is conditional
 on a matching native kind-1 local map backend, populated
 exact-key association and ready row. Provider/locale state must remain
 unchanged. The tool returns a conditional result from authenticated inputs;

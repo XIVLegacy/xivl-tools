@@ -84,6 +84,11 @@ fn guildleve_inputs() -> Vec<SheetLocale<'static>> {
         .expect("validated embedded guildleve metadata")
 }
 
+fn english_display_inputs() -> SheetLocale<'static> {
+    serde_json::from_str(include_str!("english_display_inputs.json"))
+        .expect("validated embedded English displayName metadata")
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ReferenceSheet<'a> {
@@ -643,10 +648,15 @@ pub fn report(
         }
         "xtx/displayName" if matches!(locale, Locale::En) => {
             let inputs = noun_inputs();
-            if !inputs.target.contains(key) {
+            let display = english_display_inputs();
+            if noun_source.is_some() && !inputs.target.contains(key) {
                 document["sourceLookup"] = json!({"status": "unsupported-noun-block"});
                 return Ok((document, true));
             }
+            let Some(block) = display.blocks.iter().find(|block| block.contains(key)) else {
+                document["sourceLookup"] = json!({"status": "not-found"});
+                return Ok((document, true));
+            };
             let configuration_pins = if noun_source.is_some() {
                 &inputs.configuration_pins[..]
             } else {
@@ -660,22 +670,9 @@ pub fn report(
                 .iter()
                 .map(pin_source)
                 .collect::<Vec<_>>());
-            let target = load(
-                Path::new(root),
-                &inputs.target.pins,
-                &[
-                    ColumnType::Text,
-                    ColumnType::Text,
-                    ColumnType::Signed8,
-                    ColumnType::Signed8,
-                    ColumnType::Signed8,
-                ],
-                inputs.target.begin,
-                inputs.target.count,
-            )?;
+            let target = load_sheet_block(Path::new(root), &display, block)?;
             document["targetSources"] = target.sources;
-            document["targetBlock"] =
-                json!({"begin": inputs.target.begin, "count": inputs.target.count});
+            document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
             if let Some(source) = noun_source {
                 let attributive = load(
                     Path::new(root),
@@ -705,7 +702,7 @@ pub fn report(
                     );
                 }
             }
-            (target.rows, vec![1, 2, 3, 4, 5])
+            (target.rows, display.columns)
         }
         _ => {
             document["sourceLookup"] = json!({"status": "unsupported-key-association"});

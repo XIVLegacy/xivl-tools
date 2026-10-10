@@ -114,8 +114,7 @@ owns the supported forms, exact output bytes and remaining rendering boundary.
 
 This model assumes a fresh, successful full metadata load. It supports
 fixedPhrase, placeName, itemName, command, status, quest, guildleve, guardian,
-equipment-slot, skill and job name sheets, and the bounded English displayName
-block;
+equipment-slot, skill and job name sheets, and all English displayName blocks;
 other named tables report `unsupported-key-association`. Unmapped and
 dynamic categories, missing rows and refused ordinary
 phrases exit 2. The [initial-registry contract](formats/fixed-control.md#conditional-initial-registry-lookup)
@@ -183,7 +182,8 @@ cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 16 F6 0F 42 41 03
 ```
 
 The [English query contract](formats/fixed-control.md#automatic-english-displayname-query)
-owns the supported block, type-1 dispatch and conditional ready map-key join.
+owns all 32 supported English blocks, type-1 dispatch and the conditional
+ready map-key join.
 The descriptor's noun flag does not enable noun mode on this caller path.
 
 For a separate explicit fresh English NounEn context, supply its remaining four
