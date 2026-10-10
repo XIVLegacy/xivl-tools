@@ -214,7 +214,7 @@ cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 16 F6 0F 42 41 03
 ```
 
 The [German singular contract](formats/fixed-control.md#conditional-german-singular-identity)
-owns the supported row flags, empty suffix, placeholder refusals and source
+owns prefix selection, the empty suffix, placeholder refusals and source
 conditions. `nounContext` records the preset and assumptions. Rows outside
 this case retain their source fields and return `requires-evaluation`.
 

@@ -552,18 +552,21 @@ type-2 provider in `providerContext` and selects `dispatch = noun`.
 destination and retained initializer strings. The control and locale do not
 establish actual provider/cache state. This context covers displayName only.
 
-The bounded result requires nonzero DEF column 12, token-free SGL column 6
-without `[a]`, `[p]`, `[pa]` or `[n]`, and an empty suffix at attributive row
-`26 + SGG` (SGG column 7), column `11 + GEN` (GEN column 11). The selected
-column must lie in the authenticated string layout 11..26. Attributive rows
-5, 24, 25, 26 and the suffix row must all be present. Under these conditions,
-prefix copying is skipped, the empty suffix append preserves SGL and all
-three later replacements leave it unchanged. The native success byte is set
+The bounded result requires token-free SGL column 6 and an empty suffix at
+attributive row `26 + SGG` (SGG column 7), column `11 + GEN` (GEN column 11).
+The selected column must lie in the authenticated string layout 11..26. Attributive rows
+5, 24, 25, 26 and the suffix row must all be present. With zero DEF column 12,
+the selected string from attributive row 5, column `11 + GEN`, is copied
+before SGL is appended. Nonzero DEF skips this prefix field. A selected prefix
+must also be token-free, and the composed prefix plus SGL must contain no
+`[a]`, `[p]`, `[pa]` or `[n]`. The empty suffix append and all three later
+replacements then preserve that string. The native success byte is set
 after admission of the common rows. This is a noun result, not a default query.
 
 All 5812 target rows in the 32 German blocks are supported as source inputs.
-The authenticated corpus yields 2994 singular text results, 2787 DEF-zero
-refusals, three control-bearing refusals and 28 noun-placeholder refusals.
+The authenticated corpus yields 4669 singular text results, 12 control-bearing
+refusals and 1131 noun-placeholder refusals. All 2787 DEF-zero rows select
+empty prefix and suffix fields in this preset; 1675 return singular text.
 Resolved output has association `conditional-preset-NounDe`, column 6 and
 the selected `grammaticalRowKey`/`grammaticalColumn`. Other rows return
 `requires-evaluation` and a reason without `text`. Missing target rows exit 2.
@@ -581,11 +584,11 @@ does not prove runtime admission; ready named rows remain an assumption.
 
 The native owner is Conditional German singular identity in
 `xivl-client-structs:docs/autotranslate-selection-contract.md` at revision
-`6da8eb3f0eb5a5d224bf50ffca9015250e95ab39`. Its German needle initializer
+`2da6544135e4fca1d5728157eb03210da406f61a`. Its German needle initializer
 inputs section owns `[a]`, `[p]` and `[pa]`; AT-COMP-023 owns `[n]`.
 Successful fresh construction, valid retained configuration, string operations,
 matching ready map-key associations and named-row admission remain explicit.
-Other counts, prefixes, suffixes, replacements, noun families, wrappers and
+Other counts, nonempty suffixes, replacements, noun families, wrappers and
 rendering retain their evidence boundaries.
 
 ### Conditional English noun identity

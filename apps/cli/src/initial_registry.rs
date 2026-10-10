@@ -190,19 +190,10 @@ fn german_noun_text(row: &Row, attributive: &[(u32, Row)]) -> Value {
     else {
         return deferred("unsupported-noun-row");
     };
-    if *def == 0 {
-        return deferred("unsupported-noun-row");
-    }
     if singular.rich.tokens().next().is_some() {
         return deferred("embedded-controls");
     }
     let value = singular.rich.text_only();
-    if ["[a]", "[p]", "[pa]", "[n]"]
-        .iter()
-        .any(|needle| value.contains(needle))
-    {
-        return deferred("noun-replacement");
-    }
     let Ok(grammatical_key) = u32::try_from(26 + i32::from(*sgg)) else {
         return deferred("attributive-row-not-found");
     };
@@ -235,8 +226,25 @@ fn german_noun_text(row: &Row, attributive: &[(u32, Row)]) -> Value {
     {
         return deferred("unsupported-noun-column");
     }
+    let mut output = String::new();
+    if *def == 0 {
+        let Some(ColumnValue::Text(prefix)) = field(5) else {
+            return deferred("unsupported-noun-column");
+        };
+        if prefix.rich.tokens().next().is_some() {
+            return deferred("embedded-controls");
+        }
+        output.push_str(&prefix.rich.text_only());
+    }
+    output.push_str(&value);
+    if ["[a]", "[p]", "[pa]", "[n]"]
+        .iter()
+        .any(|needle| output.contains(needle))
+    {
+        return deferred("noun-replacement");
+    }
     json!({"status": "resolved", "association": "conditional-preset-NounDe",
-        "column": 6, "text": value, "textEncoding": "utf-8",
+        "column": 6, "text": output, "textEncoding": "utf-8",
         "grammaticalRowKey": grammatical_key, "grammaticalColumn": 11 + position})
 }
 
@@ -1300,7 +1308,6 @@ mod tests {
     fn german_preset_defers_unproved_output_branches_and_missing_rows() {
         let rows = german_attributive(27, 0, b"");
         for (row, reason) in [
-            (german_row(b"Authored", 1, 0, 0), "unsupported-noun-row"),
             (
                 german_row(b"Authored", -128, 0, 1),
                 "attributive-row-not-found",
@@ -1333,6 +1340,66 @@ mod tests {
         let result = german_noun_text(&row, &german_attributive(27, 0, b"Suffix"));
         assert_eq!(result["reason"], "noun-suffix");
         assert!(result.get("text").is_none());
+    }
+
+    #[test]
+    fn german_def_zero_copies_the_selected_prefix_before_singular() {
+        let mut rows = german_attributive(34, 2, b"");
+        let prefix = german_attributive(5, 2, b"Authored prefix ")
+            .into_iter()
+            .find(|(key, _)| *key == 5)
+            .unwrap()
+            .1;
+        rows.iter_mut().find(|(key, _)| *key == 5).unwrap().1 = prefix;
+        let row = german_row(b"Name", 8, 2, 0);
+        let result = german_noun_text(&row, &rows);
+        assert_eq!(result["text"], "Authored prefix Name");
+        assert_eq!(result["grammaticalColumn"], 13);
+        assert_eq!(result["grammaticalRowKey"], 34);
+        assert_eq!(result["association"], "conditional-preset-NounDe");
+        let skipped = german_noun_text(&german_row(b"Name", 8, 2, 1), &rows);
+        assert_eq!(skipped["text"], "Name");
+        for key in [5, 24, 25, 26, 34] {
+            let mut missing = rows.clone();
+            missing.retain(|(row_key, _)| *row_key != key);
+            let result = german_noun_text(&row, &missing);
+            assert_eq!(result["reason"], "attributive-row-not-found");
+            assert!(result.get("text").is_none());
+        }
+    }
+
+    #[test]
+    fn german_prefix_controls_and_composed_placeholders_remain_deferred() {
+        for (prefix, singular, reason) in [
+            (
+                b"A\x02\x1f\x01\x03B".as_slice(),
+                b"Name".as_slice(),
+                "embedded-controls",
+            ),
+            (
+                b"Authored [n] ".as_slice(),
+                b"Name".as_slice(),
+                "noun-replacement",
+            ),
+            (b"[".as_slice(), b"a]".as_slice(), "noun-replacement"),
+            (b"".as_slice(), b"[pa]".as_slice(), "noun-replacement"),
+        ] {
+            let mut rows = german_attributive(27, 0, b"");
+            rows.iter_mut().find(|(key, _)| *key == 5).unwrap().1 =
+                german_attributive(5, 0, prefix).remove(0).1;
+            let result = german_noun_text(&german_row(singular, 1, 0, 0), &rows);
+            assert_eq!(result["reason"], reason);
+            assert!(result.get("text").is_none());
+            let skipped = german_noun_text(&german_row(b"Name", 1, 0, 1), &rows);
+            assert_eq!(skipped["text"], "Name");
+        }
+        let mut rows = german_attributive(27, 0, b"");
+        rows.iter_mut().find(|(key, _)| *key == 5).unwrap().1 =
+            german_attributive(5, 0, b"").remove(0).1;
+        assert_eq!(
+            german_noun_text(&german_row(b"Name", 1, 0, 0), &rows)["text"],
+            "Name"
+        );
     }
 
     const COLUMNS: [ColumnType; 4] = [
