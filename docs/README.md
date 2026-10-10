@@ -20,6 +20,7 @@ are detailed references.
 | Read one file and get a structural report | [CLI: inspect and validate](cli.md#inspect-one-file) |
 | Diagnose a selector-0x2E control or query initial registry source cells | [CLI: fixed controls](cli.md#decode-one-fixed-control) |
 | Convert auto-translate controls in a whole message | [CLI: message conversion](cli.md#convert-auto-translate-controls-in-a-message) |
+| Convert JSONL messages with a shared auto-translate resolver | [CLI: batch conversion](cli.md#convert-a-batch-of-messages) |
 | Find resources in a game or resource directory | [CLI: catalog](cli.md#catalog-a-dat-tree) |
 | Extract one or more selected resources | [DAT extraction](resource-extraction.md) |
 | Verify an extraction without changing it | [CLI: verify-extraction](cli.md#verify-an-extraction) |

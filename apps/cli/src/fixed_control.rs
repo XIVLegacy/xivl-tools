@@ -262,7 +262,7 @@ fn parse_noun_inputs(value: &str) -> Result<[u32; 4], Failure> {
     Ok(result)
 }
 
-fn parse_hex(text: &str) -> Result<Vec<u8>, Failure> {
+pub(crate) fn parse_hex(text: &str) -> Result<Vec<u8>, Failure> {
     let compact: Vec<u8> = text
         .bytes()
         .filter(|byte| !byte.is_ascii_whitespace())

@@ -2,6 +2,7 @@
 
 pub mod auto_translate;
 pub mod extract;
+pub mod fixed_batch;
 pub mod fixed_control;
 mod fixed_phrase;
 mod initial_registry;

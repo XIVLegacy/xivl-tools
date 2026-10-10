@@ -10,7 +10,7 @@
 use std::io::{Read, Write};
 use std::process::ExitCode;
 
-use xivl_cli::{extract, fixed_control};
+use xivl_cli::{extract, fixed_batch, fixed_control};
 use xivl_formats::{extract_lpb, lua_path_document};
 use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_bytes_as, InspectAs};
 
@@ -32,6 +32,7 @@ usage:
   xivl materialize-command-loadout --slot-context <command_slot_context.json> --trace <index> [--record-range <first>:<last>] [--output <new-file>] [--format yaml|json]
   xivl lua-path <path>
   xivl decode-fixed (<file> | --hex <bytes>) [--message | --offset <decimal>] [--fixed-phrase-csv <file> | --initial-registry <client-root>] [--locale ja|en|de|fr] [--noun-inputs <config>:<count>:<attributive-key>:<retained-word>]
+  xivl decode-fixed-batch <messages.jsonl | -> [--initial-registry <client-root> --locale ja|en|de|fr]
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
   xivl catalog <game-or-resource-directory> --output <directory> [--format json|jsonl]
@@ -122,6 +123,8 @@ fields for selector 0x2E. --initial-registry and --locale query authenticated
 initial registry source cells. Other selectors remain opaque. See docs/cli.md.
 --message walks the whole supplied input, replaces resolved controls and
 preserves unresolved bytes with span diagnostics in a partial result.
+decode-fixed-batch converts JSONL hex records with one resolver context and
+prints one compact JSONL report per line. Use - to read standard input.
 
 The inspect report never carries payload bytes, sheet-row text, or a configuration
 file's values. The SSD document view preserves sheet names and attribute
@@ -203,6 +206,7 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         Some("inspect") => read(&arguments[1..], Operation::Inspect),
         Some("validate") => read(&arguments[1..], Operation::Validate),
         Some("decode-fixed") => fixed_control::run(&arguments[1..]).map_err(Into::into),
+        Some("decode-fixed-batch") => fixed_batch::run(&arguments[1..]).map_err(Into::into),
         Some("inspect-command") => command_inspect::run(&arguments[1..]),
         Some("inspect-command-loadout") => command_inspect::run_loadout(&arguments[1..]),
         Some("materialize-command-loadout") => {

@@ -274,6 +274,47 @@ Message conversion shares one authenticated resolver context across its
 controls. Programs can reuse that context across messages through the
 [resolver API](formats/fixed-control.md#reusable-resolver-api).
 
+## Convert a batch of messages
+
+Use `decode-fixed-batch` to convert JSONL records with one shared resolver.
+Each UTF-8 input line is an object with `hex` and an optional string `id`:
+
+```jsonl
+{"id":"first","hex":"41 20 02 2E 05 09 F2 03 CE 03"}
+{"id":"second","hex":"42"}
+```
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed-batch "C:\path\to\messages.jsonl" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
+```
+
+Use `-` in place of the path to read standard input. The registry and locale
+must be supplied together; omitting both preserves decoded controls without
+replacing them. The command reads at most 256 MiB plus one byte to enforce its
+256 MiB input limit before emitting results. This limit includes JSON syntax,
+identifiers, whitespace and line endings.
+
+Output is compact JSONL in input order. Each record contains its one-based
+`line`, any retained `id`, and either `result` with the existing
+[whole-message report](formats/fixed-control.md#whole-message-conversion),
+or `error` with `kind: "input"` and a diagnostic `message`. JSON/schema
+errors also include the parser's one-based byte `column`, or zero when no
+column is available. Invalid JSON, unknown fields, invalid field types,
+blank lines and malformed hex produce an input error and processing continues.
+IDs are retained after successful schema validation, including hex errors.
+Invalid JSON/schema records and missing or null IDs have no output `id`.
+CRLF and a final record without a newline are accepted; an empty file produces
+no records.
+
+Partial message results preserve unresolved bytes and processing continues.
+Exit 2 means at least one record had an input error or partial message;
+otherwise the completed batch exits 0. Source I/O, authentication or backing
+parse failures stop at their input line and report to standard error, without
+emitting a record for that line or later lines. Earlier records remain emitted.
+Usage, input-size, input-read and output-write failures exit 1. Authentication
+and backing-parse failures exit 2. A fatal failure determines the exit code
+even when an earlier record was partial. Output is flushed after each record.
+
 ## Inspect one file
 
 Use `inspect` when you want to know what a file contains without exporting its
