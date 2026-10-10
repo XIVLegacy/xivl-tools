@@ -10,7 +10,9 @@ use xivl_formats::resource::ResourceId;
 use xivl_formats::sheet::{self, ColumnType, ColumnValue, Row};
 
 use crate::fixed_phrase::Locale;
-use crate::initial_registry_inputs::{FIXED, ITEM_DEFAULT_FIELDS, PLACE, PLACE_DEFAULT_FIELDS};
+use crate::initial_registry_inputs::{
+    COMMAND_CONFIGURATION, FIXED, ITEM_DEFAULT_FIELDS, PLACE, PLACE_DEFAULT_FIELDS,
+};
 use crate::sheet_reference::{self, Cell, QueryResult};
 use crate::{read_capped, Failure};
 
@@ -64,6 +66,19 @@ struct CommandLocale<'a> {
 fn command_inputs() -> Vec<CommandLocale<'static>> {
     serde_json::from_str(include_str!("command_inputs.json"))
         .expect("validated embedded command metadata")
+}
+
+fn load_command(
+    root: &Path,
+    input: &CommandLocale<'_>,
+    block: &ItemBlock<'_>,
+) -> std::result::Result<Loaded, Failure> {
+    let columns: Vec<_> = input
+        .types
+        .iter()
+        .map(|kind| ColumnType::parse(kind, 0).expect("validated embedded command type"))
+        .collect();
+    load(root, &block.pins, &columns, block.begin, block.count)
 }
 
 #[derive(Deserialize)]
@@ -130,15 +145,7 @@ fn command_query(
     };
     let block = &input.blocks[block_index];
     if !cache.iter().any(|(index, _)| *index == block_index) {
-        let columns: Vec<_> = input
-            .types
-            .iter()
-            .map(|kind| ColumnType::parse(kind, 0).expect("validated embedded command type"))
-            .collect();
-        cache.push((
-            block_index,
-            load(root, &block.pins, &columns, block.begin, block.count)?,
-        ));
+        cache.push((block_index, load_command(root, input, block)?));
     }
     let loaded = &cache
         .iter()
@@ -211,6 +218,23 @@ fn text(value: &ColumnValue) -> String {
         ColumnValue::Text(value) => value.rich.to_lossless_text(),
         _ => unreachable!("validated string column"),
     }
+}
+
+fn source_cells(values: &[ColumnValue], fields: &[usize]) -> Vec<Value> {
+    values
+        .iter()
+        .zip(fields)
+        .map(|(value, column)| {
+            let value = match value {
+                ColumnValue::Text(_) => json!(text(value)),
+                ColumnValue::Unsigned8 { value, .. } => json!(value),
+                ColumnValue::Signed8 { value, .. } => json!(value),
+                ColumnValue::Signed32 { value, .. } => json!(value),
+                _ => unreachable!("supported source schema"),
+            };
+            json!({"column": column, "value": value})
+        })
+        .collect()
 }
 
 fn plain_text(row: &Row, fields: &[usize], column: usize, noun: bool) -> Value {
@@ -541,6 +565,26 @@ pub fn report(
             document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
             (item.rows, input.columns.clone())
         }
+        "xtx/command" => {
+            let inputs = command_inputs();
+            let input = &inputs[index];
+            debug_assert_eq!(input.locale, locale_name);
+            let Some(block) = input.blocks.iter().find(|block| block.contains(key)) else {
+                document["sourceLookup"] = json!({"status": "not-found"});
+                return Ok((document, true));
+            };
+            for pin in &COMMAND_CONFIGURATION {
+                read_pin(Path::new(root), pin)?;
+            }
+            document["configurationSources"] = json!(COMMAND_CONFIGURATION
+                .iter()
+                .map(pin_source)
+                .collect::<Vec<_>>());
+            let command = load_command(Path::new(root), input, block)?;
+            document["targetSources"] = command.sources;
+            document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
+            (command.rows, input.columns.clone())
+        }
         "xtx/displayName" if matches!(locale, Locale::En) => {
             let inputs = noun_inputs();
             if !inputs.target.contains(key) {
@@ -619,6 +663,7 @@ pub fn report(
     let default_field = match descriptor.sheet.as_str() {
         "xtx/placeName" => Some(PLACE_DEFAULT_FIELDS[index]),
         "xtx/itemName" => Some(ITEM_DEFAULT_FIELDS[index]),
+        "xtx/command" => Some(command_inputs()[index].default),
         "xtx/displayName" if noun_source.is_none() => Some(1),
         _ => None,
     };
@@ -654,19 +699,7 @@ pub fn report(
     } else {
         &row.values[..]
     };
-    let cells: Vec<Value> = values
-        .iter()
-        .zip(fields)
-        .map(|(value, column)| {
-            let value = match value {
-                ColumnValue::Text(_) => json!(text(value)),
-                ColumnValue::Unsigned8 { value, .. } => json!(value),
-                ColumnValue::Signed8 { value, .. } => json!(value),
-                _ => unreachable!("supported source schema"),
-            };
-            json!({"column": column, "value": value})
-        })
-        .collect();
+    let cells = source_cells(values, &fields);
     let association = if descriptor.sheet == "xtx/displayName" {
         "conditional-ready-map-key"
     } else {
@@ -679,6 +712,37 @@ pub fn report(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn command_source_keeps_signed_fields_and_selects_the_default_name() {
+        let inputs = command_inputs();
+        let input = &inputs[1];
+        let mut data = Vec::new();
+        for kind in &input.types {
+            match *kind {
+                "str" => {
+                    let value = b"Authored command";
+                    data.extend_from_slice(&((value.len() + 1) as u16).to_le_bytes());
+                    data.extend_from_slice(value);
+                    data.push(0);
+                }
+                "s32" => data.extend_from_slice(&(-7i32).to_le_bytes()),
+                _ => unreachable!("supported command schema"),
+            }
+        }
+        let types: Vec<_> = input
+            .types
+            .iter()
+            .map(|kind| ColumnType::parse(kind, 0).unwrap())
+            .collect();
+        let row = sheet::parse_rows(&data, &types).unwrap().remove(0);
+        let cells = source_cells(&row.values, &input.columns);
+        assert_eq!(cells.len(), 7);
+        assert_eq!(cells[3], json!({"column": 5, "value": -7}));
+        let resolved = plain_text(&row, &input.columns, input.default, false);
+        assert_eq!(resolved["column"], 2);
+        assert_eq!(resolved["text"], "Authored command");
+    }
 
     #[test]
     fn english_fixed_query_does_not_treat_the_noun_flag_as_noun_mode() {

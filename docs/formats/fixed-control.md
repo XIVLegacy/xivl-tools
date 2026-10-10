@@ -167,7 +167,8 @@ one and empty field 1, then reports its two locale source cells. For
 `xtx/placeName`, AT-COMP-017/018 supply conditional target-key equality with
 block `(0,8002)`. Its reported source columns are ja0, en1-3, de4-5 or fr6-7;
 the English u8 field stays numeric. Source strings use SSD lossless CSV text,
-including opaque controls. No display field, fallback or grammar is chosen.
+including opaque controls. These source fields remain separate from the
+selected default text below.
 
 For `xtx/itemName`, the tool selects the authenticated block containing the
 second number with `begin <= key < begin + count`, verifies its three resource
@@ -203,15 +204,40 @@ parse failures exit 2 with a diagnostic on stderr; file-read failures exit 1.
 Unknown controls do not load resources. Later dynamic additions and locale or
 provider changes are outside this initial-state model.
 
+### Conditional command-name lookup
+
+Initial categories 24..30 and 32..35 select `xtx/command` without noun mode
+in ja/en/de/fr. The second decoded number selects a backing key in one of
+23 authenticated blocks per locale. All 1662 enabled rows per locale are
+available to this diagnostic; descriptor UI ranges do not filter supplied
+query keys. Source lookup returns every declared locale field, preserving
+signed 32-bit values as numbers and controls as lossless source text.
+
+The direct lookup verifies the pinned game master and command definition,
+reported in `configurationSources`, and the selected block's three resources
+in `targetSources`. Missing rows and keys outside the blocks exit 2.
+The selected default name fields are ja1/en2/de8/fr16. Token-free fields
+return conditional default text; supported sheet references and copied controls
+use the existing evaluator below. Other expressions defer the whole result.
+
+The native key/default association is owned by
+`xivl-client-structs:docs/autotranslate-selection-contract.md`, Conditional
+command-name source keys, at revision
+`2e20277889df7bfdd56281b185ce6d85388bbce2`. It applies the completed CacheAll mapping strictly
+inside matching ready block ranges and the constructor's first-index/SHEET
+DEF rules. Runtime state, selection production and rendering remain qualified.
+Initial registry inputs below owns the exact configuration and block identities.
+
 ### Conditional plain text
 
-A matched placeName or itemName row also reports `registryLookup.textResolution`.
+A matched placeName, itemName or command row also reports `registryLookup.textResolution`.
 The promoted constructor defaults select placeName fields ja0/en1/de4/fr6 and
 itemName fields ja4/en5/de11/fr19. These are global sheet column indexes,
 mapped through the authenticated locale layout to the corresponding row value.
 The itemName SHEET DEF settings select those indexes; its NOUN settings are
 separate. The placeName first-index defaults retain AT-COMP-021's existing
 constructor-local result, including English field 1 rather than noun DEF 3.
+Command defaults and their native association are described above.
 
 For a mode-zero descriptor and a selected field containing no control tokens,
 the result has `status: "resolved"`, `association: "conditional-default-field"`,
@@ -425,6 +451,8 @@ documented by the source report and is outside the CLI's locale choices.
 
 `apps/cli/src/command_inputs.json` owns only four command locale layouts,
 selected defaults and 23 disjoint blocks per locale, with 276 resource pins.
+`COMMAND_CONFIGURATION` in `initial_registry_inputs.rs` pins the master and
+definition used to authenticate direct command lookup.
 The source is the preserved 1.23b install's game master `0x01030000`
 (7044 bytes, SHA-256
 `860023878F9AD1E98FD1BAA3E3380F971F86BF1F7747043CF0C3C7459CEE2EB4`),
@@ -475,5 +503,6 @@ singular identity, literal escaping, empty output, required attributive presence
 other inputs and flags, count placeholders and whole-field control deferral.
 English query tests check that a noun flag does not select noun mode and that
 column 1 preserves literal count placeholders regardless of noun row flags.
+Command source tests check signed 32-bit fields and default-name selection.
 Private manual checks compare source cells with the authenticated extraction
 and exercise identity rejection; they are not required public CI inputs.

@@ -5,6 +5,19 @@ use super::initial_registry::Pin;
 pub const PLACE_DEFAULT_FIELDS: [usize; 4] = [0, 1, 4, 6];
 pub const ITEM_DEFAULT_FIELDS: [usize; 4] = [4, 5, 11, 19];
 
+pub const COMMAND_CONFIGURATION: [Pin<'static>; 2] = [
+    Pin {
+        id: 0x01030000,
+        size: 7044,
+        sha256: "860023878f9ad1e98fd1baa3e3380f971f86bf1f7747043cf0c3c7459cee2eb4",
+    },
+    Pin {
+        id: 0x0B450017,
+        size: 12993,
+        sha256: "99762442c38144d8ae82c83b24265c4b1afe3050aab769dc7ae2caddeb12b3e5",
+    },
+];
+
 pub const FIXED: [[Pin<'static>; 3]; 4] = [
     [
         // ja

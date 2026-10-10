@@ -80,8 +80,8 @@ parsing. A changed or unavailable install fails explicitly.
 
 For the second and third examples, `registryLookup.textResolution` also
 returns `status: "resolved"` and conditional default text `Limsa Lominsa` or
-`Crystal`, with the selected column. Only mode-zero placeName and itemName
-rows with a token-free default field or supported literal sheet references
+`Crystal`, with the selected column. For these lookups, mode-zero rows
+with a token-free default field or supported literal sheet references
 receive text. The copied controls described below return a control stream.
 Other embedded controls report `requires-evaluation` without text; the raw
 source fields stay available.
@@ -113,12 +113,24 @@ The [control-stream contract](formats/fixed-control.md#copied-control-streams)
 owns the supported forms, exact output bytes and remaining rendering boundary.
 
 This model assumes a fresh, successful full metadata load. It supports
-fixedPhrase, placeName, itemName and the bounded English displayName block;
+fixedPhrase, placeName, itemName, command and the bounded English displayName block;
 other named tables report `unsupported-key-association`. Unmapped and
 dynamic categories, missing rows and refused ordinary
 phrases exit 2. The [initial-registry contract](formats/fixed-control.md#conditional-initial-registry-lookup)
 owns the assumptions, resource identities and remaining provider/rendering
 limits. Choose this option or `--fixed-phrase-csv`; either requires `--locale`.
+
+For direct action/ability lookup, this constructed `[24,26679]` control
+selects `xtx/command` and returns the English default name `Pummel`:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 05 19 F2 68 37 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
+```
+
+The same lookup supports `ja`, `de` and `fr`. It returns every declared
+locale source field, including signed numeric fields. The
+[command-name contract](formats/fixed-control.md#conditional-command-name-lookup)
+owns category coverage, authenticated blocks and default selection.
 
 For automatic English displayName lookup, this constructed `[21,1000001]`
 control returns five authenticated source fields and conditional column-1
