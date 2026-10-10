@@ -228,16 +228,40 @@ inside matching ready block ranges and the constructor's first-index/SHEET
 DEF rules. Runtime state, selection production and rendering remain qualified.
 Initial registry inputs below owns the exact configuration and block identities.
 
+### Conditional status-name lookup
+
+Initial category 23 selects `xtx/status` without noun mode in ja/en/de/fr.
+All 399 enabled rows per locale are available through three authenticated
+blocks. The lookup verifies the master and status definition in
+`configurationSources` and the selected block's data/enable/offset resources
+in `targetSources`. Missing rows and keys outside the blocks exit 2.
+Source fields preserve signed 32-bit numbers and lossless control text.
+
+The selected default name columns are ja1/en3/de8/fr15. English's explicit
+SHEET DEF setting overrides first index 2 with column 3. Token-free names
+return conditional default text; supported copied controls use the existing
+evaluator. Other expressions defer the whole result.
+
+The definition declares `cache=-1,type=none`. `nativeConditions` states the
+assumed completed local cache state zero with matching ready CacheAll pairs.
+The diagnostic reads backing files; it does not observe or change native cache
+state. The key/default association is owned by
+`xivl-client-structs:docs/autotranslate-selection-contract.md`, Conditional
+status-name source keys, at revision
+`6a840194cf73a14f23cd636915ad3fead9ac9310`. Runtime state, selection production and rendering
+remain qualified. Initial registry inputs owns resource identities.
+
 ### Conditional plain text
 
-A matched placeName, itemName or command row also reports `registryLookup.textResolution`.
+A matched placeName, itemName, command or status row also reports
+`registryLookup.textResolution`.
 The promoted constructor defaults select placeName fields ja0/en1/de4/fr6 and
 itemName fields ja4/en5/de11/fr19. These are global sheet column indexes,
 mapped through the authenticated locale layout to the corresponding row value.
 The itemName SHEET DEF settings select those indexes; its NOUN settings are
 separate. The placeName first-index defaults retain AT-COMP-021's existing
 constructor-local result, including English field 1 rather than noun DEF 3.
-Command defaults and their native association are described above.
+Command and status defaults and their native associations are described above.
 
 For a mode-zero descriptor and a selected field containing no control tokens,
 the result has `status: "resolved"`, `association: "conditional-default-field"`,
@@ -467,6 +491,22 @@ rules select its defaults. Each supported locale has 1662 enabled rows; all
 identified by `xivl-client-data:manifests/manifest.json`, its table entry at
 revision `06f6687b4e0adc24e7f38f3105ae9fc237de3eda`.
 No decoded row text is embedded. chs remains outside the CLI's locale choices.
+
+`apps/cli/src/status_inputs.json` owns four status locale layouts, explicit
+defaults and three blocks per locale, with 36 resource pins.
+`STATUS_CONFIGURATION` pins the same master and status definition `0x0B450073`
+(4056 bytes, SHA-256
+`2F8768776C61E7F62627E43245AD0E255584C50DBB83F5F1D6C8AB7166995D56`).
+The definition's client/none sheets supply the indexes, types, SHEET DEF
+settings and block identities. Each supported locale has 399 enabled rows.
+All 10773 declared backing cells matched the authenticated merged
+`xtx_status.csv` (331062 bytes, SHA-256
+`60ECA3B76D1D9799589D9059ADEB1E7C3D142E07609A1AD0A053C5E75D9B96EE`),
+identified by the same manifest revision above. Forty-eight column-24 cells
+matched one of the merged CSV's retained locale variants; the CLI reports
+the actual selected locale's backing value. Default name columns have no
+such duplicate annotations. No row text is embedded; chs is outside the
+CLI's locale choices.
 
 ## Verification
 

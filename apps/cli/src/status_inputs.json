@@ -1,0 +1,348 @@
+[
+  {
+    "locale": "ja",
+    "columns": [
+      1,
+      20,
+      24
+    ],
+    "types": [
+      "str",
+      "str",
+      "str"
+    ],
+    "default": 1,
+    "blocks": [
+      {
+        "begin": 0,
+        "count": 1,
+        "pins": [
+          {
+            "id": 189073391,
+            "size": 40,
+            "sha256": "bc7a71958238f93564aed9bbcf1ff7f33d6523447511aa635b002f76ca505de3"
+          },
+          {
+            "id": 189073392,
+            "size": 8,
+            "sha256": "01acecb507abfe1a354aa8064f4af5d3f1acd019e37db3c11c97523b71c76e9d"
+          },
+          {
+            "id": 189073393,
+            "size": 4,
+            "sha256": "1a00f51f3029fa4b7e61b9bf7aa9de5a64798857872981f7e056e4f437171955"
+          }
+        ]
+      },
+      {
+        "begin": 220000,
+        "count": 12016,
+        "pins": [
+          {
+            "id": 189072713,
+            "size": 34997,
+            "sha256": "797ff05da7de1c90f3e74745c1a641c6382a6ecc40d7505a66298eb30f51a71a"
+          },
+          {
+            "id": 189072714,
+            "size": 160,
+            "sha256": "dc2b20f15b487b5c0d03d7f70886dcce5864bcd3748db7075564b8ee57c5a9a7"
+          },
+          {
+            "id": 189072715,
+            "size": 48064,
+            "sha256": "160624a878c8f35fb2aa0c58330f347de485824b562a4c78cf80edcec330b4e5"
+          }
+        ]
+      },
+      {
+        "begin": 251000,
+        "count": 2004,
+        "pins": [
+          {
+            "id": 189071515,
+            "size": 282,
+            "sha256": "deae51096424fea8fc0a039bebf60141f4229eb53165bfa4fcc06fa44dee4225"
+          },
+          {
+            "id": 189071516,
+            "size": 16,
+            "sha256": "cb57e427e5bde5d39c9ce542708cf77674b5850c35205a2b28326654c20d845d"
+          },
+          {
+            "id": 189071517,
+            "size": 8016,
+            "sha256": "6c5828c817a361f0d20c608c39f8b76d25026cf4d522efea116b3eef9502f5ca"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "locale": "en",
+    "columns": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      21,
+      24
+    ],
+    "types": [
+      "str",
+      "str",
+      "str",
+      "str",
+      "s32",
+      "s32",
+      "str",
+      "str"
+    ],
+    "default": 3,
+    "blocks": [
+      {
+        "begin": 0,
+        "count": 1,
+        "pins": [
+          {
+            "id": 189072689,
+            "size": 43,
+            "sha256": "a447253b8f1da340414489dbb64fc30e4b31c0181812d304f6ef55184de155c6"
+          },
+          {
+            "id": 189072690,
+            "size": 8,
+            "sha256": "01acecb507abfe1a354aa8064f4af5d3f1acd019e37db3c11c97523b71c76e9d"
+          },
+          {
+            "id": 189072691,
+            "size": 4,
+            "sha256": "7c9bf6a88aed1539a3276462bb9e977bede22cf2c89f96bf61f590da5504ccc7"
+          }
+        ]
+      },
+      {
+        "begin": 220000,
+        "count": 12016,
+        "pins": [
+          {
+            "id": 189072692,
+            "size": 125014,
+            "sha256": "6ff567d15c47d542a3034e8223013430c56279392f3e93047529aca5a6ab720b"
+          },
+          {
+            "id": 189072693,
+            "size": 160,
+            "sha256": "dc2b20f15b487b5c0d03d7f70886dcce5864bcd3748db7075564b8ee57c5a9a7"
+          },
+          {
+            "id": 189072694,
+            "size": 48064,
+            "sha256": "7a680c419f93a194654307c80706522bc1fb75b55907c9ea0f8f0028d3900697"
+          }
+        ]
+      },
+      {
+        "begin": 251000,
+        "count": 2004,
+        "pins": [
+          {
+            "id": 189071503,
+            "size": 946,
+            "sha256": "ffc19e8656e8254dfd60da19c7052faa91ce343b68d6c0720e4e682c15a8a579"
+          },
+          {
+            "id": 189071504,
+            "size": 16,
+            "sha256": "cb57e427e5bde5d39c9ce542708cf77674b5850c35205a2b28326654c20d845d"
+          },
+          {
+            "id": 189071505,
+            "size": 8016,
+            "sha256": "cb5bd0440351616ac7b68bab621f68f3b886fa70f68657b2f385ac7cda6c4f45"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "locale": "de",
+    "columns": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      22,
+      24
+    ],
+    "types": [
+      "str",
+      "s32",
+      "str",
+      "s32",
+      "s32",
+      "s32",
+      "s32",
+      "str",
+      "str"
+    ],
+    "default": 8,
+    "blocks": [
+      {
+        "begin": 0,
+        "count": 1,
+        "pins": [
+          {
+            "id": 189072677,
+            "size": 45,
+            "sha256": "d5c1e6963bd4da9c21a3952c6c2c6ab99bbf91405bb461caef3245d90edce06e"
+          },
+          {
+            "id": 189072678,
+            "size": 8,
+            "sha256": "01acecb507abfe1a354aa8064f4af5d3f1acd019e37db3c11c97523b71c76e9d"
+          },
+          {
+            "id": 189072679,
+            "size": 4,
+            "sha256": "28276425d45829d4e6f5e18aefbf1f62862f07260a904532fb6e2106dec973e6"
+          }
+        ]
+      },
+      {
+        "begin": 220000,
+        "count": 12016,
+        "pins": [
+          {
+            "id": 189072680,
+            "size": 44708,
+            "sha256": "60a5b3bdbc93ca6a037c973559bbff5ec5ff477795121324249cd59187b65dc3"
+          },
+          {
+            "id": 189072681,
+            "size": 160,
+            "sha256": "dc2b20f15b487b5c0d03d7f70886dcce5864bcd3748db7075564b8ee57c5a9a7"
+          },
+          {
+            "id": 189072682,
+            "size": 48064,
+            "sha256": "e9187563d3560a3c75a375a90ca661d4ce6e0ae56dd1842cb3a18346e8fdc56f"
+          }
+        ]
+      },
+      {
+        "begin": 251000,
+        "count": 2004,
+        "pins": [
+          {
+            "id": 189071499,
+            "size": 368,
+            "sha256": "1e37348fa8f8913db049f175faa0f850dae2c5c6b33f111f169537da0b95ea14"
+          },
+          {
+            "id": 189071500,
+            "size": 16,
+            "sha256": "cb57e427e5bde5d39c9ce542708cf77674b5850c35205a2b28326654c20d845d"
+          },
+          {
+            "id": 189071501,
+            "size": 8016,
+            "sha256": "44c710b8443d0ca5b22c0e8d4339aab8ea8b547deb7bcc2c71068ff14c32d18c"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "locale": "fr",
+    "columns": [
+      15,
+      16,
+      17,
+      18,
+      19,
+      23,
+      24
+    ],
+    "types": [
+      "str",
+      "str",
+      "s32",
+      "s32",
+      "s32",
+      "str",
+      "str"
+    ],
+    "default": 15,
+    "blocks": [
+      {
+        "begin": 0,
+        "count": 1,
+        "pins": [
+          {
+            "id": 189072701,
+            "size": 37,
+            "sha256": "6dbd6e78759bb782360600420c873b1058fc5b4fd112813b0fe622a6ca38502a"
+          },
+          {
+            "id": 189072702,
+            "size": 8,
+            "sha256": "01acecb507abfe1a354aa8064f4af5d3f1acd019e37db3c11c97523b71c76e9d"
+          },
+          {
+            "id": 189072703,
+            "size": 4,
+            "sha256": "dcd1430b981b4550707e196a4954598d6bd8a4f078fd0ab883eb9e857242811d"
+          }
+        ]
+      },
+      {
+        "begin": 220000,
+        "count": 12016,
+        "pins": [
+          {
+            "id": 189072704,
+            "size": 38574,
+            "sha256": "fa168f6607bccdd5e721f97ca29da0a4c00e4caa32c1ebd5d19a9e0492a5b46d"
+          },
+          {
+            "id": 189072705,
+            "size": 160,
+            "sha256": "dc2b20f15b487b5c0d03d7f70886dcce5864bcd3748db7075564b8ee57c5a9a7"
+          },
+          {
+            "id": 189072706,
+            "size": 48064,
+            "sha256": "720e41a4eda6291443e2cddaf2bcd82a4b0dad49364cd75cd4603f490219deb3"
+          }
+        ]
+      },
+      {
+        "begin": 251000,
+        "count": 2004,
+        "pins": [
+          {
+            "id": 189071511,
+            "size": 286,
+            "sha256": "3ffc5450ba942d44b064543063c54b813014afb1f675370bb41776d8565d4160"
+          },
+          {
+            "id": 189071512,
+            "size": 16,
+            "sha256": "cb57e427e5bde5d39c9ce542708cf77674b5850c35205a2b28326654c20d845d"
+          },
+          {
+            "id": 189071513,
+            "size": 8016,
+            "sha256": "8fadd3d9cf547adc20c24d506f4d9b296868ed3c43db2809fef87d4d51e2b30a"
+          }
+        ]
+      }
+    ]
+  }
+]

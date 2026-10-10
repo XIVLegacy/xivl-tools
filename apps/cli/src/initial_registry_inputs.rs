@@ -18,6 +18,19 @@ pub const COMMAND_CONFIGURATION: [Pin<'static>; 2] = [
     },
 ];
 
+pub const STATUS_CONFIGURATION: [Pin<'static>; 2] = [
+    Pin {
+        id: 0x01030000,
+        size: 7044,
+        sha256: "860023878f9ad1e98fd1baa3e3380f971f86bf1f7747043cf0c3c7459cee2eb4",
+    },
+    Pin {
+        id: 0x0B450073,
+        size: 4056,
+        sha256: "2f8768776c61e7f62627e43245ad0e255584c50dbb83f5f1d6c8ab7166995d56",
+    },
+];
+
 pub const FIXED: [[Pin<'static>; 3]; 4] = [
     [
         // ja

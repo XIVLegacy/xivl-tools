@@ -12,6 +12,7 @@ use xivl_formats::sheet::{self, ColumnType, ColumnValue, Row};
 use crate::fixed_phrase::Locale;
 use crate::initial_registry_inputs::{
     COMMAND_CONFIGURATION, FIXED, ITEM_DEFAULT_FIELDS, PLACE, PLACE_DEFAULT_FIELDS,
+    STATUS_CONFIGURATION,
 };
 use crate::sheet_reference::{self, Cell, QueryResult};
 use crate::{read_capped, Failure};
@@ -54,7 +55,7 @@ fn item_inputs() -> Vec<ItemLocale<'static>> {
 }
 
 #[derive(Deserialize)]
-struct CommandLocale<'a> {
+struct SheetLocale<'a> {
     locale: &'a str,
     columns: Vec<usize>,
     types: Vec<&'a str>,
@@ -63,20 +64,25 @@ struct CommandLocale<'a> {
     blocks: Vec<ItemBlock<'a>>,
 }
 
-fn command_inputs() -> Vec<CommandLocale<'static>> {
+fn command_inputs() -> Vec<SheetLocale<'static>> {
     serde_json::from_str(include_str!("command_inputs.json"))
         .expect("validated embedded command metadata")
 }
 
-fn load_command(
+fn status_inputs() -> Vec<SheetLocale<'static>> {
+    serde_json::from_str(include_str!("status_inputs.json"))
+        .expect("validated embedded status metadata")
+}
+
+fn load_sheet_block(
     root: &Path,
-    input: &CommandLocale<'_>,
+    input: &SheetLocale<'_>,
     block: &ItemBlock<'_>,
 ) -> std::result::Result<Loaded, Failure> {
     let columns: Vec<_> = input
         .types
         .iter()
-        .map(|kind| ColumnType::parse(kind, 0).expect("validated embedded command type"))
+        .map(|kind| ColumnType::parse(kind, 0).expect("validated embedded sheet type"))
         .collect();
     load(root, &block.pins, &columns, block.begin, block.count)
 }
@@ -124,7 +130,7 @@ fn english_noun_text(row: &Row, attributive: Option<&Row>, inputs: [u32; 4]) -> 
 
 fn command_query(
     root: &Path,
-    input: &CommandLocale<'_>,
+    input: &SheetLocale<'_>,
     cache: &mut Vec<(usize, Loaded)>,
     name: &str,
     key: u32,
@@ -145,7 +151,7 @@ fn command_query(
     };
     let block = &input.blocks[block_index];
     if !cache.iter().any(|(index, _)| *index == block_index) {
-        cache.push((block_index, load_command(root, input, block)?));
+        cache.push((block_index, load_sheet_block(root, input, block)?));
     }
     let loaded = &cache
         .iter()
@@ -565,25 +571,33 @@ pub fn report(
             document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
             (item.rows, input.columns.clone())
         }
-        "xtx/command" => {
-            let inputs = command_inputs();
+        "xtx/command" | "xtx/status" => {
+            let is_status = descriptor.sheet == "xtx/status";
+            let (inputs, configuration) = if is_status {
+                (status_inputs(), &STATUS_CONFIGURATION)
+            } else {
+                (command_inputs(), &COMMAND_CONFIGURATION)
+            };
             let input = &inputs[index];
             debug_assert_eq!(input.locale, locale_name);
             let Some(block) = input.blocks.iter().find(|block| block.contains(key)) else {
                 document["sourceLookup"] = json!({"status": "not-found"});
                 return Ok((document, true));
             };
-            for pin in &COMMAND_CONFIGURATION {
+            for pin in configuration {
                 read_pin(Path::new(root), pin)?;
             }
-            document["configurationSources"] = json!(COMMAND_CONFIGURATION
-                .iter()
-                .map(pin_source)
-                .collect::<Vec<_>>());
-            let command = load_command(Path::new(root), input, block)?;
-            document["targetSources"] = command.sources;
+            document["configurationSources"] =
+                json!(configuration.iter().map(pin_source).collect::<Vec<_>>());
+            if is_status {
+                // The declared none policy does not establish a ready full-load backend.
+                document["nativeConditions"] = json!({"sheetCacheState": 0,
+                    "backend": "matching-ready-CacheAll", "association": "assumed-completed-full-load"});
+            }
+            let loaded = load_sheet_block(Path::new(root), input, block)?;
+            document["targetSources"] = loaded.sources;
             document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
-            (command.rows, input.columns.clone())
+            (loaded.rows, input.columns.clone())
         }
         "xtx/displayName" if matches!(locale, Locale::En) => {
             let inputs = noun_inputs();
@@ -664,6 +678,7 @@ pub fn report(
         "xtx/placeName" => Some(PLACE_DEFAULT_FIELDS[index]),
         "xtx/itemName" => Some(ITEM_DEFAULT_FIELDS[index]),
         "xtx/command" => Some(command_inputs()[index].default),
+        "xtx/status" => Some(status_inputs()[index].default),
         "xtx/displayName" if noun_source.is_none() => Some(1),
         _ => None,
     };
@@ -712,6 +727,46 @@ pub fn report(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn status_names_use_explicit_defaults_and_preserve_other_source_fields() {
+        for (input, default) in status_inputs().iter().zip([1, 3, 8, 15]) {
+            let mut data = Vec::new();
+            for (&column, kind) in input.columns.iter().zip(&input.types) {
+                match *kind {
+                    "str" => {
+                        let value: &[u8] = if column == default {
+                            b"Authored [status]\\name"
+                        } else {
+                            b"Other\x02\x1f\x01\x03field"
+                        };
+                        data.extend_from_slice(&((value.len() + 1) as u16).to_le_bytes());
+                        data.extend_from_slice(value);
+                        data.push(0);
+                    }
+                    "s32" => data.extend_from_slice(&(-7i32).to_le_bytes()),
+                    _ => unreachable!("supported status schema"),
+                }
+            }
+            let types: Vec<_> = input
+                .types
+                .iter()
+                .map(|kind| ColumnType::parse(kind, 0).unwrap())
+                .collect();
+            let row = sheet::parse_rows(&data, &types).unwrap().remove(0);
+            let resolved = plain_text(&row, &input.columns, input.default, false);
+            assert_eq!(resolved["column"], default);
+            assert_eq!(resolved["text"], "Authored [status]\\name");
+            let cells = source_cells(&row.values, &input.columns);
+            for (cell, kind) in cells.iter().zip(&input.types) {
+                if *kind == "s32" {
+                    assert_eq!(cell["value"], -7);
+                } else if cell["column"] != default {
+                    assert_eq!(cell["value"], "Other[@hyphen:021f0103]field");
+                }
+            }
+        }
+    }
 
     #[test]
     fn command_source_keeps_signed_fields_and_selects_the_default_name() {

@@ -113,7 +113,7 @@ The [control-stream contract](formats/fixed-control.md#copied-control-streams)
 owns the supported forms, exact output bytes and remaining rendering boundary.
 
 This model assumes a fresh, successful full metadata load. It supports
-fixedPhrase, placeName, itemName, command and the bounded English displayName block;
+fixedPhrase, placeName, itemName, command, status and the bounded English displayName block;
 other named tables report `unsupported-key-association`. Unmapped and
 dynamic categories, missing rows and refused ordinary
 phrases exit 2. The [initial-registry contract](formats/fixed-control.md#conditional-initial-registry-lookup)
@@ -131,6 +131,17 @@ The same lookup supports `ja`, `de` and `fr`. It returns every declared
 locale source field, including signed numeric fields. The
 [command-name contract](formats/fixed-control.md#conditional-command-name-lookup)
 owns category coverage, authenticated blocks and default selection.
+
+For status-name lookup, this constructed `[23,221021]` control selects
+`xtx/status` and its English default column 3:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 18 F6 03 5F 5D 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
+```
+
+The same lookup supports `ja`, `de` and `fr`. The
+[status-name contract](formats/fixed-control.md#conditional-status-name-lookup)
+owns the three blocks, explicit defaults and assumed completed CacheAll state.
 
 For automatic English displayName lookup, this constructed `[21,1000001]`
 control returns five authenticated source fields and conditional column-1
