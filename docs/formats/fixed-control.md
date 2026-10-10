@@ -198,6 +198,43 @@ parse failures exit 2 with a diagnostic on stderr; file-read failures exit 1.
 Unknown controls do not load resources. Later dynamic additions and locale or
 provider changes are outside this initial-state model.
 
+### Conditional plain text
+
+A matched placeName or itemName row also reports `registryLookup.textResolution`.
+The promoted constructor defaults select placeName fields ja0/en1/de4/fr6 and
+itemName fields ja4/en5/de11/fr19. These are global sheet column indexes,
+mapped through the authenticated locale layout to the corresponding row value.
+The itemName SHEET DEF settings select those indexes; its NOUN settings are
+separate. The placeName first-index defaults retain AT-COMP-021's existing
+constructor-local result, including English field 1 rather than noun DEF 3.
+
+For a mode-zero descriptor and a selected field containing no control tokens,
+the result has `status: "resolved"`, `association: "conditional-default-field"`,
+the selected `column`, `text` and `textEncoding: "utf-8"`. Literal brackets and
+backslashes retain their decoded values rather than CSV escaping. An empty
+literal returns empty text; it does not trigger a fallback. The source fields
+remain available in their SSD lossless CSV representation.
+
+A selected field with controls reports `requires-evaluation` with reason
+`embedded-controls`, its column and no text. Controls in other fields do not
+prevent a plain result. A noun descriptor is deferred with reason
+`provider-dependent-noun`. A missing or non-string default field reports
+`unsupported-default-field`. These diagnostic statuses do not change the
+existing source-lookup exit codes or claim retail fallback behavior.
+
+The association applies AT-COMP-020/021 to definitionLocales in
+`xivl-client-data:manifests/place_name_backing_rows.json` at revision
+`750eb59885752e1a4f6e69c00e87697fce6a2580` and
+`xivl-client-data:manifests/item_name_backing_rows.json` at revision
+`06f6687b4e0adc24e7f38f3105ae9fc237de3eda`. The native application is owned by
+`xivl-client-structs:docs/autotranslate-selection-contract.md`, Conditional
+default fields. Matching pinned definition/index/parameter inputs, successful
+construction and unchanged selected-field state are additional conditions.
+The CLI uses promoted defaults; it does not inspect a retained native sheet.
+This resolves the conditional default text source, without claiming full
+TextModule query/conversion, embedded expression or noun evaluation,
+Completion admission, output wrappers or client rendering.
+
 ### Initial registry inputs
 
 `apps/cli/src/initial_registry_inputs.rs` owns the immutable resource IDs,
@@ -241,5 +278,7 @@ growth-only map assignment, noun flags and dynamic descriptor refusal.
 Item lookup checks exclusive block bounds, gaps, locale layouts and sparse
 keys across multiple blocks; private CLI checks compare selected cells in
 every supported block with the authenticated extraction.
+Plain-text tests check column mapping, literal escaping, empty fields,
+control deferral, noun deferral and refusal of an unavailable string default.
 Private manual checks compare source cells with the authenticated extraction
 and exercise identity rejection; they are not required public CI inputs.

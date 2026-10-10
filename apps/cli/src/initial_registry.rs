@@ -10,7 +10,7 @@ use xivl_formats::resource::ResourceId;
 use xivl_formats::sheet::{self, ColumnType, ColumnValue, Row};
 
 use crate::fixed_phrase::Locale;
-use crate::initial_registry_inputs::{FIXED, PLACE};
+use crate::initial_registry_inputs::{FIXED, ITEM_DEFAULT_FIELDS, PLACE, PLACE_DEFAULT_FIELDS};
 use crate::{read_capped, Failure};
 
 #[derive(Deserialize)]
@@ -92,6 +92,25 @@ fn text(value: &ColumnValue) -> String {
         ColumnValue::Text(value) => value.rich.to_lossless_text(),
         _ => unreachable!("validated string column"),
     }
+}
+
+fn plain_text(row: &Row, fields: &[usize], column: usize, noun: bool) -> Value {
+    if noun {
+        return json!({"status": "requires-evaluation", "reason": "provider-dependent-noun"});
+    }
+    let selected = fields
+        .iter()
+        .position(|&field| field == column)
+        .and_then(|index| row.values.get(index));
+    let Some(ColumnValue::Text(value)) = selected else {
+        return json!({"status": "unsupported-default-field", "column": column});
+    };
+    if value.rich.tokens().next().is_some() {
+        return json!({"status": "requires-evaluation", "reason": "embedded-controls", "column": column});
+    }
+    // text_only is lossless here because the selected field has no tokens.
+    json!({"status": "resolved", "association": "conditional-default-field", "column": column,
+        "text": value.rich.text_only(), "textEncoding": "utf-8"})
 }
 
 fn metadata(row: &Row) -> Result<(u32, String)> {
@@ -387,6 +406,14 @@ pub fn report(
         document["sourceLookup"] = json!({"status": "not-found"});
         return Ok((document, true));
     };
+    let default_field = match descriptor.sheet.as_str() {
+        "xtx/placeName" => Some(PLACE_DEFAULT_FIELDS[index]),
+        "xtx/itemName" => Some(ITEM_DEFAULT_FIELDS[index]),
+        _ => None,
+    };
+    if let Some(column) = default_field {
+        document["textResolution"] = plain_text(row, &fields, column, descriptor.noun);
+    }
     let values = if descriptor_index == 0 {
         let (field0, metadata) = metadata(row).map_err(|error| Failure::parse(error.detail()))?;
         if field0.checked_sub(1) != Some(category) || !metadata.is_empty() {
@@ -524,5 +551,62 @@ mod tests {
             assert!(!input.blocks.iter().any(|block| block.contains(1_500_000)));
         }
         assert_eq!(inputs[1].columns, [5, 6, 7, 8, 9, 10, 26, 30]);
+    }
+
+    fn text_row(values: &[&[u8]]) -> Row {
+        let data: Vec<_> = values
+            .iter()
+            .flat_map(|value| {
+                let mut bytes = ((value.len() + 1) as u16).to_le_bytes().to_vec();
+                bytes.extend_from_slice(value);
+                bytes.push(0);
+                bytes
+            })
+            .collect();
+        sheet::parse_rows(&data, &vec![ColumnType::Text; values.len()])
+            .unwrap()
+            .remove(0)
+    }
+
+    #[test]
+    fn plain_text_selects_global_column_and_preserves_literal_text() {
+        let row = text_row(&[b"Unused", b"[Literal]\\Authored", b""]);
+        let resolved = plain_text(&row, &[11, 19, 28], 19, false);
+        assert_eq!(resolved["status"], "resolved");
+        assert_eq!(resolved["column"], 19);
+        assert_eq!(resolved["text"], "[Literal]\\Authored");
+        assert_eq!(resolved["association"], "conditional-default-field");
+        assert_eq!(resolved["textEncoding"], "utf-8");
+        assert_eq!(plain_text(&row, &[11, 19, 28], 28, false)["text"], "");
+    }
+
+    #[test]
+    fn plain_text_defers_controls_and_nouns_without_dropping_tokens() {
+        let row = text_row(&[b"A\x02\x1f\x01\x03B", b"Authored"]);
+        let deferred = plain_text(&row, &[5, 6], 5, false);
+        assert_eq!(deferred["status"], "requires-evaluation");
+        assert_eq!(deferred["reason"], "embedded-controls");
+        assert!(deferred.get("text").is_none());
+        assert_eq!(text(&row.values[0]), "A[@hyphen:021f0103]B");
+        assert_eq!(plain_text(&row, &[5, 6], 6, false)["text"], "Authored");
+        let noun = plain_text(&row, &[5, 6], 6, true);
+        assert_eq!(noun["reason"], "provider-dependent-noun");
+        assert!(noun.get("text").is_none());
+    }
+
+    #[test]
+    fn plain_text_does_not_guess_missing_or_numeric_default_fields() {
+        let row = text_row(&[b"Authored"]);
+        assert_eq!(
+            plain_text(&row, &[5], 6, false)["status"],
+            "unsupported-default-field"
+        );
+        let numeric = sheet::parse_rows(&[1], &[ColumnType::Signed8])
+            .unwrap()
+            .remove(0);
+        assert_eq!(
+            plain_text(&numeric, &[8], 8, false)["status"],
+            "unsupported-default-field"
+        );
     }
 }

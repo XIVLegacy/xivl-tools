@@ -78,6 +78,14 @@ under `registryLookup`, with `status: "selected"` and
 `sourceLookup.status: "matched"`. Resource sizes and hashes are checked before
 parsing. A changed or unavailable install fails explicitly.
 
+For the second and third examples, `registryLookup.textResolution` also
+returns `status: "resolved"` and conditional default text `Limsa Lominsa` or
+`Crystal`, with the selected column. Only mode-zero placeName and itemName
+rows with a token-free default field receive text. Embedded controls report
+`requires-evaluation` without text; the raw source fields stay available.
+The [plain-text contract](formats/fixed-control.md#conditional-plain-text)
+owns field selection and its limits.
+
 This model assumes a fresh, successful full metadata load. It reports other
 named tables with `unsupported-key-association` rather than returning source
 cells. Unmapped and dynamic categories, missing rows and refused ordinary

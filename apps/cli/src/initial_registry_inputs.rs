@@ -1,6 +1,10 @@
 // Authenticated inputs: docs/formats/fixed-control.md, Initial registry inputs.
 use super::initial_registry::Pin;
 
+// Constructor defaults: docs/formats/fixed-control.md, Conditional plain text.
+pub const PLACE_DEFAULT_FIELDS: [usize; 4] = [0, 1, 4, 6];
+pub const ITEM_DEFAULT_FIELDS: [usize; 4] = [4, 5, 11, 19];
+
 pub const FIXED: [[Pin<'static>; 3]; 4] = [
     [
         // ja
