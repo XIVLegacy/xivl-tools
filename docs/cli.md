@@ -188,8 +188,8 @@ The descriptor's noun flag does not enable noun mode on this caller path.
 
 The same control with `--locale ja`, `de` or `fr` returns authenticated
 displayName source fields. Each locale supports all 32 blocks. German
-retains `textResolution.status = requires-evaluation` with reason
-`provider-dependent-noun`. This Japanese lookup returns conditional default
+returns a bounded singular noun result under its declared type-2 provider
+and native preset. This Japanese lookup returns conditional default
 text from field 0 under an explicitly declared stable type-0 provider:
 
 ```powershell
@@ -206,6 +206,17 @@ With `--locale fr`, the same constructed control returns conditional default
 text from field 13 under an explicitly declared stable type-3 provider.
 The [French default query](formats/fixed-control.md#french-displayname-default-query)
 owns that context and its text support.
+
+With `--locale de`, the same control evaluates the native singular preset:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 16 F6 0F 42 41 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale de
+```
+
+The [German singular contract](formats/fixed-control.md#conditional-german-singular-identity)
+owns the supported row flags, empty suffix, placeholder refusals and source
+conditions. `nounContext` records the preset and assumptions. Rows outside
+this case retain their source fields and return `requires-evaluation`.
 
 For a separate explicit fresh English NounEn context, supply its remaining four
 metadata words. This constructed `[21,1000001]` example uses configuration 0,

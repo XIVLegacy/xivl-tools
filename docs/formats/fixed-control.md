@@ -160,6 +160,7 @@ a stable type-1 provider, reports that assumption in `providerContext`, and
 selects `dispatch = query`. C9C0A0 enables noun mode only for type 2 together
 with the descriptor noun flag. Japanese and French displayName declare stable
 type-0 and type-3 providers respectively and also select `query`.
+German displayName declares a stable type-2 provider and selects `noun`.
 Other noun descriptors retain `provider-dependent-noun`.
 The numeric control fields do not establish a historical provider type.
 
@@ -482,10 +483,8 @@ block identities. Japanese offset extents at begins 2700000/3290000 contain
 rather than 26. All other locale extents match their declarations. Lookup
 bounds follow the verified offsets, and missing/outside keys exit 2.
 
-These descriptors have noun flags. German returns its source
-cells while retaining `dispatch = provider-dependent-noun` and
-`textResolution.status = requires-evaluation`, with reason
-`provider-dependent-noun` and no `text`. A source field is not a complete
+These descriptors have noun flags. German uses the bounded preset below
+while retaining all seven source cells. A source field alone is not a complete
 localized noun output. `--noun-inputs` remains English-only.
 Japanese and French displayName use the declared default queries below.
 
@@ -535,7 +534,7 @@ blocks above and returns all six source fields. Literal default text is
 preserved without noun transformations or count replacement. Supported
 copied controls retain their exact bytes; other controls require evaluation.
 No noun input words or attributive rows are required. French item/place nouns
-and German noun output remain deferred.
+and German noun branches outside the bounded singular case remain deferred.
 
 The native owner is French displayName fixed-control query in
 `xivl-client-structs:docs/autotranslate-selection-contract.md` at revision
@@ -544,24 +543,50 @@ local kind-1 map, populated exact-key association and ready row, with retained
 constructor and provider state. The tool does not observe runtime cache
 state, wrappers or rendering.
 
-### German displayName noun requirements
+### Conditional German singular identity
 
-German category 21 continues to return authenticated source fields with
-`dispatch = provider-dependent-noun` and no final text. A retained type-2
-provider would select the native noun path and its `[0,nativeKey,1,5,0]`
-preset. That method combines SGL with grammatical attributive fields and
-several replacement steps; nonzero DEF does not reduce it to a default-field
-query. All 5812 German displayName rows and the needed attributive backing
-rows are present, but source availability does not prove complete noun output.
+With `--initial-registry` and `--locale de`, category 21 declares a stable
+type-2 provider in `providerContext` and selects `dispatch = noun`.
+`nounContext` records a conditional fresh NounDe context, the native
+`[0,nativeKey,1,5,0]` preset, assumed ready named rows, an empty temporary
+destination and retained initializer strings. The control and locale do not
+establish actual provider/cache state. This context covers displayName only.
 
-The native owner is German displayName noun boundary in
+The bounded result requires nonzero DEF column 12, token-free SGL column 6
+without `[a]`, `[p]`, `[pa]` or `[n]`, and an empty suffix at attributive row
+`26 + SGG` (SGG column 7), column `11 + GEN` (GEN column 11). The selected
+column must lie in the authenticated string layout 11..26. Attributive rows
+5, 24, 25, 26 and the suffix row must all be present. Under these conditions,
+prefix copying is skipped, the empty suffix append preserves SGL and all
+three later replacements leave it unchanged. The native success byte is set
+after admission of the common rows. This is a noun result, not a default query.
+
+All 5812 target rows in the 32 German blocks are supported as source inputs.
+The authenticated corpus yields 2994 singular text results, 2787 DEF-zero
+refusals, three control-bearing refusals and 28 noun-placeholder refusals.
+Resolved output has association `conditional-preset-NounDe`, column 6 and
+the selected `grammaticalRowKey`/`grammaticalColumn`. Other rows return
+`requires-evaluation` and a reason without `text`. Missing target rows exit 2.
+`--noun-inputs` remains English-only; the German preset is supplied by this
+declared caller path.
+
+`apps/cli/src/german_noun_inputs.json` owns the German attributive block
+`(1,35)` identities and configuration pins. Its 35 rows and 595 fields match
+the de block in `xivl-client-data:manifests/attributive_backing_rows.json`
+at revision `06f6687b4e0adc24e7f38f3105ae9fc237de3eda`. It contains columns
+10..26 with types s8 followed by 16 strings. The CLI authenticates all six
+configuration/attributive resources in addition to the target and registry
+inputs, and reports their identities. The declared attributive `type=none`
+does not prove runtime admission; ready named rows remain an assumption.
+
+The native owner is Conditional German singular identity in
 `xivl-client-structs:docs/autotranslate-selection-contract.md` at revision
-`b298fb9bd685de5eb8148756d6485e8e1de1e6c7`. Its German needle initializer
-inputs section establishes conditional initial strings `[a]`, `[p]` and
-`[pa]` under successful construction and retained state. Selected grammatical
-fields and the complete output/return sequence are required before promoting
-a bounded noun result. The tool retains noun deferral and the existing source
-lookup behavior; `--noun-inputs` remains English-only.
+`6da8eb3f0eb5a5d224bf50ffca9015250e95ab39`. Its German needle initializer
+inputs section owns `[a]`, `[p]` and `[pa]`; AT-COMP-023 owns `[n]`.
+Successful fresh construction, valid retained configuration, string operations,
+matching ready map-key associations and named-row admission remain explicit.
+Other counts, prefixes, suffixes, replacements, noun families, wrappers and
+rendering retain their evidence boundaries.
 
 ### Conditional English noun identity
 

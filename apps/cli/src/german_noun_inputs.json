@@ -1,0 +1,40 @@
+{
+  "attributive": {
+    "begin": 1,
+    "count": 35,
+    "pins": [
+      {
+        "id": 189071563,
+        "size": 2748,
+        "sha256": "6847515e95328dbbb49f21420049400c9dbdf90c5150a90fd8bed0c3fbf9c5bf"
+      },
+      {
+        "id": 189071564,
+        "size": 8,
+        "sha256": "80cd495a76d3580a2ca4f66831affcba63aac837f19c990888a8da58cc51fd02"
+      },
+      {
+        "id": 189071565,
+        "size": 140,
+        "sha256": "12ecbb36adb57910dde359d523aae58d7f737736f48aef7fd73325904ca48627"
+      }
+    ]
+  },
+  "configurationPins": [
+    {
+      "id": 16973824,
+      "size": 7044,
+      "sha256": "860023878f9ad1e98fd1baa3e3380f971f86bf1f7747043cf0c3c7459cee2eb4"
+    },
+    {
+      "id": 189071360,
+      "size": 16987,
+      "sha256": "7c9b77f9e5989c1c85bbd8152162160cc423f1a6ca17b730f51b5ddc5e4ff866"
+    },
+    {
+      "id": 189071562,
+      "size": 3516,
+      "sha256": "e292f595d63e2f1002ddaf3be5248e8f8561259a0df50ec85b0eab299b30e6cb"
+    }
+  ]
+}

@@ -168,6 +168,78 @@ fn english_noun_text(row: &Row, attributive: Option<&Row>, inputs: [u32; 4]) -> 
         "column": 1, "text": value, "textEncoding": "utf-8"})
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GermanNounInputs<'a> {
+    #[serde(borrow)]
+    attributive: ItemBlock<'a>,
+    #[serde(borrow)]
+    configuration_pins: [Pin<'a>; 3],
+}
+
+fn german_noun_inputs() -> GermanNounInputs<'static> {
+    serde_json::from_str(include_str!("german_noun_inputs.json"))
+        .expect("validated embedded German noun metadata")
+}
+
+fn german_noun_text(row: &Row, attributive: &[(u32, Row)]) -> Value {
+    let deferred = |reason| json!({"status": "requires-evaluation", "reason": reason});
+    // Conditional German singular identity owns this preset's output sequence.
+    let [ColumnValue::Text(singular), ColumnValue::Signed8 { value: sgg, .. }, ColumnValue::Text(_), ColumnValue::Signed8 { .. }, ColumnValue::Signed8 { .. }, ColumnValue::Signed8 { value: gen, .. }, ColumnValue::Signed8 { value: def, .. }] =
+        row.values.as_slice()
+    else {
+        return deferred("unsupported-noun-row");
+    };
+    if *def == 0 {
+        return deferred("unsupported-noun-row");
+    }
+    if singular.rich.tokens().next().is_some() {
+        return deferred("embedded-controls");
+    }
+    let value = singular.rich.text_only();
+    if ["[a]", "[p]", "[pa]", "[n]"]
+        .iter()
+        .any(|needle| value.contains(needle))
+    {
+        return deferred("noun-replacement");
+    }
+    let Ok(grammatical_key) = u32::try_from(26 + i32::from(*sgg)) else {
+        return deferred("attributive-row-not-found");
+    };
+    let Ok(position) = usize::try_from(*gen) else {
+        return deferred("unsupported-noun-column");
+    };
+    if position >= 16 {
+        return deferred("unsupported-noun-column");
+    }
+    for key in [5, grammatical_key, 24, 25, 26] {
+        if !attributive.iter().any(|(row_key, _)| *row_key == key) {
+            return deferred("attributive-row-not-found");
+        }
+    }
+    let field = |key| {
+        attributive
+            .iter()
+            .find(|(row_key, _)| *row_key == key)
+            .and_then(|(_, row)| row.values.get(position + 1))
+    };
+    let Some(ColumnValue::Text(suffix)) = field(grammatical_key) else {
+        return deferred("unsupported-noun-column");
+    };
+    if suffix.rich.tokens().next().is_some() || !suffix.rich.text_only().is_empty() {
+        return deferred("noun-suffix");
+    }
+    if ![24, 26]
+        .iter()
+        .all(|&key| matches!(field(key), Some(ColumnValue::Text(_))))
+    {
+        return deferred("unsupported-noun-column");
+    }
+    json!({"status": "resolved", "association": "conditional-preset-NounDe",
+        "column": 6, "text": value, "textEncoding": "utf-8",
+        "grammaticalRowKey": grammatical_key, "grammaticalColumn": 11 + position})
+}
+
 fn command_query(
     root: &Path,
     input: &SheetLocale<'_>,
@@ -257,13 +329,16 @@ fn declared_provider(locale: Locale, sheet: &str) -> Option<(u32, &'static str)>
             Some((0, "conditional-stable-Japanese-provider"))
         }
         Locale::Fr if sheet == "xtx/displayName" => Some((3, "conditional-stable-French-provider")),
+        Locale::De if sheet == "xtx/displayName" => Some((2, "conditional-stable-German-provider")),
         _ => None,
     }
 }
 
 fn dispatch(noun: bool, locale: Locale, sheet: &str) -> &'static str {
-    // These declared provider types are not 2, which C9C0A0 needs for noun mode.
-    if !noun || declared_provider(locale, sheet).is_some() {
+    // C9C0A0 requires both the noun flag and a retained type-2 provider.
+    if noun && matches!(declared_provider(locale, sheet), Some((2, _))) {
+        "noun"
+    } else if !noun || declared_provider(locale, sheet).is_some() {
         "query"
     } else {
         "provider-dependent-noun"
@@ -672,6 +747,8 @@ pub fn report(
         "xtx/displayName" => {
             let inputs = noun_inputs();
             let display = display_inputs(locale);
+            let german = matches!(locale, Locale::De) && descriptor.noun;
+            let german_inputs = german.then(german_noun_inputs);
             if noun_source.is_some() && !inputs.target.contains(key) {
                 document["sourceLookup"] = json!({"status": "unsupported-noun-block"});
                 return Ok((document, true));
@@ -680,7 +757,9 @@ pub fn report(
                 document["sourceLookup"] = json!({"status": "not-found"});
                 return Ok((document, true));
             };
-            let configuration_pins = if noun_source.is_some() {
+            let configuration_pins = if let Some(inputs) = &german_inputs {
+                &inputs.configuration_pins[..]
+            } else if noun_source.is_some() {
                 &inputs.configuration_pins[..]
             } else {
                 &inputs.configuration_pins[..2]
@@ -688,14 +767,33 @@ pub fn report(
             for pin in configuration_pins {
                 read_pin(Path::new(root), pin)?;
             }
-            document["nounConfigurationSources"] = json!(inputs.configuration_pins
-                [..configuration_pins.len()]
+            document["nounConfigurationSources"] = json!(configuration_pins
                 .iter()
                 .map(pin_source)
                 .collect::<Vec<_>>());
             let target = load_sheet_block(Path::new(root), &display, block)?;
             document["targetSources"] = target.sources;
             document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
+            if let Some(inputs) = german_inputs {
+                let mut columns = vec![ColumnType::Signed8];
+                columns.extend([ColumnType::Text; 16]);
+                let attributive = load(
+                    Path::new(root),
+                    &inputs.attributive.pins,
+                    &columns,
+                    inputs.attributive.begin,
+                    inputs.attributive.count,
+                )?;
+                document["nounContext"] = json!({"context": "conditional-fresh-NounDe",
+                    "providerType": 2, "sourceWords": [0, key, 1, 5, 0],
+                    "rowAssociation": "assumed-ready-named-source-keys",
+                    "destination": "assumed-empty-temporary",
+                    "needles": "assumed-retained-initial-strings"});
+                document["attributiveSources"] = attributive.sources;
+                if let Some((_, row)) = target.rows.iter().find(|(row_key, _)| *row_key == key) {
+                    document["textResolution"] = german_noun_text(row, &attributive.rows);
+                }
+            }
             if let Some(source) = noun_source {
                 let attributive = load(
                     Path::new(root),
@@ -754,7 +852,12 @@ pub fn report(
                 .locales[index]
                 .default,
         ),
-        "xtx/displayName" if noun_source.is_none() => Some(display_inputs(locale).default),
+        "xtx/displayName"
+            if noun_source.is_none()
+                && dispatch(descriptor.noun, locale, &descriptor.sheet) == "query" =>
+        {
+            Some(display_inputs(locale).default)
+        }
         _ => None,
     };
     if let Some(column) = default_field {
@@ -966,10 +1069,7 @@ mod tests {
     fn english_fixed_query_does_not_treat_the_noun_flag_as_noun_mode() {
         assert_eq!(dispatch(true, Locale::En, "xtx/displayName"), "query");
         assert_eq!(dispatch(false, Locale::En, "xtx/displayName"), "query");
-        assert_eq!(
-            dispatch(true, Locale::De, "xtx/displayName"),
-            "provider-dependent-noun"
-        );
+        assert_eq!(dispatch(true, Locale::De, "xtx/displayName"), "noun");
         assert_eq!(dispatch(false, Locale::De, "xtx/displayName"), "query");
         let row = noun_row(b"Authored [n]", [0, 1, 0]);
         let resolved = plain_text(&row, &[1, 2, 3, 4, 5], 1, false);
@@ -988,10 +1088,7 @@ mod tests {
             assert_eq!(dispatch(true, Locale::Ja, sheet), "provider-dependent-noun");
             assert!(declared_provider(Locale::Ja, sheet).is_none());
         }
-        assert_eq!(
-            dispatch(true, Locale::De, "xtx/displayName"),
-            "provider-dependent-noun"
-        );
+        assert_eq!(dispatch(true, Locale::De, "xtx/displayName"), "noun");
         let value = b"Authored [n]\\name";
         let mut data = ((value.len() + 1) as u16).to_le_bytes().to_vec();
         data.extend_from_slice(value);
@@ -1128,6 +1225,114 @@ mod tests {
         assert_eq!((inputs.target.begin, inputs.target.count), (1_000_000, 601));
         assert!(!inputs.target.contains(1_000_601));
         assert!(inputs.attributive.contains(5));
+    }
+
+    fn german_row(singular: &[u8], sgg: i8, gen: i8, def: i8) -> Row {
+        let mut data = Vec::new();
+        let add_string = |data: &mut Vec<u8>, value: &[u8]| {
+            data.extend_from_slice(&((value.len() + 1) as u16).to_le_bytes());
+            data.extend_from_slice(value);
+            data.push(0);
+        };
+        add_string(&mut data, singular);
+        data.push(sgg as u8);
+        add_string(&mut data, b"Unused plural");
+        data.extend([0, 1, gen as u8, def as u8]);
+        let input = display_inputs(Locale::De);
+        let types: Vec<_> = input
+            .types
+            .iter()
+            .map(|kind| ColumnType::parse(kind, 0).unwrap())
+            .collect();
+        sheet::parse_rows(&data, &types).unwrap().remove(0)
+    }
+
+    fn german_attributive(suffix_key: u32, position: usize, suffix: &[u8]) -> Vec<(u32, Row)> {
+        let mut rows = Vec::new();
+        for key in [5, 24, 25, 26, suffix_key] {
+            let mut data = vec![0];
+            for index in 0..16 {
+                let value = if key == suffix_key && index == position {
+                    suffix
+                } else {
+                    b"Unused field"
+                };
+                data.extend_from_slice(&((value.len() + 1) as u16).to_le_bytes());
+                data.extend_from_slice(value);
+                data.push(0);
+            }
+            let mut types = vec![ColumnType::Signed8];
+            types.extend([ColumnType::Text; 16]);
+            rows.push((key, sheet::parse_rows(&data, &types).unwrap().remove(0)));
+        }
+        rows
+    }
+
+    #[test]
+    fn german_preset_preserves_singular_after_empty_suffix_and_no_matches() {
+        assert_eq!(dispatch(true, Locale::De, "xtx/displayName"), "noun");
+        assert_eq!(
+            declared_provider(Locale::De, "xtx/displayName").unwrap().0,
+            2
+        );
+        for sheet in ["xtx/itemName", "xtx/placeName"] {
+            assert!(declared_provider(Locale::De, sheet).is_none());
+            assert_eq!(dispatch(true, Locale::De, sheet), "provider-dependent-noun");
+        }
+        for (sgg, gen, def, singular) in [
+            (1, 0, 1, b"Authored [literal]\\name".as_slice()),
+            (8, 2, -1, b"Authored \xc3\xa4".as_slice()),
+            (1, 0, 1, b"".as_slice()),
+        ] {
+            let key = (26 + sgg) as u32;
+            let rows = german_attributive(key, gen as usize, b"");
+            let resolution = german_noun_text(&german_row(singular, sgg, gen, def), &rows);
+            assert_eq!(resolution["status"], "resolved");
+            assert_eq!(resolution["text"], std::str::from_utf8(singular).unwrap());
+            assert_eq!(resolution["column"], 6);
+            assert_eq!(resolution["grammaticalRowKey"], key);
+            assert_eq!(resolution["grammaticalColumn"], 11 + gen);
+            assert_eq!(resolution["association"], "conditional-preset-NounDe");
+        }
+    }
+
+    #[test]
+    fn german_preset_defers_unproved_output_branches_and_missing_rows() {
+        let rows = german_attributive(27, 0, b"");
+        for (row, reason) in [
+            (german_row(b"Authored", 1, 0, 0), "unsupported-noun-row"),
+            (
+                german_row(b"Authored", -128, 0, 1),
+                "attributive-row-not-found",
+            ),
+            (german_row(b"Authored", 1, -1, 1), "unsupported-noun-column"),
+            (german_row(b"Authored", 1, 16, 1), "unsupported-noun-column"),
+            (
+                german_row(b"A\x02\x1f\x01\x03B", 1, 0, 1),
+                "embedded-controls",
+            ),
+        ] {
+            let result = german_noun_text(&row, &rows);
+            assert_eq!(result["reason"], reason);
+            assert!(result.get("text").is_none());
+        }
+        for needle in ["[a]", "[p]", "[pa]", "[n]"] {
+            let row = german_row(format!("Authored {needle}").as_bytes(), 1, 0, 1);
+            let result = german_noun_text(&row, &rows);
+            assert_eq!(result["reason"], "noun-replacement");
+            assert!(result.get("text").is_none());
+        }
+        let row = german_row(b"Authored", 1, 0, 1);
+        for key in [5, 24, 25, 26, 27] {
+            let mut missing = rows.clone();
+            missing.retain(|(row_key, _)| *row_key != key);
+            let result = german_noun_text(&row, &missing);
+            assert_eq!(result["reason"], "attributive-row-not-found");
+            assert!(result.get("text").is_none());
+        }
+        let result = german_noun_text(&row, &german_attributive(27, 0, b"Suffix"));
+        assert_eq!(result["reason"], "noun-suffix");
+        assert!(result.get("text").is_none());
     }
 
     const COLUMNS: [ColumnType; 4] = [
