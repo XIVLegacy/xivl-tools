@@ -256,6 +256,7 @@ fn declared_provider(locale: Locale, sheet: &str) -> Option<(u32, &'static str)>
         Locale::Ja if sheet == "xtx/displayName" => {
             Some((0, "conditional-stable-Japanese-provider"))
         }
+        Locale::Fr if sheet == "xtx/displayName" => Some((3, "conditional-stable-French-provider")),
         _ => None,
     }
 }
@@ -987,12 +988,10 @@ mod tests {
             assert_eq!(dispatch(true, Locale::Ja, sheet), "provider-dependent-noun");
             assert!(declared_provider(Locale::Ja, sheet).is_none());
         }
-        for locale in [Locale::De, Locale::Fr] {
-            assert_eq!(
-                dispatch(true, locale, "xtx/displayName"),
-                "provider-dependent-noun"
-            );
-        }
+        assert_eq!(
+            dispatch(true, Locale::De, "xtx/displayName"),
+            "provider-dependent-noun"
+        );
         let value = b"Authored [n]\\name";
         let mut data = ((value.len() + 1) as u16).to_le_bytes().to_vec();
         data.extend_from_slice(value);
@@ -1002,6 +1001,43 @@ mod tests {
             .remove(0);
         let resolved = plain_text(&row, &[0], 0, false);
         assert_eq!(resolved["column"], 0);
+        assert_eq!(resolved["text"], "Authored [n]\\name");
+        assert_eq!(resolved["association"], "conditional-default-field");
+    }
+
+    #[test]
+    fn french_default_query_preserves_the_first_field() {
+        assert_eq!(dispatch(true, Locale::Fr, "xtx/displayName"), "query");
+        assert_eq!(
+            declared_provider(Locale::Fr, "xtx/displayName").unwrap().0,
+            3
+        );
+        for sheet in ["xtx/itemName", "xtx/placeName"] {
+            assert_eq!(dispatch(true, Locale::Fr, sheet), "provider-dependent-noun");
+            assert!(declared_provider(Locale::Fr, sheet).is_none());
+        }
+        let mut data = Vec::new();
+        for value in [b"Authored [n]\\name".as_slice(), b"Authored plural"] {
+            data.extend_from_slice(&((value.len() + 1) as u16).to_le_bytes());
+            data.extend_from_slice(value);
+            data.push(0);
+        }
+        data.extend_from_slice(&[1, 0, 1, 0]);
+        let row = sheet::parse_rows(
+            &data,
+            &[
+                ColumnType::Text,
+                ColumnType::Text,
+                ColumnType::Signed8,
+                ColumnType::Signed8,
+                ColumnType::Signed8,
+                ColumnType::Signed8,
+            ],
+        )
+        .unwrap()
+        .remove(0);
+        let resolved = plain_text(&row, &[13, 14, 15, 16, 17, 18], 13, false);
+        assert_eq!(resolved["column"], 13);
         assert_eq!(resolved["text"], "Authored [n]\\name");
         assert_eq!(resolved["association"], "conditional-default-field");
     }

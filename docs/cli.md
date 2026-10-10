@@ -187,8 +187,8 @@ ready map-key join.
 The descriptor's noun flag does not enable noun mode on this caller path.
 
 The same control with `--locale ja`, `de` or `fr` returns authenticated
-displayName source fields. Each locale supports all 32 blocks. German and
-French retain `textResolution.status = requires-evaluation` with reason
+displayName source fields. Each locale supports all 32 blocks. German
+retains `textResolution.status = requires-evaluation` with reason
 `provider-dependent-noun`. This Japanese lookup returns conditional default
 text from field 0 under an explicitly declared stable type-0 provider:
 
@@ -201,6 +201,11 @@ owns field layouts, missing-row behavior and conditional map-key admission.
 The [Japanese default query](formats/fixed-control.md#japanese-displayname-default-query)
 owns its declared provider context and text support. The control bytes do
 not establish the runtime provider type.
+
+With `--locale fr`, the same constructed control returns conditional default
+text from field 13 under an explicitly declared stable type-3 provider.
+The [French default query](formats/fixed-control.md#french-displayname-default-query)
+owns that context and its text support.
 
 For a separate explicit fresh English NounEn context, supply its remaining four
 metadata words. This constructed `[21,1000001]` example uses configuration 0,
