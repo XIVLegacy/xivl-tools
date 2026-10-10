@@ -250,9 +250,19 @@ fn locale_index(locale: Locale) -> usize {
     }
 }
 
-fn dispatch(noun: bool, locale: Locale) -> &'static str {
-    // The English initial context declares type 1; C9C0A0 needs type 2 for noun mode.
-    if !noun || matches!(locale, Locale::En) {
+fn declared_provider(locale: Locale, sheet: &str) -> Option<(u32, &'static str)> {
+    match locale {
+        Locale::En => Some((1, "conditional-stable-English-provider")),
+        Locale::Ja if sheet == "xtx/displayName" => {
+            Some((0, "conditional-stable-Japanese-provider"))
+        }
+        _ => None,
+    }
+}
+
+fn dispatch(noun: bool, locale: Locale, sheet: &str) -> &'static str {
+    // These declared provider types are not 2, which C9C0A0 needs for noun mode.
+    if !noun || declared_provider(locale, sheet).is_some() {
         "query"
     } else {
         "provider-dependent-noun"
@@ -555,10 +565,12 @@ pub fn report(
     document["sheet"] = json!(descriptor.sheet);
     document["descriptor"] = json!(descriptor.source);
     document["descriptorNounFlag"] = json!(descriptor.noun);
-    document["dispatch"] = json!(dispatch(descriptor.noun, locale));
-    if descriptor.noun && matches!(locale, Locale::En) {
-        document["providerContext"] =
-            json!({"type": 1, "association": "conditional-stable-English-provider"});
+    document["dispatch"] = json!(dispatch(descriptor.noun, locale, &descriptor.sheet));
+    if descriptor.noun {
+        if let Some((provider_type, association)) = declared_provider(locale, &descriptor.sheet) {
+            document["providerContext"] =
+                json!({"type": provider_type, "association": association});
+        }
     }
     document["status"] = json!("selected");
     if let Some([configuration, count, attributive, retained]) = noun_source {
@@ -749,7 +761,7 @@ pub fn report(
             row,
             &fields,
             column,
-            dispatch(descriptor.noun, locale) != "query",
+            dispatch(descriptor.noun, locale, &descriptor.sheet) != "query",
         );
         if document["textResolution"]["reason"] == "embedded-controls" {
             let position = fields.iter().position(|&field| field == column).unwrap();
@@ -951,13 +963,46 @@ mod tests {
 
     #[test]
     fn english_fixed_query_does_not_treat_the_noun_flag_as_noun_mode() {
-        assert_eq!(dispatch(true, Locale::En), "query");
-        assert_eq!(dispatch(false, Locale::En), "query");
-        assert_eq!(dispatch(true, Locale::De), "provider-dependent-noun");
-        assert_eq!(dispatch(false, Locale::De), "query");
+        assert_eq!(dispatch(true, Locale::En, "xtx/displayName"), "query");
+        assert_eq!(dispatch(false, Locale::En, "xtx/displayName"), "query");
+        assert_eq!(
+            dispatch(true, Locale::De, "xtx/displayName"),
+            "provider-dependent-noun"
+        );
+        assert_eq!(dispatch(false, Locale::De, "xtx/displayName"), "query");
         let row = noun_row(b"Authored [n]", [0, 1, 0]);
         let resolved = plain_text(&row, &[1, 2, 3, 4, 5], 1, false);
         assert_eq!(resolved["text"], "Authored [n]");
+        assert_eq!(resolved["association"], "conditional-default-field");
+    }
+
+    #[test]
+    fn japanese_default_query_is_limited_to_display_names() {
+        assert_eq!(dispatch(true, Locale::Ja, "xtx/displayName"), "query");
+        assert_eq!(
+            declared_provider(Locale::Ja, "xtx/displayName").unwrap().0,
+            0
+        );
+        for sheet in ["xtx/itemName", "xtx/placeName"] {
+            assert_eq!(dispatch(true, Locale::Ja, sheet), "provider-dependent-noun");
+            assert!(declared_provider(Locale::Ja, sheet).is_none());
+        }
+        for locale in [Locale::De, Locale::Fr] {
+            assert_eq!(
+                dispatch(true, locale, "xtx/displayName"),
+                "provider-dependent-noun"
+            );
+        }
+        let value = b"Authored [n]\\name";
+        let mut data = ((value.len() + 1) as u16).to_le_bytes().to_vec();
+        data.extend_from_slice(value);
+        data.push(0);
+        let row = sheet::parse_rows(&data, &[ColumnType::Text])
+            .unwrap()
+            .remove(0);
+        let resolved = plain_text(&row, &[0], 0, false);
+        assert_eq!(resolved["column"], 0);
+        assert_eq!(resolved["text"], "Authored [n]\\name");
         assert_eq!(resolved["association"], "conditional-default-field");
     }
 

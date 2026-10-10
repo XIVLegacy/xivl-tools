@@ -187,10 +187,10 @@ ready map-key join.
 The descriptor's noun flag does not enable noun mode on this caller path.
 
 The same control with `--locale ja`, `de` or `fr` returns authenticated
-displayName source fields. Each locale supports all 32 blocks. These noun
-descriptors retain `textResolution.status = requires-evaluation` with reason
-`provider-dependent-noun`; the report does not supply final noun text. For
-example, this Japanese lookup returns field 0:
+displayName source fields. Each locale supports all 32 blocks. German and
+French retain `textResolution.status = requires-evaluation` with reason
+`provider-dependent-noun`. This Japanese lookup returns conditional default
+text from field 0 under an explicitly declared stable type-0 provider:
 
 ```powershell
 cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 16 F6 0F 42 41 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale ja
@@ -198,6 +198,9 @@ cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 16 F6 0F 42 41 03
 
 The [localized source contract](formats/fixed-control.md#localized-displayname-source-lookup)
 owns field layouts, missing-row behavior and conditional map-key admission.
+The [Japanese default query](formats/fixed-control.md#japanese-displayname-default-query)
+owns its declared provider context and text support. The control bytes do
+not establish the runtime provider type.
 
 For a separate explicit fresh English NounEn context, supply its remaining four
 metadata words. This constructed `[21,1000001]` example uses configuration 0,

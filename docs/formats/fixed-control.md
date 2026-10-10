@@ -158,7 +158,9 @@ root descriptor has no metadata descriptor string. Its context is
 objects and 24 descriptors. For English noun descriptors, the model declares
 a stable type-1 provider, reports that assumption in `providerContext`, and
 selects `dispatch = query`. C9C0A0 enables noun mode only for type 2 together
-with the descriptor noun flag. Other locales retain `provider-dependent-noun`.
+with the descriptor noun flag. Japanese displayName alone declares a stable
+type-0 provider and also selects `query`. Japanese item/place names and
+German/French noun descriptors retain `provider-dependent-noun`.
 The numeric control fields do not establish a historical provider type.
 
 For `xtx/_fixedPhrase`, the second number selects a backing row under the
@@ -480,17 +482,42 @@ block identities. Japanese offset extents at begins 2700000/3290000 contain
 rather than 26. All other locale extents match their declarations. Lookup
 bounds follow the verified offsets, and missing/outside keys exit 2.
 
-These descriptors have noun flags. The diagnostic returns their source
+These descriptors have noun flags. German and French return their source
 cells while retaining `dispatch = provider-dependent-noun` and
 `textResolution.status = requires-evaluation`, with reason
 `provider-dependent-noun` and no `text`. A source field is not a complete
 localized noun output. `--noun-inputs` remains English-only.
+Japanese displayName uses the declared default query described below.
 
 The native owner is Localized displayName source keys in
 `xivl-client-structs:docs/autotranslate-selection-contract.md` at revision
 `bc6d86a18c1bcb73ad614e40a923b357ca96a64b`. Its conditional local kind-1 map,
 exact-key admission and ready-row requirements remain
 explicit. Provider state, noun configuration and rendering are not observed.
+
+### Japanese displayName default query
+
+With `--initial-registry` and `--locale ja`, category 21 declares a stable
+type-0 provider for displayName and reports that assumption in
+`providerContext.association = conditional-stable-Japanese-provider`.
+C9C0A0 selects noun mode only for type 2 together with a noun flag; this
+declared context therefore uses `dispatch = query`. The control bytes and
+locale do not establish the actual runtime provider type.
+
+Default selector 0xFF selects field 0, the Japanese definition's first index,
+with no SHEET override. The lookup returns conditional default text from
+all 5809 enabled rows in the 32 authenticated Japanese blocks above.
+Literal text is preserved without noun replacement. Supported copied
+controls retain their exact bytes; other controls require evaluation.
+No noun input words or attributive rows are required. Japanese item/place
+nouns and German/French noun output keep their existing boundaries.
+
+The native owner is Japanese displayName fixed-control query in
+`xivl-client-structs:docs/autotranslate-selection-contract.md` at revision
+`fca94eee680e1d38bfdd4e123e8947c82bff917f`. The source join still requires a
+matching local kind-1 map, populated exact-key association and ready row,
+with retained constructor and provider state. The tool does not observe
+runtime cache state, wrappers or rendering.
 
 ### Conditional English noun identity
 
@@ -688,6 +715,8 @@ singular identity, literal escaping, empty output, required attributive presence
 other inputs and flags, count placeholders and whole-field control deferral.
 English query tests check that a noun flag does not select noun mode and that
 column 1 preserves literal count placeholders regardless of noun row flags.
+Japanese query tests check field-0 literal preservation and the displayName
+scope, keeping other Japanese noun families and German/French output deferred.
 Command source tests check signed 32-bit fields and default-name selection.
 Private manual checks compare source cells with the authenticated extraction
 and exercise identity rejection; they are not required public CI inputs.
