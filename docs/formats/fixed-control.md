@@ -195,7 +195,7 @@ and u8 value 1. Code 31 and codes 41..48 report `unmapped-category`; code 49
 reports `dynamic-category`. These are static checks, without captured control
 provenance or observed rendering.
 
-Beyond these families and the English displayName query below,
+Beyond these families and the displayName lookup below,
 other named sheets report
 `sourceLookup.status = unsupported-key-association`
 while preserving the successful table selection. Missing rows, unmapped codes,
@@ -437,8 +437,8 @@ block's three target resources.
 It returns all five fields with `sourceLookup.association` equal to
 `conditional-ready-map-key`, and token-free column 1 as conditional default
 text. Supported copied controls retain exact control bytes. Missing enabled
-rows and keys outside the backing slots exit 2. Other
-displayName locales remain outside this source lookup.
+rows and keys outside the backing slots exit 2. The ja/de/fr source lookup
+is described below.
 
 `apps/cli/src/english_display_inputs.json` owns the English layout and all 96
 block identities. The definition declares 26 slots at begin 2700000 and 12 at
@@ -457,6 +457,40 @@ on a matching native kind-1 local map backend, populated
 exact-key association and ready row. Provider/locale state must remain
 unchanged. The tool returns a conditional result from authenticated inputs;
 it does not observe runtime cache state, wrappers or rendering.
+
+### Localized displayName source lookup
+
+Category 21 also selects displayName backing rows with `--locale ja`, `de`
+or `fr`. Each locale has 32 authenticated data/enable/offset sets. The CLI
+returns every declared field with the conditional ready map-key association:
+
+| Locale | Enabled rows | Fields | Types |
+| --- | --- | --- | --- |
+| ja | 5809 | 0 | str |
+| de | 5812 | 6..12 | str,s8,str,s8,s8,s8,s8 |
+| fr | 5812 | 13..18 | str,str,s8,s8,s8,s8 |
+
+All 81365 backing fields match the authenticated `xtx_displayName.csv`
+identity retained in Conditional English noun identity below. The CSV has
+four rows without enabled Japanese slots and one each without German or
+French slots. A missing backing row is not synthesized from the CSV.
+`apps/cli/src/localized_display_inputs.json` owns the three layouts and 288
+block identities. Japanese offset extents at begins 2700000/3290000 contain
+21/11 slots rather than the declared 26/12; German begin 2700000 has 21
+rather than 26. All other locale extents match their declarations. Lookup
+bounds follow the verified offsets, and missing/outside keys exit 2.
+
+These descriptors have noun flags. The diagnostic returns their source
+cells while retaining `dispatch = provider-dependent-noun` and
+`textResolution.status = requires-evaluation`, with reason
+`provider-dependent-noun` and no `text`. A source field is not a complete
+localized noun output. `--noun-inputs` remains English-only.
+
+The native owner is Localized displayName source keys in
+`xivl-client-structs:docs/autotranslate-selection-contract.md` at revision
+`bc6d86a18c1bcb73ad614e40a923b357ca96a64b`. Its conditional local kind-1 map,
+exact-key admission and ready-row requirements remain
+explicit. Provider state, noun configuration and rendering are not observed.
 
 ### Conditional English noun identity
 

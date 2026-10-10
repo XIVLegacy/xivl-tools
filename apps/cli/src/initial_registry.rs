@@ -84,9 +84,19 @@ fn guildleve_inputs() -> Vec<SheetLocale<'static>> {
         .expect("validated embedded guildleve metadata")
 }
 
-fn english_display_inputs() -> SheetLocale<'static> {
-    serde_json::from_str(include_str!("english_display_inputs.json"))
-        .expect("validated embedded English displayName metadata")
+fn display_inputs(locale: Locale) -> SheetLocale<'static> {
+    if matches!(locale, Locale::En) {
+        return serde_json::from_str(include_str!("english_display_inputs.json"))
+            .expect("validated embedded English displayName metadata");
+    }
+    let (locale_name, _) = locale.columns();
+    let inputs: Vec<SheetLocale<'static>> =
+        serde_json::from_str(include_str!("localized_display_inputs.json"))
+            .expect("validated embedded localized displayName metadata");
+    inputs
+        .into_iter()
+        .find(|input| input.locale == locale_name)
+        .expect("supported displayName locale")
 }
 
 #[derive(Deserialize)]
@@ -646,9 +656,9 @@ pub fn report(
             document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
             (loaded.rows, input.columns.clone())
         }
-        "xtx/displayName" if matches!(locale, Locale::En) => {
+        "xtx/displayName" => {
             let inputs = noun_inputs();
-            let display = english_display_inputs();
+            let display = display_inputs(locale);
             if noun_source.is_some() && !inputs.target.contains(key) {
                 document["sourceLookup"] = json!({"status": "unsupported-noun-block"});
                 return Ok((document, true));
@@ -731,7 +741,7 @@ pub fn report(
                 .locales[index]
                 .default,
         ),
-        "xtx/displayName" if noun_source.is_none() => Some(1),
+        "xtx/displayName" if noun_source.is_none() => Some(display_inputs(locale).default),
         _ => None,
     };
     if let Some(column) = default_field {
