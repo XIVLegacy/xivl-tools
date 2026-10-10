@@ -18,6 +18,8 @@ mod batch_extract;
 mod command_inspect;
 mod fixed_control;
 mod fixed_phrase;
+mod initial_registry;
+mod initial_registry_inputs;
 mod resource_export;
 mod scan;
 mod verify_extract;
@@ -33,7 +35,7 @@ usage:
   xivl inspect-command-loadout --slot-context <command_slot_context.json> [--trace <index>] [--format yaml|json]
   xivl materialize-command-loadout --slot-context <command_slot_context.json> --trace <index> [--record-range <first>:<last>] [--output <new-file>] [--format yaml|json]
   xivl lua-path <path>
-  xivl decode-fixed (<file> | --hex <bytes>) [--offset <decimal>] [--fixed-phrase-csv <file> --locale ja|en|de|fr]
+  xivl decode-fixed (<file> | --hex <bytes>) [--offset <decimal>] [--fixed-phrase-csv <file> | --initial-registry <client-root>] [--locale ja|en|de|fr]
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
   xivl catalog <game-or-resource-directory> --output <directory> [--format json|jsonl]
@@ -120,7 +122,8 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
       string values, which is how an all-string sheet is stored.
 
 decode-fixed explicitly reports raw supplied control bytes and two numeric
-fields for selector 0x2E. Other selectors remain opaque. See docs/cli.md.
+fields for selector 0x2E. --initial-registry and --locale query authenticated
+initial registry source cells. Other selectors remain opaque. See docs/cli.md.
 
 The inspect report never carries payload bytes, sheet-row text, or a configuration
 file's values. The SSD document view preserves sheet names and attribute

@@ -26,7 +26,7 @@ impl Locale {
         }
     }
 
-    fn columns(self) -> (&'static str, [usize; 2]) {
+    pub(super) fn columns(self) -> (&'static str, [usize; 2]) {
         match self {
             Self::Ja => ("ja", [2, 3]),
             Self::En => ("en", [4, 5]),

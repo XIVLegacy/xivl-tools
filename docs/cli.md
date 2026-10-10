@@ -59,6 +59,28 @@ Missing keys, category mismatches, descriptor rows, unsupported categories and
 invalid tables return a `phraseLookup` diagnostic and exit 2. Unknown controls
 remain opaque and do not load the table. The numeric-only invocation is unchanged.
 
+To select the table automatically under the conditional initial 1.23b registry,
+supply the preserved install root and locale:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 05 09 F2 03 CE 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 05 15 F2 04 1B 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
+```
+
+The first selects `xtx/_fixedPhrase` and returns the same `Map` source cells.
+The second decodes `[20,1051]`, selects `xtx/placeName` and returns English
+source fields `Limsa Lominsa`, `Limsa Lominsa` and numeric value 1. Results are
+under `registryLookup`, with `status: "selected"` and
+`sourceLookup.status: "matched"`. Resource sizes and hashes are checked before
+parsing. A changed or unavailable install fails explicitly.
+
+This model assumes a fresh, successful full metadata load. It reports other
+named tables with `unsupported-key-association` rather than returning source
+cells. Unmapped and dynamic categories, missing rows and refused ordinary
+phrases exit 2. The [initial-registry contract](formats/fixed-control.md#conditional-initial-registry-lookup)
+owns the assumptions, resource identities and remaining provider/rendering
+limits. Choose this option or `--fixed-phrase-csv`; either requires `--locale`.
+
 ## Inspect one file
 
 Use `inspect` when you want to know what a file contains without exporting its

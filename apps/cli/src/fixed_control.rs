@@ -3,7 +3,7 @@ use xivl_formats::reader::{to_hex, Span};
 use xivl_formats::richstring::fixed;
 use xivl_formats::to_canonical_json;
 
-use crate::{fixed_phrase, read_capped, Failure, MAX_INPUT_BYTES};
+use crate::{fixed_phrase, initial_registry, read_capped, Failure, MAX_INPUT_BYTES};
 
 pub fn run(arguments: &[String]) -> Result<(), Failure> {
     let (document, failed) = report(arguments)?;
@@ -20,7 +20,7 @@ pub fn run(arguments: &[String]) -> Result<(), Failure> {
 }
 
 fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
-    let usage = "usage: xivl decode-fixed (<file> | --hex <bytes>) [--offset <decimal>] [--fixed-phrase-csv <file> --locale ja|en|de|fr]";
+    let usage = "usage: xivl decode-fixed (<file> | --hex <bytes>) [--offset <decimal>] [--fixed-phrase-csv <file> | --initial-registry <client-root>] [--locale ja|en|de|fr]";
     let mut index = 0;
     let data = match arguments.first().map(String::as_str) {
         Some("--hex") => {
@@ -37,6 +37,7 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
     let mut offset = None;
     let mut table = None;
     let mut locale = None;
+    let mut registry = None;
     while index < arguments.len() {
         let value = arguments
             .get(index + 1)
@@ -48,6 +49,7 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
                 })?);
             }
             "--fixed-phrase-csv" if table.is_none() => table = Some(value),
+            "--initial-registry" if registry.is_none() => registry = Some(value),
             "--locale" if locale.is_none() => {
                 locale = Some(fixed_phrase::Locale::parse(value).ok_or_else(|| {
                     Failure::usage("fixedPhrase locale must be ja, en, de or fr")
@@ -57,9 +59,14 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
         }
         index += 2;
     }
-    if table.is_some() != locale.is_some() {
+    if table.is_some() && registry.is_some() {
         return Err(Failure::usage(
-            "--fixed-phrase-csv and --locale must be supplied together",
+            "choose --fixed-phrase-csv or --initial-registry",
+        ));
+    }
+    if (table.is_some() || registry.is_some()) != locale.is_some() {
+        return Err(Failure::usage(
+            "a lookup source and --locale must be supplied together",
         ));
     }
     let offset = offset.unwrap_or(0);
@@ -82,6 +89,15 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
                     failed = lookup_failed;
                 } else {
                     document["phraseLookup"] = json!({"status": "unsupported-control"});
+                }
+            }
+            if let (Some(root), Some(locale)) = (registry, locale) {
+                if let Some(numbers) = control.numeric_fields {
+                    let (lookup, lookup_failed) = initial_registry::report(root, numbers, locale)?;
+                    document["registryLookup"] = lookup;
+                    failed = lookup_failed;
+                } else {
+                    document["registryLookup"] = json!({"status": "unsupported-control"});
                 }
             }
             Ok((document, failed))
@@ -178,9 +194,41 @@ mod tests {
             &["--hex", "00", "--locale", "en"],
             &["--hex", "00", "--fixed-phrase-csv", "x"],
             &["--hex", "00", "--fixed-phrase-csv", "x", "--locale", "chs"],
+            &["--hex", "00", "--initial-registry", "x"],
+            &[
+                "--hex",
+                "00",
+                "--initial-registry",
+                "x",
+                "--fixed-phrase-csv",
+                "y",
+                "--locale",
+                "en",
+            ],
+            &[
+                "--hex",
+                "00",
+                "--initial-registry",
+                "x",
+                "--initial-registry",
+                "y",
+                "--locale",
+                "en",
+            ],
             &["--hex", "00", "--offset", "0", "--offset", "1"],
         ] {
             assert_eq!(report(&args(values)).unwrap_err().code, 1);
         }
+        let (result, failed) = report(&args(&[
+            "--hex",
+            "02 37 FF",
+            "--initial-registry",
+            "not-loaded",
+            "--locale",
+            "en",
+        ]))
+        .unwrap();
+        assert!(!failed);
+        assert_eq!(result["registryLookup"]["status"], "unsupported-control");
     }
 }

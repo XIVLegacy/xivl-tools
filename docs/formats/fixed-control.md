@@ -117,8 +117,82 @@ General phrase resolution still requires a verified association from the
 particular control's two numeric fields to a family, selected locale/table and
 backing lookup key. The optional fixedPhrase lookup uses explicit family and
 locale context with the conditional producer association above. AT-COMP-016/018
-do not select that association for arbitrary supplied controls. Item/place
-resolution and final client rendering remain qualified.
+do not select that association for arbitrary supplied controls. The initial
+registry option supplies the separate declared context below. Other target-key
+associations and final client rendering remain qualified.
+
+The native selector-0x2E TextModule handler queries an installed FixedSheetInterface
+with the first number, then passes its returned descriptor and the second number
+to the guarded TextModule query or noun path. The category byte map and descriptor
+vector supply the family context; the numbers alone do not. The conditional
+binding, exact dispatch cells and state requirements are recorded in
+`xivl-client-structs:docs/autotranslate-selection-contract.md`, Fixed-control
+registry lookup, at revision `143ff251b5e2d8ffc464207ccb097476cf17ad73`,
+against the authenticated executable identity above. Automatic classification
+requires a matching registry and provider/locale context.
+
+## Conditional initial registry lookup
+
+`--initial-registry <client-root> --locale ja|en|de|fr` reconstructs a fresh
+registry from the authenticated locale-specific DAT resources. It accepts an
+explicit preserved install root, reads only named resources under `data/`, and
+verifies every resource's pinned size and SHA-256 before parsing. It never uses
+merged CSV field 1 as native descriptor input. This option and the explicit
+CSV lookup are mutually exclusive.
+
+The model assumes fresh Completion vectors and counter, ready backing resources,
+successful allocations, descriptor parsing and target preparation, and an
+uninterrupted full D550 traversal. It reconstructs category-map growth, category
+object ordinals and descriptor indices separately. Empty descriptor cells do not
+add categories; `@` headers select root descriptor zero; ordinary descriptors
+append a table descriptor; leading `#` categories retain an invalid initial
+descriptor index. Map holes and repeated codes follow C9D0D0's growth-only
+assignment. The native rule and conditions are owned by
+`xivl-client-structs:docs/autotranslate-selection-contract.md`, Fixed-control
+registry lookup and Conditional initial registry.
+
+`registryLookup` reports the category source key, object ordinal, descriptor
+index, original metadata descriptor, named sheet and source identities. The
+root descriptor has no metadata descriptor string. Its context is
+`conditional-initial-1.23b-full-load`. The pinned four locales yield 41 category
+objects and 24 descriptors. A noun descriptor reports `provider-dependent-noun`;
+the tool does not guess the provider type needed to select native noun dispatch.
+
+For `xtx/_fixedPhrase`, the second number selects a backing row under the
+existing AT-COMP-016 key conditions. The tool requires matching field 0 minus
+one and empty field 1, then reports its two locale source cells. For
+`xtx/placeName`, AT-COMP-017/018 supply conditional target-key equality with
+block `(0,8002)`. Its reported source columns are ja0, en1-3, de4-5 or fr6-7;
+the English u8 field stays numeric. Source strings use SSD lossless CSV text,
+including opaque controls. No display field, fallback or grammar is chosen.
+
+Constructed controls `[8,974]` and `[20,1051]` select the fixedPhrase and
+placeName tables automatically in this context. English source cells are `Map`
+and empty for the first; the second supplies `Limsa Lominsa`, `Limsa Lominsa`
+and u8 value 1. Code 31 and codes 41..48 report `unmapped-category`; code 49
+reports `dynamic-category`. These are static checks, without captured control
+provenance or observed rendering.
+
+Other named sheets report `sourceLookup.status = unsupported-key-association`
+while preserving the successful table selection. Missing rows, unmapped codes,
+dynamic categories and refused ordinary phrases exit 2. Resource identity and
+parse failures exit 2 with a diagnostic on stderr; file-read failures exit 1.
+Unknown controls do not load resources. Later dynamic additions and locale or
+provider changes are outside this initial-state model.
+
+### Initial registry inputs
+
+`apps/cli/src/initial_registry_inputs.rs` owns the immutable resource IDs,
+sizes and SHA-256 pins. They are promoted from
+`xivl-client-data:manifests/fixed_phrase_backing_rows.json`, locales/sources,
+and `xivl-client-data:manifests/place_name_backing_rows.json`,
+definitionLocales and locales/blocks/sources, at revision
+`750eb59885752e1a4f6e69c00e87697fce6a2580`. The former owns block `(100,2926)`
+and four-field locale rows; the latter owns block `(0,8002)` and each locale's
+source column types. The executable identity above pins the native registry
+algorithm. No retail row text or resource payload is embedded in the tool.
+
+## Verification
 
 Independent literal tests check AT-COMP-007's examples, every extended mask,
 the short-range distinction, extended lengths, offsets, malformed fields and
@@ -133,3 +207,9 @@ mismatches, descriptor refusal, duplicate keys and malformed rows after a
 candidate match. Native CLI tests check explicit file/locale dispatch, lookup
 exit statuses and opaque unknown controls. This source-cell diagnostic changes
 no format support-matrix status.
+
+Initial-registry tests cover sparse backing keys, row-span disagreement,
+out-of-block enable ranges, distinct map/ordinal/descriptor coordinates,
+growth-only map assignment, noun flags and dynamic descriptor refusal.
+Private manual checks compare source cells with the authenticated extraction
+and exercise identity rejection; they are not required public CI inputs.
