@@ -544,6 +544,23 @@ local kind-1 map, populated exact-key association and ready row, with retained
 constructor and provider state. The tool does not observe runtime cache
 state, wrappers or rendering.
 
+### German displayName noun requirements
+
+German category 21 continues to return authenticated source fields with
+`dispatch = provider-dependent-noun` and no final text. A retained type-2
+provider would select the native noun path and its `[0,nativeKey,1,5,0]`
+preset. That method combines SGL with grammatical attributive fields and
+several replacement steps; nonzero DEF does not reduce it to a default-field
+query. All 5812 German displayName rows and the needed attributive backing
+rows are present, but source availability does not prove complete noun output.
+
+The native owner is German displayName noun boundary in
+`xivl-client-structs:docs/autotranslate-selection-contract.md` at revision
+`70e8168cd999aedda3b31b9e4eeed8984d2fe4a4`. The German replacement-needle
+values and complete output/return sequence are required before promoting a
+bounded noun result. The tool retains noun deferral and the existing source
+lookup behavior; `--noun-inputs` remains English-only.
+
 ### Conditional English noun identity
 
 `--noun-inputs <config>:<count>:<attributive-key>:<retained-word>` supplies
