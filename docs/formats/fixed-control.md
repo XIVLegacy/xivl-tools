@@ -166,6 +166,24 @@ block `(0,8002)`. Its reported source columns are ja0, en1-3, de4-5 or fr6-7;
 the English u8 field stays numeric. Source strings use SSD lossless CSV text,
 including opaque controls. No display field, fallback or grammar is chosen.
 
+For `xtx/itemName`, the tool selects the authenticated block containing the
+second number with `begin <= key < begin + count`, verifies its three resource
+identities and matches the nonempty backing span by key. It reports all
+declared locale fields, including numeric s8 values and opaque controls. It
+does not filter keys through the descriptor's UI candidate ranges. The generic
+ready-cache mapping makes this a conditional source-key association; it does
+not establish that an item was selected or admitted in a historical client.
+The native application is owned by
+`xivl-client-structs:docs/autotranslate-selection-contract.md`, Conditional
+item-name source keys.
+
+Constructed `[22,1000002]` selects category ordinal 22, descriptor 7 and
+metadata key 2106, whose mode-zero descriptor names `xtx/itemName`. The source
+key belongs to block `(1000000,204)` at slot 2. Its English first source cell
+is `Crystal`. Keys 10009506 and 12000016 both supply English `Bat Wing` from
+different blocks; neither equal text nor an enabled ordinal substitutes for
+the key. Source fields remain separate from TextModule query or noun output.
+
 Constructed controls `[8,974]` and `[20,1051]` select the fixedPhrase and
 placeName tables automatically in this context. English source cells are `Map`
 and empty for the first; the second supplies `Limsa Lominsa`, `Limsa Lominsa`
@@ -192,6 +210,15 @@ and four-field locale rows; the latter owns block `(0,8002)` and each locale's
 source column types. The executable identity above pins the native registry
 algorithm. No retail row text or resource payload is embedded in the tool.
 
+`apps/cli/src/item_name_inputs.json` retains only the four locale layouts,
+block begin/count pairs and data/enable/offset identities from
+`xivl-client-data:manifests/item_name_backing_rows.json`, definitionLocales
+and locales/blocks/sources. The report has 386556 bytes and SHA-256
+`D13CD40E4BBF4AC7BADECB262A185E3432F85AE787C48B978AC8854D897B5835`.
+Each supported locale has 50 disjoint blocks;
+offset counts match their declared counts. The shipped chs definition is
+documented by the source report and is outside the CLI's locale choices.
+
 ## Verification
 
 Independent literal tests check AT-COMP-007's examples, every extended mask,
@@ -211,5 +238,8 @@ no format support-matrix status.
 Initial-registry tests cover sparse backing keys, row-span disagreement,
 out-of-block enable ranges, distinct map/ordinal/descriptor coordinates,
 growth-only map assignment, noun flags and dynamic descriptor refusal.
+Item lookup checks exclusive block bounds, gaps, locale layouts and sparse
+keys across multiple blocks; private CLI checks compare selected cells in
+every supported block with the authenticated extraction.
 Private manual checks compare source cells with the authenticated extraction
 and exercise identity rejection; they are not required public CI inputs.

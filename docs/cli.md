@@ -65,11 +65,15 @@ supply the preserved install root and locale:
 ```powershell
 cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 05 09 F2 03 CE 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
 cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 05 15 F2 04 1B 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 17 F6 0F 42 42 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
 ```
 
 The first selects `xtx/_fixedPhrase` and returns the same `Map` source cells.
 The second decodes `[20,1051]`, selects `xtx/placeName` and returns English
-source fields `Limsa Lominsa`, `Limsa Lominsa` and numeric value 1. Results are
+source fields `Limsa Lominsa`, `Limsa Lominsa` and numeric value 1. The third
+decodes `[22,1000002]`, selects `xtx/itemName` and returns its English source
+fields, beginning with `Crystal`. Signed-byte fields stay numeric and embedded
+controls stay opaque. Results are
 under `registryLookup`, with `status: "selected"` and
 `sourceLookup.status: "matched"`. Resource sizes and hashes are checked before
 parsing. A changed or unavailable install fails explicitly.

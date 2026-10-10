@@ -2,6 +2,7 @@
 
 use std::path::Path;
 
+use serde::Deserialize;
 use serde_json::{json, Value};
 use xivl_formats::digest::sha256_hex;
 use xivl_formats::error::{ErrorKind, FormatError, Result};
@@ -12,10 +13,41 @@ use crate::fixed_phrase::Locale;
 use crate::initial_registry_inputs::{FIXED, PLACE};
 use crate::{read_capped, Failure};
 
-pub struct Pin {
+#[derive(Deserialize)]
+pub struct Pin<'a> {
     pub id: u32,
     pub size: usize,
-    pub sha256: &'static str,
+    pub sha256: &'a str,
+}
+
+#[derive(Deserialize)]
+struct ItemBlock<'a> {
+    begin: u32,
+    count: usize,
+    #[serde(borrow)]
+    pins: [Pin<'a>; 3],
+}
+
+#[derive(Deserialize)]
+struct ItemLocale<'a> {
+    locale: &'a str,
+    columns: Vec<usize>,
+    types: Vec<&'a str>,
+    #[serde(borrow)]
+    blocks: Vec<ItemBlock<'a>>,
+}
+
+impl ItemBlock<'_> {
+    fn contains(&self, key: u32) -> bool {
+        u64::from(key) >= u64::from(self.begin)
+            && u64::from(key) < u64::from(self.begin) + self.count as u64
+    }
+}
+
+fn item_inputs() -> Vec<ItemLocale<'static>> {
+    // Identities and layouts only; provenance is owned by Initial registry inputs.
+    serde_json::from_str(include_str!("item_name_inputs.json"))
+        .expect("validated embedded itemName metadata")
 }
 
 struct Loaded {
@@ -201,7 +233,7 @@ fn parse_backing(
 
 fn load(
     root: &Path,
-    pins: &[Pin; 3],
+    pins: &[Pin<'_>; 3],
     columns: &[ColumnType],
     begin: u32,
     count: usize,
@@ -322,6 +354,30 @@ pub fn report(
             document["targetSources"] = place.sources;
             (place.rows, fields)
         }
+        "xtx/itemName" => {
+            let inputs = item_inputs();
+            let input = &inputs[index];
+            debug_assert_eq!(input.locale, locale_name);
+            let Some(block) = input.blocks.iter().find(|block| block.contains(key)) else {
+                document["sourceLookup"] = json!({"status": "not-found"});
+                return Ok((document, true));
+            };
+            let columns: Vec<_> = input
+                .types
+                .iter()
+                .map(|kind| ColumnType::parse(kind, 0).expect("validated embedded itemName type"))
+                .collect();
+            let item = load(
+                Path::new(root),
+                &block.pins,
+                &columns,
+                block.begin,
+                block.count,
+            )?;
+            document["targetSources"] = item.sources;
+            document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
+            (item.rows, input.columns.clone())
+        }
         _ => {
             document["sourceLookup"] = json!({"status": "unsupported-key-association"});
             return Ok((document, false));
@@ -348,6 +404,7 @@ pub fn report(
             let value = match value {
                 ColumnValue::Text(_) => json!(text(value)),
                 ColumnValue::Unsigned8 { value, .. } => json!(value),
+                ColumnValue::Signed8 { value, .. } => json!(value),
                 _ => unreachable!("supported source schema"),
             };
             json!({"column": column, "value": value})
@@ -444,5 +501,28 @@ mod tests {
         let mut wrong_offsets = offsets.clone();
         wrong_offsets[..4].copy_from_slice(&(first_end - 1).to_le_bytes());
         assert!(parse_backing(&data, &enable, &wrong_offsets, &COLUMNS, 100, 3).is_err());
+    }
+
+    #[test]
+    fn item_blocks_keep_exclusive_bounds_and_locale_layouts() {
+        let inputs = item_inputs();
+        assert_eq!(inputs.len(), 4);
+        for (input, locale) in inputs.iter().zip(["ja", "en", "de", "fr"]) {
+            assert_eq!(input.locale, locale);
+            assert_eq!(input.columns.len(), input.types.len());
+            assert!(input.types.iter().all(|kind| matches!(*kind, "str" | "s8")));
+            assert_eq!(input.blocks.len(), 50);
+            assert!(input.blocks.windows(2).all(|pair| {
+                u64::from(pair[0].begin) + pair[0].count as u64 <= u64::from(pair[1].begin)
+            }));
+            let block = &input.blocks[1];
+            assert_eq!((block.begin, block.count), (1_000_000, 204));
+            assert!(!block.contains(999_999));
+            assert!(block.contains(1_000_000));
+            assert!(block.contains(1_000_203));
+            assert!(!block.contains(1_000_204));
+            assert!(!input.blocks.iter().any(|block| block.contains(1_500_000)));
+        }
+        assert_eq!(inputs[1].columns, [5, 6, 7, 8, 9, 10, 26, 30]);
     }
 }

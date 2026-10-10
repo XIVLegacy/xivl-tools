@@ -1,7 +1,7 @@
 // Authenticated inputs: docs/formats/fixed-control.md, Initial registry inputs.
 use super::initial_registry::Pin;
 
-pub const FIXED: [[Pin; 3]; 4] = [
+pub const FIXED: [[Pin<'static>; 3]; 4] = [
     [
         // ja
         Pin {
@@ -75,7 +75,7 @@ pub const FIXED: [[Pin; 3]; 4] = [
         },
     ],
 ];
-pub const PLACE: [[Pin; 3]; 4] = [
+pub const PLACE: [[Pin<'static>; 3]; 4] = [
     [
         // ja
         Pin {
