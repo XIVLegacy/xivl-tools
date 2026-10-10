@@ -17,6 +17,7 @@ use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_byt
 mod batch_extract;
 mod command_inspect;
 mod fixed_control;
+mod fixed_phrase;
 mod resource_export;
 mod scan;
 mod verify_extract;
@@ -32,7 +33,7 @@ usage:
   xivl inspect-command-loadout --slot-context <command_slot_context.json> [--trace <index>] [--format yaml|json]
   xivl materialize-command-loadout --slot-context <command_slot_context.json> --trace <index> [--record-range <first>:<last>] [--output <new-file>] [--format yaml|json]
   xivl lua-path <path>
-  xivl decode-fixed (<file> | --hex <bytes>) [--offset <decimal>]
+  xivl decode-fixed (<file> | --hex <bytes>) [--offset <decimal>] [--fixed-phrase-csv <file> --locale ja|en|de|fr]
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
   xivl catalog <game-or-resource-directory> --output <directory> [--format json|jsonl]

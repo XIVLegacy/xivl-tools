@@ -3,7 +3,7 @@ use xivl_formats::reader::{to_hex, Span};
 use xivl_formats::richstring::fixed;
 use xivl_formats::to_canonical_json;
 
-use crate::{read_capped, Failure, MAX_INPUT_BYTES};
+use crate::{fixed_phrase, read_capped, Failure, MAX_INPUT_BYTES};
 
 pub fn run(arguments: &[String]) -> Result<(), Failure> {
     let (document, failed) = report(arguments)?;
@@ -20,7 +20,7 @@ pub fn run(arguments: &[String]) -> Result<(), Failure> {
 }
 
 fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
-    let usage = "usage: xivl decode-fixed (<file> | --hex <bytes>) [--offset <decimal>]";
+    let usage = "usage: xivl decode-fixed (<file> | --hex <bytes>) [--offset <decimal>] [--fixed-phrase-csv <file> --locale ja|en|de|fr]";
     let mut index = 0;
     let data = match arguments.first().map(String::as_str) {
         Some("--hex") => {
@@ -34,25 +34,58 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
         }
         _ => return Err(Failure::usage(usage)),
     };
-    let offset = match &arguments[index..] {
-        [] => 0,
-        [option, value] if option == "--offset" => value
-            .parse::<usize>()
-            .map_err(|_| Failure::usage("offset must be an unsigned decimal byte offset"))?,
-        _ => return Err(Failure::usage(usage)),
-    };
+    let mut offset = None;
+    let mut table = None;
+    let mut locale = None;
+    while index < arguments.len() {
+        let value = arguments
+            .get(index + 1)
+            .ok_or_else(|| Failure::usage(usage))?;
+        match arguments[index].as_str() {
+            "--offset" if offset.is_none() => {
+                offset = Some(value.parse::<usize>().map_err(|_| {
+                    Failure::usage("offset must be an unsigned decimal byte offset")
+                })?);
+            }
+            "--fixed-phrase-csv" if table.is_none() => table = Some(value),
+            "--locale" if locale.is_none() => {
+                locale = Some(fixed_phrase::Locale::parse(value).ok_or_else(|| {
+                    Failure::usage("fixedPhrase locale must be ja, en, de or fr")
+                })?);
+            }
+            _ => return Err(Failure::usage(usage)),
+        }
+        index += 2;
+    }
+    if table.is_some() != locale.is_some() {
+        return Err(Failure::usage(
+            "--fixed-phrase-csv and --locale must be supplied together",
+        ));
+    }
+    let offset = offset.unwrap_or(0);
     match fixed::decode(&data, offset) {
-        Ok(control) => Ok((
-            json!({
+        Ok(control) => {
+            let mut document = json!({
                 "status": if control.numeric_fields.is_some() { "decoded" } else { "unsupported" },
                 "spanKind": if control.numeric_fields.is_some() { "control" } else { "opaque-remainder" },
                 "span": control.span.to_json(),
                 "selector": control.selector,
                 "rawHex": to_hex(control.raw),
                 "numericFields": control.numeric_fields,
-            }),
-            false,
-        )),
+            });
+            let mut failed = false;
+            if let (Some(path), Some(locale)) = (table, locale) {
+                if let Some(numbers) = control.numeric_fields {
+                    let data = read_capped(path)?;
+                    let (lookup, lookup_failed) = fixed_phrase::report(&data, numbers, locale);
+                    document["phraseLookup"] = lookup;
+                    failed = lookup_failed;
+                } else {
+                    document["phraseLookup"] = json!({"status": "unsupported-control"});
+                }
+            }
+            Ok((document, failed))
+        }
         Err(error) => {
             let available = data.get(offset..).unwrap_or_default();
             Ok((
@@ -142,6 +175,10 @@ mod tests {
             &["--hex", "gg"],
             &["--hex", "00", "--offset", "-1"],
             &["--hex", "00", "--file", "x"],
+            &["--hex", "00", "--locale", "en"],
+            &["--hex", "00", "--fixed-phrase-csv", "x"],
+            &["--hex", "00", "--fixed-phrase-csv", "x", "--locale", "chs"],
+            &["--hex", "00", "--offset", "0", "--offset", "1"],
         ] {
             assert_eq!(report(&args(values)).unwrap_err().code, 1);
         }

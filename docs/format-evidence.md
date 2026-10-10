@@ -10,7 +10,7 @@ repository makes.
 
 - [SEDB, RES, and resource paths](formats/sedb-res.md)
 - [SSD documents, sheets, and scrambled XML](formats/ssd-sheet.md)
-- [Fixed-control numeric diagnostics](formats/fixed-control.md)
+- [Fixed-control diagnostics and phrase lookup](formats/fixed-control.md)
 - [SQEX containers](formats/sqex.md)
 - [Configuration files](formats/configuration.md)
 - [Static-actor SAN records](formats/staticactor-san.md)

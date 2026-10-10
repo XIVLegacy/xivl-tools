@@ -38,7 +38,26 @@ Unknown selectors return `unsupported` and an opaque remainder with null numeric
 fields. Malformed supported controls return an error kind and offset, with exit
 status 2. Usage and I/O failures exit 1; decoded and unsupported results exit 0.
 The [fixed-control contract](formats/fixed-control.md) owns encoding, read bounds
-and the missing family/table/key association for phrase resolution.
+and semantic qualifications.
+
+For a control independently associated with an ordinary fixedPhrase record,
+supply the merged CSV and locale explicitly:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 05 09 F2 03 CE 03" --fixed-phrase-csv "C:\path\to\xtx__fixedPhrase.csv" --locale en
+```
+
+This conditional producer example decodes `[8, 974]`. With the authenticated
+1.23b CSV, `phraseLookup.status` is `matched`, English column 4 is `Map`, and
+column 5 is empty. It is a constructed codec example, not a captured selection.
+The lookup reports the supplied table's SHA-256 and both source fields
+separately; it does not choose a fallback or evaluate escaped rich controls.
+
+`--fixed-phrase-csv` declares the family; it does not infer the family from the
+bytes. Both options are required together. Locales are `ja`, `en`, `de` and `fr`.
+Missing keys, category mismatches, descriptor rows, unsupported categories and
+invalid tables return a `phraseLookup` diagnostic and exit 2. Unknown controls
+remain opaque and do not load the table. The numeric-only invocation is unchanged.
 
 ## Inspect one file
 

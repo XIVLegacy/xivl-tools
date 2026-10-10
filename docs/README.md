@@ -18,7 +18,7 @@ are detailed references.
 | Task | Guide |
 |---|---|
 | Read one file and get a structural report | [CLI: inspect and validate](cli.md#inspect-one-file) |
-| Diagnose a selector-0x2E control from supplied bytes | [CLI: fixed controls](cli.md#decode-one-fixed-control) |
+| Diagnose a selector-0x2E control or match an explicit fixedPhrase source | [CLI: fixed controls](cli.md#decode-one-fixed-control) |
 | Find resources in a game or resource directory | [CLI: catalog](cli.md#catalog-a-dat-tree) |
 | Extract one or more selected resources | [DAT extraction](resource-extraction.md) |
 | Verify an extraction without changing it | [CLI: verify-extraction](cli.md#verify-an-extraction) |
