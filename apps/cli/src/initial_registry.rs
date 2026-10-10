@@ -197,6 +197,15 @@ fn locale_index(locale: Locale) -> usize {
     }
 }
 
+fn dispatch(noun: bool, locale: Locale) -> &'static str {
+    // The English initial context declares type 1; C9C0A0 needs type 2 for noun mode.
+    if !noun || matches!(locale, Locale::En) {
+        "query"
+    } else {
+        "provider-dependent-noun"
+    }
+}
+
 fn text(value: &ColumnValue) -> String {
     match value {
         ColumnValue::Text(value) => value.rich.to_lossless_text(),
@@ -476,11 +485,11 @@ pub fn report(
     document["sheet"] = json!(descriptor.sheet);
     document["descriptor"] = json!(descriptor.source);
     document["descriptorNounFlag"] = json!(descriptor.noun);
-    document["dispatch"] = json!(if descriptor.noun {
-        "provider-dependent-noun"
-    } else {
-        "query"
-    });
+    document["dispatch"] = json!(dispatch(descriptor.noun, locale));
+    if descriptor.noun && matches!(locale, Locale::En) {
+        document["providerContext"] =
+            json!({"type": 1, "association": "conditional-stable-English-provider"});
+    }
     document["status"] = json!("selected");
     if let Some([configuration, count, attributive, retained]) = noun_source {
         document["nounContext"] = json!({"context": "explicit-fresh-NounEn", "providerType": 1,
@@ -532,17 +541,22 @@ pub fn report(
             document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
             (item.rows, input.columns.clone())
         }
-        "xtx/displayName" if noun_source.is_some() => {
+        "xtx/displayName" if matches!(locale, Locale::En) => {
             let inputs = noun_inputs();
             if !inputs.target.contains(key) {
                 document["sourceLookup"] = json!({"status": "unsupported-noun-block"});
                 return Ok((document, true));
             }
-            for pin in &inputs.configuration_pins {
+            let configuration_pins = if noun_source.is_some() {
+                &inputs.configuration_pins[..]
+            } else {
+                &inputs.configuration_pins[..2]
+            };
+            for pin in configuration_pins {
                 read_pin(Path::new(root), pin)?;
             }
-            document["nounConfigurationSources"] = json!(inputs
-                .configuration_pins
+            document["nounConfigurationSources"] = json!(inputs.configuration_pins
+                [..configuration_pins.len()]
                 .iter()
                 .map(pin_source)
                 .collect::<Vec<_>>());
@@ -559,36 +573,37 @@ pub fn report(
                 inputs.target.begin,
                 inputs.target.count,
             )?;
-            let attributive = load(
-                Path::new(root),
-                &inputs.attributive.pins,
-                &[
-                    ColumnType::Signed8,
-                    ColumnType::Text,
-                    ColumnType::Text,
-                    ColumnType::Text,
-                    ColumnType::Text,
-                    ColumnType::Text,
-                    ColumnType::Text,
-                ],
-                inputs.attributive.begin,
-                inputs.attributive.count,
-            )?;
             document["targetSources"] = target.sources;
             document["targetBlock"] =
                 json!({"begin": inputs.target.begin, "count": inputs.target.count});
-            document["attributiveSources"] = attributive.sources;
-            if let Some((_, row)) = target.rows.iter().find(|(row_key, _)| *row_key == key) {
-                let source = noun_source.unwrap();
-                document["textResolution"] = english_noun_text(
-                    row,
-                    attributive
-                        .rows
-                        .iter()
-                        .find(|(row_key, _)| *row_key == source[2])
-                        .map(|(_, row)| row),
-                    source,
-                );
+            if let Some(source) = noun_source {
+                let attributive = load(
+                    Path::new(root),
+                    &inputs.attributive.pins,
+                    &[
+                        ColumnType::Signed8,
+                        ColumnType::Text,
+                        ColumnType::Text,
+                        ColumnType::Text,
+                        ColumnType::Text,
+                        ColumnType::Text,
+                        ColumnType::Text,
+                    ],
+                    inputs.attributive.begin,
+                    inputs.attributive.count,
+                )?;
+                document["attributiveSources"] = attributive.sources;
+                if let Some((_, row)) = target.rows.iter().find(|(row_key, _)| *row_key == key) {
+                    document["textResolution"] = english_noun_text(
+                        row,
+                        attributive
+                            .rows
+                            .iter()
+                            .find(|(row_key, _)| *row_key == source[2])
+                            .map(|(_, row)| row),
+                        source,
+                    );
+                }
             }
             (target.rows, vec![1, 2, 3, 4, 5])
         }
@@ -604,10 +619,16 @@ pub fn report(
     let default_field = match descriptor.sheet.as_str() {
         "xtx/placeName" => Some(PLACE_DEFAULT_FIELDS[index]),
         "xtx/itemName" => Some(ITEM_DEFAULT_FIELDS[index]),
+        "xtx/displayName" if noun_source.is_none() => Some(1),
         _ => None,
     };
     if let Some(column) = default_field {
-        document["textResolution"] = plain_text(row, &fields, column, descriptor.noun);
+        document["textResolution"] = plain_text(
+            row,
+            &fields,
+            column,
+            dispatch(descriptor.noun, locale) != "query",
+        );
         if document["textResolution"]["reason"] == "embedded-controls" {
             let position = fields.iter().position(|&field| field == column).unwrap();
             let ColumnValue::Text(value) = &row.values[position] else {
@@ -646,8 +667,8 @@ pub fn report(
             json!({"column": column, "value": value})
         })
         .collect();
-    let association = if noun_source.is_some() {
-        "conditional-named-noun-key"
+    let association = if descriptor.sheet == "xtx/displayName" {
+        "conditional-ready-map-key"
     } else {
         "conditional-backing-key"
     };
@@ -658,6 +679,18 @@ pub fn report(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn english_fixed_query_does_not_treat_the_noun_flag_as_noun_mode() {
+        assert_eq!(dispatch(true, Locale::En), "query");
+        assert_eq!(dispatch(false, Locale::En), "query");
+        assert_eq!(dispatch(true, Locale::De), "provider-dependent-noun");
+        assert_eq!(dispatch(false, Locale::De), "query");
+        let row = noun_row(b"Authored [n]", [0, 1, 0]);
+        let resolved = plain_text(&row, &[1, 2, 3, 4, 5], 1, false);
+        assert_eq!(resolved["text"], "Authored [n]");
+        assert_eq!(resolved["association"], "conditional-default-field");
+    }
 
     fn noun_row(singular: &[u8], flags: [u8; 3]) -> Row {
         let mut data = Vec::new();

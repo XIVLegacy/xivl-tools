@@ -155,8 +155,11 @@ registry lookup and Conditional initial registry.
 index, original metadata descriptor, named sheet and source identities. The
 root descriptor has no metadata descriptor string. Its context is
 `conditional-initial-1.23b-full-load`. The pinned four locales yield 41 category
-objects and 24 descriptors. A noun descriptor reports `provider-dependent-noun`;
-the tool does not guess the provider type needed to select native noun dispatch.
+objects and 24 descriptors. For English noun descriptors, the model declares
+a stable type-1 provider, reports that assumption in `providerContext`, and
+selects `dispatch = query`. C9C0A0 enables noun mode only for type 2 together
+with the descriptor noun flag. Other locales retain `provider-dependent-noun`.
+The numeric control fields do not establish a historical provider type.
 
 For `xtx/_fixedPhrase`, the second number selects a backing row under the
 existing AT-COMP-016 key conditions. The tool requires matching field 0 minus
@@ -191,7 +194,8 @@ and u8 value 1. Code 31 and codes 41..48 report `unmapped-category`; code 49
 reports `dynamic-category`. These are static checks, without captured control
 provenance or observed rendering.
 
-Without explicit noun inputs, other named sheets report
+Beyond these families and the bounded English displayName query below,
+other named sheets report
 `sourceLookup.status = unsupported-key-association`
 while preserving the successful table selection. Missing rows, unmapped codes,
 dynamic categories and refused ordinary phrases exit 2. Resource identity and
@@ -219,7 +223,7 @@ remain available in their SSD lossless CSV representation.
 A selected field with supported literal sheet references or copied controls
 uses the evaluation below. Other controls report `requires-evaluation` with
 reason `embedded-controls`, its column and no text. Controls in other fields do
-not prevent a plain result. A noun descriptor is deferred with reason
+not prevent a plain result. Provider-dependent noun mode is deferred with reason
 `provider-dependent-noun`. A missing or non-string default field reports
 `unsupported-default-field`. These diagnostic statuses do not change the
 existing source-lookup exit codes or claim retail fallback behavior.
@@ -318,6 +322,33 @@ The constructed control `[20,1502]` selects English placeName field 1.
 Its output contains `The Astalicia`, unchanged bytes `02 10 01 03`, then
 `(Marauders' Guild)`. It returns `resolved-control-stream` without plain text.
 
+### Automatic English displayName query
+
+With `--initial-registry` and `--locale en`, category 21 selects the
+displayName descriptor under the declared initial registry context. The
+stable English provider has type 1, so the fixed-control caller selects
+mode-zero query despite the descriptor's noun flag. Default selector 0xFF
+selects column 1: the pinned definition starts with that English index and
+has no SHEET override. No noun input words or attributive rows are required.
+The query preserves the singular field without applying noun flags or
+count replacement.
+
+The bounded target is block `(1000000,601)`, with 418 enabled rows. The CLI
+authenticates the master, displayName definition and three target resources.
+It returns all five fields with `sourceLookup.association` equal to
+`conditional-ready-map-key`, and token-free column 1 as conditional default
+text. Missing enabled rows and keys outside this block exit 2. Other
+displayName locales remain outside this source lookup.
+
+The native owners are English displayName fixed-control query and English
+displayName map admission in
+`xivl-client-structs:docs/autotranslate-selection-contract.md` at revision
+`2f72fbe09c78c6692b46fb9e7a677fd72964eb5d`. The source key is conditional
+on a matching native kind-1 local map backend, populated
+exact-key association and ready row. Provider/locale state must remain
+unchanged. The tool returns a conditional result from authenticated inputs;
+it does not observe runtime cache state, wrappers or rendering.
+
 ### Conditional English noun identity
 
 `--noun-inputs <config>:<count>:<attributive-key>:<retained-word>` supplies
@@ -341,16 +372,18 @@ The native rule is owned by
 English noun identity, at revision `96583a1a35426f19adab1b903879353eb72496ee`.
 NounEn construction, valid retained configuration,
 initialized needle and ready rows remain explicit conditions. The static
-backing keys are assumed to identify the admitted named rows. The declared
-displayName `cache=100,type=map` is distinct from CacheAll, so the completed
-CacheAll inverse is not applied. A stable English CA00C0 caller join and
-runtime row-cache admission are not established by this result.
+target key uses the conditional map relation described above; attributive
+named-row admission remains assumed. The declared displayName
+`cache=100,type=map` is distinct from CacheAll, so the completed CacheAll
+inverse is not applied. The automatic English fixed-control path uses
+a sheet query and supplies no NounEn metadata; this option evaluates a
+separate explicit source context. Runtime row-cache admission is not observed.
 
 Other metadata words, row flags, controls or count placeholders return
 `requires-evaluation` without a `text` value. An unavailable source row, an
 unsupported target block or an inapplicable descriptor exits 2. These safe
 diagnostic refusals do not claim native handling of invalid configuration.
-Without this option, automatic noun dispatch remains deferred.
+Without this option, the English descriptor uses the default-field query.
 
 `apps/cli/src/english_noun_inputs.json` retains only block coordinates and nine
 resource identities. The pinned master names displayName definition
@@ -365,8 +398,9 @@ revision `06f6687b4e0adc24e7f38f3105ae9fc237de3eda`.
 The English attributive block and definition identities come from
 `xivl-client-data:manifests/attributive_backing_rows.json`, en and
 sourceDefinition. All 245 English fields were compared to its authenticated
-CSV. The CLI verifies the master, both definitions and each block's
-data/enable/offset resources before using their pinned layouts.
+CSV. The explicit context verifies the master, both definitions and each
+block's data/enable/offset resources before using their pinned layouts. The
+automatic query uses only the master, target definition and target block.
 
 ### Initial registry inputs
 
@@ -439,5 +473,7 @@ unsupported controls and forms, and exact output-byte budget boundaries.
 English noun tests check explicit metadata parsing and locale requirements,
 singular identity, literal escaping, empty output, required attributive presence,
 other inputs and flags, count placeholders and whole-field control deferral.
+English query tests check that a noun flag does not select noun mode and that
+column 1 preserves literal count placeholders regardless of noun row flags.
 Private manual checks compare source cells with the authenticated extraction
 and exercise identity rejection; they are not required public CI inputs.
