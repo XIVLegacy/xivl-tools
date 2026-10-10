@@ -215,10 +215,10 @@ backslashes retain their decoded values rather than CSV escaping. An empty
 literal returns empty text; it does not trigger a fallback. The source fields
 remain available in their SSD lossless CSV representation.
 
-A selected field with supported literal sheet references uses the evaluation
-below. Other controls report `requires-evaluation` with reason
-`embedded-controls`, its column and no text. Controls in other fields do not
-prevent a plain result. A noun descriptor is deferred with reason
+A selected field with supported literal sheet references or copied controls
+uses the evaluation below. Other controls report `requires-evaluation` with
+reason `embedded-controls`, its column and no text. Controls in other fields do
+not prevent a plain result. A noun descriptor is deferred with reason
 `provider-dependent-noun`. A missing or non-string default field reports
 `unsupported-default-field`. These diagnostic statuses do not change the
 existing source-lookup exit codes or claim retail fallback behavior.
@@ -232,7 +232,7 @@ The association applies AT-COMP-020/021 to definitionLocales in
 default fields. Matching pinned definition/index/parameter inputs, successful
 construction and unchanged selected-field state are additional conditions.
 The CLI uses promoted defaults; it does not inspect a retained native sheet.
-This resolves the conditional default text source, without claiming full
+This resolves the conditional default text source, without claiming
 all TextModule query/conversion paths, arbitrary expression or noun evaluation,
 Completion admission, output wrappers or client rendering.
 
@@ -251,18 +251,19 @@ key must be an enabled, nonempty slot strictly within the block. String fields
 are evaluated recursively under the same restricted rule. Literal text is
 appended in order, preserving brackets, backslashes and empty strings.
 
-A complete result has `association: "conditional-sheet-reference"`, UTF-8
-`text` and `references`. Each reference records sheet, row key, requested and
-selected columns, block begin/count, resource identities and the original
-lossless source cell. The outer source fields are unchanged. Any unsupported
+A complete token-free result has `association: "conditional-sheet-reference"`,
+UTF-8 `text` and `references`. An evaluated field retaining supported controls
+uses the control-stream result below. Each reference records sheet, row key,
+requested and selected columns, block begin/count, resource identities and the
+original lossless source cell. The outer source fields are unchanged. Any unsupported
 control or reference prevents text output for the whole selected field; partial
 reference evidence may remain. Reasons are `embedded-controls`,
 `unsupported-sheet-expression`, `unsupported-sheet-target`,
 `unsupported-sheet-column`, `sheet-row-not-found` or `sheet-expansion-limit`.
 The diagnostic permits at most 16 nested references, 128 reference occurrences
-and 1 MiB of expanded UTF-8 text. These are tool budgets. Source-lookup exit
-codes stay unchanged; resource identity, parse and IO failures retain their
-existing explicit failures.
+and 1 MiB of expanded output bytes, including copied controls. These are tool
+budgets. Source-lookup exit codes stay unchanged; resource identity, parse and
+IO failures retain their existing explicit failures.
 
 The native argument and recursive string association is promoted from
 `xivl-client-structs:docs/autotranslate-selection-contract.md`, Literal sheet
@@ -275,6 +276,36 @@ wrappers or rendering.
 For the constructed control `[22,13000001]`, English itemName field 5 contains
 a literal reference to `xtx/command`, row 26679, field 2. With the pinned inputs
 it returns `Pummel`. This is a verified static lookup, not a captured selection.
+
+### Copied control streams
+
+The conditional evaluator preserves empty, direct-length newline `0x10`,
+soft-hyphen `0x16` and hyphen `0x1F` controls byte for byte. It applies the
+constructor-local null callback rule in
+`xivl-client-structs:docs/autotranslate-selection-contract.md`, AT-COMP-020's
+selected-field and finite callback findings, at revision
+`ea118f61c6d4f2a581ea4a47cdda701b15a388e4`. Those slots remain null after
+construction, and CB2760 copies the valid control envelope. Retained callback
+state is a condition; the CLI does not inspect a live callback vector.
+
+If the whole selected field can be evaluated and copied, the result reports
+`status: "resolved-control-stream"`, `association: "conditional-parser-output"`,
+the selected `column`, `outputHex`, `outputEncoding: "rich-string-control-bytes"`,
+`preservedControls` and `references`. `outputHex` contains literal UTF-8 bytes
+and exact copied control envelopes in output order. Literal sheet references
+are expanded before producing this stream, including controls in a selected
+command cell. There is no plain `text` field or partial byte output. The
+source cells remain unchanged in their lossless representation.
+
+Other control types, nonempty payloads and other length forms remain deferred.
+The existing output-byte budget includes each copied envelope. Unknown nested
+controls or unsupported references defer the whole field with no `outputHex`.
+This is a conditional parser-output diagnostic. It does not assign a display
+character to a control or establish output wrappers or client rendering.
+
+The constructed control `[20,1502]` selects English placeName field 1.
+Its output contains `The Astalicia`, unchanged bytes `02 10 01 03`, then
+`(Marauders' Guild)`. It returns `resolved-control-stream` without plain text.
 
 ### Initial registry inputs
 
@@ -341,5 +372,8 @@ control deferral, noun deferral and refusal of an unavailable string default.
 Sheet-reference tests cover exact literal arguments, explicit/default column
 mapping, unsupported targets and numeric columns, missing keys, nested controls,
 whole-field refusal, cycles, reference counts and expansion budgets.
+Control-stream tests check exact copied envelopes, literal escaping, output
+order through nested sheet references, unsupported-control refusal and exact
+output-byte budget boundaries.
 Private manual checks compare source cells with the authenticated extraction
 and exercise identity rejection; they are not required public CI inputs.

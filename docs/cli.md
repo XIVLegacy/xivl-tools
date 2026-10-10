@@ -82,8 +82,9 @@ For the second and third examples, `registryLookup.textResolution` also
 returns `status: "resolved"` and conditional default text `Limsa Lominsa` or
 `Crystal`, with the selected column. Only mode-zero placeName and itemName
 rows with a token-free default field or supported literal sheet references
-receive text. Other embedded controls report `requires-evaluation` without
-text; the raw source fields stay available.
+receive text. The copied controls described below return a control stream.
+Other embedded controls report `requires-evaluation` without text; the raw
+source fields stay available.
 The [plain-text contract](formats/fixed-control.md#conditional-plain-text)
 owns field selection and its limits.
 
@@ -97,6 +98,18 @@ cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 17 F6 C6 5D 41 03
 `textResolution.references` includes each source cell and its resource pins.
 The [sheet-reference contract](formats/fixed-control.md#literal-sheet-references)
 owns supported arguments, recursion budgets and whole-field deferral.
+
+For empty newline, soft-hyphen and hyphen controls, the evaluator preserves the
+control bytes and returns `textResolution.status: "resolved-control-stream"`,
+with `outputHex` and no plain `text`. This example decodes `[20,1502]` and
+retains the newline control between `The Astalicia` and `(Marauders' Guild)`:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 05 15 F2 05 DE 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
+```
+
+The [control-stream contract](formats/fixed-control.md#copied-control-streams)
+owns the supported forms, exact output bytes and remaining rendering boundary.
 
 This model assumes a fresh, successful full metadata load. It reports other
 named tables with `unsupported-key-association` rather than returning source
