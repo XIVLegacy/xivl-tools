@@ -1,6 +1,12 @@
 //! Reusable CLI entry points used by the command and conformance runner.
 
+pub mod auto_translate;
 pub mod extract;
+pub mod fixed_control;
+mod fixed_phrase;
+mod initial_registry;
+mod initial_registry_inputs;
+mod sheet_reference;
 
 use xivl_formats::{ErrorKind, FormatError};
 

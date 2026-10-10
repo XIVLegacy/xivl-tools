@@ -270,6 +270,10 @@ The [message conversion contract](formats/fixed-control.md#whole-message-convers
 owns opaque remainder handling, lookup failures, output status and the control
 budget. This mode excludes `--offset`, `--fixed-phrase-csv` and `--noun-inputs`.
 
+Message conversion shares one authenticated resolver context across its
+controls. Programs can reuse that context across messages through the
+[resolver API](formats/fixed-control.md#reusable-resolver-api).
+
 ## Inspect one file
 
 Use `inspect` when you want to know what a file contains without exporting its

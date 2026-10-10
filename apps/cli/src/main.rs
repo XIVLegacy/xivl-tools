@@ -10,19 +10,14 @@
 use std::io::{Read, Write};
 use std::process::ExitCode;
 
-use xivl_cli::extract;
+use xivl_cli::{extract, fixed_control};
 use xivl_formats::{extract_lpb, lua_path_document};
 use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_bytes_as, InspectAs};
 
 mod batch_extract;
 mod command_inspect;
-mod fixed_control;
-mod fixed_phrase;
-mod initial_registry;
-mod initial_registry_inputs;
 mod resource_export;
 mod scan;
-mod sheet_reference;
 mod verify_extract;
 mod zone_export;
 
@@ -169,6 +164,15 @@ impl From<xivl_cli::ExtractFailure> for Failure {
     }
 }
 
+impl From<xivl_cli::auto_translate::ResolveError> for Failure {
+    fn from(failure: xivl_cli::auto_translate::ResolveError) -> Self {
+        Self {
+            message: failure.message().to_string(),
+            code: failure.code(),
+        }
+    }
+}
+
 impl Failure {
     fn usage(message: impl Into<String>) -> Self {
         Self {
@@ -198,7 +202,7 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         }
         Some("inspect") => read(&arguments[1..], Operation::Inspect),
         Some("validate") => read(&arguments[1..], Operation::Validate),
-        Some("decode-fixed") => fixed_control::run(&arguments[1..]),
+        Some("decode-fixed") => fixed_control::run(&arguments[1..]).map_err(Into::into),
         Some("inspect-command") => command_inspect::run(&arguments[1..]),
         Some("inspect-command-loadout") => command_inspect::run_loadout(&arguments[1..]),
         Some("materialize-command-loadout") => {

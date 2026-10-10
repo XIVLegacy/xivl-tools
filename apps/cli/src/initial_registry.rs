@@ -1,6 +1,8 @@
 //! Conditional reconstruction from authenticated, locale-specific backing rows.
 
-use std::path::Path;
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -11,6 +13,7 @@ use xivl_formats::resource::ResourceId;
 use xivl_formats::richstring::RichString;
 use xivl_formats::sheet::{self, ColumnType, ColumnValue, Row};
 
+use crate::auto_translate::{read_capped, ResolveError as Failure, MAX_INPUT_BYTES};
 use crate::fixed_phrase::Locale;
 use crate::initial_registry_inputs::{
     COMMAND_CONFIGURATION, FIXED, FIXED_CONFIGURATION, FIXED_DEFAULT_FIELDS,
@@ -18,7 +21,6 @@ use crate::initial_registry_inputs::{
     STATUS_CONFIGURATION,
 };
 use crate::sheet_reference::{self, Cell, QueryResult};
-use crate::{read_capped, Failure};
 
 #[derive(Deserialize)]
 pub struct Pin<'a> {
@@ -115,19 +117,6 @@ struct ReferenceSheet<'a> {
 fn reference_inputs() -> Vec<ReferenceSheet<'static>> {
     serde_json::from_str(include_str!("reference_name_inputs.json"))
         .expect("validated embedded reference name metadata")
-}
-
-fn load_sheet_block(
-    root: &Path,
-    input: &SheetLocale<'_>,
-    block: &ItemBlock<'_>,
-) -> std::result::Result<Loaded, Failure> {
-    let columns: Vec<_> = input
-        .types
-        .iter()
-        .map(|kind| ColumnType::parse(kind, 0).expect("validated embedded sheet type"))
-        .collect();
-    load(root, &block.pins, &columns, block.begin, block.count)
 }
 
 #[derive(Deserialize)]
@@ -295,9 +284,8 @@ fn german_noun_text(row: &Row, attributive: &[(u32, Row)]) -> Value {
 }
 
 fn command_query(
-    root: &Path,
+    resolver: &mut Resolver,
     input: &SheetLocale<'_>,
-    cache: &mut Vec<(usize, Loaded)>,
     name: &str,
     key: u32,
     column: usize,
@@ -316,14 +304,7 @@ fn command_query(
         return Ok(Err("sheet-row-not-found"));
     };
     let block = &input.blocks[block_index];
-    if !cache.iter().any(|(index, _)| *index == block_index) {
-        cache.push((block_index, load_sheet_block(root, input, block)?));
-    }
-    let loaded = &cache
-        .iter()
-        .find(|(index, _)| *index == block_index)
-        .unwrap()
-        .1;
+    let loaded = resolver.load_sheet_block(input, block)?;
     let Some((_, row)) = loaded.rows.iter().find(|(row_key, _)| *row_key == key) else {
         return Ok(Err("sheet-row-not-found"));
     };
@@ -342,6 +323,63 @@ fn command_query(
 struct Loaded {
     rows: Vec<(u32, Row)>,
     sources: Value,
+}
+
+struct CachedResource {
+    size: usize,
+    sha256: String,
+    bytes: Arc<Vec<u8>>,
+}
+
+struct CachedBlock {
+    pins: [(u32, usize, String); 3],
+    columns: Vec<ColumnType>,
+    begin: u32,
+    count: usize,
+    loaded: Arc<Loaded>,
+}
+
+/// One locale's lazy, authenticated input snapshot; new contexts recheck files.
+///
+/// ```no_run
+/// use xivl_cli::auto_translate::{Locale, ResolveError, Resolver};
+/// # fn main() -> Result<(), ResolveError> {
+/// let mut resolver = Resolver::new("client-root", Locale::En)?;
+/// let (lookup, refused) = resolver.resolve([8, 974], None)?;
+/// let (message, partial) = resolver.resolve_message(b"Authored message")?;
+/// # Ok(())
+/// # }
+/// ```
+pub struct Resolver {
+    root: PathBuf,
+    locale: Locale,
+    resources: BTreeMap<u32, CachedResource>,
+    blocks: Vec<CachedBlock>,
+    initial: Option<(Arc<Loaded>, Arc<Registry>)>,
+}
+
+impl Resolver {
+    /// Capture the supplied root without reading any resources yet.
+    pub fn new(root: impl AsRef<Path>, locale: Locale) -> std::result::Result<Self, Failure> {
+        let root = std::path::absolute(root).map_err(|error| Failure::io(error.to_string()))?;
+        Ok(Self {
+            root,
+            locale,
+            resources: BTreeMap::new(),
+            blocks: Vec::new(),
+            initial: None,
+        })
+    }
+
+    pub fn resolve_message(&mut self, data: &[u8]) -> std::result::Result<(Value, bool), Failure> {
+        if data.len() as u64 > MAX_INPUT_BYTES {
+            return Err(Failure::usage("message exceeds the input byte limit"));
+        }
+        crate::fixed_control::message_report(data, |numbers| {
+            self.resolve(numbers, None)
+                .map(|(document, _)| Some(document))
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -587,51 +625,8 @@ fn parse_backing(
         .collect()
 }
 
-fn load(
-    root: &Path,
-    pins: &[Pin<'_>; 3],
-    columns: &[ColumnType],
-    begin: u32,
-    count: usize,
-) -> std::result::Result<Loaded, Failure> {
-    let mut inputs = Vec::new();
-    let mut sources = Vec::new();
-    for pin in pins {
-        let data = read_pin(root, pin)?;
-        sources.push(pin_source(pin));
-        inputs.push(data);
-    }
-    let rows = parse_backing(&inputs[0], &inputs[1], &inputs[2], columns, begin, count).map_err(
-        |error| {
-            Failure::parse(format!(
-                "{} at byte {}: {}",
-                error.kind().as_str(),
-                error.offset(),
-                error.detail()
-            ))
-        },
-    )?;
-    Ok(Loaded {
-        rows,
-        sources: json!(sources),
-    })
-}
-
 fn pin_source(pin: &Pin<'_>) -> Value {
     json!({"resourceId": ResourceId::new(pin.id).to_hex(), "bytes": pin.size, "sha256": pin.sha256})
-}
-
-fn read_pin(root: &Path, pin: &Pin<'_>) -> std::result::Result<Vec<u8>, Failure> {
-    let id = ResourceId::new(pin.id);
-    let path = root.join(id.dat_path());
-    let data = read_capped(&path.to_string_lossy())?;
-    if data.len() != pin.size || sha256_hex(&data) != pin.sha256 {
-        return Err(Failure::parse(format!(
-            "{}: size or SHA-256 differs from authenticated 1.23b input",
-            id.to_hex()
-        )));
-    }
-    Ok(data)
 }
 
 pub fn report(
@@ -640,344 +635,509 @@ pub fn report(
     locale: Locale,
     noun_source: Option<[u32; 4]>,
 ) -> std::result::Result<(Value, bool), Failure> {
-    if noun_source.is_some() && !matches!(locale, Locale::En) {
-        return Err(Failure::usage(
-            "explicit NounEn context requires English source rows",
-        ));
+    Resolver::new(root, locale)?.resolve(numbers, noun_source)
+}
+
+impl Resolver {
+    fn load_sheet_block(
+        &mut self,
+        input: &SheetLocale<'_>,
+        block: &ItemBlock<'_>,
+    ) -> std::result::Result<Arc<Loaded>, Failure> {
+        let columns: Vec<_> = input
+            .types
+            .iter()
+            .map(|kind| ColumnType::parse(kind, 0).expect("validated embedded sheet type"))
+            .collect();
+        self.load(&block.pins, &columns, block.begin, block.count)
     }
-    let (locale_name, fixed_columns) = locale.columns();
-    let index = locale_index(locale);
-    let fixed = load(
-        Path::new(root),
-        &FIXED[index],
-        &[
-            ColumnType::Unsigned32,
-            ColumnType::Text,
-            ColumnType::Text,
-            ColumnType::Text,
-        ],
-        100,
-        2926,
-    )?;
-    let registry = reconstruct(&fixed.rows).map_err(|error| {
-        Failure::parse(format!(
-            "{} at byte {}: {}",
-            error.kind().as_str(),
-            error.offset(),
-            error.detail()
-        ))
-    })?;
-    let [category, key] = numbers;
-    let mut document = json!({
-        "context": "conditional-initial-1.23b-full-load",
-        "locale": locale_name,
-        "category": category,
-        "nativeKey": key,
-        "registrySources": fixed.sources,
-        "categoryCount": registry.categories.len(),
-        "descriptorCount": registry.descriptors.len(),
-    });
-    let selected = registry
-        .map
-        .get(category as usize)
-        .copied()
-        .flatten()
-        .and_then(|ordinal| {
-            registry
-                .categories
-                .get(ordinal)
-                .map(|entry| (ordinal, entry))
-        });
-    let Some((ordinal, entry)) = selected else {
-        document["status"] = json!("unmapped-category");
-        return Ok((document, true));
-    };
-    document["categoryOrdinal"] = json!(ordinal);
-    document["categorySourceKey"] = json!(entry.source_key);
-    let Some(descriptor_index) = entry.descriptor else {
-        document["status"] = json!("dynamic-category");
-        return Ok((document, true));
-    };
-    let descriptor = &registry.descriptors[descriptor_index];
-    document["descriptorIndex"] = json!(descriptor_index);
-    document["sheet"] = json!(descriptor.sheet);
-    document["descriptor"] = json!(descriptor.source);
-    document["descriptorNounFlag"] = json!(descriptor.noun);
-    document["dispatch"] = json!(dispatch(descriptor.noun, locale, &descriptor.sheet));
-    if descriptor.noun {
-        if let Some((provider_type, association)) = declared_provider(locale, &descriptor.sheet) {
-            document["providerContext"] =
-                json!({"type": provider_type, "association": association});
+
+    fn initial_rows(&mut self) -> std::result::Result<(Arc<Loaded>, Arc<Registry>), Failure> {
+        if let Some((fixed, registry)) = &self.initial {
+            return Ok((Arc::clone(fixed), Arc::clone(registry)));
         }
+        let fixed = self.load(
+            &FIXED[locale_index(self.locale)],
+            &[
+                ColumnType::Unsigned32,
+                ColumnType::Text,
+                ColumnType::Text,
+                ColumnType::Text,
+            ],
+            100,
+            2926,
+        )?;
+        let registry = Arc::new(reconstruct(&fixed.rows).map_err(|error| {
+            Failure::parse(format!(
+                "{} at byte {}: {}",
+                error.kind().as_str(),
+                error.offset(),
+                error.detail()
+            ))
+        })?);
+        self.initial = Some((Arc::clone(&fixed), Arc::clone(&registry)));
+        Ok((fixed, registry))
     }
-    document["status"] = json!("selected");
-    if let Some([configuration, count, attributive, retained]) = noun_source {
-        document["nounContext"] = json!({"context": "explicit-fresh-NounEn", "providerType": 1,
+
+    fn load(
+        &mut self,
+        pins: &[Pin<'_>; 3],
+        columns: &[ColumnType],
+        begin: u32,
+        count: usize,
+    ) -> std::result::Result<Arc<Loaded>, Failure> {
+        let identities = pins
+            .each_ref()
+            .map(|pin| (pin.id, pin.size, pin.sha256.to_string()));
+        if let Some(block) = self.blocks.iter().find(|block| {
+            block.pins == identities
+                && block.columns == columns
+                && block.begin == begin
+                && block.count == count
+        }) {
+            return Ok(Arc::clone(&block.loaded));
+        }
+        let mut inputs = Vec::new();
+        let mut sources = Vec::new();
+        for pin in pins {
+            let data = self.read_pin(pin)?;
+            sources.push(pin_source(pin));
+            inputs.push(data);
+        }
+        let rows = parse_backing(&inputs[0], &inputs[1], &inputs[2], columns, begin, count)
+            .map_err(|error| {
+                Failure::parse(format!(
+                    "{} at byte {}: {}",
+                    error.kind().as_str(),
+                    error.offset(),
+                    error.detail()
+                ))
+            })?;
+        let loaded = Arc::new(Loaded {
+            rows,
+            sources: json!(sources),
+        });
+        self.blocks.push(CachedBlock {
+            pins: identities,
+            columns: columns.to_vec(),
+            begin,
+            count,
+            loaded: Arc::clone(&loaded),
+        });
+        Ok(loaded)
+    }
+
+    fn read_pin(&mut self, pin: &Pin<'_>) -> std::result::Result<Arc<Vec<u8>>, Failure> {
+        let id = ResourceId::new(pin.id);
+        if let Some(resource) = self.resources.get(&pin.id) {
+            if resource.size != pin.size || resource.sha256 != pin.sha256 {
+                return Err(Failure::parse(format!(
+                    "{}: cached resource identity differs from requested input",
+                    id.to_hex()
+                )));
+            }
+            return Ok(Arc::clone(&resource.bytes));
+        }
+        let path = self.root.join(id.dat_path());
+        let data = read_capped(&path)?;
+        if data.len() != pin.size || sha256_hex(&data) != pin.sha256 {
+            return Err(Failure::parse(format!(
+                "{}: size or SHA-256 differs from authenticated 1.23b input",
+                id.to_hex()
+            )));
+        }
+        let data = Arc::new(data);
+        self.resources.insert(
+            pin.id,
+            CachedResource {
+                size: pin.size,
+                sha256: pin.sha256.to_string(),
+                bytes: Arc::clone(&data),
+            },
+        );
+        Ok(data)
+    }
+
+    pub fn resolve(
+        &mut self,
+        numbers: [u32; 2],
+        noun_source: Option<[u32; 4]>,
+    ) -> std::result::Result<(Value, bool), Failure> {
+        let locale = self.locale;
+        if noun_source.is_some() && !matches!(locale, Locale::En) {
+            return Err(Failure::usage(
+                "explicit NounEn context requires English source rows",
+            ));
+        }
+        let (locale_name, fixed_columns) = locale.columns();
+        let index = locale_index(locale);
+        let (fixed, registry) = self.initial_rows()?;
+        let [category, key] = numbers;
+        let mut document = json!({
+            "context": "conditional-initial-1.23b-full-load",
+            "locale": locale_name,
+            "category": category,
+            "nativeKey": key,
+            "registrySources": fixed.sources,
+            "categoryCount": registry.categories.len(),
+            "descriptorCount": registry.descriptors.len(),
+        });
+        let selected = registry
+            .map
+            .get(category as usize)
+            .copied()
+            .flatten()
+            .and_then(|ordinal| {
+                registry
+                    .categories
+                    .get(ordinal)
+                    .map(|entry| (ordinal, entry))
+            });
+        let Some((ordinal, entry)) = selected else {
+            document["status"] = json!("unmapped-category");
+            return Ok((document, true));
+        };
+        document["categoryOrdinal"] = json!(ordinal);
+        document["categorySourceKey"] = json!(entry.source_key);
+        let Some(descriptor_index) = entry.descriptor else {
+            document["status"] = json!("dynamic-category");
+            return Ok((document, true));
+        };
+        let descriptor = &registry.descriptors[descriptor_index];
+        document["descriptorIndex"] = json!(descriptor_index);
+        document["sheet"] = json!(descriptor.sheet);
+        document["descriptor"] = json!(descriptor.source);
+        document["descriptorNounFlag"] = json!(descriptor.noun);
+        document["dispatch"] = json!(dispatch(descriptor.noun, locale, &descriptor.sheet));
+        if descriptor.noun {
+            if let Some((provider_type, association)) = declared_provider(locale, &descriptor.sheet)
+            {
+                document["providerContext"] =
+                    json!({"type": provider_type, "association": association});
+            }
+        }
+        document["status"] = json!("selected");
+        if let Some([configuration, count, attributive, retained]) = noun_source {
+            document["nounContext"] = json!({"context": "explicit-fresh-NounEn", "providerType": 1,
             "sourceWords": [configuration, key, count, attributive, retained],
             "rowAssociation": "assumed-ready-named-source-keys"});
-        if !descriptor.noun || descriptor.sheet != "xtx/displayName" {
-            document["textResolution"] =
-                json!({"status": "requires-evaluation", "reason": "noun-context-not-applicable"});
-            return Ok((document, true));
-        }
-    }
-    let (rows, fields) = match descriptor.sheet.as_str() {
-        "xtx/_fixedPhrase" => {
-            for pin in &FIXED_CONFIGURATION {
-                read_pin(Path::new(root), pin)?;
-            }
-            document["configurationSources"] = json!(FIXED_CONFIGURATION
-                .iter()
-                .map(pin_source)
-                .collect::<Vec<_>>());
-            (fixed.rows, fixed_columns.to_vec())
-        }
-        "xtx/placeName" => {
-            let (columns, fields): (&[_], Vec<usize>) = match locale {
-                Locale::Ja => (&[ColumnType::Text], vec![0]),
-                Locale::En => (
-                    &[ColumnType::Text, ColumnType::Text, ColumnType::Unsigned8],
-                    vec![1, 2, 3],
-                ),
-                Locale::De => (&[ColumnType::Text, ColumnType::Text], vec![4, 5]),
-                Locale::Fr => (&[ColumnType::Text, ColumnType::Text], vec![6, 7]),
-            };
-            let place = load(Path::new(root), &PLACE[index], columns, 0, 8002)?;
-            document["targetSources"] = place.sources;
-            (place.rows, fields)
-        }
-        "xtx/itemName" => {
-            let inputs = item_inputs();
-            let input = &inputs[index];
-            debug_assert_eq!(input.locale, locale_name);
-            let Some(block) = input.blocks.iter().find(|block| block.contains(key)) else {
-                document["sourceLookup"] = json!({"status": "not-found"});
+            if !descriptor.noun || descriptor.sheet != "xtx/displayName" {
+                document["textResolution"] = json!({"status": "requires-evaluation", "reason": "noun-context-not-applicable"});
                 return Ok((document, true));
-            };
-            let columns: Vec<_> = input
-                .types
-                .iter()
-                .map(|kind| ColumnType::parse(kind, 0).expect("validated embedded itemName type"))
-                .collect();
-            let item = load(
-                Path::new(root),
-                &block.pins,
-                &columns,
-                block.begin,
-                block.count,
-            )?;
-            document["targetSources"] = item.sources;
-            document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
-            (item.rows, input.columns.clone())
+            }
         }
-        "xtx/command"
-        | "xtx/status"
-        | "xtx/quest"
-        | "xtx/guildleve"
-        | "xtx/text_guardian"
-        | "xtx/text_equipPtName"
-        | "xtx/text_skillName"
-        | "xtx/text_jobName" => {
-            let (inputs, configuration) = match descriptor.sheet.as_str() {
-                "xtx/command" => (command_inputs(), COMMAND_CONFIGURATION),
-                "xtx/status" => (status_inputs(), STATUS_CONFIGURATION),
-                "xtx/quest" => (quest_inputs(), QUEST_CONFIGURATION),
-                "xtx/guildleve" => (guildleve_inputs(), GUILDLEVE_CONFIGURATION),
-                name => {
-                    let reference = reference_inputs()
-                        .into_iter()
-                        .find(|input| input.sheet == name)
-                        .expect("selected supported reference sheet");
-                    (reference.locales, reference.configuration_pins)
+        let (rows, fields) = match descriptor.sheet.as_str() {
+            "xtx/_fixedPhrase" => {
+                for pin in &FIXED_CONFIGURATION {
+                    self.read_pin(pin)?;
                 }
-            };
-            let input = &inputs[index];
-            debug_assert_eq!(input.locale, locale_name);
-            let Some(block) = input.blocks.iter().find(|block| block.contains(key)) else {
-                document["sourceLookup"] = json!({"status": "not-found"});
-                return Ok((document, true));
-            };
-            for pin in &configuration {
-                read_pin(Path::new(root), pin)?;
+                document["configurationSources"] = json!(FIXED_CONFIGURATION
+                    .iter()
+                    .map(pin_source)
+                    .collect::<Vec<_>>());
+                (fixed, fixed_columns.to_vec())
             }
-            document["configurationSources"] =
-                json!(configuration.iter().map(pin_source).collect::<Vec<_>>());
-            if matches!(
-                descriptor.sheet.as_str(),
-                "xtx/status" | "xtx/quest" | "xtx/guildleve"
-            ) {
-                // The declared none policy does not establish a ready full-load backend.
-                document["nativeConditions"] = json!({"sheetCacheState": 0,
+            "xtx/placeName" => {
+                let (columns, fields): (&[_], Vec<usize>) = match locale {
+                    Locale::Ja => (&[ColumnType::Text], vec![0]),
+                    Locale::En => (
+                        &[ColumnType::Text, ColumnType::Text, ColumnType::Unsigned8],
+                        vec![1, 2, 3],
+                    ),
+                    Locale::De => (&[ColumnType::Text, ColumnType::Text], vec![4, 5]),
+                    Locale::Fr => (&[ColumnType::Text, ColumnType::Text], vec![6, 7]),
+                };
+                let place = self.load(&PLACE[index], columns, 0, 8002)?;
+                document["targetSources"] = place.sources.clone();
+                (place, fields)
+            }
+            "xtx/itemName" => {
+                let inputs = item_inputs();
+                let input = &inputs[index];
+                debug_assert_eq!(input.locale, locale_name);
+                let Some(block) = input.blocks.iter().find(|block| block.contains(key)) else {
+                    document["sourceLookup"] = json!({"status": "not-found"});
+                    return Ok((document, true));
+                };
+                let columns: Vec<_> = input
+                    .types
+                    .iter()
+                    .map(|kind| {
+                        ColumnType::parse(kind, 0).expect("validated embedded itemName type")
+                    })
+                    .collect();
+                let item = self.load(&block.pins, &columns, block.begin, block.count)?;
+                document["targetSources"] = item.sources.clone();
+                document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
+                (item, input.columns.clone())
+            }
+            "xtx/command"
+            | "xtx/status"
+            | "xtx/quest"
+            | "xtx/guildleve"
+            | "xtx/text_guardian"
+            | "xtx/text_equipPtName"
+            | "xtx/text_skillName"
+            | "xtx/text_jobName" => {
+                let (inputs, configuration) = match descriptor.sheet.as_str() {
+                    "xtx/command" => (command_inputs(), COMMAND_CONFIGURATION),
+                    "xtx/status" => (status_inputs(), STATUS_CONFIGURATION),
+                    "xtx/quest" => (quest_inputs(), QUEST_CONFIGURATION),
+                    "xtx/guildleve" => (guildleve_inputs(), GUILDLEVE_CONFIGURATION),
+                    name => {
+                        let reference = reference_inputs()
+                            .into_iter()
+                            .find(|input| input.sheet == name)
+                            .expect("selected supported reference sheet");
+                        (reference.locales, reference.configuration_pins)
+                    }
+                };
+                let input = &inputs[index];
+                debug_assert_eq!(input.locale, locale_name);
+                let Some(block) = input.blocks.iter().find(|block| block.contains(key)) else {
+                    document["sourceLookup"] = json!({"status": "not-found"});
+                    return Ok((document, true));
+                };
+                for pin in &configuration {
+                    self.read_pin(pin)?;
+                }
+                document["configurationSources"] =
+                    json!(configuration.iter().map(pin_source).collect::<Vec<_>>());
+                if matches!(
+                    descriptor.sheet.as_str(),
+                    "xtx/status" | "xtx/quest" | "xtx/guildleve"
+                ) {
+                    // The declared none policy does not establish a ready full-load backend.
+                    document["nativeConditions"] = json!({"sheetCacheState": 0,
                     "backend": "matching-ready-CacheAll", "association": "assumed-completed-full-load"});
+                }
+                let loaded = self.load_sheet_block(input, block)?;
+                document["targetSources"] = loaded.sources.clone();
+                document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
+                (loaded, input.columns.clone())
             }
-            let loaded = load_sheet_block(Path::new(root), input, block)?;
-            document["targetSources"] = loaded.sources;
-            document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
-            (loaded.rows, input.columns.clone())
-        }
-        "xtx/displayName" => {
-            let inputs = noun_inputs();
-            let display = display_inputs(locale);
-            let german = matches!(locale, Locale::De) && descriptor.noun;
-            let german_inputs = german.then(german_noun_inputs);
-            if noun_source.is_some() && !inputs.target.contains(key) {
-                document["sourceLookup"] = json!({"status": "unsupported-noun-block"});
-                return Ok((document, true));
-            }
-            let Some(block) = display.blocks.iter().find(|block| block.contains(key)) else {
-                document["sourceLookup"] = json!({"status": "not-found"});
-                return Ok((document, true));
-            };
-            let configuration_pins = if let Some(inputs) = &german_inputs {
-                &inputs.configuration_pins[..]
-            } else if noun_source.is_some() {
-                &inputs.configuration_pins[..]
-            } else {
-                &inputs.configuration_pins[..2]
-            };
-            for pin in configuration_pins {
-                read_pin(Path::new(root), pin)?;
-            }
-            document["nounConfigurationSources"] = json!(configuration_pins
-                .iter()
-                .map(pin_source)
-                .collect::<Vec<_>>());
-            let target = load_sheet_block(Path::new(root), &display, block)?;
-            document["targetSources"] = target.sources;
-            document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
-            if let Some(inputs) = german_inputs {
-                let mut columns = vec![ColumnType::Signed8];
-                columns.extend([ColumnType::Text; 16]);
-                let attributive = load(
-                    Path::new(root),
-                    &inputs.attributive.pins,
-                    &columns,
-                    inputs.attributive.begin,
-                    inputs.attributive.count,
-                )?;
-                document["nounContext"] = json!({"context": "conditional-fresh-NounDe",
+            "xtx/displayName" => {
+                let inputs = noun_inputs();
+                let display = display_inputs(locale);
+                let german = matches!(locale, Locale::De) && descriptor.noun;
+                let german_inputs = german.then(german_noun_inputs);
+                if noun_source.is_some() && !inputs.target.contains(key) {
+                    document["sourceLookup"] = json!({"status": "unsupported-noun-block"});
+                    return Ok((document, true));
+                }
+                let Some(block) = display.blocks.iter().find(|block| block.contains(key)) else {
+                    document["sourceLookup"] = json!({"status": "not-found"});
+                    return Ok((document, true));
+                };
+                let configuration_pins = if let Some(inputs) = &german_inputs {
+                    &inputs.configuration_pins[..]
+                } else if noun_source.is_some() {
+                    &inputs.configuration_pins[..]
+                } else {
+                    &inputs.configuration_pins[..2]
+                };
+                for pin in configuration_pins {
+                    self.read_pin(pin)?;
+                }
+                document["nounConfigurationSources"] = json!(configuration_pins
+                    .iter()
+                    .map(pin_source)
+                    .collect::<Vec<_>>());
+                let target = self.load_sheet_block(&display, block)?;
+                document["targetSources"] = target.sources.clone();
+                document["targetBlock"] = json!({"begin": block.begin, "count": block.count});
+                if let Some(inputs) = german_inputs {
+                    let mut columns = vec![ColumnType::Signed8];
+                    columns.extend([ColumnType::Text; 16]);
+                    let attributive = self.load(
+                        &inputs.attributive.pins,
+                        &columns,
+                        inputs.attributive.begin,
+                        inputs.attributive.count,
+                    )?;
+                    document["nounContext"] = json!({"context": "conditional-fresh-NounDe",
                     "providerType": 2, "sourceWords": [0, key, 1, 5, 0],
                     "rowAssociation": "assumed-ready-named-source-keys",
                     "destination": "assumed-empty-temporary",
                     "needles": "assumed-retained-initial-strings"});
-                document["attributiveSources"] = attributive.sources;
-                if let Some((_, row)) = target.rows.iter().find(|(row_key, _)| *row_key == key) {
-                    document["textResolution"] = german_noun_text(row, &attributive.rows);
+                    document["attributiveSources"] = attributive.sources.clone();
+                    if let Some((_, row)) = target.rows.iter().find(|(row_key, _)| *row_key == key)
+                    {
+                        document["textResolution"] = german_noun_text(row, &attributive.rows);
+                    }
                 }
-            }
-            if let Some(source) = noun_source {
-                let attributive = load(
-                    Path::new(root),
-                    &inputs.attributive.pins,
-                    &[
-                        ColumnType::Signed8,
-                        ColumnType::Text,
-                        ColumnType::Text,
-                        ColumnType::Text,
-                        ColumnType::Text,
-                        ColumnType::Text,
-                        ColumnType::Text,
-                    ],
-                    inputs.attributive.begin,
-                    inputs.attributive.count,
-                )?;
-                document["attributiveSources"] = attributive.sources;
-                if let Some((_, row)) = target.rows.iter().find(|(row_key, _)| *row_key == key) {
-                    document["textResolution"] = english_noun_text(
-                        row,
-                        attributive
-                            .rows
-                            .iter()
-                            .find(|(row_key, _)| *row_key == source[2])
-                            .map(|(_, row)| row),
-                        source,
-                    );
+                if let Some(source) = noun_source {
+                    let attributive = self.load(
+                        &inputs.attributive.pins,
+                        &[
+                            ColumnType::Signed8,
+                            ColumnType::Text,
+                            ColumnType::Text,
+                            ColumnType::Text,
+                            ColumnType::Text,
+                            ColumnType::Text,
+                            ColumnType::Text,
+                        ],
+                        inputs.attributive.begin,
+                        inputs.attributive.count,
+                    )?;
+                    document["attributiveSources"] = attributive.sources.clone();
+                    if let Some((_, row)) = target.rows.iter().find(|(row_key, _)| *row_key == key)
+                    {
+                        document["textResolution"] = english_noun_text(
+                            row,
+                            attributive
+                                .rows
+                                .iter()
+                                .find(|(row_key, _)| *row_key == source[2])
+                                .map(|(_, row)| row),
+                            source,
+                        );
+                    }
                 }
+                (target, display.columns)
             }
-            (target.rows, display.columns)
-        }
-        _ => {
-            document["sourceLookup"] = json!({"status": "unsupported-key-association"});
-            return Ok((document, false));
-        }
-    };
-    let Some((_, row)) = rows.iter().find(|(row_key, _)| *row_key == key) else {
-        document["sourceLookup"] = json!({"status": "not-found"});
-        return Ok((document, true));
-    };
-    let values = if descriptor_index == 0 {
-        let Some(values) = ordinary_phrase_values(row, category)
-            .map_err(|error| Failure::parse(error.detail()))?
-        else {
-            document["sourceLookup"] = json!({"status": "not-ordinary-phrase"});
+            _ => {
+                document["sourceLookup"] = json!({"status": "unsupported-key-association"});
+                return Ok((document, false));
+            }
+        };
+        let Some((_, row)) = rows.rows.iter().find(|(row_key, _)| *row_key == key) else {
+            document["sourceLookup"] = json!({"status": "not-found"});
             return Ok((document, true));
         };
-        values
-    } else {
-        &row.values[..]
-    };
-    let default_field = match descriptor.sheet.as_str() {
-        "xtx/_fixedPhrase" => Some(FIXED_DEFAULT_FIELDS[index]),
-        "xtx/placeName" => Some(PLACE_DEFAULT_FIELDS[index]),
-        "xtx/itemName" => Some(ITEM_DEFAULT_FIELDS[index]),
-        "xtx/command" => Some(command_inputs()[index].default),
-        "xtx/status" => Some(status_inputs()[index].default),
-        "xtx/quest" => Some(quest_inputs()[index].default),
-        "xtx/guildleve" => Some(guildleve_inputs()[index].default),
-        "xtx/text_guardian"
-        | "xtx/text_equipPtName"
-        | "xtx/text_skillName"
-        | "xtx/text_jobName" => Some(
-            reference_inputs()
-                .into_iter()
-                .find(|input| input.sheet == descriptor.sheet)
-                .expect("selected supported reference sheet")
-                .locales[index]
-                .default,
-        ),
-        "xtx/displayName"
-            if noun_source.is_none()
-                && dispatch(descriptor.noun, locale, &descriptor.sheet) == "query" =>
-        {
-            Some(display_inputs(locale).default)
-        }
-        _ => None,
-    };
-    if let Some(column) = default_field {
-        document["textResolution"] = plain_text(
-            values,
-            &fields,
-            column,
-            dispatch(descriptor.noun, locale, &descriptor.sheet) != "query",
-        );
-        if document["textResolution"]["reason"] == "embedded-controls" {
-            let position = fields.iter().position(|&field| field == column).unwrap();
-            let ColumnValue::Text(value) = &values[position] else {
-                unreachable!("plain_text admitted selected string")
+        let values = if descriptor_index == 0 {
+            let Some(values) = ordinary_phrase_values(row, category)
+                .map_err(|error| Failure::parse(error.detail()))?
+            else {
+                document["sourceLookup"] = json!({"status": "not-ordinary-phrase"});
+                return Ok((document, true));
             };
-            let inputs = command_inputs();
-            let input = &inputs[index];
-            debug_assert_eq!(input.locale, locale_name);
-            let mut cache = Vec::new();
-            document["textResolution"] =
-                sheet_reference::resolve(&value.rich, column, |name, key, field| {
-                    command_query(Path::new(root), input, &mut cache, name, key, field)
-                })?;
+            values
+        } else {
+            &row.values[..]
+        };
+        let default_field = match descriptor.sheet.as_str() {
+            "xtx/_fixedPhrase" => Some(FIXED_DEFAULT_FIELDS[index]),
+            "xtx/placeName" => Some(PLACE_DEFAULT_FIELDS[index]),
+            "xtx/itemName" => Some(ITEM_DEFAULT_FIELDS[index]),
+            "xtx/command" => Some(command_inputs()[index].default),
+            "xtx/status" => Some(status_inputs()[index].default),
+            "xtx/quest" => Some(quest_inputs()[index].default),
+            "xtx/guildleve" => Some(guildleve_inputs()[index].default),
+            "xtx/text_guardian"
+            | "xtx/text_equipPtName"
+            | "xtx/text_skillName"
+            | "xtx/text_jobName" => Some(
+                reference_inputs()
+                    .into_iter()
+                    .find(|input| input.sheet == descriptor.sheet)
+                    .expect("selected supported reference sheet")
+                    .locales[index]
+                    .default,
+            ),
+            "xtx/displayName"
+                if noun_source.is_none()
+                    && dispatch(descriptor.noun, locale, &descriptor.sheet) == "query" =>
+            {
+                Some(display_inputs(locale).default)
+            }
+            _ => None,
+        };
+        if let Some(column) = default_field {
+            document["textResolution"] = plain_text(
+                values,
+                &fields,
+                column,
+                dispatch(descriptor.noun, locale, &descriptor.sheet) != "query",
+            );
+            if document["textResolution"]["reason"] == "embedded-controls" {
+                let position = fields.iter().position(|&field| field == column).unwrap();
+                let ColumnValue::Text(value) = &values[position] else {
+                    unreachable!("plain_text admitted selected string")
+                };
+                let inputs = command_inputs();
+                let input = &inputs[index];
+                debug_assert_eq!(input.locale, locale_name);
+                document["textResolution"] =
+                    sheet_reference::resolve(&value.rich, column, |name, key, field| {
+                        command_query(self, input, name, key, field)
+                    })?;
+            }
         }
+        let cells = source_cells(values, &fields);
+        let association = if descriptor.sheet == "xtx/displayName" {
+            "conditional-ready-map-key"
+        } else {
+            "conditional-backing-key"
+        };
+        document["sourceLookup"] = json!({"status": "matched", "association": association, "rowKey": key, "textEncoding": "ssd-lossless-csv", "fields": cells});
+        Ok((document, false))
     }
-    let cells = source_cells(values, &fields);
-    let association = if descriptor.sheet == "xtx/displayName" {
-        "conditional-ready-map-key"
-    } else {
-        "conditional-backing-key"
-    };
-    document["sourceLookup"] = json!({"status": "matched", "association": association, "rowKey": key, "textEncoding": "ssd-lossless-csv", "fields": cells});
-    Ok((document, false))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resolver_reuses_authenticated_bytes_and_parsed_blocks_after_source_changes() {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join(format!(
+            "../../target/resolver-cache-{}-{stamp}",
+            std::process::id()
+        ));
+        let data = row(9, "");
+        let enable: Vec<_> = [100u32, 1].into_iter().flat_map(u32::to_le_bytes).collect();
+        let offsets = (data.len() as u32).to_le_bytes().to_vec();
+        let bytes = [data, enable, offsets];
+        let hashes = bytes.each_ref().map(|data| sha256_hex(data));
+        let pins = [0, 1, 2].map(|index| Pin {
+            id: 0x01000001 + index as u32,
+            size: bytes[index].len(),
+            sha256: &hashes[index],
+        });
+        let paths = pins
+            .each_ref()
+            .map(|pin| root.join(ResourceId::new(pin.id).dat_path()));
+        for (path, bytes) in paths.iter().zip(&bytes) {
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, bytes).unwrap();
+        }
+        let mut resolver = Resolver::new(&root, Locale::En).unwrap();
+        std::fs::write(&paths[0], b"Wrong").unwrap();
+        assert!(resolver.read_pin(&pins[0]).is_err());
+        assert!(!resolver.resources.contains_key(&pins[0].id));
+        std::fs::write(&paths[0], &bytes[0]).unwrap();
+        let first = resolver.load(&pins, &COLUMNS, 100, 1).unwrap();
+        for path in &paths {
+            std::fs::write(path, b"Changed").unwrap();
+        }
+        let again = resolver.load(&pins, &COLUMNS, 100, 1).unwrap();
+        assert!(Arc::ptr_eq(&first, &again));
+        assert_eq!(again.rows[0].0, 100);
+        assert!(resolver.load(&pins, &COLUMNS, 101, 1).is_err());
+        let different = Pin {
+            id: pins[0].id,
+            size: pins[0].size + 1,
+            sha256: pins[0].sha256,
+        };
+        assert!(resolver.read_pin(&different).is_err());
+        let mut fresh = Resolver::new(&root, Locale::En).unwrap();
+        assert!(fresh.load(&pins, &COLUMNS, 100, 1).is_err());
+        for path in &paths {
+            std::fs::remove_file(path).unwrap();
+        }
+        for path in paths[0].parent().unwrap().ancestors() {
+            if !path.starts_with(&root) {
+                break;
+            }
+            std::fs::remove_dir(path).unwrap();
+        }
+    }
 
     #[test]
     fn reference_names_keep_first_index_defaults_and_signed_noun_fields() {
@@ -1824,78 +1984,54 @@ mod tests {
             let mut row = text_row(&[b"Authored"]);
             row.values
                 .resize(input.columns.len(), row.values[0].clone());
-            let mut cache = vec![(
-                1,
-                Loaded {
+            let mut resolver = Resolver::new("unused", Locale::parse(locale).unwrap()).unwrap();
+            let block = &input.blocks[1];
+            resolver.blocks.push(CachedBlock {
+                pins: block
+                    .pins
+                    .each_ref()
+                    .map(|pin| (pin.id, pin.size, pin.sha256.to_string())),
+                columns: input
+                    .types
+                    .iter()
+                    .map(|kind| ColumnType::parse(kind, 0).unwrap())
+                    .collect(),
+                begin: block.begin,
+                count: block.count,
+                loaded: Arc::new(Loaded {
                     rows: vec![(10_042, row)],
                     sources: json!([]),
-                },
-            )];
+                }),
+            });
             for requested in [default, 255] {
-                let cell = command_query(
-                    Path::new("unused"),
-                    input,
-                    &mut cache,
-                    "xtx/command",
-                    10_042,
-                    requested,
-                )
-                .unwrap()
-                .unwrap();
+                let cell = command_query(&mut resolver, input, "xtx/command", 10_042, requested)
+                    .unwrap()
+                    .unwrap();
                 assert_eq!(cell.rich.text_only(), "Authored");
                 assert_eq!(cell.evidence["column"], default);
                 assert_eq!(cell.evidence["requestedColumn"], requested);
             }
             assert!(matches!(
-                command_query(
-                    Path::new("unused"),
-                    input,
-                    &mut cache,
-                    "xtx/command",
-                    10_043,
-                    default
-                ),
+                command_query(&mut resolver, input, "xtx/command", 10_043, default),
                 Ok(Err("sheet-row-not-found"))
             ));
             assert!(matches!(
-                command_query(
-                    Path::new("unused"),
-                    input,
-                    &mut cache,
-                    "xtx/command",
-                    9_999,
-                    default
-                ),
+                command_query(&mut resolver, input, "xtx/command", 9_999, default),
                 Ok(Err("sheet-row-not-found"))
             ));
             assert!(matches!(
-                command_query(
-                    Path::new("unused"),
-                    input,
-                    &mut cache,
-                    "xtx/other",
-                    10_042,
-                    default
-                ),
+                command_query(&mut resolver, input, "xtx/other", 10_042, default),
                 Ok(Err("unsupported-sheet-target"))
             ));
             assert!(matches!(
-                command_query(
-                    Path::new("unused"),
-                    input,
-                    &mut cache,
-                    "xtx/command",
-                    10_042,
-                    254
-                ),
+                command_query(&mut resolver, input, "xtx/command", 10_042, 254),
                 Ok(Err("unsupported-sheet-column"))
             ));
             if let Some(position) = input.types.iter().position(|kind| *kind == "s32") {
                 assert!(matches!(
                     command_query(
-                        Path::new("unused"),
+                        &mut resolver,
                         input,
-                        &mut cache,
                         "xtx/command",
                         10_042,
                         input.columns[position]

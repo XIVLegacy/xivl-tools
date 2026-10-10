@@ -3,7 +3,8 @@ use xivl_formats::reader::{to_hex, Span};
 use xivl_formats::richstring::fixed;
 use xivl_formats::to_canonical_json;
 
-use crate::{fixed_phrase, initial_registry, read_capped, Failure, MAX_INPUT_BYTES};
+use crate::auto_translate::{read_capped, ResolveError as Failure, Resolver, MAX_INPUT_BYTES};
+use crate::{fixed_phrase, initial_registry};
 
 pub fn run(arguments: &[String]) -> Result<(), Failure> {
     let (document, failed) = report(arguments)?;
@@ -30,7 +31,7 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
         }
         Some(path) if !path.starts_with('-') => {
             index += 1;
-            read_capped(path)?
+            read_capped(std::path::Path::new(path))?
         }
         _ => return Err(Failure::usage(usage)),
     };
@@ -92,14 +93,11 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
                 "--message cannot be combined with --offset, --fixed-phrase-csv or --noun-inputs",
             ));
         }
-        return message_report(&data, |numbers| {
-            if let (Some(root), Some(locale)) = (registry, locale) {
-                initial_registry::report(root, numbers, locale, None)
-                    .map(|(lookup, _)| Some(lookup))
-            } else {
-                Ok(None)
-            }
-        });
+        return if let (Some(root), Some(locale)) = (registry, locale) {
+            Resolver::new(root, locale)?.resolve_message(&data)
+        } else {
+            message_report(&data, |_| Ok(None))
+        };
     }
     let offset = offset.unwrap_or(0);
     match fixed::decode(&data, offset) {
@@ -115,7 +113,7 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
             let mut failed = false;
             if let (Some(path), Some(locale)) = (table, locale) {
                 if let Some(numbers) = control.numeric_fields {
-                    let data = read_capped(path)?;
+                    let data = read_capped(std::path::Path::new(path))?;
                     let (lookup, lookup_failed) = fixed_phrase::report(&data, numbers, locale);
                     document["phraseLookup"] = lookup;
                     failed = lookup_failed;
@@ -155,7 +153,7 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
 
 const MAX_MESSAGE_CONTROLS: usize = 1024;
 
-fn message_report(
+pub(crate) fn message_report(
     data: &[u8],
     mut lookup: impl FnMut([u32; 2]) -> Result<Option<Value>, Failure>,
 ) -> Result<(Value, bool), Failure> {
@@ -487,7 +485,7 @@ mod tests {
                 "0:1:5:0",
             ],
         ] {
-            assert_eq!(report(&args(&values)).unwrap_err().code, 1);
+            assert_eq!(report(&args(&values)).unwrap_err().code(), 1);
         }
         let (result, failed) = report(&args(&[
             "--hex",
@@ -542,7 +540,7 @@ mod tests {
             ],
             &["--hex", "00", "--offset", "0", "--offset", "1"],
         ] {
-            assert_eq!(report(&args(values)).unwrap_err().code, 1);
+            assert_eq!(report(&args(values)).unwrap_err().code(), 1);
         }
         let (result, failed) = report(&args(&[
             "--hex",

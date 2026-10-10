@@ -91,6 +91,47 @@ partial result. This tool limit bounds lookup/report growth, without asserting
 a client message limit. `--message` excludes `--offset`, source-only
 `--fixed-phrase-csv` and per-control `--noun-inputs`.
 
+### Reusable resolver API
+
+The `xivl-cli` package exports `xivl_cli::auto_translate::{Locale, Resolver,
+ResolveError, ResolveErrorKind}`. `Resolver::new(root, locale)` captures the
+supplied root as an absolute path without loading resources. A context keeps
+its root and locale for its lifetime. `resolve([category, native_key],
+noun_inputs)` returns the registry lookup report; `resolve_message(bytes)`
+returns the whole-message report above. Both return `(document, failed)` in
+a `Result`: `failed` is the existing CLI diagnostic failure flag. A partial
+message sets it to true; a false direct-lookup flag does not guarantee resolved
+text. Inspect the report's status and text resolution before using its output.
+Source I/O, identity and backing-parse failures return `ResolveError`, with
+`kind()`, `message()` and the corresponding CLI `code()`.
+
+Each resource enters the context on its first successful size/SHA-256 check.
+Later requests reuse those bytes. Parsed backing blocks are shared only for
+matching input identities, columns and key extents. The initial registry is
+reconstructed once. Literal sheet references use the same block cache as
+direct queries. Other resources authenticate when first used. Changed files
+are checked by a new context when it first requests them; existing contexts
+retain their authenticated inputs. Dropping the context releases its caches.
+The CLI uses one context for every control in a message.
+
+```rust
+use std::path::Path;
+use serde_json::Value;
+use xivl_cli::auto_translate::{Locale, ResolveError, Resolver};
+
+fn convert_messages(
+    root: &Path,
+    messages: &[&[u8]],
+) -> Result<Vec<(Value, bool)>, ResolveError> {
+    let mut resolver = Resolver::new(root, Locale::En)?;
+    messages.iter().map(|bytes| resolver.resolve_message(bytes)).collect()
+}
+```
+
+The lookup source conditions below and message limits above also apply to the
+API. This context represents authenticated diagnostic inputs and the declared
+initial registry, with the existing provider/cache/rendering qualifications.
+
 ## Conditional fixedPhrase source lookup
 
 The optional CLI lookup accepts an explicitly supplied merged

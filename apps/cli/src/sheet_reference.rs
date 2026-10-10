@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use xivl_formats::reader::to_hex;
 use xivl_formats::richstring::{Expression, RichString, Segment, Token};
 
-use crate::Failure;
+use crate::auto_translate::ResolveError as Failure;
 
 // Diagnostic budgets bound recursion and expansion; these are not native limits.
 const MAX_DEPTH: usize = 16;
