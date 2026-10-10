@@ -213,8 +213,8 @@ With `--locale de`, the same control evaluates the native singular preset:
 cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 16 F6 0F 42 41 03" --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale de
 ```
 
-The [German singular contract](formats/fixed-control.md#conditional-german-singular-identity)
-owns prefix selection, the empty suffix, placeholder refusals and source
+The [German singular contract](formats/fixed-control.md#conditional-german-singular-output)
+owns prefix selection, the empty suffix, literal replacements and source
 conditions. `nounContext` records the preset and assumptions. Rows outside
 this case retain their source fields and return `requires-evaluation`.
 

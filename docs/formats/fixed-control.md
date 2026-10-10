@@ -543,7 +543,7 @@ local kind-1 map, populated exact-key association and ready row, with retained
 constructor and provider state. The tool does not observe runtime cache
 state, wrappers or rendering.
 
-### Conditional German singular identity
+### Conditional German singular output
 
 With `--initial-registry` and `--locale de`, category 21 declares a stable
 type-2 provider in `providerContext` and selects `dispatch = noun`.
@@ -554,19 +554,26 @@ establish actual provider/cache state. This context covers displayName only.
 
 The bounded result requires token-free SGL column 6 and an empty suffix at
 attributive row `26 + SGG` (SGG column 7), column `11 + GEN` (GEN column 11).
-The selected column must lie in the authenticated string layout 11..26. Attributive rows
-5, 24, 25, 26 and the suffix row must all be present. With zero DEF column 12,
-the selected string from attributive row 5, column `11 + GEN`, is copied
+The selected column must lie in the authenticated string layout 11..26.
+Attributive rows 5, 24, 25, 26 and the suffix row must all be present.
+With zero DEF column 12, the selected string from attributive row 5,
+column `11 + GEN`, is copied
 before SGL is appended. Nonzero DEF skips this prefix field. A selected prefix
-must also be token-free, and the composed prefix plus SGL must contain no
-`[a]`, `[p]`, `[pa]` or `[n]`. The empty suffix append and all three later
-replacements then preserve that string. The native success byte is set
-after admission of the common rows. This is a noun result, not a default query.
+must also be token-free. In the composed prefix plus SGL, `[p]` is replaced
+with the empty suffix instead of appending it. `[pa]` is then replaced with
+row 24's selected field, followed by `[a]` with row 26's field. Each search
+restarts at zero until the needle is absent, so a removal can expose another
+match. Used replacement fields must be token-free and contain no `[`, which
+keeps each loop finite. Fields for absent needles are not evaluated. The
+result must contain no `[n]`; count spelling remains deferred.
+The native success byte is set after admission of the common rows.
+This is a noun result, not a default query.
 
 All 5812 target rows in the 32 German blocks are supported as source inputs.
-The authenticated corpus yields 4669 singular text results, 12 control-bearing
-refusals and 1131 noun-placeholder refusals. All 2787 DEF-zero rows select
-empty prefix and suffix fields in this preset; 1675 return singular text.
+The authenticated corpus yields 5800 singular text results and 12
+control-bearing refusals. Of the resolved rows, 1131 require `[p]`, `[a]`
+or both; none use `[pa]` or `[n]`. All 2787 DEF-zero rows select empty prefix
+and suffix fields in this preset; 2778 return singular text.
 Resolved output has association `conditional-preset-NounDe`, column 6 and
 the selected `grammaticalRowKey`/`grammaticalColumn`. Other rows return
 `requires-evaluation` and a reason without `text`. Missing target rows exit 2.
@@ -582,14 +589,14 @@ configuration/attributive resources in addition to the target and registry
 inputs, and reports their identities. The declared attributive `type=none`
 does not prove runtime admission; ready named rows remain an assumption.
 
-The native owner is Conditional German singular identity in
+The native owner is Conditional German singular output in
 `xivl-client-structs:docs/autotranslate-selection-contract.md` at revision
-`2da6544135e4fca1d5728157eb03210da406f61a`. Its German needle initializer
+`33b7b2fd8375bbab354d7a118d4959c90c1e9207`. Its German needle initializer
 inputs section owns `[a]`, `[p]` and `[pa]`; AT-COMP-023 owns `[n]`.
 Successful fresh construction, valid retained configuration, string operations,
 matching ready map-key associations and named-row admission remain explicit.
-Other counts, nonempty suffixes, replacements, noun families, wrappers and
-rendering retain their evidence boundaries.
+Other counts, nonempty suffixes, replacement fields containing `[`, noun families,
+wrappers and rendering retain their evidence boundaries.
 
 ### Conditional English noun identity
 
