@@ -279,14 +279,24 @@ it returns `Pummel`. This is a verified static lookup, not a captured selection.
 
 ### Copied control streams
 
-The conditional evaluator preserves empty, direct-length newline `0x10`,
-soft-hyphen `0x16` and hyphen `0x1F` controls byte for byte. It applies the
-constructor-local null callback rule in
+The conditional evaluator preserves these direct-length forms byte for byte:
+
+| Control | Selector | Envelope |
+|---|---|---|
+| Newline | `0x10` | `02 10 01 03` |
+| Soft-hyphen | `0x16` | `02 16 01 03` |
+| Italic | `0x1A` | `02 1A 02 01 03` or `02 1A 02 02 03` |
+| Non-breaking-space | `0x1D` | `02 1D 01 03` |
+| Hyphen | `0x1F` | `02 1F 01 03` |
+
+It applies the constructor-local null callback rule in
 `xivl-client-structs:docs/autotranslate-selection-contract.md`, AT-COMP-020's
-selected-field and finite callback findings, at revision
-`ea118f61c6d4f2a581ea4a47cdda701b15a388e4`. Those slots remain null after
-construction, and CB2760 copies the valid control envelope. Retained callback
-state is a condition; the CLI does not inspect a live callback vector.
+selected-field and finite callback findings at revision
+`bbb04aca4d57e6369fa025d099bd9008ae474f54`. Those slots remain null after
+construction, and CB2760 copies the valid control envelope. The native contract
+pins the complete constructor and separate CB25A0 helper spans against the
+authenticated executable. Retained callback state is a condition;
+the CLI does not inspect a live callback vector.
 
 If the whole selected field can be evaluated and copied, the result reports
 `status: "resolved-control-stream"`, `association: "conditional-parser-output"`,
@@ -297,7 +307,7 @@ are expanded before producing this stream, including controls in a selected
 command cell. There is no plain `text` field or partial byte output. The
 source cells remain unchanged in their lossless representation.
 
-Other control types, nonempty payloads and other length forms remain deferred.
+Other control types, payloads and length forms remain deferred.
 The existing output-byte budget includes each copied envelope. Unknown nested
 controls or unsupported references defer the whole field with no `outputHex`.
 This is a conditional parser-output diagnostic. It does not assign a display
@@ -372,8 +382,8 @@ control deferral, noun deferral and refusal of an unavailable string default.
 Sheet-reference tests cover exact literal arguments, explicit/default column
 mapping, unsupported targets and numeric columns, missing keys, nested controls,
 whole-field refusal, cycles, reference counts and expansion budgets.
-Control-stream tests check exact copied envelopes, literal escaping, output
-order through nested sheet references, unsupported-control refusal and exact
-output-byte budget boundaries.
+Control-stream tests check exact copied envelopes, both italic payloads,
+literal escaping, output order through nested sheet references, refusal of
+unsupported controls and forms, and exact output-byte budget boundaries.
 Private manual checks compare source cells with the authenticated extraction
 and exercise identity rejection; they are not required public CI inputs.

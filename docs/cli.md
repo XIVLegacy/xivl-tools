@@ -99,8 +99,9 @@ cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 06 17 F6 C6 5D 41 03
 The [sheet-reference contract](formats/fixed-control.md#literal-sheet-references)
 owns supported arguments, recursion budgets and whole-field deferral.
 
-For empty newline, soft-hyphen and hyphen controls, the evaluator preserves the
-control bytes and returns `textResolution.status: "resolved-control-stream"`,
+For supported newline, soft-hyphen, hyphen, italic and non-breaking-space
+forms, the evaluator preserves the control bytes and returns
+`textResolution.status: "resolved-control-stream"`,
 with `outputHex` and no plain `text`. This example decodes `[20,1502]` and
 retains the newline control between `The Astalicia` and `(Marauders' Guild)`:
 
