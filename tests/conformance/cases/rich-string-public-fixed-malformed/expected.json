@@ -1,0 +1,81 @@
+{
+  "format": "rich-string",
+  "input": {
+    "length": 19,
+    "sha256": "2bada9fa6db6e29826eaf28e6c04c1cb027091081ffe710457717eff1bc7ed7a"
+  },
+  "losslessText": {
+    "length": 71,
+    "sha256": "d09b8c74a5998a3edd26d5c2c3313ac34ffb1e302614ce5768e3cc7a49ac6328"
+  },
+  "operation": "rich-string",
+  "reencoded": {
+    "length": 19,
+    "matchesInput": true,
+    "sha256": "2bada9fa6db6e29826eaf28e6c04c1cb027091081ffe710457717eff1bc7ed7a"
+  },
+  "schemaVersion": 1,
+  "segments": [
+    {
+      "code": 46,
+      "expressionCount": 2,
+      "fixedControl": {
+        "errorKind": "malformed-rich-string-token",
+        "errorOffset": 4,
+        "status": "error"
+      },
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "unknown",
+      "payloadLength": 2,
+      "payloadSha256": "4a9868967003d43ddf0f042f7746934a6e27d3464b9b32ac9d93bab42b295696",
+      "rawSha256": "3f1ef2cd2cacb45557299c79a42ae3e57b1825972733244fdfae1bb6e19cedbe",
+      "span": {
+        "length": 6,
+        "offset": 0
+      }
+    },
+    {
+      "code": 46,
+      "expressionCount": 3,
+      "fixedControl": {
+        "errorKind": "malformed-rich-string-token",
+        "errorOffset": 11,
+        "status": "error"
+      },
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "unknown",
+      "payloadLength": 3,
+      "payloadSha256": "75c8fd04ad916aec3e3d5cb76a452b116b3d4d0912a0a485e9fb8e3d240e210c",
+      "rawSha256": "8a5a1049e62125f4edea9a5480aac63739557bd12c2986cfd3b57e8180e79eeb",
+      "span": {
+        "length": 7,
+        "offset": 6
+      }
+    },
+    {
+      "code": 46,
+      "expressionFailureOffset": 1,
+      "fixedControl": {
+        "errorKind": "unexpected-end-of-input",
+        "errorOffset": 18,
+        "status": "error"
+      },
+      "kind": "token",
+      "lengthByteLength": 1,
+      "lengthEncoding": "direct",
+      "name": "unknown",
+      "payloadLength": 2,
+      "payloadSha256": "ec8d011b24e517a869e95cf9397de4b35fcdccbc6785d2f41e13f4da292db2f4",
+      "rawSha256": "114dd41659df7b2b1c06ede02f3176b7e4a1d06b7cc8f89223ddd1bc16875554",
+      "span": {
+        "length": 6,
+        "offset": 13
+      }
+    }
+  ],
+  "tokenCount": 3
+}

@@ -1668,6 +1668,17 @@ def build_fixtures() -> dict[str, bytes]:
     fixtures["rich-string/public-frame-close.bin"] = b"\x02\x10\x02A\x04"
     fixtures["rich-string/public-frame-zero.bin"] = b"\x02\x10\x00\x03"
 
+    # Literal fixed-control shapes from the authenticated codec, with invented values.
+    fixtures["rich-string/public-fixed.bin"] = bytes.fromhex(
+        "02 2e 03 01 01 03 "
+        "02 2e 04 02 f0 cf 03 "
+        "02 2e 04 02 f1 01 03 "
+        "02 2e 09 fe 12 34 56 78 f4 12 34 03"
+    )
+    fixtures["rich-string/public-fixed-malformed.bin"] = bytes.fromhex(
+        "02 2e 03 01 d8 03 02 2e 04 01 01 01 03 02 2e 03 01 f1 03"
+    )
+
     # -- typed rows ------------------------------------------------------
     # Two rows of str,s32,bool,float,u8. A string column is
     # self-delimiting and the rest are fixed width, so the column list

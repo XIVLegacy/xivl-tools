@@ -18,6 +18,28 @@ Use a built binary in place of `cargo run ... --` when a script or another
 program needs to invoke it. All examples below use Cargo so they work from a
 fresh checkout.
 
+## Decode one fixed control
+
+Supply hexadecimal byte pairs, with optional ASCII whitespace, or a binary file:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "02 2E 04 02 F1 01 03"
+cargo run --locked -p xivl-cli -- decode-fixed "C:\path\to\message.bin" --offset 12
+```
+
+The first invocation returns `status: "decoded"`, `selector: 46`,
+`numericFields: [1, 256]`, `rawHex: "022e0402f10103"` and
+`span: {"offset": 0, "length": 7}`. This is a static codec example,
+not a captured message or a resolved phrase. Offsets are decimal and default
+to zero. Exactly one control is decoded; use its end offset for the next call.
+
+This explicit diagnostic reports supplied raw bytes and numeric values as JSON.
+Unknown selectors return `unsupported` and an opaque remainder with null numeric
+fields. Malformed supported controls return an error kind and offset, with exit
+status 2. Usage and I/O failures exit 1; decoded and unsupported results exit 0.
+The [fixed-control contract](formats/fixed-control.md) owns encoding, read bounds
+and the missing family/table/key association for phrase resolution.
+
 ## Inspect one file
 
 Use `inspect` when you want to know what a file contains without exporting its

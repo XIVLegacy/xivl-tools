@@ -81,6 +81,12 @@ without deriving expectations from production decoding. See the
 The dedicated operation is restricted to public fixtures and establishes
 no retail expression parity.
 
+For selector 0x2E, the report also calls the bounded fixed-control diagnostic
+and records its status, numeric field count or error kind and absolute offset.
+The fixed-control cases and independent literal tests are described in the
+[fixed-control contract](formats/fixed-control.md). Numeric values and raw bytes
+remain excluded from normalized conformance reports.
+
 For `gtex`, `extract` with `--export-dds` exercises the DDS texture view.
 Reports retain header metadata, mip source and output spans, counts, and SHA-256 digests rather
 than encoded pixels. Authored tests check header fields independently

@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-fixed-malformed.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-fixed-malformed",
+  "notes": "Fixed-control diagnostics preserve framed tokens while reporting a rejected numeric lead, an extra field and a payload-bounded short read.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

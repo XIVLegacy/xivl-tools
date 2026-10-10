@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/rich-string/public-fixed.bin"
+  },
+  "formatId": "rich-string",
+  "id": "rich-string-public-fixed",
+  "notes": "Selector 0x2E diagnostics cover two literal numbers, short and extended masks without publishing decoded values.",
+  "operation": "rich-string",
+  "schemaVersion": 1
+}

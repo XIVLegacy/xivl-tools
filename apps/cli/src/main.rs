@@ -16,6 +16,7 @@ use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_byt
 
 mod batch_extract;
 mod command_inspect;
+mod fixed_control;
 mod resource_export;
 mod scan;
 mod verify_extract;
@@ -31,6 +32,7 @@ usage:
   xivl inspect-command-loadout --slot-context <command_slot_context.json> [--trace <index>] [--format yaml|json]
   xivl materialize-command-loadout --slot-context <command_slot_context.json> --trace <index> [--record-range <first>:<last>] [--output <new-file>] [--format yaml|json]
   xivl lua-path <path>
+  xivl decode-fixed (<file> | --hex <bytes>) [--offset <decimal>]
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
   xivl catalog <game-or-resource-directory> --output <directory> [--format json|jsonl]
@@ -116,7 +118,10 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
       example 'str,s32,bool'. Without it the data is read as a stream of
       string values, which is how an all-string sheet is stored.
 
-The report never carries payload bytes, sheet-row text, or a configuration
+decode-fixed explicitly reports raw supplied control bytes and two numeric
+fields for selector 0x2E. Other selectors remain opaque. See docs/cli.md.
+
+The inspect report never carries payload bytes, sheet-row text, or a configuration
 file's values. The SSD document view preserves sheet names and attribute
 values. Use --as scrambled-xml for a redacted census of document shape.
 
@@ -186,6 +191,7 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         }
         Some("inspect") => read(&arguments[1..], Operation::Inspect),
         Some("validate") => read(&arguments[1..], Operation::Validate),
+        Some("decode-fixed") => fixed_control::run(&arguments[1..]),
         Some("inspect-command") => command_inspect::run(&arguments[1..]),
         Some("inspect-command-loadout") => command_inspect::run_loadout(&arguments[1..]),
         Some("materialize-command-loadout") => {

@@ -801,6 +801,20 @@ fn rich_string_document(input: &[u8]) -> Result<Value, FormatError> {
                 object.insert("payloadSha256".into(), json!(sha256_hex(&token.payload)));
                 object.insert("rawSha256".into(), json!(sha256_hex(&token.raw_bytes())));
                 object.insert("span".into(), token.span.to_json());
+                if token.code == 0x2E {
+                    let diagnostic = match xivl_formats::richstring::fixed::decode(
+                        input,
+                        token.span.offset as usize,
+                    ) {
+                        Ok(_) => json!({ "status": "decoded", "numericFieldCount": 2 }),
+                        Err(error) => json!({
+                            "status": "error",
+                            "errorKind": error.kind().as_str(),
+                            "errorOffset": error.offset(),
+                        }),
+                    };
+                    object.insert("fixedControl".into(), diagnostic);
+                }
                 if let Value::Object(fields) = expression {
                     object.extend(fields);
                 }

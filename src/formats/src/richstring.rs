@@ -12,6 +12,8 @@
 use crate::error::{ErrorKind, FormatError, Result};
 use crate::reader::{to_hex, Span};
 
+pub mod fixed;
+
 /// Byte that opens a control token.
 pub const TOKEN_START: u8 = 0x02;
 
