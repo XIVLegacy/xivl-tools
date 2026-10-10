@@ -139,6 +139,13 @@ textures, skeletons, or animation. The importer rejects bounds that overflow
 the native decode arithmetic and preflights a 256 MiB maximum output budget
 before allocating replacement vertex data.
 
+When a replacement stream has fewer bytes than its template stream, its
+logical size and active item count decrease while its padded allocation stays
+the same. The unused template suffix remains byte-identical padding. If neither
+stream grows, the WRB extent, RES directory, trailing resources and header
+`+0x34` stay at their original offsets. This preserves the container allocation;
+it does not prove that the native renderer accepts the enlarged padding.
+
 The command refuses an existing output and parses the generated resource before
 writing it. `RES` header `+0x34` remains unresolved and byte-preserved; in the
 selected source, `40432 + 0x40 == 40496` matched a trailing directory-entry

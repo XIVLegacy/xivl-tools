@@ -920,6 +920,28 @@ fn finish_chunk(native: &[u8], mut output: Vec<u8>, old: &ModelChunkInspection) 
     let old_padding = native
         .get(old_logical_end..old_padded_end)
         .ok_or_else(|| import_error(old.span.offset, "chunk padding is outside input"))?;
+    if logical_size <= old.span.length as usize {
+        // Keep the allocation and tail offsets when active data does not grow.
+        // Unused template data becomes padding; no bytes are invented or moved.
+        let suffix_start = span_start(old.span)?
+            .checked_add(logical_size)
+            .ok_or_else(|| import_error(old.span.offset, "chunk suffix offset overflows"))?;
+        let suffix = native
+            .get(suffix_start..old_padded_end)
+            .ok_or_else(|| import_error(old.span.offset, "chunk suffix is outside input"))?;
+        output[8..12].copy_from_slice(
+            &u32::try_from(logical_size)
+                .map_err(|_| import_error(old.span.offset + 8, "chunk size exceeds u32"))?
+                .to_be_bytes(),
+        );
+        output[12..16].copy_from_slice(
+            &u32::try_from(old.padded_span.length)
+                .map_err(|_| import_error(old.span.offset + 12, "chunk padded size exceeds u32"))?
+                .to_be_bytes(),
+        );
+        output.extend_from_slice(suffix);
+        return Ok(output);
+    }
     let preserved_padded_size = logical_size
         .checked_add(old_padding.len())
         .ok_or_else(|| import_error(old.span.offset, "chunk padded size overflows"))?;
@@ -1720,6 +1742,88 @@ mod tests {
         let error =
             import_obj_to_model(&short_aabb, "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n").unwrap_err();
         assert!(error.detail().contains("bounds chunk logical payload"));
+    }
+
+    #[test]
+    fn preserves_unchanged_explicit_unaligned_allocation() {
+        let mut native = vec![0u8; 18];
+        native[..4].copy_from_slice(b"STMS");
+        put_be_u32(&mut native, 8, 18);
+        put_be_u32(&mut native, 12, 18);
+        native[16..].copy_from_slice(&[0xA5, 0x5A]);
+        let chunk = ModelChunkInspection {
+            tag: *b"STMS",
+            span: Span::new(0, 18),
+            declared_size: 18,
+            declared_padded_size: 18,
+            padded_span: Span::new(0, 18),
+            payload: Span::new(16, 2),
+            padding: None,
+            descriptor: false,
+            stream: None,
+            mesh: None,
+            children: Vec::new(),
+            opaque: Vec::new(),
+        };
+        assert_eq!(
+            finish_chunk(&native, native.clone(), &chunk).unwrap(),
+            native
+        );
+    }
+
+    #[test]
+    fn shrinks_active_streams_without_moving_resource_extents() {
+        let mut native = import_obj_to_model(
+            &template_bytes_with_opaque_options(true, 16, false, 16, Some(12)),
+            "v 0 0 0\nv 2 0 0\nv 0 2 0\nv 0 0 2\nv 2 2 0\nf 1 2 3\nf 1 3 4\nf 1 4 5\n",
+        )
+        .unwrap();
+        let root = sedb::parse_container(&native, 0).unwrap();
+        let records = directory_records(&native, &root).unwrap();
+        let tail_start = records[2].start;
+        // Preserve a header-to-tail relation and a clamped tail entry.
+        native[0x34..0x38]
+            .copy_from_slice(&((tail_start - root.header_size as usize) as u32).to_le_bytes());
+        native[0x68..0x6c].copy_from_slice(&96u32.to_le_bytes());
+        let root = sedb::parse_container(&native, 0).unwrap();
+        let before = TemplateProfile::from_native(&native, &root).unwrap();
+        let output = import_obj_to_model(
+            &native,
+            "v -16 0 16\nv 16 0 16\nv -16 0 -16\nv 16 0 -16\nf 2 3 1\nf 2 4 3\n",
+        )
+        .unwrap();
+        let output_root = sedb::parse_container(&output, 0).unwrap();
+        let after = TemplateProfile::from_native(&output, &output_root).unwrap();
+        assert_eq!(output.len(), native.len());
+        assert_eq!(root.span, output_root.span);
+        assert_eq!(root.res, output_root.res);
+        assert_eq!(root.anomalies, output_root.anomalies);
+        assert_eq!(
+            &output[..before.selected_start],
+            &native[..before.selected_start]
+        );
+        assert_eq!(
+            &output[before.selected_end..],
+            &native[before.selected_end..]
+        );
+        assert_eq!(after.selected_start, before.selected_start);
+        assert_eq!(after.selected_end, before.selected_end);
+        assert_eq!(after.position.item_count, 4);
+        assert_eq!(after.index.item_count, 6);
+        for (old, new) in [
+            (&before.position, &after.position),
+            (&before.index, &after.index),
+        ] {
+            assert_eq!(old.chunk.offset, new.chunk.offset);
+            assert_eq!(old.padded, new.padded);
+            assert!(new.chunk.length < old.chunk.length);
+            let suffix = span_end(new.chunk).unwrap()..span_end(old.padded).unwrap();
+            assert_eq!(&output[suffix.clone()], &native[suffix]);
+        }
+        let part = &parse_model(&output).unwrap().parts[0];
+        assert_eq!(part.indices, vec![1, 2, 0, 1, 3, 2]);
+        assert!(part.vertices.iter().all(|vertex| vertex.y == 0.0));
+        assert_eq!(part.vertices.len(), 4);
     }
 
     #[test]
