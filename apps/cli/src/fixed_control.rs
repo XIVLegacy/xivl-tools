@@ -20,7 +20,7 @@ pub fn run(arguments: &[String]) -> Result<(), Failure> {
 }
 
 fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
-    let usage = "usage: xivl decode-fixed (<file> | --hex <bytes>) [--offset <decimal>] [--fixed-phrase-csv <file> | --initial-registry <client-root>] [--locale ja|en|de|fr] [--noun-inputs <config>:<count>:<attributive-key>:<retained-word>]";
+    let usage = "usage: xivl decode-fixed (<file> | --hex <bytes>) [--message | --offset <decimal>] [--fixed-phrase-csv <file> | --initial-registry <client-root>] [--locale ja|en|de|fr] [--noun-inputs <config>:<count>:<attributive-key>:<retained-word>]";
     let mut index = 0;
     let data = match arguments.first().map(String::as_str) {
         Some("--hex") => {
@@ -39,7 +39,13 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
     let mut locale = None;
     let mut registry = None;
     let mut noun_source = None;
+    let mut message = false;
     while index < arguments.len() {
+        if arguments[index] == "--message" && !message {
+            message = true;
+            index += 1;
+            continue;
+        }
         let value = arguments
             .get(index + 1)
             .ok_or_else(|| Failure::usage(usage))?;
@@ -79,6 +85,21 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
         return Err(Failure::usage(
             "--noun-inputs requires --initial-registry and --locale en",
         ));
+    }
+    if message {
+        if offset.is_some() || table.is_some() || noun_source.is_some() {
+            return Err(Failure::usage(
+                "--message cannot be combined with --offset, --fixed-phrase-csv or --noun-inputs",
+            ));
+        }
+        return message_report(&data, |numbers| {
+            if let (Some(root), Some(locale)) = (registry, locale) {
+                initial_registry::report(root, numbers, locale, None)
+                    .map(|(lookup, _)| Some(lookup))
+            } else {
+                Ok(None)
+            }
+        });
     }
     let offset = offset.unwrap_or(0);
     match fixed::decode(&data, offset) {
@@ -132,6 +153,99 @@ fn report(arguments: &[String]) -> Result<(Value, bool), Failure> {
     }
 }
 
+const MAX_MESSAGE_CONTROLS: usize = 1024;
+
+fn message_report(
+    data: &[u8],
+    mut lookup: impl FnMut([u32; 2]) -> Result<Option<Value>, Failure>,
+) -> Result<(Value, bool), Failure> {
+    let mut segments = Vec::new();
+    let mut output = Vec::new();
+    let mut complete = true;
+    let mut controls = 0;
+    for segment in fixed::message_segments(data) {
+        let control_offset = match &segment {
+            fixed::MessageSegment::Literal { .. } => None,
+            fixed::MessageSegment::Control(control) => Some(control.span.offset),
+            fixed::MessageSegment::Error { span, .. } => Some(span.offset),
+        };
+        if controls == MAX_MESSAGE_CONTROLS {
+            if let Some(offset) = control_offset {
+                let raw = &data[offset as usize..];
+                output.extend_from_slice(raw);
+                segments.push(
+                    json!({"kind": "opaque-remainder", "status": "control-limit",
+                    "span": Span::new(offset, raw.len() as u64).to_json(), "rawHex": to_hex(raw)}),
+                );
+                complete = false;
+                break;
+            }
+        }
+        match segment {
+            fixed::MessageSegment::Literal { span, raw } => {
+                output.extend_from_slice(raw);
+                let mut item =
+                    json!({"kind": "literal", "span": span.to_json(), "rawHex": to_hex(raw)});
+                if let Ok(text) = std::str::from_utf8(raw) {
+                    item["text"] = json!(text);
+                }
+                segments.push(item);
+            }
+            fixed::MessageSegment::Control(control) => {
+                controls += 1;
+                let mut item = json!({"kind": if control.numeric_fields.is_some() { "fixed-control" } else { "opaque-remainder" },
+                    "status": "preserved", "span": control.span.to_json(), "rawHex": to_hex(control.raw),
+                    "selector": control.selector, "numericFields": control.numeric_fields});
+                let mut replacement = None;
+                if let Some(numbers) = control.numeric_fields {
+                    if let Some(result) = lookup(numbers)? {
+                        let resolution = &result["textResolution"];
+                        match resolution["status"].as_str() {
+                            Some("resolved") => {
+                                if let Some(text) = resolution["text"].as_str() {
+                                    replacement = Some(text.as_bytes().to_vec());
+                                }
+                            }
+                            Some("resolved-control-stream") => {
+                                if let Some(hex) = resolution["outputHex"].as_str() {
+                                    replacement = Some(parse_hex(hex)?);
+                                }
+                            }
+                            _ => {}
+                        }
+                        item["registryLookup"] = result;
+                    }
+                }
+                if let Some(bytes) = replacement {
+                    item["status"] = json!("replaced");
+                    item["outputHex"] = json!(to_hex(&bytes));
+                    output.extend_from_slice(&bytes);
+                } else {
+                    complete = false;
+                    output.extend_from_slice(control.raw);
+                }
+                segments.push(item);
+            }
+            fixed::MessageSegment::Error { span, raw, error } => {
+                complete = false;
+                output.extend_from_slice(raw);
+                segments.push(json!({"kind": "opaque-remainder", "status": "error", "span": span.to_json(),
+                    "rawHex": to_hex(raw), "errorKind": error.kind().as_str(), "errorOffset": error.offset(),
+                    "detail": error.detail()}));
+            }
+        }
+    }
+    let mut document = json!({"status": if complete { "complete" } else { "partial" },
+        "inputSpan": Span::new(0, data.len() as u64).to_json(), "segments": segments,
+        "outputHex": to_hex(&output), "outputEncoding": "hex", "controlCount": controls});
+    if complete && !output.contains(&0x02) {
+        if let Ok(text) = std::str::from_utf8(&output) {
+            document["text"] = json!(text);
+        }
+    }
+    Ok((document, !complete))
+}
+
 fn parse_noun_inputs(value: &str) -> Result<[u32; 4], Failure> {
     let invalid =
         || Failure::usage("noun inputs must be four unsigned decimal words separated by colons");
@@ -182,6 +296,145 @@ mod tests {
 
     fn args(values: &[&str]) -> Vec<String> {
         values.iter().map(|value| (*value).into()).collect()
+    }
+
+    #[test]
+    fn message_replacements_keep_literal_bytes_and_absolute_spans() {
+        let data = b"Meet \x02\x2e\x03\x02\x03\x03 at \x02\x2e\x03\x04\x05\x03!";
+        let mut calls = Vec::new();
+        let (document, failed) = message_report(data, |numbers| {
+            calls.push(numbers);
+            Ok(Some(
+                json!({"textResolution": {"status": "resolved", "text":
+                if numbers == [1, 2] { "Authored friend" } else { "Authored place" }}}),
+            ))
+        })
+        .unwrap();
+        assert!(!failed);
+        assert_eq!(calls, [[1, 2], [3, 4]]);
+        assert_eq!(document["text"], "Meet Authored friend at Authored place!");
+        assert_eq!(
+            document["outputHex"],
+            to_hex(b"Meet Authored friend at Authored place!")
+        );
+        assert_eq!(
+            document["segments"][3]["span"],
+            json!({"offset": 15, "length": 6})
+        );
+        assert_eq!(document["controlCount"], 2);
+    }
+
+    #[test]
+    fn message_stream_and_refusal_preserve_bytes_and_continue() {
+        let data = b"A\x02\x2e\x03\x02\x03\x03B\x02\x2e\x03\x04\x05\x03C\x02\x2e\x03\x06\x07\x03";
+        let (document, failed) = message_report(data, |numbers| {
+            Ok(Some(match numbers {
+                [1, 2] => json!({"textResolution": {"status": "resolved-control-stream", "outputHex": "5802160103"}}),
+                [3, 4] => json!({"sourceLookup": {"status": "not-found"}}),
+                _ => json!({"textResolution": {"status": "resolved", "text": "Z"}}),
+            }))
+        }).unwrap();
+        assert!(failed);
+        assert_eq!(document["status"], "partial");
+        assert_eq!(
+            document["outputHex"],
+            to_hex(b"AX\x02\x16\x01\x03B\x02\x2e\x03\x04\x05\x03CZ")
+        );
+        assert!(document.get("text").is_none());
+        assert_eq!(document["segments"][3]["status"], "preserved");
+        assert_eq!(document["segments"][5]["status"], "replaced");
+        let (stream, failed) = message_report(&data[..7], |_| {
+            Ok(Some(json!({
+                "textResolution": {"status": "resolved-control-stream", "outputHex": "5802160103"}
+            })))
+        })
+        .unwrap();
+        assert!(!failed);
+        assert_eq!(stream["status"], "complete");
+        assert!(stream.get("text").is_none());
+    }
+
+    #[test]
+    fn message_opaque_remainders_never_resynchronize_or_load_sources() {
+        for data in [
+            b"A\x02\x37\xff\x02\x2e\x03\x02\x03\x03".as_slice(),
+            b"A\x02\x2e\x03\x00\x03\x03\x02\x2e\x03\x02\x03\x03".as_slice(),
+            b"A\x02".as_slice(),
+        ] {
+            let (document, failed) = message_report(data, |_| {
+                panic!("opaque input must not load lookup sources")
+            })
+            .unwrap();
+            assert!(failed);
+            assert_eq!(document["outputHex"], to_hex(data));
+            assert_eq!(document["segments"].as_array().unwrap().len(), 2);
+            assert_eq!(document["segments"][1]["kind"], "opaque-remainder");
+            assert!(document.get("text").is_none());
+        }
+    }
+
+    #[test]
+    fn message_literals_and_control_budget_are_lossless() {
+        for data in [
+            b"\xff\x00".as_slice(),
+            b"".as_slice(),
+            b"Authored".as_slice(),
+        ] {
+            let (document, failed) = message_report(data, |_| panic!("literal input")).unwrap();
+            assert!(!failed);
+            assert_eq!(document["outputHex"], to_hex(data));
+            assert_eq!(
+                document.get("text").is_some(),
+                std::str::from_utf8(data).is_ok()
+            );
+        }
+        let data = b"\x02\x2e\x03\x02\x03\x03".repeat(MAX_MESSAGE_CONTROLS + 1);
+        let mut calls = 0;
+        let (document, failed) = message_report(&data, |_| {
+            calls += 1;
+            Ok(Some(
+                json!({"textResolution": {"status": "resolved", "text": "X"}}),
+            ))
+        })
+        .unwrap();
+        assert!(failed);
+        assert_eq!(calls, MAX_MESSAGE_CONTROLS);
+        assert_eq!(
+            document["segments"][MAX_MESSAGE_CONTROLS]["status"],
+            "control-limit"
+        );
+        let mut expected = vec![b'X'; MAX_MESSAGE_CONTROLS];
+        expected.extend_from_slice(b"\x02\x2e\x03\x02\x03\x03");
+        assert_eq!(document["outputHex"], to_hex(&expected));
+        let mut data = b"\x02\x2e\x03\x02\x03\x03".repeat(MAX_MESSAGE_CONTROLS);
+        data.extend_from_slice(b"Tail\x02\x2e\x03\x00\x03\x03");
+        let (document, failed) = message_report(&data, |_| Ok(None)).unwrap();
+        assert!(failed);
+        assert_eq!(document["outputHex"], to_hex(&data));
+        assert_eq!(
+            document["segments"][MAX_MESSAGE_CONTROLS + 1]["status"],
+            "control-limit"
+        );
+    }
+
+    #[test]
+    fn message_mode_rejects_single_control_context_options() {
+        for extra in [
+            vec!["--offset", "0"],
+            vec!["--fixed-phrase-csv", "unused.csv", "--locale", "en"],
+            vec![
+                "--initial-registry",
+                "unused",
+                "--locale",
+                "en",
+                "--noun-inputs",
+                "0:1:5:0",
+            ],
+        ] {
+            let mut values = vec!["--hex", "41", "--message"];
+            values.extend(extra);
+            assert!(report(&args(&values)).is_err());
+        }
     }
 
     #[test]

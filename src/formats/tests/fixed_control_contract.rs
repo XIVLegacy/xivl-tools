@@ -1,6 +1,49 @@
 use xivl_formats::error::ErrorKind;
 use xivl_formats::reader::Span;
 use xivl_formats::richstring::fixed::decode;
+use xivl_formats::richstring::fixed::{message_segments, MessageSegment};
+
+#[test]
+fn message_walk_keeps_binary_literals_and_skips_control_payload_bytes() {
+    let data = b"\xff\x00\x02\x2e\x03\x02\x03\x03\x02\x2e\x03\x04\x05\x03Z";
+    let segments: Vec<_> = message_segments(data).collect();
+    assert_eq!(segments.len(), 4);
+    let MessageSegment::Literal { span, raw } = &segments[0] else {
+        panic!("literal")
+    };
+    assert_eq!(*span, Span::new(0, 2));
+    assert_eq!(*raw, b"\xff\x00");
+    for (index, offset, fields) in [(1, 2, [1, 2]), (2, 8, [3, 4])] {
+        let MessageSegment::Control(control) = &segments[index] else {
+            panic!("control")
+        };
+        assert_eq!(control.span, Span::new(offset, 6));
+        assert_eq!(control.numeric_fields, Some(fields));
+    }
+    let MessageSegment::Literal { span, raw } = &segments[3] else {
+        panic!("tail")
+    };
+    assert_eq!(*span, Span::new(14, 1));
+    assert_eq!(*raw, b"Z");
+}
+
+#[test]
+fn message_walk_errors_cover_remainder_and_keep_absolute_error_offsets() {
+    let data = b"AB\x02\x2e\x03\x00\x03\x03\x02\x2e\x03\x02\x03\x03";
+    let mut segments = message_segments(data);
+    assert!(matches!(
+        segments.next(),
+        Some(MessageSegment::Literal { .. })
+    ));
+    let Some(MessageSegment::Error { span, raw, error }) = segments.next() else {
+        panic!("error")
+    };
+    assert_eq!(span, Span::new(2, 12));
+    assert_eq!(raw, &data[2..]);
+    assert_eq!(error.offset(), 5);
+    assert_eq!(error.kind(), ErrorKind::MalformedRichStringToken);
+    assert!(segments.next().is_none());
+}
 
 // Independent literal fixtures follow AT-COMP-007's authenticated numeric codec.
 #[test]

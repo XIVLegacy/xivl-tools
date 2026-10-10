@@ -249,6 +249,27 @@ source fields plus conditional singular output in `textResolution.text`.
 The [English noun contract](formats/fixed-control.md#conditional-english-noun-identity)
 owns the supported inputs, source-key assumptions and native caller boundary.
 
+## Convert auto-translate controls in a message
+
+Use `decode-fixed --message` for an entire binary message or supplied hex.
+This constructed input contains literal `A `, ordinary phrase `[8,974]`,
+literal ` B ` and place-name `[20,1051]`:
+
+```powershell
+cargo run --locked -p xivl-cli -- decode-fixed --hex "41 20 02 2E 05 09 F2 03 CE 03 20 42 20 02 2E 05 15 F2 04 1B 03" --message --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale en
+cargo run --locked -p xivl-cli -- decode-fixed "C:\path\to\message.bin" --message --initial-registry "C:\path\to\FINAL FANTASY XIV" --locale fr
+```
+
+The JSON report contains assembled `outputHex` and per-span diagnostics in
+`segments`. Resolved controls become their locale output; surrounding literal
+bytes remain intact. Complete plain UTF-8 output also has `text`. A partial
+result preserves unresolved bytes and exits 2. Omitting the registry/locale
+pair reports decoded controls without replacing them.
+
+The [message conversion contract](formats/fixed-control.md#whole-message-conversion)
+owns opaque remainder handling, lookup failures, output status and the control
+budget. This mode excludes `--offset`, `--fixed-phrase-csv` and `--noun-inputs`.
+
 ## Inspect one file
 
 Use `inspect` when you want to know what a file contains without exporting its

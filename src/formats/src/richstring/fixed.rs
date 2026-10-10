@@ -12,6 +12,68 @@ pub struct Control<'a> {
     pub numeric_fields: Option<[u32; 2]>,
 }
 
+#[derive(Debug)]
+pub enum MessageSegment<'a> {
+    Literal {
+        span: Span,
+        raw: &'a [u8],
+    },
+    Control(Control<'a>),
+    Error {
+        span: Span,
+        raw: &'a [u8],
+        error: FormatError,
+    },
+}
+
+pub struct MessageSegments<'a> {
+    data: &'a [u8],
+    position: usize,
+}
+
+/// Walk supplied message bytes using the diagnostic fixed-control grammar.
+/// Unknown or malformed controls consume the opaque remainder without resynchronizing.
+pub fn message_segments(data: &[u8]) -> MessageSegments<'_> {
+    MessageSegments { data, position: 0 }
+}
+
+impl<'a> Iterator for MessageSegments<'a> {
+    type Item = MessageSegment<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let start = self.position;
+        if start == self.data.len() {
+            return None;
+        }
+        let tail = &self.data[start..];
+        if tail[0] != 0x02 {
+            let length = tail
+                .iter()
+                .position(|&byte| byte == 0x02)
+                .unwrap_or(tail.len());
+            self.position += length;
+            return Some(MessageSegment::Literal {
+                span: Span::new(start as u64, length as u64),
+                raw: &tail[..length],
+            });
+        }
+        match decode(self.data, start) {
+            Ok(control) => {
+                self.position += control.raw.len();
+                Some(MessageSegment::Control(control))
+            }
+            Err(error) => {
+                self.position = self.data.len();
+                Some(MessageSegment::Error {
+                    span: Span::new(start as u64, tail.len() as u64),
+                    raw: tail,
+                    error,
+                })
+            }
+        }
+    }
+}
+
 /// Decode one control at `offset`, leaving bytes after a supported control unread.
 /// Unknown selectors retain the input remainder without interpreting its framing.
 pub fn decode(data: &[u8], offset: usize) -> Result<Control<'_>> {

@@ -56,6 +56,41 @@ remainder, then exits 2. These are diagnostic tool decisions. The retained
 native parser has no explicit input-length argument, so this bounded behavior
 does not claim retail behavior on malformed or truncated input.
 
+## Whole-message conversion
+
+`decode-fixed --message` and `xivl_formats::richstring::fixed::message_segments`
+walk the supplied byte slice from offset zero. The walk treats each byte 02 as
+a control start and uses the fixed decoder above. Other bytes are literal
+runs, including NUL and invalid UTF-8. This is a diagnostic input convention,
+without packet parsing, escape handling or a claim about client rendering.
+Supported control payloads are consumed whole; their internal bytes are not
+scanned for another control. An unknown selector or malformed control ends
+the walk with its opaque remainder. The tool never guesses another boundary
+or searches that remainder for a later token.
+
+With `--initial-registry` and `--locale`, each decoded control uses the
+conditional registry lookup below. A `resolved` text result replaces the
+input control with its UTF-8 bytes. A `resolved-control-stream` result
+replaces it with its exact output bytes. Missing/refused rows and deferred
+evaluation preserve the original control, then continue from its known end.
+Without a lookup source, decoded controls are reported and preserved.
+Lookup I/O or input-identity failures abort the command without assembled JSON.
+
+The JSON report contains `segments` with absolute input spans and raw bytes,
+lookup results for queried controls, and assembled `outputHex` with
+`outputEncoding: "hex"`. `status: "complete"` means every encountered control
+was replaced; it also applies to literal-only input. `status: "partial"`
+means a control or opaque remainder was preserved and exits 2. The assembled
+bytes in a partial result deliberately include those unresolved input bytes.
+`text` appears only for complete, valid UTF-8 output without byte 02.
+Complete control streams and binary literal output remain available as hex.
+
+The CLI visits at most 1024 controls per message. At the next control it
+preserves the remaining input with `status: "control-limit"` and returns a
+partial result. This tool limit bounds lookup/report growth, without asserting
+a client message limit. `--message` excludes `--offset`, source-only
+`--fixed-phrase-csv` and per-control `--noun-inputs`.
+
 ## Conditional fixedPhrase source lookup
 
 The optional CLI lookup accepts an explicitly supplied merged

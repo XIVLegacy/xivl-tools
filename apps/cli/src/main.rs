@@ -36,7 +36,7 @@ usage:
   xivl inspect-command-loadout --slot-context <command_slot_context.json> [--trace <index>] [--format yaml|json]
   xivl materialize-command-loadout --slot-context <command_slot_context.json> --trace <index> [--record-range <first>:<last>] [--output <new-file>] [--format yaml|json]
   xivl lua-path <path>
-  xivl decode-fixed (<file> | --hex <bytes>) [--offset <decimal>] [--fixed-phrase-csv <file> | --initial-registry <client-root>] [--locale ja|en|de|fr] [--noun-inputs <config>:<count>:<attributive-key>:<retained-word>]
+  xivl decode-fixed (<file> | --hex <bytes>) [--message | --offset <decimal>] [--fixed-phrase-csv <file> | --initial-registry <client-root>] [--locale ja|en|de|fr] [--noun-inputs <config>:<count>:<attributive-key>:<retained-word>]
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
   xivl catalog <game-or-resource-directory> --output <directory> [--format json|jsonl]
@@ -125,6 +125,8 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
 decode-fixed explicitly reports raw supplied control bytes and two numeric
 fields for selector 0x2E. --initial-registry and --locale query authenticated
 initial registry source cells. Other selectors remain opaque. See docs/cli.md.
+--message walks the whole supplied input, replaces resolved controls and
+preserves unresolved bytes with span diagnostics in a partial result.
 
 The inspect report never carries payload bytes, sheet-row text, or a configuration
 file's values. The SSD document view preserves sheet names and attribute

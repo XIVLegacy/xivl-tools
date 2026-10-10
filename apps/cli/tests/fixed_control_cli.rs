@@ -1,6 +1,54 @@
 use std::process::Command;
 
 #[test]
+fn message_file_input_preserves_all_adjacent_unresolved_controls() {
+    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/public/rich-string/public-fixed.bin");
+    let bytes = std::fs::read(&fixture).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_xivl"))
+        .arg("decode-fixed")
+        .arg(fixture)
+        .arg("--message")
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    let document: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(document["status"], "partial");
+    assert_eq!(document["outputHex"], xivl_formats::reader::to_hex(&bytes));
+    assert_eq!(
+        document["segments"][1]["numericFields"],
+        serde_json::json!([1, 207])
+    );
+    assert_eq!(document["controlCount"], 4);
+    assert_eq!(
+        document["segments"][3]["span"],
+        serde_json::json!({"offset": 20, "length": 12})
+    );
+}
+
+#[test]
+fn message_unknown_control_keeps_remainder_without_loading_registry() {
+    let output = Command::new(env!("CARGO_BIN_EXE_xivl"))
+        .args([
+            "decode-fixed",
+            "--hex",
+            "41 02 37 FF 02 2E 03 02 03 03",
+            "--message",
+            "--initial-registry",
+            "not-loaded",
+            "--locale",
+            "en",
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    let document: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(document["outputHex"], "410237ff022e03020303");
+    assert_eq!(document["segments"].as_array().unwrap().len(), 2);
+    assert_eq!(document["segments"][1]["kind"], "opaque-remainder");
+}
+
+#[test]
 fn file_input_reaches_the_decoder_at_the_requested_offset() {
     let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../tests/fixtures/public/rich-string/public-fixed.bin");
