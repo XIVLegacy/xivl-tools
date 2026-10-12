@@ -219,21 +219,37 @@
   "textures": [
     {
       "chunkIndex": 1,
-      "gtexDimensions": null
+      "gtex": null,
+      "gtexDimensions": null,
+      "tag": "DDSF"
     },
     {
       "chunkIndex": 2,
+      "gtex": {
+        "errorKind": "unexpected-end-of-input",
+        "errorOffset": 20,
+        "payloadOffset": 40,
+        "status": "error"
+      },
       "gtexDimensions": {
         "height": 16,
         "width": 32
-      }
+      },
+      "tag": "GTEX"
     },
     {
       "chunkIndex": 3,
+      "gtex": {
+        "errorKind": "unexpected-end-of-input",
+        "errorOffset": 16,
+        "payloadOffset": 68,
+        "status": "error"
+      },
       "gtexDimensions": {
         "height": 8,
         "width": 16
-      }
+      },
+      "tag": "GTEX"
     }
   ],
   "trailing": {

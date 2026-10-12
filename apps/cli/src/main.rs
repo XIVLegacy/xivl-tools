@@ -116,8 +116,8 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
       --as map-layout validates a MapLayout resource with the bounded zone reader and reports
       the header, resource table, and lyb node declarations without names or payload strings.
       --as fdt walks a bitmap font container in the client's chunk order and reports chunk
-      spans, lookup-table counts, GLYP record checks, and digests without record values or
-      texture payloads.
+      spans, lookup-table counts, GLYP record checks, a GTEX report per GTEX chunk, and digests
+      without record values or texture payloads.
   --columns <type,...>
       Column types of a sheet-data file, from its schema document, for
       example 'str,s32,bool'. Without it the data is read as a stream of

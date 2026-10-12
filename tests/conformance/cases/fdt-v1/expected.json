@@ -135,10 +135,17 @@
   "textures": [
     {
       "chunkIndex": 1,
+      "gtex": {
+        "errorKind": "unexpected-end-of-input",
+        "errorOffset": 16,
+        "payloadOffset": 20,
+        "status": "error"
+      },
       "gtexDimensions": {
         "height": 16,
         "width": 32
-      }
+      },
+      "tag": "GTEX"
     }
   ],
   "trailing": {

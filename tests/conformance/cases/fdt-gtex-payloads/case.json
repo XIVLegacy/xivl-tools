@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fdt-gtex-payloads",
+  "formatId": "fdt",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/fdt/gtex-payloads.bin"
+  },
+  "arguments": [
+    "--as",
+    "fdt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "A DDSF payload with no reader, a GTEX payload the GTEX reader accepts, and a truncated GTEX payload reported with its GTEX error."
+}

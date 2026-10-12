@@ -356,7 +356,7 @@ no identifying signature or when you want a particular view.
 | `lpb-bytecode` | The LPB wrapper plus bounded Lua 5.1 structure. This is not decompilation or execution. See [Lua and LPB](formats/lua-lpb.md). |
 | `staticactor-san` | The static-actor SAN record framing without assigning meanings to its record members. See [SAN records](formats/staticactor-san.md). |
 | `region` | RegionResourceData 1.1.0 root and child structure, token spans, and opaque fields. See [RegionResourceData](formats/region.md). |
-| `fdt` | Explicit bitmap font container walk in the client's chunk order. Reports chunk spans, digests, lookup-table counts, texture dimensions, and GLYP record layout and check counts without metrics, record values, or texture bytes. See [bitmap font container](formats/fdt.md). |
+| `fdt` | Explicit bitmap font container walk in the client's chunk order. Reports chunk spans, digests, lookup-table counts, an embedded GTEX report per GTEX chunk, and GLYP record layout and check counts without metrics, record values, or texture bytes. See [bitmap font container](formats/fdt.md). |
 | `wrb-model` | Explicit bounded WRB model structure inside a RES resource. Reports metadata, counts, spans, digests, and opaque ranges. See [WRB inspection](formats/wrb-model.md). |
 | `map-layout` | Explicit MapLayout header, resource table, and lyb node declarations, read by the zone reader. Reports counts, spans, and digests without names or payload strings. See [world layout](formats/world-layout.md#inspection-and-validation). |
 | `gtex` | Loader-backed GTEX fields and surface spans. See [GTEX and PWIB](formats/gtex-pwib.md). |

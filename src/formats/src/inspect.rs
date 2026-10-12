@@ -948,7 +948,13 @@ fn inspect_fdt(data: &[u8]) -> Result<Value> {
                 .dimensions
                 .map(|(width, height)| json!({ "width": width, "height": height }))
                 .unwrap_or(Value::Null);
-            json!({ "chunkIndex": texture.chunk, "gtexDimensions": dimensions })
+            let chunk = file.chunks[texture.chunk];
+            json!({
+                "chunkIndex": texture.chunk,
+                "tag": escape_tag(&chunk.tag),
+                "gtexDimensions": dimensions,
+                "gtex": fdt_texture_gtex(data, chunk),
+            })
         })
         .collect();
     object.insert("textureChunkCount".into(), json!(textures.len()));
@@ -988,6 +994,31 @@ fn inspect_fdt(data: &[u8]) -> Result<Value> {
     );
     object.insert("endsAtEof".into(), json!(file.trailing.length == 0));
     Ok(Value::Object(object))
+}
+
+/// The GTEX reader's report for a GTEX chunk payload. Spans and offsets
+/// inside it are relative to the payload, whose offset the report states.
+/// A DDSF payload has no reader here and reports null.
+fn fdt_texture_gtex(data: &[u8], chunk: fdt::Chunk) -> Value {
+    if chunk.tag != fdt::GTEX {
+        return Value::Null;
+    }
+    let payload = span_bytes(data, chunk.payload);
+    match inspect_tagged_resource(payload, TaggedResourceKind::Gtex) {
+        Ok(Value::Object(mut report)) => {
+            report.remove("schemaVersion");
+            report.remove("operation");
+            json!({
+                "payloadOffset": chunk.payload.offset, "status": "parsed",
+                "report": Value::Object(report),
+            })
+        }
+        Ok(_) => unreachable!("tagged resource inspection returns an object"),
+        Err(error) => json!({
+            "payloadOffset": chunk.payload.offset, "status": "error",
+            "errorKind": error.kind().as_str(), "errorOffset": error.offset(),
+        }),
+    }
 }
 
 fn inspect_region(data: &[u8]) -> Result<Value> {

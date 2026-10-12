@@ -2270,6 +2270,30 @@ def build_fixtures() -> dict[str, bytes]:
             + fdt_unversioned_record(0, 3, (7, 9), (20, 7)),
         )
     )
+    # A GTEX payload the GTEX reader accepts beside one it refuses as truncated.
+    fixtures["fdt/gtex-payloads.bin"] = fdt_font(
+        fdt_chunks(
+            4,
+            [
+                ("DDSF", pattern(12, 0x27)),
+                (
+                    "GTEX",
+                    gtex(
+                        pattern(40, 0x44),
+                        mip_levels=2,
+                        width=4,
+                        height=2,
+                        data_base=0x28,
+                        surfaces=((0, 32), (32, 8)),
+                    ),
+                ),
+                ("GTEX", fdt_gtex(16, 8, 16, 0x28)),
+            ],
+            fdt_record(1, 0, (2, 1), (1, 1))
+            + fdt_record(0, 1, (1, 1), (0, 0))
+            + fdt_record(1, 2, (4, 2), (0, 0)),
+        )
+    )
     # One record per check: a negative resource index; a resource whose TEXC
     # offset leaves the list, with selector 4 and a source past the 16x8
     # texture; and selector -1 with a negative width.

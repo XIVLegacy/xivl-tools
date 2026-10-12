@@ -150,6 +150,24 @@ other than `0xFFFF` has a GLYP record. Every retail file meets these rules.
 | LTBL ends in a partial page, or GLYP in a partial record | `trailing-partial-record` | Start of the partial page or record |
 | An HTBL page has no LTBL page, or an LTBL index has no record | `table-index-out-of-range` | The table entry |
 
+## Texture payloads
+
+The client appends DDSF and GTEX payloads to one resource list in file order;
+`xivl-decomp:docs/resource/bitmap-font-container.md` records the handoff.
+Inspection runs the [GTEX reader](gtex-pwib.md) over each GTEX chunk payload
+and embeds its report under that texture with the payload's absolute offset.
+Spans and offsets inside the embedded report are relative to the payload. A
+payload the GTEX reader refuses reports its error kind and payload-relative
+offset instead, and the container read still succeeds. DDSF payloads have
+no reader and report null.
+
+Running `xivl inspect --as fdt` on the seven retail files parses all 20 GTEX
+payloads as bounded 2D textures with GTEX format index 22, two mip levels,
+flags zero, two surface-table entries, no anomalies, and no trailing bytes.
+Each report's width and height equal the header words the glyph checks read.
+The GTEX reader has no mapping for index 22, so it reports surface
+materialization as unsupported.
+
 ## Reports
 
 `--as fdt` selects the reader; it has no automatic recognition.
@@ -163,25 +181,27 @@ Inspection reports every chunk's tag, span, payload span, payload digest, and
 whether the client reads it. It reports the version and whether a VERS chunk
 was present, the texture chunk count, mapped HTBL pages, LTBL pages, keys
 that reach a record, GLYP record count, distinct records reached by a key,
-the GTEX dimensions of each texture chunk, the TEXC offset, the glyph record
-layout, the record check counts, and the trailing span. It never reports
+the GTEX dimensions and embedded GTEX report of each texture chunk, the TEXC
+offset, the glyph record layout, the record check counts, and the trailing span. It never reports
 scalar metric values, table contents, per-record field values, or texture
 bytes; the library model carries the decoded records. Validation checks
 parsing and marks round-trip as not applicable.
 
 Authored public fixtures cover version 4 with DDSF, two GTEX chunks, and a
 TERM chunk; version 1; a file without VERS and its unversioned records;
-following chunks and short trailing bytes; one record per glyph check; and
-each refusal above. Library tests pin decoded fields in both layouts and key
-lookup through both tables. The malformed-input sweep truncates
-and mutates the version 4 fixture.
+following chunks and short trailing bytes; one record per glyph check; a
+GTEX payload the GTEX reader accepts beside a truncated one; and each
+refusal above. Library tests pin decoded fields in both layouts and key
+lookup through both tables. The malformed-input sweep truncates and mutates
+the version 4 fixture.
 
 ## Evidence limits
 
-The DDSF path has no retail example. The client's TEXC, GTEX, and DDSF
-payload semantics, the metric scalars, bytes `0x07` and `0x09`, the meaning
-of caller flag `0x02`, the selector vectors' channel mapping, the TERM
-chunk's purpose, and versions other than 4 in retail data remain outside
-this claim. No retail file uses the zero-version layout. The reader's refusals are stricter than the client's observed
-behavior, not a description of it. Rasterizing glyphs and exporting atlas
-textures are separate future work.
+The DDSF path has no retail example. TEXC semantics, DDSF payloads, GTEX
+surface contents under index 22, the metric scalars, bytes `0x07` and
+`0x09`, the meaning of caller flag `0x02`, the selector vectors' channel
+mapping, the TERM chunk's purpose, and versions other than 4 in retail data
+remain outside this claim. No retail file uses the zero-version layout. The
+reader's refusals are stricter than the client's observed behavior, not a
+description of it. Rasterizing glyphs and exporting atlas textures are
+separate future work.

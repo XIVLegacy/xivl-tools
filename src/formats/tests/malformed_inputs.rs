@@ -51,11 +51,14 @@ fn document_fixtures() -> Vec<(String, Vec<u8>)> {
     // without adding a distinct boundary.
     fixtures.retain(|(name, _)| !name.ends_with("bytecode-nesting-bomb.bin"));
     // The fdt refusals are single-field edits of v4.bin, whose sweep already
-    // reaches each of their boundaries.
+    // reaches each of their boundaries. gtex-payloads.bin adds a GTEX payload
+    // the embedded GTEX reader accepts.
     fixtures.retain(|(name, _)| {
         let path = Path::new(name);
         path.parent().and_then(Path::file_name) != Some("fdt".as_ref())
-            || path.file_name() == Some("v4.bin".as_ref())
+            || ["v4.bin", "gtex-payloads.bin"]
+                .iter()
+                .any(|kept| path.file_name() == Some(kept.as_ref()))
     });
     fixtures
 }
