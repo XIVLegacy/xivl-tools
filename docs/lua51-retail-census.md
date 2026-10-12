@@ -7,7 +7,8 @@ or script paths, source or constant strings, payload bytes, private roots,
 host names, timestamps, or individual file rows.
 
 The source inventory is identified by the
-[retail Lua coverage census](https://github.com/XIVLegacy/xivl-client-scripts/blob/da2ecbf8e8d80a07988fef80c2a8af716539d7fe/docs/retail-lua-coverage.md).
+[retail Lua coverage census](https://github.com/XIVLegacy/xivl-client-scripts/blob/da2ecbf8e8d80a07988fef80c2a8af716539d7fe/docs/retail-lua-coverage.md),
+`xivl-client-scripts:docs/retail-lua-coverage.md`.
 Its retained coverage manifest file hashed to
 `33DFFF57BB2419C4B4778F73DB367726DABFA6532C73DF03A687CF31F5F50E31`, and its recorded retail inventory digest was
 `C0BC21DE2626F619AD278C4E043F537A2B6C1CF3263D3110323CC31054B97CF2`.
