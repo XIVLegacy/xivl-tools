@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "map-layout-trailing",
+  "formatId": "map-layout",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/map-layout/trailing.bin"
+  },
+  "arguments": ["--as", "map-layout"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Sixteen authored bytes after the embedded SEDB extent remain visible as trailing bytes."
+}

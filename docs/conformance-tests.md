@@ -151,6 +151,15 @@ The WRB evidence page records independent chunk and stream range accounting
 against this exact input. No private bytes or decoded geometry are retained
 in these expectations.
 
+MapLayout `inspect` and `validate` cases use explicit `--as map-layout`.
+Public authored fixtures follow the documented retail framing and cover an
+accepted scene graph with resource and marker rows, trailing bytes, and
+refusals for the magic, the scene offset, a non-lyb container, the lyb
+size, the nine-descriptor group, and a node extent outside the payload.
+Reports retain spans, counts, references, and digests without names or
+payload strings. See the
+[MapLayout inspection contract](formats/world-layout.md#inspection-and-validation).
+
 PWIB `extract` cases use `--pwib-entry <index>` with the texture output
 options to exercise selected RES/txb extraction. Reports retain entry and
 type metadata, descriptor and table spans, second-relative offsets,

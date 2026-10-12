@@ -379,14 +379,14 @@
       "name": "Map layout scene graph",
       "category": "world",
       "phase": 4,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
       "export": "planned",
       "exportViews": [
         "gltf",
         "json"
       ],
-      "notes": "The retail MapLayout and lyb layout is documented in docs/formats/world-layout.md and read by the zone-geometry exporter; a general scene-graph reader and export remain planned."
+      "notes": "Explicit --as map-layout inspection and validation reuse the bounded zone reader that export-zones uses, with the same acceptance. Reports retain the MapLayout header, every resource-table row, the lyb container and payload words, the object list, every node-type declaration with its extent, placement counts, and trailing bytes as spans, counts, references, and digests, without names or payload strings. Public authored cases cover an accepted graph, trailing bytes, and refusals at the magic, scene offset, lyb container and size, the nine-descriptor group, and node extents. Node fields beyond those the zone reader consumes, the unresolved words and classes listed in the evidence page, layout selection, export, and writing remain outside this read. Evidence and limits: docs/formats/world-layout.md."
     },
     {
       "id": "zipatch-legacy",

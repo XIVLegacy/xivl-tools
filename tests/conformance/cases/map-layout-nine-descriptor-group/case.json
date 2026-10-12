@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "map-layout-nine-descriptor-group",
+  "formatId": "map-layout",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/map-layout/nine-descriptor-group.bin"
+  },
+  "arguments": ["--as", "map-layout"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-attribute-value",
+    "errorOffset": 1100
+  },
+  "notes": "A unit-tree group declared with the nine-descriptor set is rejected at the group node."
+}

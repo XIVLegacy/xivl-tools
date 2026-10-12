@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "map-layout-lyb-size",
+  "formatId": "map-layout",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/map-layout/lyb-size.bin"
+  },
+  "arguments": ["--as", "map-layout"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-attribute-value",
+    "errorOffset": 212
+  },
+  "notes": "A payload size word differing from its containing SEDB total size is rejected at the payload size field."
+}

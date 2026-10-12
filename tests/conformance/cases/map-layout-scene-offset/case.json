@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "map-layout-scene-offset",
+  "formatId": "map-layout",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/map-layout/scene-offset.bin"
+  },
+  "arguments": ["--as", "map-layout"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-attribute-value",
+    "errorOffset": 32
+  },
+  "notes": "A scene offset differing from the resource-table end is rejected at its header field."
+}

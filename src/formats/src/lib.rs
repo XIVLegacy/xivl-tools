@@ -62,10 +62,11 @@ pub use sheet::{ColumnType, ColumnValue, EnableFile, Row, RowOffsets, SheetStrin
 pub use sqwt::SqwtFile;
 pub use ssd::SsdDocument;
 pub use zone::{
-    compose_transforms, flatten_zone, parse_layout, parse_model, parse_phb, transform_matrix,
-    CollisionHullInfo, CollisionPrimitive, CollisionResourceInfo, FlattenedZone, Layout,
-    LayoutObject, Matrix4, MeshClassification, MeshPart, Model, Phb, PhbHull, PlacementTrace,
-    SourceFace, SourceInfo, Transform, Vec3, GEOMETRY_SCHEMA_VERSION,
+    compose_transforms, flatten_zone, parse_layout, parse_layout_with_structure, parse_model,
+    parse_phb, transform_matrix, CollisionHullInfo, CollisionPrimitive, CollisionResourceInfo,
+    FlattenedZone, Layout, LayoutInspection, LayoutNodeTypeInspection, LayoutObject,
+    LayoutPlacementCounts, LayoutResourceInspection, Matrix4, MeshClassification, MeshPart, Model,
+    Phb, PhbHull, PlacementTrace, SourceFace, SourceInfo, Transform, Vec3, GEOMETRY_SCHEMA_VERSION,
 };
 
 /// Map every non-empty, non-comment line of a resource-id listing to its

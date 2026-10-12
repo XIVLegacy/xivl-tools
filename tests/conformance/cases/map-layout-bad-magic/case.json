@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "map-layout-bad-magic",
+  "formatId": "map-layout",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/map-layout/bad-magic.bin"
+  },
+  "arguments": ["--as", "map-layout"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-attribute-value",
+    "errorOffset": 0
+  },
+  "notes": "A changed MapLayout signature is rejected at the outer header."
+}

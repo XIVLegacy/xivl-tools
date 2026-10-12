@@ -17,7 +17,11 @@ The same bounded model reader is available separately through explicit
 `inspect --as wrb-model` and `validate --as wrb-model`. The
 [WRB inspection contract](wrb-model.md) defines its structural report and
 retail authentication. This report retains metadata and opaque ranges
-without exporting decoded geometry.
+without exporting decoded geometry. The layout reader is likewise
+available through explicit `inspect --as map-layout` and
+`validate --as map-layout`; the
+[MapLayout inspection contract](world-layout.md#inspection-and-validation)
+defines that report.
 
 Retail InstanceObject child slots also contain an exact 0x0C flat range record
 with the descriptor `[(0,0)]`; its target and count are bounds-checked but its

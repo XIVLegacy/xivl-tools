@@ -1,0 +1,800 @@
+{
+  "format": "map-layout",
+  "header": {
+    "entryCount": 3,
+    "magic": "MapLayoutResourceData",
+    "reserved": {
+      "sha256": "9d908ecfb6b256def8b49a7c504e6c889c4b0e41fe6ce3e01863dd7b61a20aa0",
+      "span": {
+        "length": 24,
+        "offset": 40
+      }
+    },
+    "sceneOffset": 160,
+    "sha256": "bc6316fbbed336d63197f87344cba551a745c4eb5306c24d66e2f92d02c212a0",
+    "span": {
+      "length": 64,
+      "offset": 0
+    },
+    "version": "1.1.0"
+  },
+  "input": {
+    "length": 1604
+  },
+  "operation": "inspect",
+  "placements": {
+    "collisionBoxes": 1,
+    "count": 2,
+    "model": 1,
+    "phb": 1
+  },
+  "resources": {
+    "count": 3,
+    "markerCount": 1,
+    "resourceCount": 2,
+    "rows": [
+      {
+        "index": 0,
+        "kind": "resource",
+        "name": {
+          "sha256": "20b5517e6502e5250f54254ab565d2d5ce65aa4708dd090697bc68492dfdf67b",
+          "span": {
+            "length": 16,
+            "offset": 64
+          }
+        },
+        "resourceId": "0x01020304",
+        "span": {
+          "length": 32,
+          "offset": 64
+        },
+        "typeTag": "bhp",
+        "unknown": {
+          "sha256": "d86e8112f3c4c4442126f8e9f44f16867da487f29052bf91b810457db34209a4",
+          "span": {
+            "length": 8,
+            "offset": 88
+          }
+        }
+      },
+      {
+        "index": 1,
+        "kind": "resource",
+        "name": {
+          "sha256": "20b5517e6502e5250f54254ab565d2d5ce65aa4708dd090697bc68492dfdf67b",
+          "span": {
+            "length": 16,
+            "offset": 96
+          }
+        },
+        "resourceId": "0x05060708",
+        "span": {
+          "length": 32,
+          "offset": 96
+        },
+        "typeTag": "brt",
+        "unknown": {
+          "sha256": "fb59317b8103f19f3850f0be3fe62db1aa481a9a7b31c590e6d243e98eacd375",
+          "span": {
+            "length": 8,
+            "offset": 120
+          }
+        }
+      },
+      {
+        "index": 2,
+        "kind": "marker",
+        "name": {
+          "sha256": "56a4ffa77161bef7f091e905cb3f55f4c476723bbe0c46da722d21f5c1b4b4a8",
+          "span": {
+            "length": 16,
+            "offset": 128
+          }
+        },
+        "resourceId": "0x00000000",
+        "span": {
+          "length": 32,
+          "offset": 128
+        },
+        "typeTag": "",
+        "unknown": {
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "span": {
+            "length": 8,
+            "offset": 152
+          }
+        }
+      }
+    ],
+    "sha256": "ce2a6d1362d6e0b10dc8dd697387b60d6c9ed8d93b3c7368b28dc81e1e9780ce",
+    "span": {
+      "length": 96,
+      "offset": 64
+    }
+  },
+  "scene": {
+    "container": {
+      "anomalies": [],
+      "declaredSize": 1444,
+      "entries": [
+        {
+          "kind": "payload",
+          "sha256": "a11a0b9964c1076dae16e19f6bfc7363af6d414710c05b718682daa3fb6e6edb",
+          "span": {
+            "length": 1396,
+            "offset": 208
+          }
+        }
+      ],
+      "flags": 0,
+      "headerSize": 48,
+      "headerUnknown": [
+        {
+          "kind": "unknown-gap",
+          "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+          "span": {
+            "length": 28,
+            "offset": 180
+          }
+        }
+      ],
+      "kind": "sedb-container",
+      "span": {
+        "length": 1444,
+        "offset": 160
+      },
+      "subtype": "lyb\\x00",
+      "totalSize": 1444,
+      "unknownA": 0
+    },
+    "nodeTypes": {
+      "count": 10,
+      "rows": [
+        {
+          "extent": {
+            "dataOffset": 516,
+            "nodeCount": 1,
+            "nodeSize": 20,
+            "span": {
+              "length": 12,
+              "offset": 604
+            }
+          },
+          "extentReference": 396,
+          "fieldCount": 3,
+          "fieldList": {
+            "span": {
+              "length": 12,
+              "offset": 404
+            }
+          },
+          "fieldListReference": 196,
+          "fields": [
+            {
+              "kind": 0,
+              "offset": 0
+            },
+            {
+              "kind": 2,
+              "offset": 8
+            },
+            {
+              "kind": 0,
+              "offset": 16
+            }
+          ],
+          "index": 0,
+          "nodes": {
+            "sha256": "444d8135d6758f8d2c00d61dd4995e5d71e042b335e7fb958b31d9517441400b",
+            "span": {
+              "length": 20,
+              "offset": 724
+            }
+          },
+          "span": {
+            "length": 16,
+            "offset": 244
+          },
+          "unknown": {
+            "kind": "unknown-gap",
+            "sha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+            "span": {
+              "length": 4,
+              "offset": 252
+            }
+          }
+        },
+        {
+          "extent": {
+            "dataOffset": 536,
+            "nodeCount": 5,
+            "nodeSize": 20,
+            "span": {
+              "length": 12,
+              "offset": 616
+            }
+          },
+          "extentReference": 408,
+          "fieldCount": 3,
+          "fieldList": {
+            "span": {
+              "length": 12,
+              "offset": 416
+            }
+          },
+          "fieldListReference": 208,
+          "fields": [
+            {
+              "kind": 0,
+              "offset": 4
+            },
+            {
+              "kind": 2,
+              "offset": 8
+            },
+            {
+              "kind": 0,
+              "offset": 16
+            }
+          ],
+          "index": 1,
+          "nodes": {
+            "sha256": "ccf4d41de5c10abeb0307c0e22226dac26bd7c1499b0d4b65fa7ce6ab7a31bad",
+            "span": {
+              "length": 100,
+              "offset": 744
+            }
+          },
+          "span": {
+            "length": 16,
+            "offset": 260
+          },
+          "unknown": {
+            "kind": "unknown-gap",
+            "sha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+            "span": {
+              "length": 4,
+              "offset": 268
+            }
+          }
+        },
+        {
+          "extent": {
+            "dataOffset": 636,
+            "nodeCount": 1,
+            "nodeSize": 112,
+            "span": {
+              "length": 12,
+              "offset": 628
+            }
+          },
+          "extentReference": 420,
+          "fieldCount": 8,
+          "fieldList": {
+            "span": {
+              "length": 32,
+              "offset": 428
+            }
+          },
+          "fieldListReference": 220,
+          "fields": [
+            {
+              "kind": 0,
+              "offset": 4
+            },
+            {
+              "kind": 2,
+              "offset": 8
+            },
+            {
+              "kind": 2,
+              "offset": 28
+            },
+            {
+              "kind": 0,
+              "offset": 76
+            },
+            {
+              "kind": 0,
+              "offset": 80
+            },
+            {
+              "kind": 0,
+              "offset": 84
+            },
+            {
+              "kind": 0,
+              "offset": 92
+            },
+            {
+              "kind": 0,
+              "offset": 96
+            }
+          ],
+          "index": 2,
+          "nodes": {
+            "sha256": "27068c67ef7525af2243733054df1759528fb09a67fe0339e7711010ce00244f",
+            "span": {
+              "length": 112,
+              "offset": 844
+            }
+          },
+          "span": {
+            "length": 16,
+            "offset": 276
+          },
+          "unknown": {
+            "kind": "unknown-gap",
+            "sha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+            "span": {
+              "length": 4,
+              "offset": 284
+            }
+          }
+        },
+        {
+          "extent": {
+            "dataOffset": 748,
+            "nodeCount": 1,
+            "nodeSize": 64,
+            "span": {
+              "length": 12,
+              "offset": 640
+            }
+          },
+          "extentReference": 432,
+          "fieldCount": 7,
+          "fieldList": {
+            "span": {
+              "length": 28,
+              "offset": 460
+            }
+          },
+          "fieldListReference": 252,
+          "fields": [
+            {
+              "kind": 0,
+              "offset": 4
+            },
+            {
+              "kind": 2,
+              "offset": 8
+            },
+            {
+              "kind": 0,
+              "offset": 16
+            },
+            {
+              "kind": 0,
+              "offset": 44
+            },
+            {
+              "kind": 0,
+              "offset": 48
+            },
+            {
+              "kind": 0,
+              "offset": 52
+            },
+            {
+              "kind": 0,
+              "offset": 60
+            }
+          ],
+          "index": 3,
+          "nodes": {
+            "sha256": "352139155cc46f912568b93c5a45069766f589199c30d0cc19e7dd1b0cf0e77c",
+            "span": {
+              "length": 64,
+              "offset": 956
+            }
+          },
+          "span": {
+            "length": 16,
+            "offset": 292
+          },
+          "unknown": {
+            "kind": "unknown-gap",
+            "sha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+            "span": {
+              "length": 4,
+              "offset": 300
+            }
+          }
+        },
+        {
+          "extent": {
+            "dataOffset": 812,
+            "nodeCount": 1,
+            "nodeSize": 80,
+            "span": {
+              "length": 12,
+              "offset": 652
+            }
+          },
+          "extentReference": 444,
+          "fieldCount": 7,
+          "fieldList": {
+            "span": {
+              "length": 28,
+              "offset": 488
+            }
+          },
+          "fieldListReference": 280,
+          "fields": [
+            {
+              "kind": 0,
+              "offset": 4
+            },
+            {
+              "kind": 2,
+              "offset": 8
+            },
+            {
+              "kind": 0,
+              "offset": 28
+            },
+            {
+              "kind": 0,
+              "offset": 32
+            },
+            {
+              "kind": 0,
+              "offset": 36
+            },
+            {
+              "kind": 2,
+              "offset": 44
+            },
+            {
+              "kind": 0,
+              "offset": 48
+            }
+          ],
+          "index": 4,
+          "nodes": {
+            "sha256": "4ce66c31c8723c4ec1d9f11af0cfa05c5e7f3289f186c1df219b6cddaf9d88e9",
+            "span": {
+              "length": 80,
+              "offset": 1020
+            }
+          },
+          "span": {
+            "length": 16,
+            "offset": 308
+          },
+          "unknown": {
+            "kind": "unknown-gap",
+            "sha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+            "span": {
+              "length": 4,
+              "offset": 316
+            }
+          }
+        },
+        {
+          "extent": {
+            "dataOffset": 892,
+            "nodeCount": 1,
+            "nodeSize": 48,
+            "span": {
+              "length": 12,
+              "offset": 664
+            }
+          },
+          "extentReference": 456,
+          "fieldCount": 5,
+          "fieldList": {
+            "span": {
+              "length": 20,
+              "offset": 516
+            }
+          },
+          "fieldListReference": 308,
+          "fields": [
+            {
+              "kind": 0,
+              "offset": 12
+            },
+            {
+              "kind": 0,
+              "offset": 16
+            },
+            {
+              "kind": 0,
+              "offset": 20
+            },
+            {
+              "kind": 2,
+              "offset": 28
+            },
+            {
+              "kind": 0,
+              "offset": 32
+            }
+          ],
+          "index": 5,
+          "nodes": {
+            "sha256": "07e37d5094ad82da1811e754f347fe2ef2114ae4db4694fbd4f9fb2e31ba42c7",
+            "span": {
+              "length": 48,
+              "offset": 1100
+            }
+          },
+          "span": {
+            "length": 16,
+            "offset": 324
+          },
+          "unknown": {
+            "kind": "unknown-gap",
+            "sha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+            "span": {
+              "length": 4,
+              "offset": 332
+            }
+          }
+        },
+        {
+          "extent": {
+            "dataOffset": 940,
+            "nodeCount": 2,
+            "nodeSize": 48,
+            "span": {
+              "length": 12,
+              "offset": 676
+            }
+          },
+          "extentReference": 468,
+          "fieldCount": 5,
+          "fieldList": {
+            "span": {
+              "length": 20,
+              "offset": 552
+            }
+          },
+          "fieldListReference": 344,
+          "fields": [
+            {
+              "kind": 0,
+              "offset": 12
+            },
+            {
+              "kind": 0,
+              "offset": 16
+            },
+            {
+              "kind": 2,
+              "offset": 20
+            },
+            {
+              "kind": 0,
+              "offset": 24
+            },
+            {
+              "kind": 0,
+              "offset": 32
+            }
+          ],
+          "index": 6,
+          "nodes": {
+            "sha256": "011533468ccdff1e65d1793b3cbc9f3ed366c1fe3859a98ac82ba0f4f9a7e4c5",
+            "span": {
+              "length": 96,
+              "offset": 1148
+            }
+          },
+          "span": {
+            "length": 16,
+            "offset": 340
+          },
+          "unknown": {
+            "kind": "unknown-gap",
+            "sha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+            "span": {
+              "length": 4,
+              "offset": 348
+            }
+          }
+        },
+        {
+          "extent": {
+            "dataOffset": 1036,
+            "nodeCount": 1,
+            "nodeSize": 44,
+            "span": {
+              "length": 12,
+              "offset": 688
+            }
+          },
+          "extentReference": 480,
+          "fieldCount": 5,
+          "fieldList": {
+            "span": {
+              "length": 20,
+              "offset": 572
+            }
+          },
+          "fieldListReference": 364,
+          "fields": [
+            {
+              "kind": 0,
+              "offset": 4
+            },
+            {
+              "kind": 2,
+              "offset": 8
+            },
+            {
+              "kind": 0,
+              "offset": 20
+            },
+            {
+              "kind": 0,
+              "offset": 28
+            },
+            {
+              "kind": 2,
+              "offset": 36
+            }
+          ],
+          "index": 7,
+          "nodes": {
+            "sha256": "e95d66dc1f431c13d31bdb2587ca0c089d292ef57f15764bc98c349f059209f8",
+            "span": {
+              "length": 44,
+              "offset": 1244
+            }
+          },
+          "span": {
+            "length": 16,
+            "offset": 356
+          },
+          "unknown": {
+            "kind": "unknown-gap",
+            "sha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+            "span": {
+              "length": 4,
+              "offset": 364
+            }
+          }
+        },
+        {
+          "extent": {
+            "dataOffset": 1080,
+            "nodeCount": 1,
+            "nodeSize": 20,
+            "span": {
+              "length": 12,
+              "offset": 700
+            }
+          },
+          "extentReference": 492,
+          "fieldCount": 2,
+          "fieldList": {
+            "span": {
+              "length": 8,
+              "offset": 592
+            }
+          },
+          "fieldListReference": 384,
+          "fields": [
+            {
+              "kind": 0,
+              "offset": 4
+            },
+            {
+              "kind": 2,
+              "offset": 8
+            }
+          ],
+          "index": 8,
+          "nodes": {
+            "sha256": "06bc64bd7920551db48c6a3025ea888daf69c5ce3ac5afab9c289efb03fac4ea",
+            "span": {
+              "length": 20,
+              "offset": 1288
+            }
+          },
+          "span": {
+            "length": 16,
+            "offset": 372
+          },
+          "unknown": {
+            "kind": "unknown-gap",
+            "sha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+            "span": {
+              "length": 4,
+              "offset": 380
+            }
+          }
+        },
+        {
+          "extent": {
+            "dataOffset": 1100,
+            "nodeCount": 1,
+            "nodeSize": 12,
+            "span": {
+              "length": 12,
+              "offset": 712
+            }
+          },
+          "extentReference": 504,
+          "fieldCount": 1,
+          "fieldList": {
+            "span": {
+              "length": 4,
+              "offset": 600
+            }
+          },
+          "fieldListReference": 392,
+          "fields": [
+            {
+              "kind": 0,
+              "offset": 0
+            }
+          ],
+          "index": 9,
+          "nodes": {
+            "sha256": "7c9e2e7338f6b273238b01d5e582ded3afa1a4942a9191b2162c58758ea38374",
+            "span": {
+              "length": 12,
+              "offset": 1308
+            }
+          },
+          "span": {
+            "length": 16,
+            "offset": 388
+          },
+          "unknown": {
+            "kind": "unknown-gap",
+            "sha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+            "span": {
+              "length": 4,
+              "offset": 396
+            }
+          }
+        }
+      ],
+      "span": {
+        "length": 160,
+        "offset": 244
+      }
+    },
+    "objectList": {
+      "count": 3,
+      "rootReference": 516,
+      "span": {
+        "length": 12,
+        "offset": 232
+      }
+    },
+    "payload": {
+      "sha256": "a11a0b9964c1076dae16e19f6bfc7363af6d414710c05b718682daa3fb6e6edb",
+      "size": 1444,
+      "span": {
+        "length": 1396,
+        "offset": 208
+      },
+      "unknown": [
+        {
+          "kind": "unknown-gap",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "span": {
+            "length": 4,
+            "offset": 216
+          }
+        },
+        {
+          "kind": "unknown-gap",
+          "sha256": "c2fccbdc04912de5a5e307c069b89e62d95eea555902d54461b3ed7f21067c21",
+          "span": {
+            "length": 4,
+            "offset": 220
+          }
+        }
+      ]
+    }
+  },
+  "schemaVersion": 1,
+  "trailing": []
+}

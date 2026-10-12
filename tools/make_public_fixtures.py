@@ -947,6 +947,248 @@ def build_fixtures() -> dict[str, bytes]:
         model_container(b"WRB\0", [deep])
     )
 
+    # -- map-layout ------------------------------------------------------
+    # The resource rows and lyb graph exercise the documented collision path
+    # without carrying geometry or bytes from a client resource.
+    def map_layout_resource(
+        rows: list[tuple[str, str, int, int]], payload: bytes
+    ) -> bytes:
+        scene_offset = 0x40 + 32 * len(rows)
+        header = bytearray(scene_offset)
+        header[:24] = b"MapLayoutResourceData".ljust(24, b"\0")
+        header[0x18:0x20] = b"1.1.0".ljust(8, b"\0")
+        struct.pack_into("<II", header, 0x20, scene_offset, len(rows))
+        for index, (name, type_tag, resource_id, unknown) in enumerate(rows):
+            at = 0x40 + index * 32
+            header[at : at + 16] = name.encode("ascii").ljust(16, b"\0")
+            header[at + 16 : at + 20] = tag(type_tag)
+            struct.pack_into("<II", header, at + 20, resource_id, unknown)
+        total_size = 0x30 + len(payload)
+        payload = bytearray(payload)
+        struct.pack_into("<I", payload, 4, total_size)
+        return bytes(header) + sedb_header("lyb", 0, 0, 0x30, total_size) + payload
+
+    layout_rows = [
+        ("mesh", "bhp", 0x01020304, 2),
+        ("mesh", "brt", 0x05060708, 0x102),
+        ("placed", "", 0, 0),
+    ]
+    layout_types = [
+        ("root", 1, 0x14, [(0, 0), (8, 2), (16, 0)]),
+        ("class", 5, 0x14, [(4, 0), (8, 2), (16, 0)]),
+        (
+            "settings",
+            1,
+            0x70,
+            [
+                (4, 0),
+                (8, 2),
+                (0x1C, 2),
+                (0x4C, 0),
+                (0x50, 0),
+                (0x54, 0),
+                (0x5C, 0),
+                (0x60, 0),
+            ],
+        ),
+        (
+            "instance",
+            1,
+            0x40,
+            [
+                (4, 0),
+                (8, 2),
+                (0x10, 0),
+                (0x2C, 0),
+                (0x30, 0),
+                (0x34, 0),
+                (0x3C, 0),
+            ],
+        ),
+        (
+            "tree",
+            1,
+            0x50,
+            [
+                (4, 0),
+                (8, 2),
+                (0x1C, 0),
+                (0x20, 0),
+                (0x24, 0),
+                (0x2C, 2),
+                (0x30, 0),
+            ],
+        ),
+        ("group", 1, 0x30, [(0x0C, 0), (0x10, 0), (0x14, 0), (0x1C, 2), (0x20, 0)]),
+        ("child", 2, 0x30, [(0x0C, 0), (0x10, 0), (0x14, 2), (0x18, 0), (0x20, 0)]),
+        ("attribute", 1, 0x2C, [(4, 0), (8, 2), (0x14, 0), (0x1C, 0), (0x24, 2)]),
+        ("box", 1, 0x14, [(4, 0), (8, 2)]),
+        ("range", 1, 0x0C, [(0, 0)]),
+    ]
+    layout_node_table = 0x18 + 3 * 4
+    layout_payload = bytearray(layout_node_table + 16 * len(layout_types))
+    layout_payload[:4] = b"lyb\0"
+    struct.pack_into("<IIII", layout_payload, 8, 0, 0x00020004, layout_node_table, 0x18)
+
+    def layout_allocate(data: bytes) -> int:
+        offset = len(layout_payload)
+        layout_payload.extend(data)
+        layout_payload.extend(bytes(-len(layout_payload) % 4))
+        return offset
+
+    layout_field_lists = {}
+    layout_type_rows = {}
+    for index, (name, _, _, fields) in enumerate(layout_types):
+        layout_type_rows[name] = layout_node_table + index * 16
+        descriptors = b"".join(struct.pack("<HH", *field) for field in fields)
+        # Reserve the nine-descriptor declaration's width so only the group
+        # declaration changes in that malformed fixture, not graph offsets.
+        if name == "group":
+            descriptors = descriptors.ljust(9 * 4, b"\0")
+        layout_field_lists[name] = layout_allocate(descriptors)
+    layout_extents = {
+        name: layout_allocate(bytes(12)) for name, _, _, _ in layout_types
+    }
+    layout_nodes = {}
+    for name, count, width, fields in layout_types:
+        layout_nodes[name] = layout_allocate(bytes(count * width))
+        struct.pack_into(
+            "<IIII",
+            layout_payload,
+            layout_type_rows[name],
+            layout_extents[name],
+            layout_field_lists[name],
+            1,
+            len(fields),
+        )
+        struct.pack_into(
+            "<III",
+            layout_payload,
+            layout_extents[name],
+            layout_nodes[name],
+            count,
+            width,
+        )
+    layout_rotation = layout_allocate(struct.pack("<4f", 0.0, 0.25, 0.0, 0.0))
+    layout_scale = layout_allocate(struct.pack("<4f", 1.0, 2.0, 1.0, 0.0))
+
+    def layout_string(text: str) -> int:
+        return layout_allocate(text.encode("ascii") + b"\0")
+
+    layout_class_paths = [
+        "MiscObjects/LaySettings/LaySettingsObject",
+        "RefObjects/InstanceObject",
+        "RefObjects/UnitTree/UnitTreeObject",
+        "BaseObjects/Attribute/AttributeBaseObject",
+        "BaseObjects/CollisionBox/CollisionBoxBaseObject",
+    ]
+    for index, (name, class_path) in enumerate(
+        zip(("settings", "instance", "tree", "attribute", "box"), layout_class_paths)
+    ):
+        class_node = layout_nodes["class"] + index * 0x14
+        path_string = layout_string(class_path)
+        struct.pack_into("<I", layout_payload, class_node + 8, path_string)
+        struct.pack_into(
+            "<II", layout_payload, layout_nodes[name], index + 1, class_node
+        )
+    layout_zone_name = layout_string("synthetic-zone")
+    layout_root_name = layout_string("synthetic-zone/Test")
+    layout_instance_name = layout_string("placed")
+    layout_key = layout_string("mesh")
+    root = layout_nodes["root"]
+    settings = layout_nodes["settings"]
+    instance = layout_nodes["instance"]
+    tree = layout_nodes["tree"]
+    group = layout_nodes["group"]
+    child = layout_nodes["child"]
+    attribute = layout_nodes["attribute"]
+    box = layout_nodes["box"]
+    child_range = layout_nodes["range"]
+    # The root child array is exactly the tail of the object list.
+    struct.pack_into("<III", layout_payload, 0x18, root, settings, instance)
+    struct.pack_into("<III", layout_payload, root, 0x1C, 2, layout_root_name)
+    struct.pack_into("<I", layout_payload, settings + 8, layout_zone_name)
+    struct.pack_into("<3f", layout_payload, settings + 0x40, 10.0, 0.0, 0.0)
+    struct.pack_into("<I", layout_payload, instance + 8, layout_instance_name)
+    struct.pack_into("<3f", layout_payload, instance + 0x20, 1.0, 0.0, 0.0)
+    struct.pack_into(
+        "<IIIII",
+        layout_payload,
+        instance + 0x2C,
+        layout_rotation,
+        layout_scale,
+        child_range,
+        1,
+        tree,
+    )
+    struct.pack_into("<3f", layout_payload, tree + 0x10, 2.0, 0.0, 0.0)
+    struct.pack_into("<II", layout_payload, tree + 0x24, group, 1)
+    struct.pack_into("<II", layout_payload, tree + 0x30, child + 0x30, 1)
+    struct.pack_into("<3f", layout_payload, group, 3.0, 0.0, 0.0)
+    struct.pack_into("<II", layout_payload, group + 0x20, child, 1)
+    struct.pack_into("<3f", layout_payload, child, 4.0, 0.0, 0.0)
+    struct.pack_into("<I", layout_payload, child + 0x18, attribute)
+    struct.pack_into("<3f", layout_payload, child + 0x30, 0.0, 5.0, 0.0)
+    struct.pack_into("<I", layout_payload, child + 0x30 + 0x18, box)
+    struct.pack_into("<II", layout_payload, attribute + 0x24, layout_key, 1)
+    struct.pack_into("<I", layout_payload, box + 0x0C, 0x02020000)
+    struct.pack_into("<III", layout_payload, child_range, child, 1, 0)
+    layout_supported = map_layout_resource(layout_rows, bytes(layout_payload))
+    fixtures["map-layout/supported.bin"] = layout_supported
+    # Bytes beyond the SEDB extent remain visible without changing the graph.
+    fixtures["map-layout/trailing.bin"] = layout_supported + pattern(16, 0xB3)
+    layout_scene_offset = 0x40 + 32 * len(layout_rows)
+    layout_payload_start = layout_scene_offset + 0x30
+    # Each refusal isolates the named framing field or node declaration.
+    layout_bad_magic = bytearray(layout_supported)
+    layout_bad_magic[0] = ord("X")
+    fixtures["map-layout/bad-magic.bin"] = bytes(layout_bad_magic)
+    layout_bad_scene = bytearray(layout_supported)
+    struct.pack_into("<I", layout_bad_scene, 0x20, layout_scene_offset + 4)
+    fixtures["map-layout/scene-offset.bin"] = bytes(layout_bad_scene)
+    layout_not_lyb = bytearray(layout_supported)
+    layout_not_lyb[layout_scene_offset + 4 : layout_scene_offset + 8] = tag("txb")
+    fixtures["map-layout/not-lyb.bin"] = bytes(layout_not_lyb)
+    layout_bad_size = bytearray(layout_supported)
+    struct.pack_into(
+        "<I", layout_bad_size, layout_payload_start + 4, len(layout_payload)
+    )
+    fixtures["map-layout/lyb-size.bin"] = bytes(layout_bad_size)
+    layout_nine_group = bytearray(layout_supported)
+    nine_group_fields = [
+        (0, 0),
+        (8, 2),
+        (0x0C, 2),
+        (0x10, 2),
+        (0x14, 0),
+        (0x1C, 2),
+        (0x20, 2),
+        (0x24, 2),
+        (0x28, 2),
+    ]
+    struct.pack_into(
+        "<I",
+        layout_nine_group,
+        layout_payload_start + layout_type_rows["group"] + 12,
+        9,
+    )
+    for index, field in enumerate(nine_group_fields):
+        struct.pack_into(
+            "<HH",
+            layout_nine_group,
+            layout_payload_start + layout_field_lists["group"] + index * 4,
+            *field,
+        )
+    fixtures["map-layout/nine-descriptor-group.bin"] = bytes(layout_nine_group)
+    layout_bad_extent = bytearray(layout_supported)
+    struct.pack_into(
+        "<I",
+        layout_bad_extent,
+        layout_payload_start + layout_extents["child"] + 4,
+        len(layout_payload) // 0x30 + 1,
+    )
+    fixtures["map-layout/extent-outside.bin"] = bytes(layout_bad_extent)
+
     # A well-formed non-composite container: 0x30 header, 0x20 payload, and
     # a totalSize that covers the whole file as a top-level container does.
     plain_payload = pattern(0x20, 0x11)

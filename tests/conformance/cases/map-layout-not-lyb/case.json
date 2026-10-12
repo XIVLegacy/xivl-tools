@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "map-layout-not-lyb",
+  "formatId": "map-layout",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/map-layout/not-lyb.bin"
+  },
+  "arguments": ["--as", "map-layout"],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-attribute-value",
+    "errorOffset": 164
+  },
+  "notes": "An embedded SEDB container with subtype txb is rejected at the subtype field."
+}

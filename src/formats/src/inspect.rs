@@ -66,6 +66,8 @@ pub enum InspectAs {
     Pwib,
     /// A RES resource whose WRB payload is structurally validated and reported.
     WrbModel,
+    /// A MapLayout resource read with the bounded zone reader without payload strings.
+    MapLayout,
     EnableFile,
     RowOffsets,
     /// A sheet data file. With no columns it is read as a stream of string
@@ -79,7 +81,7 @@ pub enum InspectAs {
 
 impl InspectAs {
     /// Names accepted by the `--as` option.
-    pub const NAMES: [&'static str; 18] = [
+    pub const NAMES: [&'static str; 19] = [
         "sedb",
         "ssd",
         "scrambled-xml",
@@ -91,6 +93,7 @@ impl InspectAs {
         "gtex",
         "pwib",
         "wrb-model",
+        "map-layout",
         "enable-file",
         "row-offsets",
         "sheet-data",
@@ -139,6 +142,7 @@ impl InspectAs {
             Some("gtex") => Self::Gtex,
             Some("pwib") => Self::Pwib,
             Some("wrb-model") => Self::WrbModel,
+            Some("map-layout") => Self::MapLayout,
             Some("enable-file") => Self::EnableFile,
             Some("row-offsets") => Self::RowOffsets,
             Some("sheet-data") => Self::SheetData(columns.clone().unwrap_or_default()),
@@ -214,6 +218,7 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
         InspectAs::Gtex => inspect_tagged_resource(data, TaggedResourceKind::Gtex),
         InspectAs::Pwib => inspect_tagged_resource(data, TaggedResourceKind::Pwib),
         InspectAs::WrbModel => inspect_wrb_model(data),
+        InspectAs::MapLayout => inspect_map_layout(data),
         InspectAs::EnableFile => inspect_enable_file(data),
         InspectAs::RowOffsets => inspect_row_offsets(data),
         InspectAs::SheetData(columns) => inspect_sheet_data(data, columns),
@@ -445,6 +450,125 @@ fn inspect_wrb_model(data: &[u8]) -> Result<Value> {
             "resources": model.resources.iter().map(|resource| model_resource_to_json(data, resource)).collect::<Vec<_>>(),
         }),
     );
+    Ok(Value::Object(object))
+}
+
+fn inspect_map_layout(data: &[u8]) -> Result<Value> {
+    let (_, layout) = zone::parse_layout_with_structure(data)?;
+    let digest = |span: Span| {
+        json!({
+            "span": span.to_json(),
+            "sha256": span_sha256(data, span),
+        })
+    };
+    let unknown = |span: Span| {
+        json!({
+            "kind": "unknown-gap",
+            "span": span.to_json(),
+            "sha256": span_sha256(data, span),
+        })
+    };
+    let trim_tag = |bytes: &[u8]| {
+        let end = bytes
+            .iter()
+            .rposition(|byte| *byte != 0)
+            .map_or(0, |index| index + 1);
+        escape_tag(&bytes[..end])
+    };
+    let marker_count = layout
+        .rows
+        .iter()
+        .filter(|row| row.resource_id.value() == 0 && row.type_tag == [0; 4])
+        .count();
+    let resource_rows: Vec<Value> = layout.rows.iter().enumerate().map(|(index, row)| json!({
+        "index": index,
+        "span": row.span.to_json(),
+        "typeTag": trim_tag(&row.type_tag),
+        "resourceId": row.resource_id.to_hex(),
+        "kind": if row.resource_id.value() == 0 && row.type_tag == [0; 4] { "marker" } else { "resource" },
+        "name": digest(row.name_span),
+        "unknown": digest(Span::new(row.span.offset + 0x18, 8)),
+    })).collect();
+    let node_rows: Vec<Value> = layout.node_types.iter().enumerate().map(|(index, row)| {
+        let nodes = Span::new(layout.payload.offset + u64::from(row.data_offset), u64::from(row.node_count) * u64::from(row.node_size));
+        json!({
+            "index": index,
+            "span": row.span.to_json(),
+            "extentReference": row.extent_ref,
+            "fieldListReference": row.field_list_ref,
+            "unknown": unknown(Span::new(row.span.offset + 8, 4)),
+            "fieldCount": row.field_count,
+            "fields": row.fields.iter().map(|&(offset, kind)| json!({ "offset": offset, "kind": kind })).collect::<Vec<_>>(),
+            "fieldList": { "span": row.field_list_span.to_json() },
+            "extent": {
+                "span": row.extent_span.to_json(),
+                "dataOffset": row.data_offset,
+                "nodeCount": row.node_count,
+                "nodeSize": row.node_size,
+            },
+            "nodes": digest(nodes),
+        })
+    }).collect();
+    let container_end = layout.container.span.end();
+    let trailing = if container_end < data.len() as u64 {
+        let span = Span::new(container_end, data.len() as u64 - container_end);
+        json!([{ "kind": "trailing-bytes", "span": span.to_json(), "sha256": span_sha256(data, span) }])
+    } else {
+        json!([])
+    };
+    let mut object = envelope("map-layout", data);
+    object.insert(
+        "header".into(),
+        json!({
+            "span": Span::new(0, 0x40).to_json(),
+            "sha256": span_sha256(data, Span::new(0, 0x40)),
+            "magic": trim_tag(&data[..24]),
+            "version": trim_tag(&data[0x18..0x20]),
+            "sceneOffset": layout.scene_offset,
+            "entryCount": layout.entry_count,
+            "reserved": digest(Span::new(0x28, 24)),
+        }),
+    );
+    object.insert(
+        "resources".into(),
+        json!({
+            "span": Span::new(0x40, u64::from(layout.scene_offset) - 0x40).to_json(),
+            "sha256": span_sha256(data, Span::new(0x40, u64::from(layout.scene_offset) - 0x40)),
+            "count": layout.entry_count,
+            "markerCount": marker_count,
+            "resourceCount": layout.rows.len() - marker_count,
+            "rows": resource_rows,
+        }),
+    );
+    object.insert("scene".into(), json!({
+        "container": container_to_json(&layout.container),
+        "payload": {
+            "span": layout.payload.to_json(),
+            "sha256": span_sha256(data, layout.payload),
+            "size": layout.container.total_size,
+            "unknown": [unknown(Span::new(layout.payload.offset + 8, 4)), unknown(Span::new(layout.payload.offset + 12, 4))],
+        },
+        "objectList": {
+            "span": Span::new(layout.payload.offset + u64::from(layout.object_list_offset), layout.object_list.len() as u64 * 4).to_json(),
+            "count": layout.object_list.len(),
+            "rootReference": layout.object_list[0],
+        },
+        "nodeTypes": {
+            "span": Span::new(layout.payload.offset + u64::from(layout.node_type_table_offset), layout.node_types.len() as u64 * 16).to_json(),
+            "count": layout.node_types.len(),
+            "rows": node_rows,
+        },
+    }));
+    object.insert(
+        "placements".into(),
+        json!({
+            "count": layout.placements.count,
+            "phb": layout.placements.phb,
+            "model": layout.placements.model,
+            "collisionBoxes": layout.placements.collision_boxes,
+        }),
+    );
+    object.insert("trailing".into(), trailing);
     Ok(Value::Object(object))
 }
 
@@ -1582,6 +1706,98 @@ mod tests {
     use super::*;
 
     #[test]
+    fn map_layout_reports_bounded_structure_without_payload_strings() {
+        let mut data = zone::tests::layout_bytes();
+        data[0x18..0x1d].copy_from_slice(b"1.1.0");
+        let document = inspect_bytes_as(&data, &InspectAs::MapLayout).unwrap();
+        assert_eq!(document["format"], "map-layout");
+        assert_eq!(document["header"]["magic"], "MapLayoutResourceData");
+        assert_eq!(document["header"]["version"], "1.1.0");
+        assert_eq!(document["header"]["sceneOffset"], 0x60);
+        assert_eq!(document["resources"]["count"], 1);
+        assert_eq!(document["resources"]["markerCount"], 0);
+        assert_eq!(document["resources"]["resourceCount"], 1);
+        let row = &document["resources"]["rows"][0];
+        assert_eq!(row["typeTag"], "bhp");
+        assert_eq!(row["resourceId"], "0x05060708");
+        assert_eq!(row["kind"], "resource");
+        assert_eq!(row["name"]["span"], Span::new(0x40, 16).to_json());
+        assert_eq!(
+            row["name"]["sha256"],
+            span_sha256(&data, Span::new(0x40, 16))
+        );
+        assert_eq!(
+            document["scene"]["objectList"]["span"],
+            Span::new(0xa8, 8).to_json()
+        );
+        assert_eq!(document["scene"]["objectList"]["rootReference"], 0x680);
+        assert_eq!(document["scene"]["nodeTypes"]["count"], 12);
+        assert_eq!(
+            document["scene"]["nodeTypes"]["span"],
+            Span::new(0xb0, 0xc0).to_json()
+        );
+        let node = &document["scene"]["nodeTypes"]["rows"][0];
+        assert_eq!(node["extentReference"], 0x220);
+        assert_eq!(node["fieldListReference"], 0xe0);
+        assert_eq!(node["nodes"]["span"], Span::new(0x590, 0x40).to_json());
+        assert_eq!(
+            node["nodes"]["sha256"],
+            span_sha256(&data, Span::new(0x590, 0x40))
+        );
+        assert_eq!(
+            document["placements"],
+            json!({ "count": 1, "phb": 1, "model": 0, "collisionBoxes": 0 })
+        );
+        assert_eq!(document["trailing"], json!([]));
+        let text = document.to_string();
+        for hidden in [
+            "mesh",
+            "test-zone",
+            "RefObjects",
+            "BaseObjects",
+            "LaySettings",
+        ] {
+            assert!(!text.contains(hidden), "report disclosed {hidden}");
+        }
+        let validated = validate_named_bytes_as(&data, "", &InspectAs::MapLayout).unwrap();
+        assert_eq!(validated["format"], "map-layout");
+        assert_eq!(
+            validated["checks"],
+            json!([
+                { "name": "parse", "status": "pass" },
+                { "name": "round-trip", "status": "not-applicable" },
+            ])
+        );
+        assert_eq!(
+            inspect_bytes(&data).unwrap_err().kind(),
+            crate::ErrorKind::BadMagic
+        );
+    }
+
+    #[test]
+    fn map_layout_reports_markers_and_trailing_bytes() {
+        let mut data = zone::tests::layout_bytes();
+        data.splice(0x60..0x60, [0; 32]);
+        data[0x20..0x24].copy_from_slice(&0x80u32.to_le_bytes());
+        data[0x24..0x28].copy_from_slice(&2u32.to_le_bytes());
+        let end = data.len();
+        data.extend_from_slice(b"authored-tail");
+        let document = inspect_bytes_as(&data, &InspectAs::MapLayout).unwrap();
+        assert_eq!(document["resources"]["markerCount"], 1);
+        assert_eq!(document["resources"]["resourceCount"], 1);
+        assert_eq!(document["resources"]["rows"][1]["kind"], "marker");
+        assert_eq!(document["resources"]["rows"][1]["typeTag"], "");
+        assert_eq!(
+            document["trailing"],
+            json!([{
+                "kind": "trailing-bytes",
+                "span": Span::new(end as u64, 13).to_json(),
+                "sha256": sha256_hex(b"authored-tail"),
+            }])
+        );
+    }
+
+    #[test]
     fn arguments_select_a_reading() {
         let arguments =
             |parts: &[&str]| -> Vec<String> { parts.iter().map(|part| part.to_string()).collect() };
@@ -1608,6 +1824,10 @@ mod tests {
         assert_eq!(
             InspectAs::from_arguments(&arguments(&["--as", "wrb-model"])).unwrap(),
             InspectAs::WrbModel
+        );
+        assert_eq!(
+            InspectAs::from_arguments(&arguments(&["--as", "map-layout"])).unwrap(),
+            InspectAs::MapLayout
         );
         assert_eq!(
             InspectAs::from_arguments(&arguments(&["--as", "sheet-data", "--columns", "str,u8"]))

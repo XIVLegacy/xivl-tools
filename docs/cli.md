@@ -357,6 +357,7 @@ no identifying signature or when you want a particular view.
 | `staticactor-san` | The static-actor SAN record framing without assigning meanings to its record members. See [SAN records](formats/staticactor-san.md). |
 | `region` | RegionResourceData 1.1.0 root and child structure, token spans, and opaque fields. See [RegionResourceData](formats/region.md). |
 | `wrb-model` | Explicit bounded WRB model structure inside a RES resource. Reports metadata, counts, spans, digests, and opaque ranges. See [WRB inspection](formats/wrb-model.md). |
+| `map-layout` | Explicit MapLayout header, resource table, and lyb node declarations, read by the zone reader. Reports counts, spans, and digests without names or payload strings. See [world layout](formats/world-layout.md#inspection-and-validation). |
 | `gtex` | Loader-backed GTEX fields and surface spans. See [GTEX and PWIB](formats/gtex-pwib.md). |
 | `pwib` | The two loader-bounded PWIB segments and the fixed SEDB header in the first segment. |
 | `enable-file` | A headerless enable-record array. |

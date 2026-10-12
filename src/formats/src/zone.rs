@@ -190,6 +190,54 @@ pub struct Layout {
     pub resources: Vec<LayoutResource>,
 }
 
+/// Validated MapLayout declarations with absolute file spans and payload-relative references.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LayoutInspection {
+    pub scene_offset: u32,
+    pub entry_count: u32,
+    pub rows: Vec<LayoutResourceInspection>,
+    pub container: crate::sedb::Container,
+    pub payload: Span,
+    pub node_type_table_offset: u32,
+    pub object_list_offset: u32,
+    pub object_list: Vec<u32>,
+    pub node_types: Vec<LayoutNodeTypeInspection>,
+    pub placements: LayoutPlacementCounts,
+}
+
+/// Resource-table metadata with absolute file spans and the raw type tag.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LayoutResourceInspection {
+    pub span: Span,
+    pub name_span: Span,
+    pub type_tag: [u8; 4],
+    pub resource_id: ResourceId,
+}
+
+/// Node declarations with absolute file spans and payload-relative references and data offsets.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LayoutNodeTypeInspection {
+    pub span: Span,
+    pub extent_ref: u32,
+    pub field_list_ref: u32,
+    pub field_count: u32,
+    pub fields: Vec<(u16, u16)>,
+    pub field_list_span: Span,
+    pub extent_span: Span,
+    pub data_offset: u32,
+    pub node_count: u32,
+    pub node_size: u32,
+}
+
+/// Placement counts from the walked layout objects and their CollisionBox primitives.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LayoutPlacementCounts {
+    pub count: usize,
+    pub phb: usize,
+    pub model: usize,
+    pub collision_boxes: usize,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MeshClassification {
     Render,
@@ -549,6 +597,11 @@ impl SourceInfo {
 
 /// Read a MapLayout outer resource and its embedded SEDB `lyb` graph.
 pub fn parse_layout(data: &[u8]) -> Result<Layout> {
+    Ok(parse_layout_with_structure(data)?.0)
+}
+
+/// Read the bounded MapLayout graph and retain its declarations with absolute file spans.
+pub fn parse_layout_with_structure(data: &[u8]) -> Result<(Layout, LayoutInspection)> {
     if data.len() < 0x40 || data.get(..24) != Some(b"MapLayoutResourceData\0\0\0") {
         return Err(zone_error(0, "expected MapLayoutResourceData header"));
     }
@@ -568,12 +621,19 @@ pub fn parse_layout(data: &[u8]) -> Result<Layout> {
         ));
     }
     let mut resources = Vec::with_capacity(entry_count as usize);
+    let mut rows = Vec::with_capacity(entry_count as usize);
     for index in 0..entry_count as usize {
         let offset = 0x40 + index * 32;
         resources.push(LayoutResource {
             name: fixed_text(data, offset, 16)?,
             type_tag: fixed_text(data, offset + 16, 4)?,
             resource_id: ResourceId::new(u32_at(data, offset + 20)?),
+        });
+        rows.push(LayoutResourceInspection {
+            span: Span::new(offset as u64, 32),
+            name_span: Span::new(offset as u64, 16),
+            type_tag: data[offset + 16..offset + 20].try_into().unwrap(),
+            resource_id: resources[index].resource_id,
         });
     }
     let scene = data
@@ -591,7 +651,46 @@ pub fn parse_layout(data: &[u8]) -> Result<Layout> {
     let payload = data
         .get(payload_start..payload_end)
         .ok_or_else(|| zone_error(payload_start as u64, "lyb payload is outside MapLayout"))?;
-    parse_lyb_payload(payload, resources, container.total_size)
+    let mut inspection = LayoutInspection {
+        scene_offset: scene_offset as u32,
+        entry_count,
+        rows,
+        payload: Span::new(payload_start as u64, payload.len() as u64),
+        node_type_table_offset: 0,
+        object_list_offset: 0,
+        object_list: Vec::new(),
+        node_types: Vec::new(),
+        placements: LayoutPlacementCounts::default(),
+        container,
+    };
+    let layout = parse_lyb_payload(
+        payload,
+        resources,
+        inspection.container.total_size,
+        &mut inspection,
+    )
+    .map_err(|error| {
+        FormatError::new(
+            error.kind(),
+            error.offset() + payload_start as u64,
+            error.detail(),
+        )
+    })?;
+    inspection.placements = LayoutPlacementCounts {
+        count: layout.objects.len(),
+        phb: layout
+            .objects
+            .iter()
+            .filter(|object| object.phb.is_some())
+            .count(),
+        model: layout
+            .objects
+            .iter()
+            .filter(|object| object.model.is_some())
+            .count(),
+        collision_boxes: layout.objects.iter().map(|object| object.boxes.len()).sum(),
+    };
+    Ok((layout, inspection))
 }
 
 /// Decode the documented SEDB model path (RES -> WRB -> MDL -> MESH).
@@ -1183,6 +1282,7 @@ fn parse_lyb_payload(
     payload: &[u8],
     resources: Vec<LayoutResource>,
     containing_size: u32,
+    inspection: &mut LayoutInspection,
 ) -> Result<Layout> {
     if payload.len() < 0x18 || payload.get(..4) != Some(b"lyb\0") {
         return Err(zone_error(0, "expected lyb scene payload"));
@@ -1195,6 +1295,8 @@ fn parse_lyb_payload(
     }
     let node_table = u32_at(payload, 0x10)? as usize;
     let object_list = u32_at(payload, 0x14)? as usize;
+    inspection.node_type_table_offset = node_table as u32;
+    inspection.object_list_offset = object_list as u32;
     if object_list < 0x18 || object_list > node_table || node_table > payload.len() {
         return Err(zone_error(0x10, "lyb graph offsets are outside payload"));
     }
@@ -1206,6 +1308,7 @@ fn parse_lyb_payload(
     for index in 0..object_count {
         objects.push(u32_at(payload, object_list + index * 4)?);
     }
+    inspection.object_list = objects.clone();
     let first_fields = u32_at(payload, node_table + 4)? as usize;
     if first_fields < node_table
         || first_fields > payload.len()
@@ -1253,6 +1356,21 @@ fn parse_lyb_payload(
             "lyb node",
         )?;
         let node_size = u32_at(payload, extent_offset + 8)?;
+        inspection.node_types.push(LayoutNodeTypeInspection {
+            span: Span::new(inspection.payload.offset + at as u64, 16),
+            extent_ref: extent_offset as u32,
+            field_list_ref: field_list as u32,
+            field_count,
+            fields: fields.clone(),
+            field_list_span: Span::new(
+                inspection.payload.offset + field_list as u64,
+                field_bytes as u64,
+            ),
+            extent_span: Span::new(inspection.payload.offset + extent_offset as u64, 12),
+            data_offset,
+            node_count,
+            node_size,
+        });
         node_types.push(LyNodeType {
             data_offset,
             node_count,
@@ -2289,8 +2407,234 @@ fn obj_float(value: f32) -> String {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
+
+    #[test]
+    fn layout_inspection_matches_walked_layout_and_absolute_spans() {
+        let data = layout_bytes();
+        let (layout, inspection) = parse_layout_with_structure(&data).unwrap();
+        assert_eq!(parse_layout(&data).unwrap(), layout);
+        assert_eq!(inspection.scene_offset, 0x60);
+        assert_eq!(inspection.entry_count as usize, layout.resources.len());
+        assert_eq!(inspection.rows.len(), 1);
+        assert_eq!(inspection.rows[0].span, Span::new(0x40, 32));
+        assert_eq!(inspection.rows[0].name_span, Span::new(0x40, 16));
+        assert_eq!(inspection.rows[0].type_tag, *b"bhp\0");
+        assert_eq!(
+            inspection.rows[0].resource_id,
+            layout.resources[0].resource_id
+        );
+        assert_eq!(inspection.container.span, Span::new(0x60, 0xa30));
+        assert_eq!(inspection.payload, Span::new(0x90, 0xa00));
+        assert_eq!(inspection.node_type_table_offset, 0x20);
+        assert_eq!(inspection.object_list_offset, 0x18);
+        assert_eq!(inspection.object_list, vec![0x680, 0x500]);
+        assert_eq!(inspection.node_types.len(), 12);
+        let row = &inspection.node_types[0];
+        assert_eq!(row.span, Span::new(0xb0, 16));
+        assert_eq!(row.extent_ref, 0x220);
+        assert_eq!(row.field_list_ref, 0xe0);
+        assert_eq!(row.field_count, 7);
+        assert_eq!(row.fields, INSTANCE_FIELDS);
+        assert_eq!(row.field_list_span, Span::new(0x170, 28));
+        assert_eq!(row.extent_span, Span::new(0x2b0, 12));
+        assert_eq!(
+            (row.data_offset, row.node_count, row.node_size),
+            (0x500, 1, 0x40)
+        );
+        for row in &inspection.node_types {
+            assert!(row.span.end() <= data.len() as u64);
+            assert!(row.field_list_span.end() <= data.len() as u64);
+            assert!(row.extent_span.end() <= data.len() as u64);
+        }
+        assert_eq!(inspection.placements.count, layout.objects.len());
+        assert_eq!(
+            inspection.placements,
+            LayoutPlacementCounts {
+                count: 1,
+                phb: 1,
+                model: 0,
+                collision_boxes: 0
+            }
+        );
+    }
+
+    #[test]
+    fn layout_rebases_lyb_errors_but_preserves_sedb_offsets() {
+        let mut data = layout_bytes();
+        put_le_u32(&mut data, 0x94, 0);
+        let error = parse_layout_with_structure(&data).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidAttributeValue);
+        assert_eq!(error.offset(), 0x94);
+        assert_eq!(
+            error.detail(),
+            "lyb declared size does not match its containing SEDB size"
+        );
+        let mut data = layout_bytes();
+        put_le_u32(&mut data, 0x90 + 0x18, 0xa00);
+        let error = parse_layout_with_structure(&data).unwrap_err();
+        assert_eq!(error.offset(), 0x90 + 0xa00);
+        assert_eq!(error.detail(), "lyb reference does not name a node");
+        let mut data = layout_bytes();
+        data[0x60] = 0;
+        let error = parse_layout_with_structure(&data).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::BadMagic);
+        assert_eq!(error.offset(), 0x60);
+    }
+
+    fn put_f32(bytes: &mut [u8], offset: usize, value: f32) {
+        put_le_u32(bytes, offset, value.to_bits());
+    }
+
+    fn put_string(bytes: &mut [u8], offset: usize, value: &str) {
+        bytes[offset..offset + value.len()].copy_from_slice(value.as_bytes());
+    }
+
+    pub(crate) fn layout_bytes() -> Vec<u8> {
+        let mut layout = vec![0u8; 0x60];
+        layout[..21].copy_from_slice(b"MapLayoutResourceData");
+        put_le_u32(&mut layout, 0x20, 0x60);
+        put_le_u32(&mut layout, 0x24, 1);
+        layout[0x40..0x44].copy_from_slice(b"mesh");
+        layout[0x50..0x53].copy_from_slice(b"bhp");
+        put_le_u32(&mut layout, 0x54, 0x05060708);
+
+        let mut payload = vec![0u8; 0xa00];
+        payload[..4].copy_from_slice(b"lyb\0");
+        let payload_len = (0x30 + payload.len()) as u32;
+        put_le_u32(&mut payload, 0x04, payload_len);
+        put_le_u32(&mut payload, 0x10, 0x20);
+        put_le_u32(&mut payload, 0x14, 0x18);
+        put_le_u32(&mut payload, 0x18, 0x680);
+        put_le_u32(&mut payload, 0x1c, 0x500);
+        let rows = [
+            (0x500, 0x40),
+            (0x540, 0x50),
+            (0x590, 0x30),
+            (0x5c0, 0x30),
+            (0x5f0, 0x2c),
+            (0x700, 0x14),
+            (0x714, 0x14),
+            (0x728, 0x14),
+            (0x73c, 0x14),
+            (0x680, 0x70),
+            (0x750, 0x14),
+            (0x900, 0x0C),
+        ];
+        let fields: [&[(u16, u16)]; 12] = [
+            &[
+                (0x04, 0),
+                (0x08, 2),
+                (0x10, 0),
+                (0x2c, 0),
+                (0x30, 0),
+                (0x3c, 0),
+                (0x34, 0),
+            ],
+            &[
+                (0x04, 0),
+                (0x08, 2),
+                (0x1c, 0),
+                (0x20, 0),
+                (0x2c, 2),
+                (0x24, 0),
+                (0x30, 0),
+            ],
+            GROUP_FIELDS,
+            &[(0x14, 2), (0x0c, 0), (0x10, 0), (0x18, 0), (0x20, 0)],
+            &[(0x04, 0), (0x08, 2), (0x24, 2), (0x14, 0), (0x1c, 0)],
+            &[(0x04, 0), (0x08, 2), (0x10, 0)],
+            &[(0x04, 0), (0x08, 2), (0x10, 0)],
+            &[(0x04, 0), (0x08, 2), (0x10, 0)],
+            &[(0x04, 0), (0x08, 2), (0x10, 0)],
+            &[
+                (0x04, 0),
+                (0x08, 2),
+                (0x4c, 0),
+                (0x50, 0),
+                (0x5c, 0),
+                (0x1c, 2),
+                (0x54, 0),
+                (0x60, 0),
+            ],
+            &[(0x04, 0), (0x08, 2), (0x10, 0)],
+            &[(0x00, 0)],
+        ];
+        let mut field_list = 0xe0;
+        for (index, (offset, size)) in rows.into_iter().enumerate() {
+            let at = 0x20 + index * 16;
+            let extent = 0x220 + index * 12;
+            put_le_u32(&mut payload, at, extent as u32);
+            put_le_u32(&mut payload, at + 4, field_list);
+            put_le_u32(&mut payload, at + 8, 1);
+            put_le_u32(&mut payload, at + 12, fields[index].len() as u32);
+            for &(field_offset, field_kind) in fields[index] {
+                payload[field_list as usize..field_list as usize + 2]
+                    .copy_from_slice(&field_offset.to_le_bytes());
+                payload[field_list as usize + 2..field_list as usize + 4]
+                    .copy_from_slice(&field_kind.to_le_bytes());
+                field_list += 4;
+            }
+            put_le_u32(&mut payload, extent, offset);
+            put_le_u32(&mut payload, extent + 4, 1);
+            put_le_u32(&mut payload, extent + 8, size);
+        }
+        put_le_u32(&mut payload, 0x504, 0x700);
+        put_f32(&mut payload, 0x520, 1.0);
+        put_le_u32(&mut payload, 0x53c, 0x540);
+        put_le_u32(&mut payload, 0x534, 0x900);
+        put_le_u32(&mut payload, 0x538, 1);
+        put_le_u32(&mut payload, 0x544, 0x714);
+        put_f32(&mut payload, 0x550, 2.0);
+        put_le_u32(&mut payload, 0x564, 0x590);
+        put_le_u32(&mut payload, 0x568, 1);
+        put_f32(&mut payload, 0x590, 3.0);
+        put_le_u32(&mut payload, 0x5b0, 0x5c0);
+        put_le_u32(&mut payload, 0x5b4, 1);
+        put_f32(&mut payload, 0x5c0, 4.0);
+        put_le_u32(&mut payload, 0x5d8, 0x5f0);
+        put_le_u32(&mut payload, 0x5f4, 0x73c);
+        put_le_u32(&mut payload, 0x614, 0x820);
+        put_le_u32(&mut payload, 0x684, 0x750);
+        put_le_u32(&mut payload, 0x688, 0x860);
+        put_f32(&mut payload, 0x6c0, 10.0);
+        put_le_u32(&mut payload, 0x6cc, 0);
+        put_le_u32(&mut payload, 0x6d0, 0);
+        put_le_u32(&mut payload, 0x708, 0x760);
+        put_le_u32(&mut payload, 0x71c, 0x780);
+        put_le_u32(&mut payload, 0x730, 0x7c0);
+        put_le_u32(&mut payload, 0x744, 0x7e0);
+        put_le_u32(&mut payload, 0x758, 0x830);
+        put_le_u32(&mut payload, 0x900, 0x5c0);
+        put_le_u32(&mut payload, 0x904, 1);
+        put_le_u32(&mut payload, 0x908, 15);
+        put_string(&mut payload, 0x760, "RefObjects/InstanceObject\0");
+        put_string(&mut payload, 0x780, "RefObjects/UnitTree/UnitTreeObject\0");
+        put_string(&mut payload, 0x7c0, "RefObjects/Group/GroupObject\0");
+        put_string(
+            &mut payload,
+            0x7e0,
+            "BaseObjects/Attribute/AttributeBaseObject\0",
+        );
+        put_string(&mut payload, 0x820, "mesh\0");
+        put_string(
+            &mut payload,
+            0x830,
+            "MiscObjects/LaySettings/LaySettingsObject\0",
+        );
+        put_string(&mut payload, 0x860, "test-zone\0");
+
+        let total = 0x30 + payload.len();
+        let mut scene = vec![0u8; 0x30];
+        scene[..4].copy_from_slice(b"SEDB");
+        scene[4..8].copy_from_slice(b"lyb\0");
+        scene[0x0e..0x10].copy_from_slice(&0x30u16.to_le_bytes());
+        scene[0x10..0x14].copy_from_slice(&(total as u32).to_le_bytes());
+        scene.extend_from_slice(&payload);
+        layout.extend_from_slice(&scene);
+        layout
+    }
 
     fn t(x: f32, y: f32, z: f32) -> Transform {
         Transform {

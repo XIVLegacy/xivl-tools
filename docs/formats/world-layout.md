@@ -361,6 +361,62 @@ reference. The folder and BG box interpretations and Attribute kind are
 inferred or unresolved.
 No extent meaning is assigned to LaySettings `+0x3C` here.
 
+## Inspection and validation
+
+`inspect <file> --as map-layout` and `validate <file> --as map-layout` run
+the zone reader on one complete MapLayout resource. Selection is explicit:
+automatic detection and `--as sedb` still refuse a MapLayout file with
+`bad-magic`. The layout read is the one `export-zones` performs, and it
+refuses the same layouts at the same absolute offsets. `export-zones` also
+reads the referenced models and PHB hulls, which this reader does not.
+
+Every count, offset, and reference is bounded by the payload. A reference
+must name a declared node, a node run must lie inside its extent, strings
+must be terminated UTF-8, and graph depth is limited. The reader also
+requires:
+
+- the zero-padded magic at offset 0 and a `0x40`-byte header;
+- `0x40 + 32 * entryCount == sceneOffset`, inside the input;
+- an SEDB container at `sceneOffset` with subtype `lyb\x00`;
+- a payload tagged `lyb` whose `size` equals the SEDB `totalSize`;
+- an object list of at least two entries and a non-empty node-type table
+  of 16-byte rows, with every field list and declared extent inside the
+  payload and every node size nonzero;
+- the exact node shapes listed above for each class the reader dispatches:
+  class nodes, LaySettings, InstanceObject and its `0x0C` child-range
+  record, UnitTree, the five-descriptor group, children of instances,
+  unit trees, and groups, Attribute, and CollisionBox. The nine-descriptor
+  `0x30` declaration is refused when it is reached as a group;
+- an Attribute resource key that names a `bhp` or `brt` resource row.
+
+The report retains:
+
+- the header fields, with the reserved bytes as a span and digest;
+- every resource-table row, with its span, type tag, resource id, and
+  marker or resource kind. A row's name is a span and digest, and its
+  `+0x18..+0x20` words are an unknown span;
+- the lyb SEDB container, the payload span, `size`, and the unresolved
+  `unknownA` and `unknownB` words as unknown spans;
+- the object-list span, count, and root reference;
+- every node-type row, with its descriptors, extent record, and the
+  absolute span and digest of its declared nodes;
+- placement counts from the reader's walk, and bytes after the SEDB
+  extent as a trailing entry.
+
+Payload bytes outside these declarations, such as string and transform
+pools, are covered by the payload digest rather than listed separately.
+References keep their payload-relative values; spans are absolute. The
+report carries no names, class paths, resource keys, transforms, or other
+payload strings. Validation reports a parse check and marks round-trip as
+not applicable.
+
+This read is partial. It does not decode node fields beyond the ones the
+zone reader consumes, interpret the unresolved fields above, walk classes
+other than the dispatched ones, or export or write a layout. A layout that
+uses a dispatched class with another shape is refused rather than read.
+Which layouts the client selects for a region is outside this reader;
+`xivl-decomp:docs/resource/map-layout-selector.md` traces that selection.
+
 ## Field observations
 
 LaySettings `+0x3C`, interpreted as `f32`, has this distribution. Its

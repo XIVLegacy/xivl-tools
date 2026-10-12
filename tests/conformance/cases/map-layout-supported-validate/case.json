@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "map-layout-supported-validate",
+  "formatId": "map-layout",
+  "operation": "validate",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/map-layout/supported.bin"
+  },
+  "arguments": ["--as", "map-layout"],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Explicit MapLayout validation reports parse success for the supported declared lyb graph."
+}

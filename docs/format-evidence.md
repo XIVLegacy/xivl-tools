@@ -55,7 +55,8 @@ owns the accepted spans and refusal rules. Outside this claim:
   treating its SEDB prefix as a standalone child. Its separately documented
   selected RES/txb path resolves one DXT1 surface against the second span;
   MapLayout, zero-filled, and
-  unrecognized files still fail with `bad-magic`. RegionResourceData has its
+  unrecognized files still fail with `bad-magic`. MapLayout has its own
+  explicit `--as map-layout` reader. RegionResourceData has its
   own bounded structural reader;
 - the `wrb` chunk tree, model, mesh, skeleton, and texture layouts, which are
   outside this support claim;
