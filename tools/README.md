@@ -64,10 +64,23 @@ the tables indexed by `docs/format-evidence.md`.
 
 These commands require `--client-root`:
 
-- `research/census_sedb.py` - census SEDB container headers.
+- `research/census_sedb.py` - census SEDB container headers. It also tabulates
+  `unknownA`, `flags`, and `headerSize` per subtype at the top level, in RES
+  children, and in `lyb` scenes.
+- `research/census_layout.py` - census MapLayout resource tables and embedded
+  `lyb` scene graphs.
+- `research/census_wrb.py` - census RES -> wrb chunk trees and model stream
+  structure.
+- `research/census_phb.py` - census SEDB PHB collision resources.
 - `research/census_sheet_stack.py` - census scrambled XML documents, the SSD
   sheet stack, and rich strings in one resource-tree walk.
 - `research/census_sqwt.py` - census SQEX widget containers.
+
+### Zone export
+
+- `research/zone_export_stats.py` - summarize collision placements and OBJ face
+  measurements. Requires `--zone` naming an `xivl export-zones` output base
+  path without an extension, shared by the `.obj` and `.metadata.json` files.
 
 ### Lua script root
 

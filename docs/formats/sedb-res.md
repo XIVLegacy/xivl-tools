@@ -1,40 +1,28 @@
-# Promoted evidence: SEDB, RES, and resource paths
+# SEDB, RES, and resource paths
 
 [Documentation index](../README.md) | [Format evidence index](../format-evidence.md)
 
-Citations:
+source: retail FFXIV 1.23b client install (game.ver 2012.09.19.0001,
+patch.ver 1.23b) over all 140180 files under `data/`. Reproduce with:
 
-- [World-layout data](https://github.com/BahamutXIV/bahamut-navmesh/blob/e9f384c9d8c37e1942d942fb1566dc2967163f3e/docs/world-layout-data.md)
-- [Model and collision data](https://github.com/BahamutXIV/bahamut-navmesh/blob/e9f384c9d8c37e1942d942fb1566dc2967163f3e/docs/model-and-collision-data.md)
+```bash
+python tools/research/census_sedb.py --client-root <install>
+python tools/research/census_wrb.py --client-root <install>
+```
 
-The source statements, quoted verbatim for the client revision they record:
+These commands are research only. They make no support claim, never run in
+CI, require an explicit `--client-root`, and print counts, offsets, resource
+ids, sizes, SHA-256 identities, and a small set of chunk tags. `census_sedb`
+also prints 4-byte signature hex for non-SEDB files.
 
-> Retail world-layout evidence behind the MapLayout and scene parsers.
-> Source: FFXIV 1.23b client install, `game.ver 2012.09.19.0001`.
-> Evidence includes MapLayout 0x29D90001, its complete `lyb` scene
-> container, resource-key bindings, unit-tree groups, placed-object
-> classes, and transform composition checked across the source install's
-> MapLayout resources.
+The RES exemplar is `data/89/94/05/54.DAT` (resource 0x89940554), 113706
+bytes, SHA-256
+`be885984f96538e217deb91e7c430def30c264a8b5831f42e16a98ee54ab3adf`.
+Model, mesh, and chunk-tree layouts are documented in
+[WRB model inspection](wrb-model.md), and PHB geometry in
+[PHB collision](phb-collision.md).
 
-> Retail geometry evidence behind the SEDB model and PHB collision
-> parsers. Source: FFXIV 1.23b client install, `game.ver
-> 2012.09.19.0001`. Evidence includes models 0x89940554, 0x899500BF,
-> 0x897D03A9, 0x72E90455, and 0x72E50007; mesh chunk checks across the install;
-> the `col_*` primitive hulls; and PHB collision resources read across the
-> source install.
-
-Additional resources in the evidence set are
-0x7EB50002 (bhp), 0x89930214 (bxt texture) and 0x898C000D (sniv).
-
-Only the three sections below are promoted. The model, mesh, and chunk-tree
-layouts in the cited document are outside this page's claim.
-
-One first-hand retail observation refined a promoted statement: the field at
-0x10 is not a container size for every subtype. The citation remains intact
-because the provenance of a claim does not stop being true when the claim is
-refined.
-
-Local tests own each promoted fact from here on:
+Local tests own these facts:
 `src/formats/src/resource.rs` tests for the path mapping,
 `tests/conformance/cases/` for the container layouts, and
 `src/formats/tests/malformed_inputs.rs` for the failure behavior.
@@ -43,8 +31,7 @@ Local tests own each promoted fact from here on:
 
 A 32-bit resource id `0xAABBCCDD` names `data/AA/BB/CC/DD.DAT` under the
 client install root, uppercase hexadecimal. Established empirically across
-the whole install and by resolving MapLayout table references to existing
-files.
+the whole install.
 
 The mapping is total: every `u32` names a path, whether or not the file
 exists. This repository never resolves a path against a client install on
@@ -58,11 +45,9 @@ All integer fields are little-endian.
 0x00  char[4] magic      "SEDB"
 0x04  char[4] subtype    "lyb", "PHB", "txb", "vins", "vmdl", "RES ",
                          "shd", "SKL ", "wrb", ...
-0x08  u32     unknownA   varies per subtype (8 lyb, 0x120 PHB, 1 txb,
-                         0 vins/vmdl, 0xFA0 RES, 0x1D shd, 0x17 wrb);
+0x08  u32     unknownA   observed values by subtype below; meaning unresolved
+0x0C  u16     flags      0x0000, 0x0200, or 0x0400 observed;
                          meaning unresolved
-0x0C  u16     flags      0x0000, 0x0200, or 0x0400 observed; meaning
-                         unresolved
 0x0E  u16     headerSize payload begins at container start + headerSize
                          (0x30, 0x40, 0x48 observed)
 0x10  u32     declaredSize  advisory; see "The 0x10 field" below. It is
@@ -73,14 +58,38 @@ All integer fields are little-endian.
       here, and RES uses 0x30..0x3F
 ```
 
+Observed header values cover top-level SEDB resources, direct SEDB children
+of RES, and MapLayout `lyb` scenes. `unknownA` and `flags` have meaning
+unresolved.
+
+| Location | Subtype | unknownA | flags | headerSize |
+|---|---|---|---|---|
+| Top level | PHB | 0x120 | 0x0400 | 0x48 |
+| Top level | RES | 0xFA0 | 0x0400 | 0x30, 0x40 |
+| Top level | SSCF | 0x2, 0x3 | 0x0400 | 0x30 |
+| Top level | leaf | 0x0 | 0x0400 | 0x30 |
+| Top level | mtb | 0x43 | 0x0000 | 0x40 |
+| Top level | txb | 0x1 | 0x0200 | 0x40 |
+| Top level | veff | 0x0 | 0x0400 | 0x30 |
+| Top level | vins | 0x0 | 0x0400 | 0x30 |
+| Top level | vmdl | 0x0 | 0x0400 | 0x30 |
+| Top level | vtex | 0x0 | 0x0400 | 0x30 |
+| RES child | RES | 0xFA0 | 0x0400 | 0x30 |
+| RES child | SKL | 0x1B58 | 0x0400 | 0x30 |
+| RES child | shd | 0x1D | 0x0200 | 0x30 |
+| RES child | wrb | 0x17 | 0x0200 | 0x30 |
+| MapLayout scene | lyb | 0x8 | 0x0000 | 0x30 |
+
 `0x14` is therefore the smallest header a container can declare. The parser
 rejects a smaller one, and rejects a `headerSize` or `declaredSize` that
 runs past what the input holds, rather than reading what happens to follow.
 
 ## RES subresource directory
 
-A `RES ` container is a composite with `headerSize` 0x40 and a subresource
-directory. Extended header fields inside the header:
+Top-level `RES ` containers declare `headerSize` 0x40 except 0x15D90001,
+which declares 0x30 while its directory still starts at 0x40. Nested RES
+children declare 0x30. The reader requires a RES header of at least 0x40
+bytes and rejects `headerSize` 0x30. The extended header fields are:
 
 ```text
 0x30  u32     subresourceCount
@@ -103,35 +112,30 @@ Directory at 0x40, one 16-byte entry per subresource:
 Observed subresource contents include nested SEDB containers (`shd`,
 `wrb`, `SKL `) and non-SEDB trailing regions such as a name table.
 
-Alignment slack is part of the format as observed, not a defect to reject:
-the final directory entry of 0x89940554 declares an extent 0x16 bytes past
+The final directory entry of 0x89940554 declares an extent 0x16 bytes past
 the end of the file (0x1BC40 against a 0x1BC2A file). The parser clamps
 such an extent to the input and reports the clamp as an anomaly. It never
 reads past the input and never drops the entry.
 
+Across the install, 8518 RES directory entries declare an extent past the
+end of the file, by at most 57 bytes.
+
+Resource 0x15D90001, `data/15/D9/00/01.DAT`, 1189004 bytes, SHA-256
+`9b1fca85933590e6e4d66a1b670408383519ef70b788a5118c3d61cc3c1df891`,
+declares `headerSize` 0x30 while its directory starts at 0x40. This is a
+retail observation outside the parser's accepted RES header boundary.
+
 ## First-hand retail observation
-
-source: retail FFXIV 1.23b client install (game.ver 2012.09.19.0001,
-patch.ver 1.23b) over all 140180 resource files under `data/`. Reproduce with:
-
-```bash
-python tools/research/census_sedb.py --client-root <install>
-```
-
-That command is research only. It makes no support claim, never runs in
-CI, requires an explicit `--client-root`, and prints counts rather than
-bytes.
 
 ### The resource-path convention
 
 All 140180 files under `data/` match `AA/BB/CC/DD.DAT`, confirming the
-promoted convention across the whole install with no exception.
+convention across the whole install with no exception.
 
 ### The 0x10 field
 
-The promoted statement, "container size including the header equals the
-remaining file size for top-level containers", holds for 92303 of the
-97749 SEDB resources and fails for 5446 of them:
+The 0x10 field equals the file size for 92303 of the 97749 top-level SEDB
+resources and differs for 5446 of them:
 
 ```text
 declaredSize == file size    92303   SSCF 77694, RES 9970, vmdl 1682,
@@ -160,8 +164,8 @@ only that the header itself does not fit in the input.
 
 ### RES directory confirmations
 
-Read directly from `data/89/94/05/54.DAT` (resource 0x89940554), the model
-the cited document names:
+Read directly from the RES exemplar `data/89/94/05/54.DAT`
+(resource 0x89940554):
 
 - the payload base is `headerSize + 16 * subresourceCount` (0x40 + 0x70 =
   0xB0). Subresources 0 through 4 begin exactly on `SEDB` signatures at
@@ -169,8 +173,8 @@ the cited document names:
 - consecutive subresources are separated by up to three bytes of
   alignment padding, which this parser reports as unknown gaps rather than
   folding into either neighbour;
-- the final entry declares 0x1BB20..0x1BC40 against a 0x1BC2A file: the
-  0x16 bytes of slack the cited document records, reproduced exactly;
+- the final entry declares 0x1BB20..0x1BC40, an extent 0x16 bytes past
+  the end of the 0x1BC2A file;
 - the last two entries overlap (0x1BB20 begins inside 0x1BB04..0x1BBD0).
   Sampling 107 RES resources found this in all 107, so the overlapping
   trailing region is a property of the format, not a defect. Declared
@@ -182,7 +186,7 @@ the cited document names:
 A 1508-file sample, every 93rd resource, run through the SEDB-only reader:
 1056 SEDB resources parsed, 0 errors, 0 panics. The remaining 452 were not
 SEDB at all and took `bad-magic`: GTEX 226, zero-filled 59, PWIB 38, plus a
-tail of smaller signatures. GTEX now has a separate bounded reader. PWIB's
+tail of smaller signatures. GTEX has a separate bounded reader. PWIB's
 separate outer reader delegates the child SEDB at offset `0x10` to this model;
 its outer layout remains outside the standalone SEDB/RES claim.
 

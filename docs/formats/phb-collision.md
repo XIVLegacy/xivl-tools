@@ -55,13 +55,13 @@ Retail templates and generated DATs belong outside tracked trees.
 ## Retail layout evidence
 
 The FFXIV 1.23b resource census inspected `SEDBPHB\0` files in the explicit
-retail `data/` tree using little-endian field reads. All 5,203 PHBs had GBD
+retail `data/` tree using little-endian field reads. All 5203 PHBs had GBD
 field `+0x0C == 0x212`. Of the 64 resources with one TBC and at most four
 triangles, all had one TBD node. Twenty-six had no optional GBD tail tables
 and retained the allocation below. The other 38 had nonempty optional tails
 and are outside this writer profile.
 
-The representative `data/7E/B5/00/10.DAT` is 1,232 bytes, SHA-256
+The representative `data/7E/B5/00/10.DAT` is 1232 bytes, SHA-256
 `e62b997c8d0a0822402848ad7c2a045d31b630813cade05d32f0d127fbe1b291`.
 It has four vertices and two triangles. The four-triangle representative
 `data/7E/B5/00/18.DAT` has the same byte length and allocation, SHA-256
@@ -79,7 +79,7 @@ Offsets in this table are relative to the GBD chunk at file `0xC0`:
 | `+0x38/+0x3C` | Vertex offset `0x380` and count |
 | `+0x40/+0x50` | Minimum/maximum bounds, three little-endian floats each |
 | `+0x60/+0x64` | Triangle offset `0x300` and count |
-| `+0x68` | Lowest surface in the low halfword, highest in the high halfword |
+| `+0x68` | Exact lowest/highest surfaces in the low/high halfwords for this profile |
 | `+0x6C` | Zero in the accepted profile |
 | `+0x70/+0x74/+0x78` | Empty tail offsets, each `0x400` |
 | `+0x300` | Eight-byte triangle records: three `u16` indices and one `u16` surface |
@@ -130,6 +130,119 @@ coverage for every floor, wall, and stair vertex, verify exact geometry and
 surfaces through `parse_phb`, and compare every byte outside the owned ranges.
 The authoring example also replayed all 26 accepted retail templates with
 synthetic floor geometry. No generated resource was installed or launched.
+
+## Install census
+
+source: retail FFXIV 1.23b client install (game.ver 2012.09.19.0001),
+all 5203 PHB resources under `data/`. Reproduce with:
+
+```bash
+python tools/research/census_phb.py --client-root <install>
+```
+
+This command is research only. It requires an explicit install root, makes no
+support claim, never runs in CI, and prints measurements and resource identities
+rather than client bytes.
+
+All 5203 resources had SEDB `headerSize == 0x48` and the word at file `0x10`
+equal to `0x48`. `PHB.GBD` began at file `0xC0`, and file size equaled
+`0xC0 + payloadEnd + 0x10` on all resources. Offsets below are GBD-relative.
+
+| Field or relation | Install observation |
+|---|---|
+| `+0x0C` | `0x212` on all 5203 |
+| `+0x10` | `1` on 3796, `8` on 1407; meaning unresolved; the writer profile uses `1` |
+| `+0x2C/+0x30/+0x34` | TBC offset, extent, and count; every chain consumed exactly its extent |
+| TBC extent and count | Extents ranged from 240 to 347952 bytes; counts ranged from 1 to 372 |
+| Region after TBC | Began at the TBC end rounded up to `0x80` on all 5203; exact adjacency on 670 |
+| `+0x68` | Low/high halfwords enclosed every triangle surface on all 5203; exact minimum/maximum on 5013, wider on 190 |
+| `+0x6C` | `0` on 1002, `1` on 4201; meaning unresolved |
+| `+0x70/+0x74/+0x78` | All three equaled `payloadEnd`, giving empty tails, on exactly the 1002 resources with `+0x6C == 0`; on the 4201 others at least one differed |
+| `+0x7C` | Zero on all 5203 |
+| Declared minimum/maximum boxes | Fourth float lane `1.0` in both on all 5203 |
+
+Vertex and triangle arrays were non-empty and inside `payloadEnd` on all 5203.
+Every triangle index was below `vertexCount`, and the highest index equaled
+`vertexCount - 1` on every resource. The declared box contained every decoded
+vertex within an absolute per-axis tolerance of `0.001` on all 5203, with strict
+containment on 1767. The largest excursion was `0.000244140625` on
+`0x89800414`. The largest padding on an exactly flat axis was approximately
+`0.0064` per side: the measured value was `0.00640000216663` on the Y axis of
+`0x899103E4`.
+
+Those two resource identities are:
+
+- `data/89/80/04/14.DAT` (`0x89800414`), 1872 bytes, SHA-256
+  `9e85127a75822eb44a651228f1779627bfca08b1e59d147b3f7626cf7d5c1d1a`.
+- `data/89/91/03/E4.DAT` (`0x899103E4`), 6224 bytes, SHA-256
+  `8456307e290cf00ee760e9834de300fac3eb6745d21b4e05c9f0032650f59428`.
+
+### Raw triangle surfaces
+
+The census counted 3494118 triangles. Surface values are stored as `u16`;
+their meaning is unresolved.
+
+| Raw surface | Triangles |
+|---|---|
+| 0 | 2326169 |
+| 1 | 86084 |
+| 2 | 496761 |
+| 3 | 16600 |
+| 4 | 300190 |
+| 5 | 185721 |
+| 6 | 68939 |
+| 7 | 13145 |
+| 120 | 509 |
+
+Value `120` occurred only in `data/89/80/02/F3.DAT` (`0x898002F3`), on all
+509 of its triangles, consistent with the recorded aggregate `0x00780078`.
+The resource is 15440 bytes, SHA-256
+`0cedf3ef92ee69849c900eeb60ea0608eac6f9578ddc14daa1c1ba8d3baed1a0`.
+
+### Primitive family
+
+`data/7E/B5/00` held exactly 32 PHBs, `0x7EB50000` through `0x7EB5001F`,
+in four groups of eight resources each. The shape names below are labels
+assigned from vertex and triangle counts. Within each group, the surface
+value ran `0, 2, 1, 3, 4, 6, 5, 7` in resource order.
+
+| Shape | Resource suffixes | Vertices | Triangles |
+|---|---|---|---|
+| Cube | `00..07` | 8 | 12 |
+| Cylinder | `08..0F` | 16 | 28 |
+| Single plane | `10..17` | 4 | 2 |
+| Double-sided plane | `18..1F` | 8 | 4 |
+
+Cube and cylinder bounds are approximately minimum `(-0.5, 0, -0.5)` and
+maximum `(0.5, 1, 0.5)`. The exact decoded and declared bounds printed by
+the census were identical within each of those families:
+
+```text
+cube decoded = declared
+  min (-0.4999999701976776, 0.0, -0.4999999701976776)
+  max (0.4999999701976776, 0.9999999403953552, 0.4999999701976776)
+cylinder decoded = declared
+  min (-0.49999991059303284, 0.0, -0.49999988079071045)
+  max (0.49999991059303284, 0.9999999403953552, 0.49999988079071045)
+single plane decoded
+  min (-0.4999999701976776, 0.0, 0.0)
+  max (0.4999999701976776, 0.9999999403953552, 0.0)
+double-sided plane decoded
+  min (-0.4999999701976776, 0.0, -6.123233601181349e-17)
+  max (0.4999999701976776, 0.9999999403953552, 6.123233601181349e-17)
+both plane families declared
+  min (-0.4999999701976776, 0.0, -4.999999509891495e-05)
+  max (0.4999999701976776, 0.9999999403953552, 4.999999509891495e-05)
+```
+
+Single planes decode at `z = 0`; double-sided planes decode approximately at
+`z = 0`. Both declare approximately `z = +/-0.00005` to enclose the flat axis.
+Representative identities complement the cylinder and plane inputs above:
+
+- `data/7E/B5/00/00.DAT` (`0x7EB50000`), 1360 bytes, SHA-256
+  `059b9c14aac056bad6f273f481db45df0b5d1de09842f928144bc67264c378eb`.
+- `data/7E/B5/00/09.DAT` (`0x7EB50009`), 1744 bytes, SHA-256
+  `554445567dcae5406be9ddc871c02de8d924f4f821bfe102d6efbda940513a7a`.
 
 ## Client consumer evidence
 
@@ -184,8 +297,9 @@ package.
 
 Remaining format questions are the static coordinate-bias setup, the
 acceptance rules for retained prefix metadata, registry-key normalization,
-and the construction rules
-for branching trees and optional tails. Remaining client questions are PHB
+the construction rules for branching trees and optional tails, the meanings
+of GBD `+0x10` and `+0x6C`, and why 190 GBD surface aggregates are wider than
+their triangle minimum/maximum. Remaining client questions are PHB
 binding and placement, movement surface masks and winding, and the floor,
 wall, and stair behavior listed above. Retaining unknown template bytes
 reduces the format scope; it does not answer those client questions.

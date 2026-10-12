@@ -18,6 +18,7 @@ repository makes.
 - [Lua paths, LPB wrappers, and Lua 5.1](formats/lua-lpb.md)
 - [GTEX fields and PWIB segments](formats/gtex-pwib.md)
 - [Bounded WRB model inspection](formats/wrb-model.md)
+- [World layout: MapLayout and lyb](formats/world-layout.md)
 - [Zone geometry export](formats/zone-geometry.md)
 - [Experimental PHB collision authoring](formats/phb-collision.md)
 
