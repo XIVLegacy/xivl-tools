@@ -3,10 +3,12 @@
 [Documentation index](../README.md) | [Format evidence](../format-evidence.md)
 
 The `fdt` reader walks a bitmap font container in the chunk order the retail
-client reads. It reports chunk spans, digests, version gates, and lookup-table
-counts, and it supplies structural inspection and validation. Read support is
-`partial`. Glyph metrics, texture payloads, rasterization, writing, and
-export are outside this contract.
+client reads. It reports chunk spans, digests, version gates, lookup-table
+counts, and GLYP record checks, and it supplies structural inspection and
+validation. The library decodes each GLYP record into the fields the client's
+glyph lookup and draw path consume. Read support is `partial`. Metric scalar
+meanings, texture payloads, rasterization, writing, and export are outside
+this contract.
 
 ## Evidence and identity
 
@@ -68,6 +70,69 @@ Chunks after GLYP are listed in file order and marked as unread by the
 client. When fewer than eight bytes remain, or a following chunk's length
 runs past EOF, the rest of the input is one opaque trailing span.
 
+## Glyph records
+
+The client's glyph lookup copies a record into a normalized output and selects
+one of two copy layouts by whether the stored VERS value is zero, as
+`xivl-decomp:docs/resource/bitmap-font-glyph-consumers.md` records in "Lookup
+and normalized output". The reader applies the same choice. Field roles come
+from that page's "Placement, extents, and advance", "Source rectangle and
+normalization", and "Resource and selector indices" sections, and from
+"BR-02" in `xivl-decomp:docs/resource/bitmap-font-runtime-bridge-consumers.md`.
+
+| Record offset, nonzero version | Record offset, zero version | Width | Library field | Consumer evidence |
+|---|---|---|---|---|
+| `0x00` | `0x00` | signed 8 | `resource_index` | Index into the DDSF and GTEX resource list; a second access adds TEXC |
+| `0x01` | `0x01` | signed 8 | `selector` | Index into four selector vectors, with no client bounds check |
+| `0x02` | `0x02` | signed 8 | `offset_x` | Added, scaled, to the first drawing coordinate |
+| `0x03` | `0x03` | signed 8 | `offset_y` | Added, scaled, to the second drawing coordinate |
+| `0x04` | `0x04` | signed 8 | `width` | Source and drawing extent on the first axis |
+| `0x05` | `0x05` | signed 8 | `height` | Source and drawing extent on the second axis |
+| `0x06` | `0x06` | signed 8 | `advance` | Horizontal advance before caller-flag adjustments |
+| `0x07` | `0x07` | 8 | `byte_07` | Copied; no consumer established |
+| `0x08` | - | 8 | `flag_02_advance_addend` | Added to the advance modulo 256 when caller flag `0x02` is set |
+| `0x09` | - | 8 | `byte_09` | Copied; no consumer established |
+| `0x0A` | `0x08` | unsigned 16 | `source_x` | Source rectangle origin on the first axis, in texture pixels |
+| `0x0C` | `0x0A` | unsigned 16 | `source_y` | Source rectangle origin on the second axis, in texture pixels |
+| - | `0x0C..0x0E` | 16 | `unread` | Not read by lookup |
+
+Multibyte fields are little-endian. With a zero version, lookup clears output
+bytes `0x08` and `0x09`, so the library reports no addend or byte 9. The
+caller-flag adjustments and the scaling formulas stay with the decomp pages.
+`FdtFile::glyph(key)` applies the two-table lookup and returns the record a
+key reaches.
+
+Inspection reports the layout and counts records that fail one of these
+checks. None of them is an error:
+
+| Check | Counted when |
+|---|---|
+| `resourceOutsideTextures` | Byte 0 is negative or not below the texture chunk count |
+| `offsetResourceOutsideTextures` | Byte 0 plus TEXC, or zero without TEXC, is outside the list |
+| `selectorOutsideVectors` | Byte 1 is outside 0 through 3 |
+| `negativeExtent` | Width or height is negative |
+| `sourceOutsideTexture` | The source origin plus extent passes the selected GTEX width or height |
+| `sourceUnchecked` | The selected texture has no GTEX header, or the check above cannot apply |
+
+GTEX width and height are the big-endian words at `0x0A` and `0x0C` of a
+payload that starts with `GTEX`, as the [GTEX contract](gtex-pwib.md)
+records.
+
+The census in `tools/research/census_fdt.py` reads the same seven retail files
+with an independent decoder:
+
+```text
+python tools/research/census_fdt.py --client-root <install>
+```
+
+Every record in every file passes all five checks. Resource indexes are 0, or
+0 and 1 where TEXC is 2. Selectors cover 0 through 3, except
+`data/00/0C/00/04.DAT`, whose ten records use selector 0. Bytes `0x07` and
+`0x08` each hold one nonzero value per file, and byte `0x09` is zero in every
+record. Each texture that byte 0 plus TEXC selects has half the width and
+height of the texture byte 0 selects. That pairing is a census observation,
+not an established client rule.
+
 ## Reader rules
 
 The client reports a tag mismatch and, if reporting returns, stores from the
@@ -98,20 +163,25 @@ Inspection reports every chunk's tag, span, payload span, payload digest, and
 whether the client reads it. It reports the version and whether a VERS chunk
 was present, the texture chunk count, mapped HTBL pages, LTBL pages, keys
 that reach a record, GLYP record count, distinct records reached by a key,
-and the trailing span. It never reports scalar metric values, table contents,
-glyph record fields, or texture bytes. Validation checks parsing and marks
-round-trip as not applicable.
+the GTEX dimensions of each texture chunk, the TEXC offset, the glyph record
+layout, the record check counts, and the trailing span. It never reports
+scalar metric values, table contents, per-record field values, or texture
+bytes; the library model carries the decoded records. Validation checks
+parsing and marks round-trip as not applicable.
 
 Authored public fixtures cover version 4 with DDSF, two GTEX chunks, and a
-TERM chunk; version 1; a file without VERS; following chunks and short
-trailing bytes; and each refusal above. The malformed-input sweep truncates
+TERM chunk; version 1; a file without VERS and its unversioned records;
+following chunks and short trailing bytes; one record per glyph check; and
+each refusal above. Library tests pin decoded fields in both layouts and key
+lookup through both tables. The malformed-input sweep truncates
 and mutates the version 4 fixture.
 
 ## Evidence limits
 
 The DDSF path has no retail example. The client's TEXC, GTEX, and DDSF
-payload semantics, the metric scalars, the GLYP record fields, the TERM
+payload semantics, the metric scalars, bytes `0x07` and `0x09`, the meaning
+of caller flag `0x02`, the selector vectors' channel mapping, the TERM
 chunk's purpose, and versions other than 4 in retail data remain outside
-this claim. The reader's refusals are stricter than the client's observed
+this claim. No retail file uses the zero-version layout. The reader's refusals are stricter than the client's observed
 behavior, not a description of it. Rasterizing glyphs and exporting atlas
 textures are separate future work.

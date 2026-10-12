@@ -35,7 +35,7 @@
         "length": 20,
         "offset": 40
       },
-      "payloadSha256": "7a9709e43efdc59ecec08ee9569b08c725347688ea87d026b0604617ce880da7",
+      "payloadSha256": "bd3ab4d71fe9f2c014946f94a7d7c01b580515ee0d10653bb8731adaa878c5ec",
       "readByClient": true,
       "span": {
         "length": 28,
@@ -49,7 +49,7 @@
         "length": 16,
         "offset": 68
       },
-      "payloadSha256": "169d6dabdcf95db0a9202ef6bbcab35f3c8064efc2127cb595af262973e08cfb",
+      "payloadSha256": "39b61813ce998a231ca534f4e6ac230a03a85072f6bdc13d987811bfbd6e5dd1",
       "readByClient": true,
       "span": {
         "length": 24,
@@ -161,7 +161,7 @@
         "length": 42,
         "offset": 1448
       },
-      "payloadSha256": "6ea595b29bc254143fa27ab0c040165de66053edf1d942c6a9c264a2fcaac318",
+      "payloadSha256": "3c2489cc264443be4722aedecf977a7016ddb4398c305e4c0b5488f63ca2e170",
       "readByClient": true,
       "span": {
         "length": 50,
@@ -187,7 +187,16 @@
   "endsAtEof": true,
   "format": "fdt",
   "glyphRecords": {
+    "checks": {
+      "negativeExtent": 0,
+      "offsetResourceOutsideTextures": 0,
+      "resourceOutsideTextures": 0,
+      "selectorOutsideVectors": 0,
+      "sourceOutsideTexture": 0,
+      "sourceUnchecked": 1
+    },
     "count": 3,
+    "layout": "versioned",
     "recordLength": 14,
     "referenced": 2
   },
@@ -206,6 +215,27 @@
   },
   "schemaVersion": 1,
   "textureChunkCount": 3,
+  "textureOffset": 1,
+  "textures": [
+    {
+      "chunkIndex": 1,
+      "gtexDimensions": null
+    },
+    {
+      "chunkIndex": 2,
+      "gtexDimensions": {
+        "height": 16,
+        "width": 32
+      }
+    },
+    {
+      "chunkIndex": 3,
+      "gtexDimensions": {
+        "height": 8,
+        "width": 16
+      }
+    }
+  ],
   "trailing": {
     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "span": {

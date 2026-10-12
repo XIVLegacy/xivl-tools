@@ -2155,21 +2155,58 @@ def build_fixtures() -> dict[str, bytes]:
     fixtures["region/advisory-size.bin"] = bytes(advisory)
 
     # -- bitmap font container (fdt) -------------------------------------
-    # Chunk order and table shapes from docs/formats/fdt.md. Every payload is
-    # this project's own: two mapped pages, three keys, and three records, one
-    # of which no key reaches.
+    # Chunk order, table shapes, and record layouts from docs/formats/fdt.md.
+    # Every payload is this project's own: two mapped pages, three keys, and
+    # three records, one of which no key reaches. A texture payload carries
+    # only the GTEX signature and dimensions the record checks read.
     def fdt_chunk(name: str, payload: bytes) -> bytes:
         return name.encode("ascii") + struct.pack("<I", len(payload)) + payload
 
+    def fdt_gtex(width: int, height: int, length: int, seed: int) -> bytes:
+        return (
+            b"GTEX"
+            + bytes(6)
+            + struct.pack(">HH", width, height)
+            + pattern(length - 14, seed)
+        )
+
+    def fdt_record(
+        resource: int, selector: int, extent: tuple[int, int], source: tuple[int, int]
+    ) -> bytes:
+        # Placement 1, -1, advance 6, byte 7 zero, flag-0x02 addend 1, byte 9 zero.
+        return struct.pack(
+            "<bbbbbbbBBBHH", resource, selector, 1, -1, *extent, 6, 0, 1, 0, *source
+        )
+
+    def fdt_unversioned_record(
+        resource: int, selector: int, extent: tuple[int, int], source: tuple[int, int]
+    ) -> bytes:
+        return (
+            struct.pack(
+                "<bbbbbbbBHH", resource, selector, 1, -1, *extent, 6, 0, *source
+            )
+            + b"\xa5\x5a"
+        )
+
+    fdt_textures = [
+        ("DDSF", pattern(12, 0x21)),
+        ("GTEX", fdt_gtex(32, 16, 20, 0x22)),
+        ("GTEX", fdt_gtex(16, 8, 16, 0x23)),
+    ]
+    # Resource 1 is the 32x16 GTEX; resource 0 is DDSF, which has no dimensions.
+    fdt_records = (
+        fdt_record(1, 2, (5, 6), (4, 2))
+        + fdt_record(0, 0, (3, 3), (0, 0))
+        + fdt_record(1, 3, (7, 9), (20, 7))
+    )
+
     def fdt_chunks(
-        version: int | None, textures: list[tuple[str, bytes]] | None = None
+        version: int | None,
+        textures: list[tuple[str, bytes]] | None = None,
+        records: bytes = fdt_records,
     ) -> list[tuple[str, bytes]]:
         if textures is None:
-            textures = [
-                ("DDSF", pattern(12, 0x21)),
-                ("GTEX", pattern(20, 0x22)),
-                ("GTEX", pattern(16, 0x23)),
-            ]
+            textures = fdt_textures
         pages = bytearray([0xFF] * 256)
         pages[0x00] = 1
         pages[0x30] = 0
@@ -2193,7 +2230,7 @@ def build_fixtures() -> dict[str, bytes]:
         chunks += [
             ("HTBL", bytes(pages)),
             ("LTBL", bytes(index)),
-            ("GLYP", pattern(3 * 14, 0x51)),
+            ("GLYP", records),
         ]
         return chunks
 
@@ -2213,18 +2250,51 @@ def build_fixtures() -> dict[str, bytes]:
 
     font = fdt_chunks(4) + [("TERM", b"")]
     fixtures["fdt/v4.bin"] = fdt_font(font)
-    fixtures["fdt/v1.bin"] = fdt_font(fdt_chunks(1, [("GTEX", pattern(16, 0x24))]))
-    fixtures["fdt/no-version.bin"] = fdt_font(fdt_chunks(None, []))
+    single_texture = [("GTEX", fdt_gtex(32, 16, 16, 0x24))]
+    fixtures["fdt/v1.bin"] = fdt_font(
+        fdt_chunks(
+            1,
+            single_texture,
+            fdt_record(0, 2, (5, 6), (4, 2))
+            + fdt_record(0, 0, (3, 3), (0, 0))
+            + fdt_record(0, 3, (7, 9), (20, 7)),
+        )
+    )
+    # A zero version selects the unversioned record layout.
+    fixtures["fdt/no-version.bin"] = fdt_font(
+        fdt_chunks(
+            None,
+            single_texture,
+            fdt_unversioned_record(0, 1, (5, 6), (4, 2))
+            + fdt_unversioned_record(0, 0, (3, 3), (0, 0))
+            + fdt_unversioned_record(0, 3, (7, 9), (20, 7)),
+        )
+    )
+    # One record per check: a negative resource index; a resource whose TEXC
+    # offset leaves the list, with selector 4 and a source past the 16x8
+    # texture; and selector -1 with a negative width.
+    fixtures["fdt/glyph-checks.bin"] = fdt_font(
+        fdt_chunks(
+            4,
+            records=fdt_record(-1, 0, (3, 3), (0, 0))
+            + fdt_record(2, 4, (4, 4), (14, 0))
+            + fdt_record(1, -1, (-2, 3), (0, 0)),
+        )
+    )
     # Chunks after GLYP are listed; bytes too short for a header stay trailing.
     fixtures["fdt/following.bin"] = (
         fdt_font(font + [("XTRA", pattern(4, 0x61))]) + b"\x01\x02\x03"
     )
     fixtures["fdt/truncated-length.bin"] = fixtures["fdt/v4.bin"][:6]
-    fixtures["fdt/missing-glyph-chunk.bin"] = fdt_font(fdt_replace(font, "GLYP", None)[:-1])
+    fixtures["fdt/missing-glyph-chunk.bin"] = fdt_font(
+        fdt_replace(font, "GLYP", None)[:-1]
+    )
     overrun = bytearray(fixtures["fdt/v4.bin"])
     struct.pack_into("<I", overrun, 4, 0x1000)
     fixtures["fdt/chunk-overrun.bin"] = bytes(overrun)
-    fixtures["fdt/missing-texture-count.bin"] = fdt_font(fdt_replace(font, "TEXC", None))
+    fixtures["fdt/missing-texture-count.bin"] = fdt_font(
+        fdt_replace(font, "TEXC", None)
+    )
     fixtures["fdt/texture-order.bin"] = fdt_font(
         fdt_chunks(4, [("GTEX", pattern(16, 0x25)), ("DDSF", pattern(12, 0x26))])
     )

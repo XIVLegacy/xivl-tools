@@ -940,7 +940,20 @@ fn inspect_fdt(data: &[u8]) -> Result<Value> {
         "version".into(),
         json!({ "chunkPresent": file.has_version_chunk, "value": file.version }),
     );
-    object.insert("textureChunkCount".into(), json!(file.texture_chunks));
+    let textures: Vec<Value> = file
+        .textures
+        .iter()
+        .map(|texture| {
+            let dimensions = texture
+                .dimensions
+                .map(|(width, height)| json!({ "width": width, "height": height }))
+                .unwrap_or(Value::Null);
+            json!({ "chunkIndex": texture.chunk, "gtexDimensions": dimensions })
+        })
+        .collect();
+    object.insert("textureChunkCount".into(), json!(textures.len()));
+    object.insert("textures".into(), json!(textures));
+    object.insert("textureOffset".into(), json!(file.texture_offset));
     object.insert(
         "pageTable".into(),
         json!({ "length": fdt::PAGE_TABLE_LENGTH, "mappedPages": file.mapped_pages }),
@@ -956,7 +969,15 @@ fn inspect_fdt(data: &[u8]) -> Result<Value> {
         "glyphRecords".into(),
         json!({
             "recordLength": fdt::GLYPH_RECORD_LENGTH, "count": file.glyph_records,
-            "referenced": file.referenced_records,
+            "referenced": file.referenced_records, "layout": file.layout.name(),
+            "checks": {
+                "resourceOutsideTextures": file.checks.resource_outside_textures,
+                "offsetResourceOutsideTextures": file.checks.offset_resource_outside_textures,
+                "selectorOutsideVectors": file.checks.selector_outside_vectors,
+                "negativeExtent": file.checks.negative_extent,
+                "sourceOutsideTexture": file.checks.source_outside_texture,
+                "sourceUnchecked": file.checks.source_unchecked,
+            },
         }),
     );
     object.insert("chunkCount".into(), json!(chunks.len()));

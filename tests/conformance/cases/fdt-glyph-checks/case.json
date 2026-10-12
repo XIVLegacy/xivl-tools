@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fdt-glyph-checks",
+  "formatId": "fdt",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/fdt/glyph-checks.bin"
+  },
+  "arguments": [
+    "--as",
+    "fdt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "One record per check: negative resource index, TEXC offset outside the texture list with selector 4 and a source past its texture, and selector -1 with a negative width."
+}
