@@ -401,32 +401,70 @@ fn verify_single(
         }
         verify_pwib_selection(&document, recorded_source_size)?;
     }
+    let is_fdt = string(object(&document, "format")?, "id")? == "fdt";
     let mut dds_count = 0usize;
     let mut png_count = 0usize;
     for payload in payloads {
         let role = string(payload, "role")?;
         let path = string(payload, "path")?;
-        let is_dds_role = role == "gtex-dds-texture" || role == "pwib-gtex-dds-texture";
+        if role.starts_with("fdt-") && !is_fdt {
+            return Err(fail(
+                "fdt-format-mismatch",
+                format!("payload {path}: FDT artifact requires top-level FDT format"),
+            ));
+        }
+        // An FDT texture artifact names its texture, so one font yields one
+        // DDS and one PNG per GTEX chunk.
+        let fdt_texture = match role {
+            "fdt-gtex-dds-texture" | "fdt-gtex-png-preview" => {
+                Some(integer(object(payload, "texture")?, "textureIndex")?)
+            }
+            _ => None,
+        };
+        if fdt_texture.is_none() && payload.get("texture").is_some() {
+            return Err(fail("fdt-artifact-contract", format!("payload {path}")));
+        }
+        let (dds_path, png_path) = match fdt_texture {
+            Some(texture) => (
+                format!("payloads/texture-t{texture:03}.dds"),
+                format!("payloads/preview-t{texture:03}.png"),
+            ),
+            None => (
+                "payloads/texture.dds".to_string(),
+                "payloads/preview.png".to_string(),
+            ),
+        };
+        let is_dds_role = matches!(
+            role,
+            "gtex-dds-texture" | "pwib-gtex-dds-texture" | "fdt-gtex-dds-texture"
+        );
         let has_dds_metadata = payload.get("dds").is_some();
-        let is_dds_path = path == "payloads/texture.dds";
+        let is_dds_path = path == dds_path || path == "payloads/texture.dds";
         if is_dds_role || has_dds_metadata || is_dds_path {
-            if !is_dds_role || !has_dds_metadata || !is_dds_path {
+            if !is_dds_role || !has_dds_metadata || path != dds_path {
                 return Err(fail("dds-artifact-contract", format!("payload {path}")));
             }
-            dds_count = dds_count
-                .checked_add(1)
-                .ok_or_else(|| fail("dds-artifact-contract", "DDS artifact count overflow"))?;
+            if fdt_texture.is_none() {
+                dds_count = dds_count
+                    .checked_add(1)
+                    .ok_or_else(|| fail("dds-artifact-contract", "DDS artifact count overflow"))?;
+            }
         }
-        let is_png_role = role == "gtex-top-mip-png-preview" || role == "pwib-gtex-png-preview";
+        let is_png_role = matches!(
+            role,
+            "gtex-top-mip-png-preview" | "pwib-gtex-png-preview" | "fdt-gtex-png-preview"
+        );
         let has_png_metadata = payload.get("png").is_some();
-        let is_png_path = path == "payloads/preview.png";
+        let is_png_path = path == png_path || path == "payloads/preview.png";
         if is_png_role || has_png_metadata || is_png_path {
-            if !is_png_role || !has_png_metadata || !is_png_path {
+            if !is_png_role || !has_png_metadata || path != png_path {
                 return Err(fail("png-artifact-contract", format!("payload {path}")));
             }
-            png_count = png_count
-                .checked_add(1)
-                .ok_or_else(|| fail("png-artifact-contract", "PNG artifact count overflow"))?;
+            if fdt_texture.is_none() {
+                png_count = png_count
+                    .checked_add(1)
+                    .ok_or_else(|| fail("png-artifact-contract", "PNG artifact count overflow"))?;
+            }
         }
     }
     if dds_count > 1 {
@@ -483,6 +521,12 @@ fn verify_single(
         if string(payload, "role")? == "pwib-gtex-png-preview" {
             verify_pwib_png_payload(payload, file, &document, index, recorded_source_size)?;
         }
+        if string(payload, "role")? == "fdt-gtex-dds-texture" {
+            verify_fdt_dds_payload(payload, file, &document, index, recorded_source_size)?;
+        }
+        if string(payload, "role")? == "fdt-gtex-png-preview" {
+            verify_fdt_png_payload(payload, file, &document, index, recorded_source_size)?;
+        }
         output_bytes = checked_add(output_bytes, file.size, "output-byte-overflow")?;
         expected_files.insert(full);
         expected_directories.insert(join_relative(prefix, "payloads"));
@@ -536,6 +580,44 @@ fn verify_payload_relationship(
     document: &Value,
     index: usize,
 ) -> Result<Option<String>, Failure> {
+    if string(payload, "role")? == "fdt-gtex-payload" {
+        let entry = object(payload, "entry")?;
+        let texture_index = integer(entry, "textureIndex")?;
+        let chunk_index = integer(entry, "chunkIndex")?;
+        let entry_path = format!("$.parsed.textures[{texture_index}]");
+        let texture = document
+            .pointer(&format!("/parsed/textures/{texture_index}"))
+            .ok_or_else(|| fail("relationship-target-missing", &entry_path))?;
+        let chunk = document
+            .pointer(&format!("/parsed/chunks/{chunk_index}"))
+            .ok_or_else(|| {
+                fail(
+                    "relationship-target-missing",
+                    format!("chunk {chunk_index}"),
+                )
+            })?;
+        let span = object(payload, "sourceSpan")?;
+        let chunk_payload = object(chunk, "payload")?;
+        let offset = integer(span, "offset")?;
+        let length = integer(span, "length")?;
+        if string(entry, "kind")? != "fdt-gtex-payload"
+            || string(entry, "path")? != entry_path
+            || integer(texture, "chunkIndex")? != chunk_index
+            || string(chunk, "tag")? != "GTEX"
+            || integer(chunk_payload, "offset")? != offset
+            || integer(chunk_payload, "length")? != length
+            || integer(span, "endExclusive")?
+                != checked_add(offset, length, "payload-span-overflow")?
+            || integer(payload, "size")? != length
+            || string(payload, "sha256")? != string(chunk, "payloadSha256")?
+        {
+            return Err(fail(
+                "fdt-entry-relationship-mismatch",
+                format!("payload {index}"),
+            ));
+        }
+        return Ok(Some(entry_path));
+    }
     if string(payload, "role")? == "pwib-gtex-encoded-surface" {
         let entry = object(payload, "entry")?;
         if string(entry, "path")? != "$.parsed.selection.surface"
@@ -1264,7 +1346,45 @@ fn verify_dds_payload(
     {
         return Err(fail("dds-gtex-eligibility", format!("payload {index}")));
     }
-    let geometry = verify_gtex_geometry(parsed, index, source_size, "dds")?;
+    verify_dds_texture(
+        dds_record,
+        &bytes,
+        &image,
+        GtexSource {
+            report: parsed,
+            length: source_size,
+            base: None,
+        },
+        source_size,
+        index,
+    )
+}
+
+/// A GTEX report and where its input sits in the extraction source: at the
+/// start for a GTEX file, or at `base` for an embedded FDT payload.
+#[derive(Clone, Copy)]
+struct GtexSource<'a> {
+    report: &'a Value,
+    length: u64,
+    base: Option<u64>,
+}
+
+impl GtexSource<'_> {
+    fn absolute(&self, offset: u64, code: &str) -> Result<u64, Failure> {
+        checked_add(self.base.unwrap_or(0), offset, code)
+    }
+}
+
+fn verify_dds_texture(
+    dds_record: &Value,
+    bytes: &[u8],
+    image: &dds::DdsImage,
+    gtex: GtexSource,
+    source_size: u64,
+    index: usize,
+) -> Result<(), Failure> {
+    let parsed = gtex.report;
+    let geometry = verify_gtex_geometry(parsed, index, gtex.length, "dds")?;
     let input_length = geometry.input_length;
     let width = u64::from(geometry.width);
     let height = u64::from(geometry.height);
@@ -1361,10 +1481,19 @@ fn verify_dds_payload(
                 format!("payload {index} mip {mip}: source table geometry is inconsistent"),
             ));
         }
-        if source_span.get("offset") != expected_source.get("offset")
+        let relative_offset = integer(expected_source, "offset")?;
+        let relative_ok = match (gtex.base, record.get("sourceRelativeOffset")) {
+            (Some(_), Some(value)) => value.as_u64() == Some(relative_offset),
+            (None, None) => true,
+            _ => false,
+        };
+        if integer(source_span, "offset")?
+            != gtex.absolute(relative_offset, "dds-source-span-overflow")?
             || source_span.get("length") != expected_source.get("length")
+            || !relative_ok
             || integer(source_span, "length")? != layout.span.length
-            || integer(source_span, "endExclusive")? != expected_source_end
+            || integer(source_span, "endExclusive")?
+                != gtex.absolute(expected_source_end, "dds-source-span-overflow")?
             || integer(dds_span, "offset")? != layout.span.offset
             || integer(dds_span, "length")? != layout.span.length
             || integer(dds_span, "endExclusive")?
@@ -1736,22 +1865,12 @@ fn verify_gtex_geometry(
     })
 }
 
-fn verify_png_payload(
-    payload: &Value,
-    file: &FileRecord,
-    document: &Value,
+fn verify_png_bytes(
+    png_record: &Value,
+    bytes: &[u8],
     index: usize,
-    source_size: u64,
-) -> Result<(), Failure> {
-    if string(payload, "path")? != "payloads/preview.png"
-        || string(payload, "role")? != "gtex-top-mip-png-preview"
-    {
-        return Err(fail("png-artifact-contract", format!("payload {index}")));
-    }
-    let png_record = object(payload, "png")?;
-    let bytes =
-        fs::read(&file.path).map_err(|error| fail("payload-read-failed", error.to_string()))?;
-    let decoded = texture_preview::decode_png_rgba(&bytes)
+) -> Result<texture_preview::DecodedPngRgba, Failure> {
+    let decoded = texture_preview::decode_png_rgba(bytes)
         .map_err(|error| fail("png-payload-invalid", format!("payload {index}: {error}")))?;
     let canonical = texture_preview::encode_png_rgba(decoded.width, decoded.height, &decoded.rgba)
         .map_err(|error| fail("png-payload-invalid", format!("payload {index}: {error}")))?;
@@ -1769,6 +1888,25 @@ fn verify_png_payload(
     {
         return Err(fail("png-metadata-mismatch", format!("payload {index}")));
     }
+    Ok(decoded)
+}
+
+fn verify_png_payload(
+    payload: &Value,
+    file: &FileRecord,
+    document: &Value,
+    index: usize,
+    source_size: u64,
+) -> Result<(), Failure> {
+    if string(payload, "path")? != "payloads/preview.png"
+        || string(payload, "role")? != "gtex-top-mip-png-preview"
+    {
+        return Err(fail("png-artifact-contract", format!("payload {index}")));
+    }
+    let png_record = object(payload, "png")?;
+    let bytes =
+        fs::read(&file.path).map_err(|error| fail("payload-read-failed", error.to_string()))?;
+    let decoded = verify_png_bytes(png_record, &bytes, index)?;
     let parsed = object(document, "parsed")?;
     if string(object(document, "format")?, "id")? != "gtex"
         || string(parsed, "format")? != "gtex"
@@ -1776,7 +1914,28 @@ fn verify_png_payload(
     {
         return Err(fail("png-gtex-eligibility", format!("payload {index}")));
     }
-    let geometry = verify_gtex_geometry(parsed, index, source_size, "png")?;
+    verify_png_texture(
+        png_record,
+        &decoded,
+        GtexSource {
+            report: parsed,
+            length: source_size,
+            base: None,
+        },
+        source_size,
+        index,
+    )
+}
+
+fn verify_png_texture(
+    png_record: &Value,
+    decoded: &texture_preview::DecodedPngRgba,
+    gtex: GtexSource,
+    source_size: u64,
+    index: usize,
+) -> Result<(), Failure> {
+    let parsed = gtex.report;
+    let geometry = verify_gtex_geometry(parsed, index, gtex.length, "png")?;
     let texture = object(parsed, "texture")?;
     if decoded.width != geometry.width || decoded.height != geometry.height {
         return Err(fail("png-metadata-mismatch", format!("payload {index}")));
@@ -1812,10 +1971,9 @@ fn verify_png_payload(
         .pointer("/offsetTable/entries/0")
         .ok_or_else(|| fail("png-source-entry-missing", format!("payload {index}")))?;
     let expected_source = object(parsed_entry, "source")?;
-    if source_span.get("offset")
-        != expected_source
-            .get("span")
-            .and_then(|value| value.get("offset"))
+    let expected_offset = integer(object(expected_source, "span")?, "offset")?;
+    if integer(source_span, "offset")?
+        != gtex.absolute(expected_offset, "png-source-span-overflow")?
         || source_span.get("length")
             != expected_source
                 .get("span")
@@ -1830,6 +1988,94 @@ fn verify_png_payload(
     Ok(())
 }
 
+/// Resolve an FDT texture artifact's link to its parsed GTEX payload report.
+fn fdt_texture_source<'a>(
+    payload: &Value,
+    document: &'a Value,
+    index: usize,
+    prefix: &str,
+) -> Result<GtexSource<'a>, Failure> {
+    let link = object(payload, "texture")?;
+    let texture_index = integer(link, "textureIndex")?;
+    let chunk_index = integer(link, "chunkIndex")?;
+    let mismatch = || {
+        fail(
+            &format!("{prefix}-fdt-texture-mismatch"),
+            format!("payload {index}"),
+        )
+    };
+    if string(link, "path")? != format!("$.parsed.textures[{texture_index}]") {
+        return Err(mismatch());
+    }
+    let texture = document
+        .pointer(&format!("/parsed/textures/{texture_index}"))
+        .ok_or_else(mismatch)?;
+    let chunk = document
+        .pointer(&format!("/parsed/chunks/{chunk_index}"))
+        .ok_or_else(mismatch)?;
+    let chunk_payload = object(chunk, "payload")?;
+    let gtex = object(texture, "gtex")?;
+    if integer(texture, "chunkIndex")? != chunk_index
+        || string(texture, "tag")? != "GTEX"
+        || string(chunk, "tag")? != "GTEX"
+        || string(gtex, "status")? != "parsed"
+        || integer(gtex, "payloadOffset")? != integer(chunk_payload, "offset")?
+    {
+        return Err(mismatch());
+    }
+    let report = object(gtex, "report")?;
+    if string(report, "format")? != "gtex"
+        || string(object(report, "surfaceMaterialization")?, "status")? != "supported"
+    {
+        return Err(fail(
+            &format!("{prefix}-gtex-eligibility"),
+            format!("payload {index}"),
+        ));
+    }
+    Ok(GtexSource {
+        report,
+        length: integer(chunk_payload, "length")?,
+        base: Some(integer(chunk_payload, "offset")?),
+    })
+}
+
+fn verify_fdt_dds_payload(
+    payload: &Value,
+    file: &FileRecord,
+    document: &Value,
+    index: usize,
+    source_size: u64,
+) -> Result<(), Failure> {
+    let gtex = fdt_texture_source(payload, document, index, "dds")?;
+    let bytes =
+        fs::read(&file.path).map_err(|error| fail("payload-read-failed", error.to_string()))?;
+    let image = dds::parse(&bytes)
+        .map_err(|error| fail("dds-payload-invalid", format!("payload {index}: {error}")))?;
+    verify_dds_texture(
+        object(payload, "dds")?,
+        &bytes,
+        &image,
+        gtex,
+        source_size,
+        index,
+    )
+}
+
+fn verify_fdt_png_payload(
+    payload: &Value,
+    file: &FileRecord,
+    document: &Value,
+    index: usize,
+    source_size: u64,
+) -> Result<(), Failure> {
+    let gtex = fdt_texture_source(payload, document, index, "png")?;
+    let png_record = object(payload, "png")?;
+    let bytes =
+        fs::read(&file.path).map_err(|error| fail("payload-read-failed", error.to_string()))?;
+    let decoded = verify_png_bytes(png_record, &bytes, index)?;
+    verify_png_texture(png_record, &decoded, gtex, source_size, index)
+}
+
 fn replay_payload(
     payload: &Value,
     file: &FileRecord,
@@ -1838,6 +2084,28 @@ fn replay_payload(
 ) -> Result<(), Failure> {
     let bytes =
         fs::read(&file.path).map_err(|error| fail("payload-read-failed", error.to_string()))?;
+    let role = string(payload, "role")?;
+    if role == "fdt-gtex-dds-texture" || role == "fdt-gtex-png-preview" {
+        let source_object = object(document, "source")?;
+        let export_dds = role == "fdt-gtex-dds-texture";
+        let replay = plan_bytes_options(
+            string(source_object, "fileName")?,
+            source,
+            string(source_object, "sha256")?,
+            DocumentFormat::Json,
+            false,
+            export_dds,
+            !export_dds,
+            &["--as".into(), "fdt".into()],
+        )?;
+        let expected = replay
+            .artifact_bytes(string(payload, "path")?)
+            .ok_or_else(|| fail("payload-replay-unsupported", "FDT texture artifact missing"))?;
+        if expected != bytes {
+            return Err(fail("payload-replay-mismatch", string(payload, "path")?));
+        }
+        return Ok(());
+    }
     if string(payload, "role")? == "gtex-dds-texture"
         || string(payload, "role")? == "pwib-gtex-dds-texture"
     {
@@ -1973,20 +2241,21 @@ fn verify_source(document: &Value, path: &Path, bytes: &[u8]) -> Result<(), Fail
     let inspect_format = if format == "res" { "sedb" } else { format };
     let inspect_arguments = ["--as".to_string(), inspect_format.to_string()];
     let materialize = array(document, "payloads")?.iter().any(|payload| {
-        payload.get("role").and_then(Value::as_str) == Some("gtex-encoded-surface")
-            || payload.get("role").and_then(Value::as_str) == Some("pwib-gtex-encoded-surface")
-            || payload.get("container").is_some()
+        matches!(
+            payload.get("role").and_then(Value::as_str),
+            Some("gtex-encoded-surface" | "pwib-gtex-encoded-surface" | "fdt-gtex-payload")
+        ) || payload.get("container").is_some()
     });
     let export_dds = array(document, "payloads")?.iter().any(|payload| {
         matches!(
             payload.get("role").and_then(Value::as_str),
-            Some("gtex-dds-texture") | Some("pwib-gtex-dds-texture")
+            Some("gtex-dds-texture" | "pwib-gtex-dds-texture" | "fdt-gtex-dds-texture")
         )
     });
     let preview_png = array(document, "payloads")?.iter().any(|payload| {
         matches!(
             payload.get("role").and_then(Value::as_str),
-            Some("gtex-top-mip-png-preview") | Some("pwib-gtex-png-preview")
+            Some("gtex-top-mip-png-preview" | "pwib-gtex-png-preview" | "fdt-gtex-png-preview")
         )
     });
     let pwib_entry = source
@@ -3053,6 +3322,76 @@ mod tests {
         .unwrap();
         assert!(run(&verify_arguments(&output, None)).is_ok());
         assert!(run(&verify_arguments(&output, Some(&source))).is_ok());
+        fs::remove_dir_all(work).unwrap();
+    }
+
+    #[test]
+    fn verifies_fdt_texture_artifacts_and_rejects_broken_links() {
+        let work = temp_root("fdt-verification");
+        fs::create_dir_all(&work).unwrap();
+        let source = work.join("font.DAT");
+        fs::write(
+            &source,
+            include_bytes!("../../../tests/fixtures/public/fdt/atlases.bin"),
+        )
+        .unwrap();
+        let output = work.join("output");
+        crate::resource_export::run(&[
+            source.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--as".into(),
+            "fdt".into(),
+            "--materialize-payloads".into(),
+            "--export-dds".into(),
+            "--preview-png".into(),
+        ])
+        .unwrap();
+        assert!(run(&verify_arguments(&output, None)).is_ok());
+        assert!(run(&verify_arguments(&output, Some(&source))).is_ok());
+
+        // Payloads are two raw GTEX copies, two DDS files, then two PNGs.
+        let original = manifest(&output);
+        let cases: [(&str, &str, Value); 6] = [
+            ("/format/id", "fdt-format-mismatch", json!("gtex")),
+            (
+                "/payloads/0/entry/chunkIndex",
+                "fdt-entry-relationship-mismatch",
+                json!(2),
+            ),
+            (
+                "/payloads/2/texture/textureIndex",
+                "dds-artifact-contract",
+                json!(1),
+            ),
+            (
+                "/payloads/2/texture/chunkIndex",
+                "dds-fdt-texture-mismatch",
+                json!(2),
+            ),
+            (
+                "/payloads/2/dds/mips/0/sourceRelativeOffset",
+                "dds-mip-span-mismatch",
+                json!(0),
+            ),
+            (
+                "/payloads/4/texture/chunkIndex",
+                "png-fdt-texture-mismatch",
+                json!(2),
+            ),
+        ];
+        for (pointer, code, value) in cases {
+            let mut changed = original.clone();
+            *changed.pointer_mut(pointer).unwrap() = value;
+            write_manifest(&output, &changed);
+            let error = run(&verify_arguments(&output, None)).unwrap_err();
+            assert!(error.message.contains(code), "{pointer}: {}", error.message);
+        }
+        write_manifest(&output, &original);
+        let mut tampered = fs::read(output.join("payloads/preview-t001.png")).unwrap();
+        tampered.push(0);
+        fs::write(output.join("payloads/preview-t001.png"), tampered).unwrap();
+        assert!(run(&verify_arguments(&output, None)).is_err());
         fs::remove_dir_all(work).unwrap();
     }
 

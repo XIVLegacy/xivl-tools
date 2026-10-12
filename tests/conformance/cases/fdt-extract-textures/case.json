@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "fdt-extract-textures",
+  "formatId": "fdt",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/fdt/atlases.bin"
+  },
+  "arguments": [
+    "--as",
+    "fdt",
+    "--materialize-payloads",
+    "--export-dds",
+    "--preview-png"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Two A4R4G4B4 atlases yield exact GTEX payload copies, one DDS file and one top-mip PNG each, with source spans in font coordinates."
+}

@@ -172,6 +172,22 @@ surface materialization as supported. The two payloads of
 previews with legible glyphs spread across the color channels, and
 `verify-extraction` with source replay passed for both.
 
+`extract-resource --as fdt` extracts these textures from the font directly.
+`--materialize-payloads` copies every GTEX chunk payload exactly as a
+standalone `.gtex` file, whether or not the GTEX reader accepts it.
+`--export-dds` and `--preview-png` write one DDS file and one top-mip PNG
+per GTEX payload, named by its index in the texture list, and refuse the
+font unless every GTEX payload converts; a GTEX error's offset is moved onto
+the font. Source spans in the manifest are font offsets; DDS mips also
+record their payload-relative offset. DDSF chunks are not extracted. See
+[resource extraction](../resource-extraction.md) for the artifact layout and
+verification.
+
+Running all three options on the seven retail files wrote 20 payload copies,
+20 DDS files, and 20 PNG previews, and `verify-extraction` with source
+replay passed for every font. Each DDS file was byte-identical to the one
+`--export-dds` produced from the matching `.gtex` copy.
+
 ## Reports
 
 `--as fdt` selects the reader; it has no automatic recognition.
@@ -195,7 +211,9 @@ Authored public fixtures cover version 4 with DDSF, two GTEX chunks, and a
 TERM chunk; version 1; a file without VERS and its unversioned records;
 following chunks and short trailing bytes; one record per glyph check; a
 GTEX payload the GTEX reader accepts beside a truncated one; and each
-refusal above. Library tests pin decoded fields in both layouts and key
+refusal above. Extraction cases cover payload copies, DDS files, and PNG
+previews from two A4R4G4B4 atlases; payload copies beside a truncated GTEX
+payload; and the DDS refusal that payload causes. Library tests pin decoded fields in both layouts and key
 lookup through both tables. The malformed-input sweep truncates and mutates
 the version 4 fixture.
 
@@ -207,5 +225,5 @@ assignment of glyphs to atlas channels, the metric scalars, bytes `0x07` and
 mapping, the TERM chunk's purpose, and versions other than 4 in retail data
 remain outside this claim. No retail file uses the zero-version layout. The
 reader's refusals are stricter than the client's observed behavior, not a
-description of it. Rasterizing glyphs and exporting atlas textures are
-separate future work.
+description of it. Rasterizing glyphs and exporting per-glyph metadata
+are separate future work.

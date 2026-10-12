@@ -2304,6 +2304,42 @@ def build_fixtures() -> dict[str, bytes]:
             + fdt_record(1, 2, (4, 2), (0, 0)),
         )
     )
+    # Two A4R4G4B4 atlases, the second half the size of the first, as TEXC 1
+    # pairs them: 4 by 2 with mips of 16 and 4 bytes, and 2 by 1 with 4 and 2.
+    fixtures["fdt/atlases.bin"] = fdt_font(
+        fdt_chunks(
+            4,
+            [
+                (
+                    "GTEX",
+                    gtex(
+                        pattern(20, 0x29),
+                        format_index=22,
+                        mip_levels=2,
+                        width=4,
+                        height=2,
+                        data_base=0x28,
+                        surfaces=((0, 16), (16, 4)),
+                    ),
+                ),
+                (
+                    "GTEX",
+                    gtex(
+                        pattern(6, 0x2A),
+                        format_index=22,
+                        mip_levels=2,
+                        width=2,
+                        height=1,
+                        data_base=0x28,
+                        surfaces=((0, 4), (4, 2)),
+                    ),
+                ),
+            ],
+            fdt_record(0, 0, (2, 1), (1, 1))
+            + fdt_record(0, 1, (1, 1), (0, 0))
+            + fdt_record(0, 2, (4, 2), (0, 0)),
+        )
+    )
     # One record per check: a negative resource index; a resource whose TEXC
     # offset leaves the list, with selector 4 and a source past the 16x8
     # texture; and selector -1 with a negative width.

@@ -1,0 +1,780 @@
+{
+  "artifacts": [
+    {
+      "chunkIndex": 1,
+      "role": "fdt-gtex-payload",
+      "sha256": "36be2e9429ec3127e0f25727aa81153e74e2999cbc60f45cc76ba75cff794d73",
+      "size": 60,
+      "sourceSpan": {
+        "endExclusive": 80,
+        "length": 60,
+        "offset": 20
+      },
+      "textureIndex": 0
+    },
+    {
+      "chunkIndex": 2,
+      "role": "fdt-gtex-payload",
+      "sha256": "c4395a9b2b8762f2272a1bfa49815693ae59cabf2748013e5e0f3708320e07b0",
+      "size": 46,
+      "sourceSpan": {
+        "endExclusive": 134,
+        "length": 46,
+        "offset": 88
+      },
+      "textureIndex": 1
+    },
+    {
+      "chunkIndex": 1,
+      "mipLevels": 2,
+      "mips": [
+        {
+          "ddsSpan": {
+            "length": 16,
+            "offset": 128
+          },
+          "height": 2,
+          "mipLevel": 0,
+          "sha256": "91e85b32e589cfad1bd034ff9d83e302baf21aca3b27c9b720be5c7f7fdb1529",
+          "sourceRelativeOffset": 40,
+          "sourceSpan": {
+            "endExclusive": 76,
+            "length": 16,
+            "offset": 60
+          },
+          "width": 4
+        },
+        {
+          "ddsSpan": {
+            "length": 4,
+            "offset": 144
+          },
+          "height": 1,
+          "mipLevel": 1,
+          "sha256": "df95c5b6b66a3d023263e387184dd7c099b439168cd161c9dbdb8b7dec655795",
+          "sourceRelativeOffset": 56,
+          "sourceSpan": {
+            "endExclusive": 80,
+            "length": 4,
+            "offset": 76
+          },
+          "width": 2
+        }
+      ],
+      "path": "payloads/texture-t000.dds",
+      "role": "fdt-gtex-dds-texture",
+      "sha256": "140696c6ec784baee61f944ad7205cfda84f3f73bc2e57c0a401db12d47619c1",
+      "size": 148,
+      "texture": {
+        "format": {
+          "clientIndex": 22,
+          "d3dName": "D3DFMT_A4R4G4B4",
+          "d3dValue": 26
+        },
+        "height": 2,
+        "width": 4
+      },
+      "textureIndex": 0
+    },
+    {
+      "chunkIndex": 2,
+      "mipLevels": 2,
+      "mips": [
+        {
+          "ddsSpan": {
+            "length": 4,
+            "offset": 128
+          },
+          "height": 1,
+          "mipLevel": 0,
+          "sha256": "701fec93c3e3b85a870006841ca8f84af9118226195bede03f17c6bc0a5b7d97",
+          "sourceRelativeOffset": 40,
+          "sourceSpan": {
+            "endExclusive": 132,
+            "length": 4,
+            "offset": 128
+          },
+          "width": 2
+        },
+        {
+          "ddsSpan": {
+            "length": 2,
+            "offset": 132
+          },
+          "height": 1,
+          "mipLevel": 1,
+          "sha256": "dc72daa266582fba62836575af00ade547932927416128dbb80734e9fb39395a",
+          "sourceRelativeOffset": 44,
+          "sourceSpan": {
+            "endExclusive": 134,
+            "length": 2,
+            "offset": 132
+          },
+          "width": 1
+        }
+      ],
+      "path": "payloads/texture-t001.dds",
+      "role": "fdt-gtex-dds-texture",
+      "sha256": "6ed969a1ef706fdbea6acd02a02a666ac3456406226742ad1403f4e103ab5b12",
+      "size": 134,
+      "texture": {
+        "format": {
+          "clientIndex": 22,
+          "d3dName": "D3DFMT_A4R4G4B4",
+          "d3dValue": 26
+        },
+        "height": 1,
+        "width": 2
+      },
+      "textureIndex": 1
+    },
+    {
+      "chunkIndex": 1,
+      "path": "payloads/preview-t000.png",
+      "png": {
+        "format": {
+          "clientIndex": 22,
+          "d3dName": "D3DFMT_A4R4G4B4",
+          "d3dValue": 26
+        },
+        "height": 2,
+        "mipLevel": 0,
+        "rgbaSha256": "e5deee8a563a2d50eae9d3b2fd992fe924fd1134c11d101f13b41be44bbb1799",
+        "sourceSha256": "91e85b32e589cfad1bd034ff9d83e302baf21aca3b27c9b720be5c7f7fdb1529",
+        "sourceSpan": {
+          "endExclusive": 76,
+          "length": 16,
+          "offset": 60
+        },
+        "width": 4
+      },
+      "role": "fdt-gtex-png-preview",
+      "sha256": "61d4588e8798bb799a13e4b38421f487ae3fc97fd15e2e5dadab8d445281bb51",
+      "size": 89,
+      "textureIndex": 0
+    },
+    {
+      "chunkIndex": 2,
+      "path": "payloads/preview-t001.png",
+      "png": {
+        "format": {
+          "clientIndex": 22,
+          "d3dName": "D3DFMT_A4R4G4B4",
+          "d3dValue": 26
+        },
+        "height": 1,
+        "mipLevel": 0,
+        "rgbaSha256": "6d261f6df50225fa3b3c4ffdc933ca1cf879d202492d645e38a7f499555cf508",
+        "sourceSha256": "701fec93c3e3b85a870006841ca8f84af9118226195bede03f17c6bc0a5b7d97",
+        "sourceSpan": {
+          "endExclusive": 132,
+          "length": 4,
+          "offset": 128
+        },
+        "width": 2
+      },
+      "role": "fdt-gtex-png-preview",
+      "sha256": "5350708748637a56b371a33737796c62fcefa15f6e68907d8945794c6ff56135",
+      "size": 74,
+      "textureIndex": 1
+    }
+  ],
+  "chunkCount": 11,
+  "chunks": [
+    {
+      "index": 0,
+      "payload": {
+        "length": 4,
+        "offset": 8
+      },
+      "payloadSha256": "fb5e512425fc9449316ec95969ebe71e2d576dbab833d61e2a5b9330fd70ee02",
+      "readByClient": true,
+      "span": {
+        "length": 12,
+        "offset": 0
+      },
+      "tag": "VERS"
+    },
+    {
+      "index": 1,
+      "payload": {
+        "length": 60,
+        "offset": 20
+      },
+      "payloadSha256": "36be2e9429ec3127e0f25727aa81153e74e2999cbc60f45cc76ba75cff794d73",
+      "readByClient": true,
+      "span": {
+        "length": 68,
+        "offset": 12
+      },
+      "tag": "GTEX"
+    },
+    {
+      "index": 2,
+      "payload": {
+        "length": 46,
+        "offset": 88
+      },
+      "payloadSha256": "c4395a9b2b8762f2272a1bfa49815693ae59cabf2748013e5e0f3708320e07b0",
+      "readByClient": true,
+      "span": {
+        "length": 54,
+        "offset": 80
+      },
+      "tag": "GTEX"
+    },
+    {
+      "index": 3,
+      "payload": {
+        "length": 4,
+        "offset": 142
+      },
+      "payloadSha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+      "readByClient": true,
+      "span": {
+        "length": 12,
+        "offset": 134
+      },
+      "tag": "TEXC"
+    },
+    {
+      "index": 4,
+      "payload": {
+        "length": 4,
+        "offset": 154
+      },
+      "payloadSha256": "17fa9c7f5e9039a2d46e73e17d8e094a796ee4c313199bad42db4ee1dc30d865",
+      "readByClient": true,
+      "span": {
+        "length": 12,
+        "offset": 146
+      },
+      "tag": "FSIZ"
+    },
+    {
+      "index": 5,
+      "payload": {
+        "length": 4,
+        "offset": 166
+      },
+      "payloadSha256": "8d71b3faab8201459ad37ef499beb336ba88bdcfa0f51ee6f0a46ec3192d750a",
+      "readByClient": true,
+      "span": {
+        "length": 12,
+        "offset": 158
+      },
+      "tag": "FSMX"
+    },
+    {
+      "index": 6,
+      "payload": {
+        "length": 4,
+        "offset": 178
+      },
+      "payloadSha256": "447e12701a0d03cf90a4ad7f02f1a045b35d284e26fe520440edb116d76bf700",
+      "readByClient": true,
+      "span": {
+        "length": 12,
+        "offset": 170
+      },
+      "tag": "BSLN"
+    },
+    {
+      "index": 7,
+      "payload": {
+        "length": 4,
+        "offset": 190
+      },
+      "payloadSha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+      "readByClient": true,
+      "span": {
+        "length": 12,
+        "offset": 182
+      },
+      "tag": "HMGN"
+    },
+    {
+      "index": 8,
+      "payload": {
+        "length": 256,
+        "offset": 202
+      },
+      "payloadSha256": "43d56341f200591799f7e03f9514c0787adc31bd2fd43113a4768f0aa1572d75",
+      "readByClient": true,
+      "span": {
+        "length": 264,
+        "offset": 194
+      },
+      "tag": "HTBL"
+    },
+    {
+      "index": 9,
+      "payload": {
+        "length": 1024,
+        "offset": 466
+      },
+      "payloadSha256": "15f04a2102c8271b1abd5c5d9a95d614d53f321b2ddc02fb4bb1408ca6fdcd9e",
+      "readByClient": true,
+      "span": {
+        "length": 1032,
+        "offset": 458
+      },
+      "tag": "LTBL"
+    },
+    {
+      "index": 10,
+      "payload": {
+        "length": 42,
+        "offset": 1498
+      },
+      "payloadSha256": "a555bb1b0b0a019ca65c30fe61c312b354eb4bd172965d1a51800099a1ea19e9",
+      "readByClient": true,
+      "span": {
+        "length": 50,
+        "offset": 1490
+      },
+      "tag": "GLYP"
+    }
+  ],
+  "endsAtEof": true,
+  "format": "fdt",
+  "glyphRecords": {
+    "checks": {
+      "negativeExtent": 0,
+      "offsetResourceOutsideTextures": 0,
+      "resourceOutsideTextures": 0,
+      "selectorOutsideVectors": 0,
+      "sourceOutsideTexture": 0,
+      "sourceUnchecked": 0
+    },
+    "count": 3,
+    "layout": "versioned",
+    "recordLength": 14,
+    "referenced": 2
+  },
+  "indexTable": {
+    "mappedKeys": 3,
+    "pageLength": 512,
+    "pages": 2
+  },
+  "input": {
+    "length": 1540
+  },
+  "operation": "inspect",
+  "pageTable": {
+    "length": 256,
+    "mappedPages": 2
+  },
+  "schemaVersion": 1,
+  "textureChunkCount": 2,
+  "textureOffset": 1,
+  "textures": [
+    {
+      "chunkIndex": 1,
+      "gtex": {
+        "payloadOffset": 20,
+        "report": {
+          "anomalies": [],
+          "dataBase": {
+            "byteOrder": "big",
+            "span": {
+              "length": 4,
+              "offset": 20
+            },
+            "value": 40
+          },
+          "dataRegion": {
+            "gaps": [],
+            "kind": "texture-source-data",
+            "sha256": "8f2806b12ae62eaccb4ab823632cf5a3bf8aed648d8c001d45963980cd90d3f3",
+            "span": {
+              "length": 20,
+              "offset": 40
+            }
+          },
+          "format": "gtex",
+          "header": {
+            "span": {
+              "length": 40,
+              "offset": 0
+            },
+            "unknown": [
+              {
+                "kind": "unknown-gap",
+                "sha256": "409521f02c8b29bd4f76b832de53a56fb64ac90f85f6fdce1545f53c643b2219",
+                "span": {
+                  "length": 2,
+                  "offset": 4
+                }
+              },
+              {
+                "kind": "unknown-gap",
+                "sha256": "de7d1b721a1e0632b7cf04edf5032c8ecffa9f9a08492152b926f1a5a7e765d7",
+                "span": {
+                  "length": 1,
+                  "offset": 8
+                }
+              }
+            ]
+          },
+          "input": {
+            "length": 60
+          },
+          "layoutStatus": "bounded",
+          "offsetTable": {
+            "base": {
+              "byteOrder": "big",
+              "span": {
+                "length": 4,
+                "offset": 16
+              },
+              "value": 24
+            },
+            "entries": [
+              {
+                "calculatedSize": 16,
+                "face": 0,
+                "index": 0,
+                "mipLevel": 0,
+                "offsetField": {
+                  "byteOrder": "big",
+                  "span": {
+                    "length": 4,
+                    "offset": 24
+                  },
+                  "value": 0
+                },
+                "sizeField": {
+                  "byteOrder": "big",
+                  "span": {
+                    "length": 4,
+                    "offset": 28
+                  },
+                  "value": 16
+                },
+                "source": {
+                  "sha256": "91e85b32e589cfad1bd034ff9d83e302baf21aca3b27c9b720be5c7f7fdb1529",
+                  "span": {
+                    "length": 16,
+                    "offset": 40
+                  }
+                }
+              },
+              {
+                "calculatedSize": 4,
+                "face": 0,
+                "index": 1,
+                "mipLevel": 1,
+                "offsetField": {
+                  "byteOrder": "big",
+                  "span": {
+                    "length": 4,
+                    "offset": 32
+                  },
+                  "value": 16
+                },
+                "sizeField": {
+                  "byteOrder": "big",
+                  "span": {
+                    "length": 4,
+                    "offset": 36
+                  },
+                  "value": 4
+                },
+                "source": {
+                  "sha256": "df95c5b6b66a3d023263e387184dd7c099b439168cd161c9dbdb8b7dec655795",
+                  "span": {
+                    "length": 4,
+                    "offset": 56
+                  }
+                }
+              }
+            ],
+            "entryStride": 8
+          },
+          "signature": {
+            "ascii": "GTEX",
+            "span": {
+              "length": 4,
+              "offset": 0
+            }
+          },
+          "surfaceMaterialization": {
+            "status": "supported"
+          },
+          "texture": {
+            "depth": {
+              "byteOrder": "big",
+              "span": {
+                "length": 2,
+                "offset": 14
+              },
+              "value": 1
+            },
+            "flagBit2": false,
+            "flags": {
+              "span": {
+                "length": 1,
+                "offset": 9
+              },
+              "value": 0
+            },
+            "formatIndex": {
+              "mapping": {
+                "bitsPerPixel": 16,
+                "blockBytes": null,
+                "d3dName": "D3DFMT_A4R4G4B4",
+                "d3dValue": 26
+              },
+              "span": {
+                "length": 1,
+                "offset": 6
+              },
+              "value": 22
+            },
+            "height": {
+              "byteOrder": "big",
+              "span": {
+                "length": 2,
+                "offset": 12
+              },
+              "value": 2
+            },
+            "kind": "2d",
+            "mipLevels": {
+              "span": {
+                "length": 1,
+                "offset": 7
+              },
+              "value": 2
+            },
+            "width": {
+              "byteOrder": "big",
+              "span": {
+                "length": 2,
+                "offset": 10
+              },
+              "value": 4
+            }
+          },
+          "trailing": []
+        },
+        "status": "parsed"
+      },
+      "gtexDimensions": {
+        "height": 2,
+        "width": 4
+      },
+      "tag": "GTEX"
+    },
+    {
+      "chunkIndex": 2,
+      "gtex": {
+        "payloadOffset": 88,
+        "report": {
+          "anomalies": [],
+          "dataBase": {
+            "byteOrder": "big",
+            "span": {
+              "length": 4,
+              "offset": 20
+            },
+            "value": 40
+          },
+          "dataRegion": {
+            "gaps": [],
+            "kind": "texture-source-data",
+            "sha256": "c194ca4d401c9eb565c2c9707ff2e38a791260e10a71912c593a41a7348a284c",
+            "span": {
+              "length": 6,
+              "offset": 40
+            }
+          },
+          "format": "gtex",
+          "header": {
+            "span": {
+              "length": 40,
+              "offset": 0
+            },
+            "unknown": [
+              {
+                "kind": "unknown-gap",
+                "sha256": "409521f02c8b29bd4f76b832de53a56fb64ac90f85f6fdce1545f53c643b2219",
+                "span": {
+                  "length": 2,
+                  "offset": 4
+                }
+              },
+              {
+                "kind": "unknown-gap",
+                "sha256": "de7d1b721a1e0632b7cf04edf5032c8ecffa9f9a08492152b926f1a5a7e765d7",
+                "span": {
+                  "length": 1,
+                  "offset": 8
+                }
+              }
+            ]
+          },
+          "input": {
+            "length": 46
+          },
+          "layoutStatus": "bounded",
+          "offsetTable": {
+            "base": {
+              "byteOrder": "big",
+              "span": {
+                "length": 4,
+                "offset": 16
+              },
+              "value": 24
+            },
+            "entries": [
+              {
+                "calculatedSize": 4,
+                "face": 0,
+                "index": 0,
+                "mipLevel": 0,
+                "offsetField": {
+                  "byteOrder": "big",
+                  "span": {
+                    "length": 4,
+                    "offset": 24
+                  },
+                  "value": 0
+                },
+                "sizeField": {
+                  "byteOrder": "big",
+                  "span": {
+                    "length": 4,
+                    "offset": 28
+                  },
+                  "value": 4
+                },
+                "source": {
+                  "sha256": "701fec93c3e3b85a870006841ca8f84af9118226195bede03f17c6bc0a5b7d97",
+                  "span": {
+                    "length": 4,
+                    "offset": 40
+                  }
+                }
+              },
+              {
+                "calculatedSize": 2,
+                "face": 0,
+                "index": 1,
+                "mipLevel": 1,
+                "offsetField": {
+                  "byteOrder": "big",
+                  "span": {
+                    "length": 4,
+                    "offset": 32
+                  },
+                  "value": 4
+                },
+                "sizeField": {
+                  "byteOrder": "big",
+                  "span": {
+                    "length": 4,
+                    "offset": 36
+                  },
+                  "value": 2
+                },
+                "source": {
+                  "sha256": "dc72daa266582fba62836575af00ade547932927416128dbb80734e9fb39395a",
+                  "span": {
+                    "length": 2,
+                    "offset": 44
+                  }
+                }
+              }
+            ],
+            "entryStride": 8
+          },
+          "signature": {
+            "ascii": "GTEX",
+            "span": {
+              "length": 4,
+              "offset": 0
+            }
+          },
+          "surfaceMaterialization": {
+            "status": "supported"
+          },
+          "texture": {
+            "depth": {
+              "byteOrder": "big",
+              "span": {
+                "length": 2,
+                "offset": 14
+              },
+              "value": 1
+            },
+            "flagBit2": false,
+            "flags": {
+              "span": {
+                "length": 1,
+                "offset": 9
+              },
+              "value": 0
+            },
+            "formatIndex": {
+              "mapping": {
+                "bitsPerPixel": 16,
+                "blockBytes": null,
+                "d3dName": "D3DFMT_A4R4G4B4",
+                "d3dValue": 26
+              },
+              "span": {
+                "length": 1,
+                "offset": 6
+              },
+              "value": 22
+            },
+            "height": {
+              "byteOrder": "big",
+              "span": {
+                "length": 2,
+                "offset": 12
+              },
+              "value": 1
+            },
+            "kind": "2d",
+            "mipLevels": {
+              "span": {
+                "length": 1,
+                "offset": 7
+              },
+              "value": 2
+            },
+            "width": {
+              "byteOrder": "big",
+              "span": {
+                "length": 2,
+                "offset": 10
+              },
+              "value": 2
+            }
+          },
+          "trailing": []
+        },
+        "status": "parsed"
+      },
+      "gtexDimensions": {
+        "height": 1,
+        "width": 2
+      },
+      "tag": "GTEX"
+    }
+  ],
+  "trailing": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "span": {
+      "length": 0,
+      "offset": 1540
+    }
+  },
+  "version": {
+    "chunkPresent": true,
+    "value": 4
+  }
+}

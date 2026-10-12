@@ -8,6 +8,7 @@
 //! `xivl-decomp:docs/resource/bitmap-font-glyph-consumers.md`.
 
 use crate::error::{ErrorKind, FormatError, Result};
+use crate::gtex_pwib::{self, GtexResource, TaggedResource, TaggedResourceKind};
 use crate::reader::{Reader, Span};
 
 pub const CHUNK_HEADER_LENGTH: usize = 8;
@@ -146,6 +147,55 @@ impl FdtFile {
             return None;
         }
         self.glyphs.get(usize::from(record))
+    }
+
+    /// GTEX chunks in resource-list order, skipping DDSF chunks.
+    pub fn gtex_payloads(&self) -> Vec<GtexPayload> {
+        self.textures
+            .iter()
+            .enumerate()
+            .filter(|(_, texture)| self.chunks[texture.chunk].tag == GTEX)
+            .map(|(index, texture)| GtexPayload {
+                texture: index,
+                chunk: texture.chunk,
+                payload: self.chunks[texture.chunk].payload,
+            })
+            .collect()
+    }
+}
+
+/// One GTEX chunk of the resource list.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GtexPayload {
+    /// Index into `FdtFile::textures`.
+    pub texture: usize,
+    /// Index into `FdtFile::chunks`.
+    pub chunk: usize,
+    pub payload: Span,
+}
+
+impl GtexPayload {
+    /// Moves an error from a reader given only the payload onto the font.
+    pub fn rebase(&self, error: FormatError) -> FormatError {
+        FormatError::new(
+            error.kind(),
+            self.payload.offset + error.offset(),
+            error.detail(),
+        )
+    }
+}
+
+/// Reads an embedded GTEX payload as a standalone GTEX resource. Spans in the
+/// result are relative to the returned payload bytes; error offsets are
+/// rebased onto `data`.
+pub fn parse_gtex_payload(data: &[u8], payload: GtexPayload) -> Result<(&[u8], GtexResource)> {
+    let start = payload.payload.offset as usize;
+    let bytes = &data[start..start + payload.payload.length as usize];
+    match gtex_pwib::parse(bytes, TaggedResourceKind::Gtex)
+        .map_err(|error| payload.rebase(error))?
+    {
+        TaggedResource::Gtex(gtex) => Ok((bytes, gtex)),
+        TaggedResource::Pwib(_) => unreachable!("the requested parser returns GTEX"),
     }
 }
 

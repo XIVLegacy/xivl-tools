@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "fdt-extract-unparsed-payload",
+  "formatId": "fdt",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/fdt/gtex-payloads.bin"
+  },
+  "arguments": [
+    "--as",
+    "fdt",
+    "--materialize-payloads"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Payload copies skip the DDSF chunk and include a GTEX payload the GTEX reader refuses."
+}

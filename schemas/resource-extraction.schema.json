@@ -70,6 +70,7 @@
           "entry": { "$ref": "#/$defs/entryRelationship" },
           "dds": { "$ref": "#/$defs/ddsArtifact" },
           "png": { "$ref": "#/$defs/pngArtifact" },
+          "texture": { "$ref": "#/$defs/fdtTexture" },
           "rgbaSha256": { "$ref": "#/$defs/sha256" },
           "sourceSha256": { "$ref": "#/$defs/sha256" }
         }
@@ -114,7 +115,7 @@
       "required": ["path", "kind"],
       "properties": {
         "path": { "type": "string", "minLength": 1 },
-          "kind": { "enum": ["payload", "subresource", "unknown-gap", "gtex-encoded-surface", "gtex-top-mip-png-preview", "pwib-gtex-encoded-surface"] },
+          "kind": { "enum": ["payload", "subresource", "unknown-gap", "gtex-encoded-surface", "gtex-top-mip-png-preview", "pwib-gtex-encoded-surface", "fdt-gtex-payload"] },
         "face": { "type": "integer", "minimum": 0 },
         "mipLevel": { "type": "integer", "minimum": 0 },
         "gtexFormat": { "$ref": "#/$defs/gtexFormat" },
@@ -124,7 +125,19 @@
         "declaredKind": { "type": "integer", "minimum": 0 },
         "childContainer": { "$ref": "#/$defs/childContainer" },
         "visibleIndex": { "type": "integer", "minimum": 0 },
-        "relativeOffset": { "type": "integer", "minimum": 0 }
+        "relativeOffset": { "type": "integer", "minimum": 0 },
+        "chunkIndex": { "type": "integer", "minimum": 0 },
+        "textureIndex": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "fdtTexture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "chunkIndex", "textureIndex"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^\\$\\.parsed\\.textures\\[[0-9]+\\]$" },
+        "chunkIndex": { "type": "integer", "minimum": 0 },
+        "textureIndex": { "type": "integer", "minimum": 0 }
       }
     },
     "gtexFormat": {

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "fdt-extract-dds-refusal",
+  "formatId": "fdt",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/fdt/gtex-payloads.bin"
+  },
+  "arguments": [
+    "--as",
+    "fdt",
+    "--export-dds"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 144
+  },
+  "notes": "DDS export refuses the font when one GTEX payload is truncated, reporting the GTEX error at its font offset."
+}

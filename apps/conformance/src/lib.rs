@@ -183,12 +183,17 @@ fn run_case(
             let arguments = case_arguments(case);
             let export_dds = arguments.iter().any(|argument| argument == "--export-dds");
             let preview_png = arguments.iter().any(|argument| argument == "--preview-png");
+            let materialize = arguments
+                .iter()
+                .any(|argument| argument == "--materialize-payloads");
             let mut pwib_entry = None;
             let mut inspect_arguments = Vec::new();
             let mut argument_index = 0;
             while argument_index < arguments.len() {
                 match arguments[argument_index].as_str() {
-                    "--export-dds" | "--preview-png" => argument_index += 1,
+                    "--export-dds" | "--preview-png" | "--materialize-payloads" => {
+                        argument_index += 1
+                    }
                     "--pwib-entry" => {
                         let Some(value) = arguments.get(argument_index + 1) else {
                             return Outcome::Failed(
@@ -216,7 +221,14 @@ fn run_case(
                     if operation == "inspect" {
                         inspect_named_bytes_as(&input, &name, &how)
                     } else if operation == "extract" {
-                        if let Some(index) = pwib_entry {
+                        if materialize && !matches!(how, InspectAs::Fdt) {
+                            return Outcome::Failed(
+                                "case arguments: --materialize-payloads needs --as fdt".into(),
+                            );
+                        }
+                        if matches!(how, InspectAs::Fdt) {
+                            fdt_export_document(&input, &name, materialize, export_dds, preview_png)
+                        } else if let Some(index) = pwib_entry {
                             pwib_selected_export_document(
                                 &input,
                                 &name,
@@ -699,6 +711,104 @@ fn pwib_selected_export_document(
     document
         .as_object_mut()
         .expect("selected PWIB inspection is an object")
+        .insert("artifacts".into(), Value::Array(artifacts));
+    Ok(document)
+}
+
+/// The fdt inspection plus each GTEX payload copy, DDS file, and PNG preview
+/// the CLI writes, in its artifact order.
+fn fdt_export_document(
+    input: &[u8],
+    name: &str,
+    materialize: bool,
+    export_dds: bool,
+    preview_png: bool,
+) -> Result<Value, FormatError> {
+    let mut document = inspect_named_bytes_as(input, name, &InspectAs::Fdt)?;
+    let payloads = xivl_formats::fdt::parse(input)?.gtex_payloads();
+    let format_json = |format: xivl_formats::gtex_pwib::GtexFormat| json!({ "clientIndex": format.index, "d3dName": format.d3d_name, "d3dValue": format.d3d_value });
+    let absolute = |base: u64, span: xivl_formats::Span| json!({ "offset": base + span.offset, "length": span.length, "endExclusive": base + span.end() });
+    let mut artifacts = Vec::new();
+    if materialize {
+        for texture in &payloads {
+            let span = texture.payload;
+            let bytes = &input[span.offset as usize..span.end() as usize];
+            artifacts.push(json!({
+                "chunkIndex": texture.chunk,
+                "role": "fdt-gtex-payload",
+                "sha256": sha256_hex(bytes),
+                "size": span.length,
+                "sourceSpan": absolute(0, span),
+                "textureIndex": texture.texture,
+            }));
+        }
+    }
+    for (enabled, kind) in [
+        (export_dds, ErrorKind::UnsupportedDdsFormat),
+        (preview_png, ErrorKind::UnsupportedGtexPreview),
+    ] {
+        if enabled && payloads.is_empty() {
+            return Err(FormatError::new(
+                kind,
+                0,
+                "the font has no GTEX texture chunk",
+            ));
+        }
+    }
+    if export_dds {
+        for texture in &payloads {
+            let (bytes, gtex) = xivl_formats::fdt::parse_gtex_payload(input, *texture)?;
+            let base = texture.payload.offset;
+            let export = xivl_formats::dds::export_gtex(bytes, &gtex)
+                .map_err(|error| texture.rebase(error))?;
+            artifacts.push(json!({
+                "chunkIndex": texture.chunk,
+                "mipLevels": export.mip_levels,
+                "mips": export.mips.iter().map(|mip| json!({
+                    "ddsSpan": mip.dds_span.to_json(),
+                    "height": mip.height,
+                    "mipLevel": mip.mip_level,
+                    "sha256": mip.sha256,
+                    "sourceRelativeOffset": mip.source_span.offset,
+                    "sourceSpan": absolute(base, mip.source_span),
+                    "width": mip.width,
+                })).collect::<Vec<_>>(),
+                "path": format!("payloads/texture-t{:03}.dds", texture.texture),
+                "role": "fdt-gtex-dds-texture",
+                "sha256": sha256_hex(&export.bytes),
+                "size": export.bytes.len() as u64,
+                "texture": { "format": format_json(export.format), "height": export.height, "width": export.width },
+                "textureIndex": texture.texture,
+            }));
+        }
+    }
+    if preview_png {
+        for texture in &payloads {
+            let (bytes, gtex) = xivl_formats::fdt::parse_gtex_payload(input, *texture)?;
+            let preview = xivl_formats::texture_preview::export_gtex_top_mip_png(bytes, &gtex)
+                .map_err(|error| texture.rebase(error))?;
+            artifacts.push(json!({
+                "chunkIndex": texture.chunk,
+                "path": format!("payloads/preview-t{:03}.png", texture.texture),
+                "png": {
+                    "format": format_json(preview.format),
+                    "height": preview.height,
+                    "mipLevel": preview.mip_level,
+                    "rgbaSha256": preview.rgba_sha256,
+                    "sourceSha256": preview.source_sha256,
+                    "sourceSpan": absolute(texture.payload.offset, preview.source_span),
+                    "width": preview.width,
+                },
+                "role": "fdt-gtex-png-preview",
+                "sha256": sha256_hex(&preview.bytes),
+                "size": preview.bytes.len() as u64,
+                "textureIndex": texture.texture,
+            }));
+        }
+    }
+    document
+        .as_object_mut()
+        .expect("fdt inspection is an object")
         .insert("artifacts".into(), Value::Array(artifacts));
     Ok(document)
 }

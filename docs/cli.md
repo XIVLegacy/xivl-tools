@@ -403,8 +403,8 @@ The default output is a schema-versioned `extraction.yaml` (use
 `--format json` for JSON). It contains the inspection report and references to
 separate payload files. The optional `--materialize-payloads` flag writes
 exact direct payload spans only where the format contract allows it, currently
-SEDB, RES, the supported GTEX boundary, and an explicitly selected PWIB
-RES/txb texture. It refuses ambiguous or unsupported
+SEDB, RES, the supported GTEX boundary, an explicitly selected PWIB
+RES/txb texture, and the GTEX chunk payloads of a bitmap font. It refuses ambiguous or unsupported
 payload layouts rather than choosing an owner for the bytes.
 
 SQEX widget and scrambled-XML inputs automatically produce
@@ -438,6 +438,16 @@ The bounded path accepts only version-one, little-endian RES/txb with an
 externally backed, table-bearing, one-mip DXT1 descriptor, 2D flags zero,
 and depth one. Omitting entry selection keeps PWIB metadata-only. See the
 [selected-entry contract](formats/gtex-pwib.md#selected-pwib-restxb-texture).
+
+For a bitmap font, `extract-resource --as fdt` applies the raw, DDS, and PNG
+options to every GTEX chunk payload. Raw copies are `.gtex` files; DDS and
+PNG files are named by texture index, such as `payloads/texture-t000.dds`
+and `payloads/preview-t000.png`. DDS and PNG require every GTEX payload to
+convert. See the [fdt texture extraction](formats/fdt.md#texture-payloads).
+
+```powershell
+cargo run --locked -p xivl-cli -- extract-resource font.DAT --output font --as fdt --materialize-payloads --export-dds --preview-png
+```
 
 For several resources, first make a catalog and then name each selection:
 

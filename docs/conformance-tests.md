@@ -237,7 +237,8 @@ The `fdt` cases walk authored bitmap font containers through `inspect` and
 `validate`: version 4 with every gated chunk, version 1, a file without
 VERS with unversioned records, chunks after GLYP, one record per glyph
 check, accepted and truncated GTEX payloads, and each refusal with its
-pinned offset. Expected documents retain
+pinned offset. The `fdt-extract` cases add GTEX payload copies, DDS files,
+and PNG previews, and the font-offset DDS refusal. Expected documents retain
 chunk spans, digests, table counts, and check counts, never payload bytes or
 record values. The [fdt contract](formats/fdt.md) owns the chunk order,
 record layouts, and reader rules.

@@ -6,7 +6,8 @@ use std::path::Path;
 use serde_json::{json, Value};
 use xivl_formats::dds;
 use xivl_formats::digest::sha256_hex;
-use xivl_formats::gtex_pwib::{self, TaggedResource, TaggedResourceKind};
+use xivl_formats::fdt;
+use xivl_formats::gtex_pwib::{self, GtexResource, TaggedResource, TaggedResourceKind};
 use xivl_formats::sedb::{self, EntryBody};
 use xivl_formats::texture_preview;
 use xivl_formats::{
@@ -298,32 +299,41 @@ pub(crate) fn plan_bytes_options_with_pwib(
                 artifacts.push(pwib_surface_payload(data, input, pwib_entry.unwrap())?)
             }
             "sedb" | "res" => artifacts.extend(container_payloads(data, input)?),
+            "fdt" => artifacts.extend(fdt_payload_artifacts(data, input)?),
             other => {
                 return Err(Failure::usage(format!(
-                    "--materialize-payloads applies only to SEDB/RES/GTEX/SQWT/scrambled-xml input, not '{other}'"
+                    "--materialize-payloads applies only to SEDB/RES/GTEX/FDT/SQWT/scrambled-xml input, not '{other}'"
                 )))
             }
         }
     }
     if export_dds {
-        if parsed_format != "gtex" && !(parsed_format == "pwib" && pwib_entry.is_some()) {
+        if !matches!(parsed_format.as_str(), "gtex" | "fdt")
+            && !(parsed_format == "pwib" && pwib_entry.is_some())
+        {
             return Err(Failure::usage(format!(
-                "--export-dds applies only to GTEX input, not '{parsed_format}'"
+                "--export-dds applies only to GTEX, selected PWIB, or FDT input, not '{parsed_format}'"
             )));
         }
-        if let Some(entry) = pwib_entry {
+        if parsed_format == "fdt" {
+            artifacts.extend(fdt_dds_payloads(data, input)?);
+        } else if let Some(entry) = pwib_entry {
             artifacts.push(pwib_dds_payload(data, input, entry)?);
         } else {
             artifacts.push(gtex_dds_payload(data, input)?);
         }
     }
     if preview_png {
-        if parsed_format != "gtex" && !(parsed_format == "pwib" && pwib_entry.is_some()) {
+        if !matches!(parsed_format.as_str(), "gtex" | "fdt")
+            && !(parsed_format == "pwib" && pwib_entry.is_some())
+        {
             return Err(Failure::usage(format!(
-                "--preview-png applies only to GTEX input, not '{parsed_format}'"
+                "--preview-png applies only to GTEX, selected PWIB, or FDT input, not '{parsed_format}'"
             )));
         }
-        if let Some(entry) = pwib_entry {
+        if parsed_format == "fdt" {
+            artifacts.extend(fdt_png_payloads(data, input)?);
+        } else if let Some(entry) = pwib_entry {
             artifacts.push(pwib_png_payload(data, input, entry)?);
         } else {
             artifacts.push(gtex_png_payload(data, input)?);
@@ -872,6 +882,168 @@ fn gtex_png_payload(data: &[u8], input: &str) -> Result<PayloadArtifact, Failure
         }),
         path,
         bytes: preview.bytes,
+    })
+}
+
+fn fdt_gtex_payloads(data: &[u8], input: &str) -> Result<Vec<fdt::GtexPayload>, Failure> {
+    Ok(fdt::parse(data)
+        .map_err(|error| Failure::parse(format!("{input}: {error}")))?
+        .gtex_payloads())
+}
+
+fn fdt_texture_link(texture: &fdt::GtexPayload) -> Value {
+    json!({
+        "chunkIndex": texture.chunk,
+        "path": format!("$.parsed.textures[{}]", texture.texture),
+        "textureIndex": texture.texture,
+    })
+}
+
+fn source_span_json(offset: u64, length: u64) -> Value {
+    json!({ "endExclusive": offset + length, "length": length, "offset": offset })
+}
+
+/// Each GTEX chunk payload, copied exactly; the reader need not accept it.
+fn fdt_payload_artifacts(data: &[u8], input: &str) -> Result<Vec<PayloadArtifact>, Failure> {
+    fdt_gtex_payloads(data, input)?
+        .iter()
+        .map(|texture| {
+            let span = texture.payload;
+            let start = span.offset as usize;
+            let bytes = &data[start..start + span.length as usize];
+            let digest = sha256_hex(bytes);
+            let path = format!(
+                "payloads/gtex-t{:03}-o{:016x}-l{:016x}-{}.gtex",
+                texture.texture,
+                span.offset,
+                span.length,
+                &digest[..16],
+            );
+            let mut entry = fdt_texture_link(texture);
+            entry["kind"] = json!("fdt-gtex-payload");
+            Ok(PayloadArtifact {
+                manifest: json!({
+                    "entry": entry,
+                    "path": path,
+                    "role": "fdt-gtex-payload",
+                    "sha256": digest,
+                    "size": span.length,
+                    "sourceSpan": source_span_json(span.offset, span.length),
+                }),
+                path,
+                bytes: bytes.to_vec(),
+            })
+        })
+        .collect()
+}
+
+/// Every GTEX payload must convert, so one refusal leaves no partial output.
+fn fdt_texture_exports(
+    data: &[u8],
+    input: &str,
+    option: &str,
+    export: impl Fn(&[u8], &GtexResource, &fdt::GtexPayload) -> Result<PayloadArtifact, Failure>,
+) -> Result<Vec<PayloadArtifact>, Failure> {
+    let textures = fdt_gtex_payloads(data, input)?;
+    if textures.is_empty() {
+        return Err(Failure::parse(format!(
+            "{input}: {option} found no GTEX texture chunk"
+        )));
+    }
+    textures
+        .iter()
+        .map(|texture| {
+            let (bytes, gtex) = fdt::parse_gtex_payload(data, *texture).map_err(|error| {
+                Failure::parse(format!("{input}: texture {}: {error}", texture.texture))
+            })?;
+            export(bytes, &gtex, texture)
+        })
+        .collect()
+}
+
+fn fdt_dds_payloads(data: &[u8], input: &str) -> Result<Vec<PayloadArtifact>, Failure> {
+    fdt_texture_exports(data, input, "--export-dds", |bytes, gtex, texture| {
+        let base = texture.payload.offset;
+        let export = dds::export_gtex(bytes, gtex).map_err(|error| {
+            let error = texture.rebase(error);
+            Failure::parse(format!("{input}: texture {}: {error}", texture.texture))
+        })?;
+        let mips: Vec<Value> = export
+            .mips
+            .iter()
+            .map(|mip| {
+                json!({
+                    "ddsSpan": source_span_json(mip.dds_span.offset, mip.dds_span.length),
+                    "height": mip.height,
+                    "mipLevel": mip.mip_level,
+                    "sha256": mip.sha256,
+                    "sourceRelativeOffset": mip.source_span.offset,
+                    "sourceSpan": source_span_json(base + mip.source_span.offset, mip.source_span.length),
+                    "width": mip.width,
+                })
+            })
+            .collect();
+        let path = format!("payloads/texture-t{:03}.dds", texture.texture);
+        Ok(PayloadArtifact {
+            manifest: json!({
+                "dds": {
+                    "format": {
+                        "clientIndex": export.format.index,
+                        "d3dName": export.format.d3d_name,
+                        "d3dValue": export.format.d3d_value,
+                    },
+                    "headerSpan": { "offset": 0, "length": dds::DDS_FILE_HEADER_SIZE },
+                    "height": export.height,
+                    "mipLevels": export.mip_levels,
+                    "mips": mips,
+                    "width": export.width,
+                },
+                "path": path,
+                "role": "fdt-gtex-dds-texture",
+                "sha256": sha256_hex(&export.bytes),
+                "size": export.bytes.len() as u64,
+                "texture": fdt_texture_link(texture),
+            }),
+            path,
+            bytes: export.bytes,
+        })
+    })
+}
+
+fn fdt_png_payloads(data: &[u8], input: &str) -> Result<Vec<PayloadArtifact>, Failure> {
+    fdt_texture_exports(data, input, "--preview-png", |bytes, gtex, texture| {
+        let preview = texture_preview::export_gtex_top_mip_png(bytes, gtex).map_err(|error| {
+            let error = texture.rebase(error);
+            Failure::parse(format!("{input}: texture {}: {error}", texture.texture))
+        })?;
+        let path = format!("payloads/preview-t{:03}.png", texture.texture);
+        Ok(PayloadArtifact {
+            manifest: json!({
+                "path": path,
+                "png": {
+                    "format": {
+                        "clientIndex": preview.format.index,
+                        "d3dName": preview.format.d3d_name,
+                        "d3dValue": preview.format.d3d_value,
+                    },
+                    "height": preview.height,
+                    "mipLevel": preview.mip_level,
+                    "rgbaSha256": preview.rgba_sha256,
+                    "sourceSha256": preview.source_sha256,
+                    "sourceSpan": source_span_json(
+                        texture.payload.offset + preview.source_span.offset,
+                        preview.source_span.length,
+                    ),
+                    "width": preview.width,
+                },
+                "role": "fdt-gtex-png-preview",
+                "sha256": sha256_hex(&preview.bytes),
+                "size": preview.bytes.len() as u64,
+                "texture": fdt_texture_link(texture),
+            }),
+            path,
+            bytes: preview.bytes,
+        })
     })
 }
 
@@ -1427,6 +1599,47 @@ mod tests {
         .unwrap_err();
         assert!(error.message.contains("client format index is not mapped"));
         assert!(!output.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn fdt_materializes_every_gtex_payload_but_exports_only_when_all_convert() {
+        let root = temp_root("fdt-gtex-payloads");
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("font.DAT");
+        let font = include_bytes!("../../../tests/fixtures/public/fdt/gtex-payloads.bin");
+        fs::write(&source, font).unwrap();
+        let arguments = |output: &Path, option: &str| {
+            vec![
+                source.display().to_string(),
+                "--output".into(),
+                output.display().to_string(),
+                "--as".into(),
+                "fdt".into(),
+                option.into(),
+            ]
+        };
+        // The truncated second GTEX payload is still copied exactly.
+        let raw = root.join("raw");
+        run(&arguments(&raw, "--materialize-payloads")).unwrap();
+        let document: Value =
+            serde_yaml::from_str(&fs::read_to_string(raw.join("extraction.yaml")).unwrap())
+                .unwrap();
+        let payloads = document["payloads"].as_array().unwrap();
+        assert_eq!(payloads.len(), 2);
+        for payload in payloads {
+            let span = &payload["sourceSpan"];
+            let start = span["offset"].as_u64().unwrap() as usize;
+            let end = span["endExclusive"].as_u64().unwrap() as usize;
+            let path = raw.join(payload["path"].as_str().unwrap());
+            assert_eq!(fs::read(path).unwrap(), font[start..end]);
+        }
+        for option in ["--export-dds", "--preview-png"] {
+            let output = root.join(option.trim_start_matches('-'));
+            let error = run(&arguments(&output, option)).unwrap_err();
+            assert!(error.message.contains("texture 2: "), "{}", error.message);
+            assert!(!output.exists());
+        }
         fs::remove_dir_all(root).unwrap();
     }
 }

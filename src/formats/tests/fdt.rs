@@ -77,3 +77,32 @@ fn a_zero_version_moves_the_source_origin_and_leaves_two_bytes_unread() {
     assert_eq!(record.unread, Some(Span::new(1364, 2)));
     assert_eq!(parsed.checks, GlyphChecks::default());
 }
+
+#[test]
+fn embedded_gtex_payloads_parse_standalone_with_errors_rebased_onto_the_font() {
+    let data = include_bytes!("../../../tests/fixtures/public/fdt/gtex-payloads.bin");
+    let parsed = fdt::parse(data).unwrap();
+    let payloads = parsed.gtex_payloads();
+    // Texture 0 is DDSF, which has no GTEX payload.
+    assert_eq!(
+        payloads
+            .iter()
+            .map(|payload| payload.texture)
+            .collect::<Vec<_>>(),
+        vec![1, 2]
+    );
+    let (bytes, gtex) = fdt::parse_gtex_payload(data, payloads[0]).unwrap();
+    assert_eq!(bytes.len() as u64, payloads[0].payload.length);
+    assert_eq!(gtex.surfaces.len(), 2);
+    let standalone = fdt::parse_gtex_payload(data, payloads[1]).unwrap_err();
+    let relative = xivl_formats::gtex_pwib::parse(
+        &data[payloads[1].payload.offset as usize..payloads[1].payload.end() as usize],
+        xivl_formats::gtex_pwib::TaggedResourceKind::Gtex,
+    )
+    .unwrap_err();
+    assert_eq!(standalone.kind(), relative.kind());
+    assert_eq!(
+        standalone.offset(),
+        payloads[1].payload.offset + relative.offset()
+    );
+}

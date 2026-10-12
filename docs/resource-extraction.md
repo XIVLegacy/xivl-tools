@@ -165,6 +165,24 @@ accounting above. See the
 [selected PWIB contract](formats/gtex-pwib.md#selected-pwib-restxb-texture)
 for offset resolution, full-range checks, and evidence limits.
 
+A bitmap font's atlas textures are GTEX chunk payloads, extracted with
+`--as fdt`:
+
+```powershell
+cargo run --locked -p xivl-cli -- extract-resource font.DAT --output font --as fdt --materialize-payloads --export-dds --preview-png
+```
+
+`--materialize-payloads` copies each GTEX chunk payload exactly as a
+standalone `.gtex` file, including a payload the GTEX reader refuses.
+`--export-dds` and `--preview-png` write `payloads/texture-tNNN.dds` and
+`payloads/preview-tNNN.png` for each GTEX payload, where `NNN` is the index
+in the font's texture list. Both refuse the font before output unless every
+GTEX payload is eligible, and report a GTEX error at its offset in the font.
+DDSF chunks are not extracted. Manifests link each artifact to
+`$.parsed.textures[N]` and record source spans in font coordinates, with
+each DDS mip's offset inside its payload as `sourceRelativeOffset`. See the
+[fdt contract](formats/fdt.md#texture-payloads).
+
 Container payloads use deterministic names containing the entry ordinal, role, source
 offset and length, and a SHA-256 prefix. The manifest keeps the full digest and
 the source span. Nested SEDB data stays inside its one direct parent payload;
@@ -268,6 +286,12 @@ entry and that the complete encoded range lies within the second span.
 It checks the texture artifacts against these distinct views. Source replay
 uses the recorded entry index to repeat selection and regenerate every
 complete output exactly.
+
+Bitmap font outputs are checked against the embedded GTEX report of the
+linked texture: raw copies against the chunk's payload span and digest, and
+DDS and PNG files against that report with its spans moved to the payload
+offset. Source replay reruns the fdt extraction and compares every complete
+output.
 
 For a batch, it performs the same checks for every isolated resource and also
 checks the top-level records, ordinals, catalog indexes, paths, formats, byte
