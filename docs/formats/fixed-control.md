@@ -5,6 +5,11 @@ selector-0x2E control from explicitly supplied bytes at a byte offset. They
 return the exact raw control span, selector and two unsigned numeric fields.
 The [CLI guide](../cli.md#decode-one-fixed-control) gives invocations.
 
+Fixed-control decoding, source lookup, and message conversion carry no
+support-matrix status of their own. The `rich-string-public-fixed` cases run
+under the `rich-string` row, whose read and text-export claims do not extend
+to these diagnostics.
+
 ## Authenticated format
 
 The source is
@@ -885,8 +890,7 @@ Authored lookup tests check independent keys, all four locale field pairs,
 quoted CSV cells and newlines, malformed quoting, missing keys, category
 mismatches, descriptor refusal, duplicate keys and malformed rows after a
 candidate match. Native CLI tests check explicit file/locale dispatch, lookup
-exit statuses and opaque unknown controls. This source-cell diagnostic changes
-no format support-matrix status.
+exit statuses and opaque unknown controls.
 
 Initial-registry tests cover sparse backing keys, row-span disagreement,
 out-of-block enable ranges, distinct map/ordinal/descriptor coordinates,

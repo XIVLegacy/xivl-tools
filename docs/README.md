@@ -12,6 +12,8 @@ are detailed references.
   complete catalog -> select -> extract -> verify workflow.
 - [Support matrix](support-matrix.md) - check whether a format is readable,
   writable, or exportable and how strong that claim is.
+- [Project scope](project-scope.md) - see what the repository covers, what is
+  planned, and what stays out of scope.
 
 ## Common tasks
 
@@ -28,6 +30,7 @@ are detailed references.
 | Export collision geometry | [Zone geometry](formats/zone-geometry.md) |
 | Read Lua paths, LPB wrappers, or bytecode structure | [Lua and LPB](formats/lua-lpb.md) |
 | Query command metadata and observed loadout writes | [CLI: advanced reports](cli.md#advanced-reports) |
+| Understand command getter and level-adjustment profiles | [Command level-adjustment profiles](command-formula-profiles.md) |
 
 ## Format reference
 

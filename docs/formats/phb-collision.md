@@ -8,6 +8,10 @@ profile is a retained allocation with one `PHB.TBC`, one `PHB.TBD`, one tree
 leaf, and no optional GBD tail tables. Client collision acceptance is a
 separate requirement from successful serialization or `parse_phb` decoding.
 
+PHB authoring carries no support-matrix status. It has no public conformance
+case, and the bounded PHB read used for collision export belongs to the
+`zone-geometry` row.
+
 ## Input contract
 
 `author_phb(template, &CollisionGeometry)` takes finite `f32` positions and
