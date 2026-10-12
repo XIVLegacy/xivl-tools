@@ -6,6 +6,8 @@ canonical promoted finding is:
 
 - `xivl-decomp:docs/resource/gtex-pwib-loader.md` at commit
   `8ea63af8dbb6ae335d025116e7602006e58f745b`.
+- `xivl-decomp:docs/resource/gtex-pwib-loader.md`, "GTEX index 22", at
+  commit `6cde38cab4d4ee97190968a27b85d1baa9f61b5c`.
 
 The source that identifies both tags as file-type resources rather than
 PackRead chunks remains:
@@ -36,8 +38,14 @@ encoded byte size. Header gaps retain spans and digests; data gaps between
 surface spans are reported independently.
 
 The observed mappings are index 4 -> `D3DFMT_A8R8G8B8` (numeric 21, 32 bits
-per pixel), index 24 -> `D3DFMT_DXT1` (`0x31545844`, 8 bytes per 4 by 4
-block), and index 26 -> `D3DFMT_DXT5` (`0x35545844`, 16 bytes per block).
+per pixel), index 22 -> `D3DFMT_A4R4G4B4` (numeric 26, 16 bits per pixel),
+index 24 -> `D3DFMT_DXT1` (`0x31545844`, 8 bytes per 4 by 4 block), and
+index 26 -> `D3DFMT_DXT5` (`0x35545844`, 16 bytes per block). For index 22,
+the client's creation and upload paths pass table value 26 to D3DX; its
+metadata record supplies 16 bits per pixel and no block format, and carries
+a conflicting `R5G5B5A1` label that the numeric format does not follow. The
+retail bitmap font atlases use index 22; see the
+[bitmap font container](fdt.md#texture-payloads).
 Linear size is `width * height * bitsPerPixel / 8`; block size is
 `ceil(width / 4) * ceil(height / 4) * blockBytes`. Each mip clamps width and
 height to one. The parser requires declared and calculated sizes to agree for
@@ -333,6 +341,7 @@ views:
 | GTEX index | Source format | Legacy DDS pixel format |
 |---:|---|---|
 | 4 | `D3DFMT_A8R8G8B8` | 32-bit RGB with alpha; R `0x00ff0000`, G `0x0000ff00`, B `0x000000ff`, A `0xff000000` |
+| 22 | `D3DFMT_A4R4G4B4` | 16-bit RGB with alpha; R `0x0f00`, G `0x00f0`, B `0x000f`, A `0xf000` |
 | 24 | `D3DFMT_DXT1` | FourCC `DXT1`, 8 bytes per 4 by 4 block |
 | 26 | `D3DFMT_DXT5` | FourCC `DXT5`, 16 bytes per 4 by 4 block |
 
@@ -352,7 +361,7 @@ The writer follows Microsoft's standard definitions:
 The file starts with `DDS ` and a little-endian 124-byte legacy header,
 including a 32-byte pixel-format structure. Unused fields are zero. The
 header records width, height, and the supplied mip count. Uncompressed
-textures use row pitch `width * 4` and `DDSD_PITCH`; DXT textures use the
+textures use row pitch `width * bitsPerPixel / 8` and `DDSD_PITCH`; DXT textures use the
 top-level encoded surface size and `DDSD_LINEARSIZE`. Every file sets the
 required dimension, pixel-format, and texture-capability flags. Multiple
 mips also set `DDSD_MIPMAPCOUNT`, `DDSCAPS_MIPMAP`, and `DDSCAPS_COMPLEX`.
@@ -381,7 +390,7 @@ dimensions, and excess mip counts are refused before extraction output is
 created. In a DDS batch request, every selected resource must be eligible.
 
 Authored tests check the legacy header fields against standard offsets and
-values, exact encoded-byte preservation for all three mappings, multiple
+values, exact encoded-byte preservation for all four mappings, multiple
 mips, and the documented layout with gaps between mip spans. CLI tests
 cover extraction, accounting, refusals, verification, and source replay;
 public conformance expectations contain only metadata, spans, counts, and
@@ -414,6 +423,10 @@ Output samples are 8-bit red, green, blue, alpha in row order from the top
 left. A8R8G8B8 source bytes are blue, green, red, alpha and are reordered
 without changing sample values. Alpha is retained, including RGB samples
 whose alpha is zero.
+
+A4R4G4B4 source samples are little-endian 16-bit values with blue in bits
+0-3, green in bits 4-7, red in bits 8-11, and alpha in bits 12-15. The
+preview expands a 4-bit sample `v` as `(v << 4) | v`, which equals `v * 17`.
 
 DXT blocks and their texels are read in row order. Endpoints and packed
 selectors are little-endian. RGB565 endpoints contain red in bits 11-15,
@@ -448,7 +461,7 @@ profile chunks are emitted. A viewer may apply its own display defaults.
 ### Bounds and verification
 
 The preview accepts the same table-bearing 2D GTEX subset as DDS: indices
-4, 24, and 26, flags zero, depth one, nonzero dimensions and mips, and a mip
+4, 22, 24, and 26, flags zero, depth one, nonzero dimensions and mips, and a mip
 count within the dimension-derived chain. The parser validates all surface
 spans before preview generation. Only the validated top-mip span is decoded.
 Preview generation checks dimension, block, row, and allocation arithmetic

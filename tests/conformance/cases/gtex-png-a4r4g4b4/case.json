@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-png-a4r4g4b4",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/a4r4g4b4.bin"
+  },
+  "arguments": [
+    "--as",
+    "gtex",
+    "--preview-png"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Top-mip PNG preview expands the authored A4R4G4B4 GTEX samples to RGBA."
+}

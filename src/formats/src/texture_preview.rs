@@ -274,6 +274,7 @@ fn decode_surface(
 ) -> Result<()> {
     match format_index {
         4 => decode_a8r8g8b8(width, height, encoded, rgba),
+        22 => decode_a4r4g4b4(width, height, encoded, rgba),
         24 => decode_dxt1(width, height, encoded, rgba),
         26 => decode_dxt5(width, height, encoded, rgba),
         _ => Err(FormatError::new(
@@ -296,6 +297,26 @@ fn decode_a8r8g8b8(width: u32, height: u32, encoded: &[u8], rgba: &mut [u8]) -> 
         .zip(rgba.as_chunks_mut::<4>().0)
     {
         destination.copy_from_slice(&[source[2], source[1], source[0], source[3]]);
+    }
+    Ok(())
+}
+
+/// Little-endian 16-bit samples hold blue in bits 0-3, green in 4-7, red in
+/// 8-11, and alpha in 12-15; a 4-bit sample `v` expands to `v * 17`.
+fn decode_a4r4g4b4(width: u32, height: u32, encoded: &[u8], rgba: &mut [u8]) -> Result<()> {
+    let expected = checked_rgba_len(width, height)? / 2;
+    if encoded.len() != expected {
+        return Err(invalid_preview("A4R4G4B4 surface size is inconsistent"));
+    }
+    for (source, destination) in encoded
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(rgba.as_chunks_mut::<4>().0)
+    {
+        let value = u16::from_le_bytes(*source);
+        let sample = |shift: u16| ((value >> shift) & 0x0F) as u8 * 17;
+        destination.copy_from_slice(&[sample(8), sample(4), sample(0), sample(12)]);
     }
     Ok(())
 }
@@ -485,6 +506,13 @@ mod tests {
         let mut rgba = [0u8; 4];
         decode_a8r8g8b8(1, 1, &[0x11, 0x22, 0x33, 0x00], &mut rgba).unwrap();
         assert_eq!(rgba, [0x33, 0x22, 0x11, 0x00]);
+    }
+
+    #[test]
+    fn a4r4g4b4_expands_little_endian_nibbles_to_rgba() {
+        let mut rgba = [0u8; 8];
+        decode_a4r4g4b4(2, 1, &[0x21, 0x43, 0xA5, 0xF0], &mut rgba).unwrap();
+        assert_eq!(rgba, [51, 34, 17, 68, 0, 170, 85, 255]);
     }
 
     #[test]

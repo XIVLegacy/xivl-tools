@@ -54,6 +54,7 @@ pub struct DdsImage {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DdsPixelFormat {
     A8R8G8B8,
+    A4R4G4B4,
     Dxt1,
     Dxt5,
 }
@@ -64,6 +65,15 @@ pub struct DdsMipLayout {
     pub width: u32,
     pub height: u32,
     pub span: Span,
+}
+
+/// Legacy DDS bit count and R, G, B, A masks for an uncompressed D3DFORMAT.
+const fn rgb_layout(d3d_value: u32) -> Option<(u32, [u32; 4])> {
+    match d3d_value {
+        21 => Some((32, [0x00ff_0000, 0x0000_ff00, 0x0000_00ff, 0xff00_0000])),
+        26 => Some((16, [0x0f00, 0x00f0, 0x000f, 0xf000])),
+        _ => None,
+    }
 }
 
 pub const fn max_mip_levels(width: u32, height: u32) -> u32 {
@@ -220,9 +230,17 @@ fn write_header(
             "DDS mip count exceeds the dimension-derived limit",
         ));
     }
+    let compressed = format.block_bytes.is_some();
+    let rgb = rgb_layout(format.d3d_value);
+    if !compressed && rgb.is_none() {
+        return Err(FormatError::new(
+            ErrorKind::UnsupportedDdsFormat,
+            0x06,
+            "GTEX format has no legacy DDS pixel layout",
+        ));
+    }
     output.extend_from_slice(DDS_MAGIC);
     push_u32(output, DDS_HEADER_SIZE as u32);
-    let compressed = format.block_bytes.is_some();
     let mut flags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT;
     flags |= if compressed {
         DDSD_LINEARSIZE
@@ -238,13 +256,15 @@ fn write_header(
     let top_layout = if compressed {
         top_size
     } else {
-        width.checked_mul(4).ok_or_else(|| {
-            FormatError::new(
-                ErrorKind::DeclaredSizeOutOfRange,
-                20,
-                "DDS pitch overflows u32",
-            )
-        })?
+        width
+            .checked_mul(u32::from(format.bits_per_pixel) / 8)
+            .ok_or_else(|| {
+                FormatError::new(
+                    ErrorKind::DeclaredSizeOutOfRange,
+                    20,
+                    "DDS pitch overflows u32",
+                )
+            })?
     };
     push_u32(output, top_layout);
     push_u32(output, 0);
@@ -262,13 +282,13 @@ fn write_header(
             push_u32(output, 0);
         }
         None => {
+            let (bit_count, masks) = rgb.expect("uncompressed formats were checked above");
             push_u32(output, DDPF_RGB | DDPF_ALPHAPIXELS);
             push_u32(output, 0);
-            push_u32(output, 32);
-            push_u32(output, 0x00ff_0000);
-            push_u32(output, 0x0000_ff00);
-            push_u32(output, 0x0000_00ff);
-            push_u32(output, 0xff00_0000);
+            push_u32(output, bit_count);
+            for mask in masks {
+                push_u32(output, mask);
+            }
         }
     }
     let caps = if mip_levels > 1 {
@@ -337,23 +357,36 @@ pub fn parse(data: &[u8]) -> Result<DdsImage> {
     }
     let pf_flags = u32_at(data, 80)?;
     let fourcc = u32_at(data, 84)?;
-    let format = if pf_flags == DDPF_RGB | DDPF_ALPHAPIXELS
-        && fourcc == 0
-        && u32_at(data, 88)? == 32
-        && u32_at(data, 92)? == 0x00ff_0000
-        && u32_at(data, 96)? == 0x0000_ff00
-        && u32_at(data, 100)? == 0x0000_00ff
-        && u32_at(data, 104)? == 0xff00_0000
-    {
+    let rgb_fields = [
+        u32_at(data, 88)?,
+        u32_at(data, 92)?,
+        u32_at(data, 96)?,
+        u32_at(data, 100)?,
+        u32_at(data, 104)?,
+    ];
+    let rgb_format = [
+        (21, DdsPixelFormat::A8R8G8B8),
+        (26, DdsPixelFormat::A4R4G4B4),
+    ]
+    .into_iter()
+    .find(|(d3d_value, _)| {
+        rgb_layout(*d3d_value).is_some_and(|(bit_count, masks)| {
+            rgb_fields == [bit_count, masks[0], masks[1], masks[2], masks[3]]
+        })
+    });
+    let format = if let (true, Some((_, rgb_format))) = (
+        pf_flags == DDPF_RGB | DDPF_ALPHAPIXELS && fourcc == 0,
+        rgb_format,
+    ) {
         if flags & DDSD_PITCH == 0
             || layout_size
                 != width
-                    .checked_mul(4)
+                    .checked_mul(rgb_fields[0] / 8)
                     .ok_or_else(|| dds_error(20, "DDS pitch overflows u32"))?
         {
-            return Err(dds_error(20, "DDS A8R8G8B8 pitch is inconsistent"));
+            return Err(dds_error(20, "DDS uncompressed pitch is inconsistent"));
         }
-        DdsPixelFormat::A8R8G8B8
+        rgb_format
     } else if pf_flags == DDPF_FOURCC && fourcc == 0x3154_5844 {
         if flags & DDSD_LINEARSIZE == 0 {
             return Err(dds_error(8, "DDS DXT1 linearsize flag is missing"));
@@ -388,7 +421,7 @@ pub fn parse(data: &[u8]) -> Result<DdsImage> {
         | DDSD_HEIGHT
         | DDSD_WIDTH
         | DDSD_PIXELFORMAT
-        | if matches!(format, DdsPixelFormat::A8R8G8B8) {
+        | if matches!(format, DdsPixelFormat::A8R8G8B8 | DdsPixelFormat::A4R4G4B4) {
             DDSD_PITCH
         } else {
             DDSD_LINEARSIZE
@@ -462,6 +495,10 @@ fn surface_size(format: DdsPixelFormat, width: u32, height: u32) -> Result<u64> 
         DdsPixelFormat::A8R8G8B8 => u64::from(width)
             .checked_mul(u64::from(height))
             .and_then(|value| value.checked_mul(4))
+            .ok_or_else(|| dds_error(20, "DDS linear surface size overflows")),
+        DdsPixelFormat::A4R4G4B4 => u64::from(width)
+            .checked_mul(u64::from(height))
+            .and_then(|value| value.checked_mul(2))
             .ok_or_else(|| dds_error(20, "DDS linear surface size overflows")),
         DdsPixelFormat::Dxt1 => u64::from(width.div_ceil(4))
             .checked_mul(u64::from(height.div_ceil(4)))
@@ -551,6 +588,32 @@ mod tests {
             parse(&export.bytes).unwrap().mips[0].span,
             Span::new(128, 8)
         );
+        assert_eq!(&export.bytes[128..], &source[0x20..]);
+    }
+
+    #[test]
+    fn exports_and_parses_a4r4g4b4_header_and_payload_exactly() {
+        let source = gtex(22, 2, 2, &[&[1, 2, 3, 4, 5, 6, 7, 8]]);
+        let TaggedResource::Gtex(parsed) = parse_gtex(&source, TaggedResourceKind::Gtex).unwrap()
+        else {
+            unreachable!()
+        };
+        let export = export_gtex(&source, &parsed).unwrap();
+        assert_eq!(
+            le32(&export.bytes, 8),
+            DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PITCH | DDSD_PIXELFORMAT
+        );
+        assert_eq!(le32(&export.bytes, 20), 4);
+        assert_eq!(le32(&export.bytes, 80), DDPF_RGB | DDPF_ALPHAPIXELS);
+        assert_eq!(le32(&export.bytes, 84), 0);
+        assert_eq!(le32(&export.bytes, 88), 16);
+        assert_eq!(le32(&export.bytes, 92), 0x0f00);
+        assert_eq!(le32(&export.bytes, 96), 0x00f0);
+        assert_eq!(le32(&export.bytes, 100), 0x000f);
+        assert_eq!(le32(&export.bytes, 104), 0xf000);
+        let parsed_dds = parse(&export.bytes).unwrap();
+        assert_eq!(parsed_dds.format, DdsPixelFormat::A4R4G4B4);
+        assert_eq!(parsed_dds.mips[0].span, Span::new(128, 8));
         assert_eq!(&export.bytes[128..], &source[0x20..]);
     }
 

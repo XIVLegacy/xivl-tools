@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-dds-a4r4g4b4",
+  "formatId": "gtex",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/a4r4g4b4.bin"
+  },
+  "arguments": [
+    "--as",
+    "gtex",
+    "--export-dds"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "A4R4G4B4 legacy DDS export preserves the authored two-mip 16-bit payload."
+}

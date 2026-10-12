@@ -417,7 +417,7 @@ Use `--export-dds` for an eligible GTEX texture to write all its encoded
 mips to `payloads/texture.dds`. The option is available on `extract-resource`
 and `extract-catalog`, and can be combined with `--materialize-payloads` for
 separate raw surfaces. It requires table-bearing 2D GTEX with flags zero,
-depth one, mapped A8R8G8B8/DXT1/DXT5 pixels, and valid dimensions and mip
+depth one, mapped A8R8G8B8/A4R4G4B4/DXT1/DXT5 pixels, and valid dimensions and mip
 count. See the [DDS contract](formats/gtex-pwib.md#lossless-dds-texture-view).
 
 Add `--preview-png` to either extraction command for a decoded mip-0 image

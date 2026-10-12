@@ -67,6 +67,13 @@ pub const fn gtex_format(index: u8) -> Option<GtexFormat> {
             bits_per_pixel: 32,
             block_bytes: None,
         }),
+        22 => Some(GtexFormat {
+            index,
+            d3d_value: 26,
+            d3d_name: "D3DFMT_A4R4G4B4",
+            bits_per_pixel: 16,
+            block_bytes: None,
+        }),
         24 => Some(GtexFormat {
             index,
             d3d_value: 0x3154_5844,

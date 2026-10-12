@@ -1299,6 +1299,7 @@ fn verify_dds_payload(
     }
     let expected_pixel = match canonical.index {
         4 => DdsPixelFormat::A8R8G8B8,
+        22 => DdsPixelFormat::A4R4G4B4,
         24 => DdsPixelFormat::Dxt1,
         26 => DdsPixelFormat::Dxt5,
         _ => return Err(fail("dds-format-mismatch", format!("payload {index}"))),
@@ -1685,7 +1686,7 @@ fn verify_gtex_geometry(
         } else {
             u64::from(mip_width)
                 .checked_mul(u64::from(mip_height))
-                .and_then(|value| value.checked_mul(4))
+                .and_then(|value| value.checked_mul(u64::from(canonical.bits_per_pixel / 8)))
                 .ok_or_else(|| gtex_error(prefix, "gtex-layout", index, "mip size overflows"))?
         };
         let declared = integer(size_field, "value")?;
@@ -3023,6 +3024,30 @@ mod tests {
             source.display().to_string(),
             "--output".into(),
             output.display().to_string(),
+            "--preview-png".into(),
+        ])
+        .unwrap();
+        assert!(run(&verify_arguments(&output, None)).is_ok());
+        assert!(run(&verify_arguments(&output, Some(&source))).is_ok());
+        fs::remove_dir_all(work).unwrap();
+    }
+
+    #[test]
+    fn verifies_a4r4g4b4_dds_and_png_with_and_without_source() {
+        let work = temp_root("a4r4g4b4-verification");
+        fs::create_dir_all(&work).unwrap();
+        let source = work.join("texture.DAT");
+        fs::write(
+            &source,
+            include_bytes!("../../../tests/fixtures/public/gtex/a4r4g4b4.bin"),
+        )
+        .unwrap();
+        let output = work.join("output");
+        crate::resource_export::run(&[
+            source.display().to_string(),
+            "--output".into(),
+            output.display().to_string(),
+            "--export-dds".into(),
             "--preview-png".into(),
         ])
         .unwrap();

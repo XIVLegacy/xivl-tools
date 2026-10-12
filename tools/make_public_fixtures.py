@@ -374,6 +374,16 @@ def build_fixtures() -> dict[str, bytes]:
         data_base=0x28,
         surfaces=((0, 32), (32, 8)),
     )
+    # Index 22 is 16-bit A4R4G4B4: 2 by 2 and 1 by 1 mips of 8 and 2 bytes.
+    fixtures["gtex/a4r4g4b4.bin"] = gtex(
+        pattern(10, 0x45),
+        format_index=22,
+        mip_levels=2,
+        width=2,
+        height=2,
+        data_base=0x28,
+        surfaces=((0, 8), (8, 2)),
+    )
     fixtures["gtex/trailing.bin"] = gtex(
         pattern(48, 0x51),
         format_index=24,

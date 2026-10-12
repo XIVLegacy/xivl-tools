@@ -165,8 +165,12 @@ Running `xivl inspect --as fdt` on the seven retail files parses all 20 GTEX
 payloads as bounded 2D textures with GTEX format index 22, two mip levels,
 flags zero, two surface-table entries, no anomalies, and no trailing bytes.
 Each report's width and height equal the header words the glyph checks read.
-The GTEX reader has no mapping for index 22, so it reports surface
-materialization as unsupported.
+The GTEX reader maps index 22 to `D3DFMT_A4R4G4B4`, so each report marks
+surface materialization as supported. The two payloads of
+`data/00/0C/00/00.DAT`, exported as standalone GTEX files through
+`extract-resource --export-dds --preview-png`, produced DDS files and PNG
+previews with legible glyphs spread across the color channels, and
+`verify-extraction` with source replay passed for both.
 
 ## Reports
 
@@ -197,8 +201,8 @@ the version 4 fixture.
 
 ## Evidence limits
 
-The DDSF path has no retail example. TEXC semantics, DDSF payloads, GTEX
-surface contents under index 22, the metric scalars, bytes `0x07` and
+The DDSF path has no retail example. TEXC semantics, DDSF payloads, the
+assignment of glyphs to atlas channels, the metric scalars, bytes `0x07` and
 `0x09`, the meaning of caller flag `0x02`, the selector vectors' channel
 mapping, the TERM chunk's purpose, and versions other than 4 in retail data
 remain outside this claim. No retail file uses the zero-version layout. The
