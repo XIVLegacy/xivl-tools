@@ -42,6 +42,7 @@ These pages describe the supported file formats.
 - [Configuration files](formats/configuration.md)
 - [Static-actor SAN records](formats/staticactor-san.md)
 - [RegionResourceData root and child rows](formats/region.md)
+- [Bitmap font container (fdt)](formats/fdt.md)
 - [GTEX fields and PWIB segments](formats/gtex-pwib.md)
 - [Bounded WRB model inspection](formats/wrb-model.md)
 - [World layout: MapLayout and lyb](formats/world-layout.md)

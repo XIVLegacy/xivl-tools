@@ -14,6 +14,7 @@ use serde_json::{json, Map, Value};
 use crate::config::{self, ConfigFile, ConfigKind};
 use crate::digest::{sha256_hex, sha256_xor_hex};
 use crate::error::Result;
+use crate::fdt;
 use crate::gtex_pwib::{self, TaggedResourceKind};
 use crate::lpb;
 use crate::lua51::{
@@ -60,6 +61,8 @@ pub enum InspectAs {
     StaticActorSan,
     /// The RegionResourceData 1.1.0 root and child row table.
     Region,
+    /// A bitmap font container walked in the retail reader's chunk order.
+    Fdt,
     /// A GTEX texture with loader-backed metadata and source addressing.
     Gtex,
     /// A PWIB resource with two loader-bounded segments.
@@ -81,7 +84,7 @@ pub enum InspectAs {
 
 impl InspectAs {
     /// Names accepted by the `--as` option.
-    pub const NAMES: [&'static str; 19] = [
+    pub const NAMES: [&'static str; 20] = [
         "sedb",
         "ssd",
         "scrambled-xml",
@@ -90,6 +93,7 @@ impl InspectAs {
         "lpb-bytecode",
         "staticactor-san",
         "region",
+        "fdt",
         "gtex",
         "pwib",
         "wrb-model",
@@ -139,6 +143,7 @@ impl InspectAs {
             Some("lpb-bytecode") => Self::LpbBytecode,
             Some("staticactor-san") => Self::StaticActorSan,
             Some("region") => Self::Region,
+            Some("fdt") => Self::Fdt,
             Some("gtex") => Self::Gtex,
             Some("pwib") => Self::Pwib,
             Some("wrb-model") => Self::WrbModel,
@@ -215,6 +220,7 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
         InspectAs::LpbBytecode => inspect_lpb_bytecode(data),
         InspectAs::StaticActorSan => inspect_staticactor(data),
         InspectAs::Region => inspect_region(data),
+        InspectAs::Fdt => inspect_fdt(data),
         InspectAs::Gtex => inspect_tagged_resource(data, TaggedResourceKind::Gtex),
         InspectAs::Pwib => inspect_tagged_resource(data, TaggedResourceKind::Pwib),
         InspectAs::WrbModel => inspect_wrb_model(data),
@@ -909,6 +915,57 @@ fn inspect_lpb(data: &[u8]) -> Result<Value> {
     object.insert("encodedPayload".into(), file.encoded_payload.to_json());
     object.insert("decodedLength".into(), json!(file.decoded.len() as u64));
     object.insert("decodedSha256".into(), json!(sha256_hex(&file.decoded)));
+    Ok(Value::Object(object))
+}
+
+fn inspect_fdt(data: &[u8]) -> Result<Value> {
+    let file = fdt::parse(data)?;
+    let chunks: Vec<Value> = file
+        .chunks
+        .iter()
+        .enumerate()
+        .map(|(index, chunk)| {
+            json!({
+                "index": index,
+                "tag": escape_tag(&chunk.tag),
+                "span": chunk.span.to_json(),
+                "payload": chunk.payload.to_json(),
+                "payloadSha256": span_sha256(data, chunk.payload),
+                "readByClient": index <= file.glyph_chunk,
+            })
+        })
+        .collect();
+    let mut object = envelope("fdt", data);
+    object.insert(
+        "version".into(),
+        json!({ "chunkPresent": file.has_version_chunk, "value": file.version }),
+    );
+    object.insert("textureChunkCount".into(), json!(file.texture_chunks));
+    object.insert(
+        "pageTable".into(),
+        json!({ "length": fdt::PAGE_TABLE_LENGTH, "mappedPages": file.mapped_pages }),
+    );
+    object.insert(
+        "indexTable".into(),
+        json!({
+            "pageLength": fdt::INDEX_PAGE_LENGTH, "pages": file.index_pages,
+            "mappedKeys": file.mapped_keys,
+        }),
+    );
+    object.insert(
+        "glyphRecords".into(),
+        json!({
+            "recordLength": fdt::GLYPH_RECORD_LENGTH, "count": file.glyph_records,
+            "referenced": file.referenced_records,
+        }),
+    );
+    object.insert("chunkCount".into(), json!(chunks.len()));
+    object.insert("chunks".into(), json!(chunks));
+    object.insert(
+        "trailing".into(),
+        json!({ "span": file.trailing.to_json(), "sha256": span_sha256(data, file.trailing) }),
+    );
+    object.insert("endsAtEof".into(), json!(file.trailing.length == 0));
     Ok(Value::Object(object))
 }
 

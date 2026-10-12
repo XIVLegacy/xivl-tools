@@ -232,6 +232,12 @@ conformance run --case retail-region-03c00000-inspect
 The [region contract](formats/region.md) owns the vector identity, independent
 row accounting, and remaining evidence limits.
 
+The `fdt` cases walk authored bitmap font containers through `inspect` and
+`validate`: version 4 with every gated chunk, version 1, a file without
+VERS, chunks after GLYP, and each refusal with its pinned offset. Expected
+documents retain chunk spans, digests, and table counts, never payload bytes.
+The [fdt contract](formats/fdt.md) owns the chunk order and reader rules.
+
 A case expects `ok` with an expected output document, or `parse-error` with
 a stable `errorKind` and, optionally, the `errorOffset` the error must
 carry. Cases with malformed input are first class: the parser contract requires

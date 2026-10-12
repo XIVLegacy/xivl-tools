@@ -2154,6 +2154,101 @@ def build_fixtures() -> dict[str, bytes]:
     struct.pack_into("<I", advisory, 0x20, 1)
     fixtures["region/advisory-size.bin"] = bytes(advisory)
 
+    # -- bitmap font container (fdt) -------------------------------------
+    # Chunk order and table shapes from docs/formats/fdt.md. Every payload is
+    # this project's own: two mapped pages, three keys, and three records, one
+    # of which no key reaches.
+    def fdt_chunk(name: str, payload: bytes) -> bytes:
+        return name.encode("ascii") + struct.pack("<I", len(payload)) + payload
+
+    def fdt_chunks(
+        version: int | None, textures: list[tuple[str, bytes]] | None = None
+    ) -> list[tuple[str, bytes]]:
+        if textures is None:
+            textures = [
+                ("DDSF", pattern(12, 0x21)),
+                ("GTEX", pattern(20, 0x22)),
+                ("GTEX", pattern(16, 0x23)),
+            ]
+        pages = bytearray([0xFF] * 256)
+        pages[0x00] = 1
+        pages[0x30] = 0
+        index = bytearray([0xFF] * 1024)
+        struct.pack_into("<H", index, 512 + 2 * 0x41, 0)
+        struct.pack_into("<H", index, 512 + 2 * 0x42, 2)
+        struct.pack_into("<H", index, 0, 2)
+        chunks = []
+        if version is not None:
+            chunks.append(("VERS", struct.pack("<I", version)))
+        chunks += textures
+        gate = version or 0
+        if gate >= 4:
+            chunks.append(("TEXC", struct.pack("<I", 1)))
+        chunks.append(("FSIZ", struct.pack("<I", 0x18)))
+        if gate >= 3:
+            chunks.append(("FSMX", struct.pack("<I", 0x20)))
+        chunks.append(("BSLN", struct.pack("<I", 0x14)))
+        if gate >= 2:
+            chunks.append(("HMGN", struct.pack("<I", 0)))
+        chunks += [
+            ("HTBL", bytes(pages)),
+            ("LTBL", bytes(index)),
+            ("GLYP", pattern(3 * 14, 0x51)),
+        ]
+        return chunks
+
+    def fdt_font(chunks: list[tuple[str, bytes]]) -> bytes:
+        return b"".join(fdt_chunk(name, payload) for name, payload in chunks)
+
+    def fdt_replace(
+        chunks: list[tuple[str, bytes]], name: str, payload: bytes | None
+    ) -> list[tuple[str, bytes]]:
+        replaced = []
+        for chunk_name, chunk_payload in chunks:
+            if chunk_name != name:
+                replaced.append((chunk_name, chunk_payload))
+            elif payload is not None:
+                replaced.append((chunk_name, payload))
+        return replaced
+
+    font = fdt_chunks(4) + [("TERM", b"")]
+    fixtures["fdt/v4.bin"] = fdt_font(font)
+    fixtures["fdt/v1.bin"] = fdt_font(fdt_chunks(1, [("GTEX", pattern(16, 0x24))]))
+    fixtures["fdt/no-version.bin"] = fdt_font(fdt_chunks(None, []))
+    # Chunks after GLYP are listed; bytes too short for a header stay trailing.
+    fixtures["fdt/following.bin"] = (
+        fdt_font(font + [("XTRA", pattern(4, 0x61))]) + b"\x01\x02\x03"
+    )
+    fixtures["fdt/truncated-length.bin"] = fixtures["fdt/v4.bin"][:6]
+    fixtures["fdt/missing-glyph-chunk.bin"] = fdt_font(fdt_replace(font, "GLYP", None)[:-1])
+    overrun = bytearray(fixtures["fdt/v4.bin"])
+    struct.pack_into("<I", overrun, 4, 0x1000)
+    fixtures["fdt/chunk-overrun.bin"] = bytes(overrun)
+    fixtures["fdt/missing-texture-count.bin"] = fdt_font(fdt_replace(font, "TEXC", None))
+    fixtures["fdt/texture-order.bin"] = fdt_font(
+        fdt_chunks(4, [("GTEX", pattern(16, 0x25)), ("DDSF", pattern(12, 0x26))])
+    )
+    fixtures["fdt/scalar-length.bin"] = fdt_font(fdt_replace(font, "FSIZ", b"\x18\x00"))
+    fixtures["fdt/page-table-length.bin"] = fdt_font(
+        fdt_replace(font, "HTBL", bytes([0xFF] * 255))
+    )
+    fixtures["fdt/index-partial-page.bin"] = fdt_font(
+        fdt_replace(font, "LTBL", bytes([0xFF] * 1023))
+    )
+    fixtures["fdt/glyph-partial-record.bin"] = fdt_font(
+        fdt_replace(font, "GLYP", pattern(3 * 14 + 1, 0x52))
+    )
+    pages_out = bytearray([0xFF] * 256)
+    pages_out[0x7F] = 2
+    fixtures["fdt/page-out-of-range.bin"] = fdt_font(
+        fdt_replace(font, "HTBL", bytes(pages_out))
+    )
+    records_out = bytearray([0xFF] * 1024)
+    struct.pack_into("<H", records_out, 10, 3)
+    fixtures["fdt/record-out-of-range.bin"] = fdt_font(
+        fdt_replace(font, "LTBL", bytes(records_out))
+    )
+
     # -- the configuration files -----------------------------------------
     # The shapes come from docs/formats/configuration.md; every value is this
     # project's own. The stamps are deterministic synthetic words rather than

@@ -44,11 +44,19 @@ fn document_fixtures() -> Vec<(String, Vec<u8>)> {
         "lpb",
         "staticactor",
         "region",
+        "fdt",
     ]);
     // The 128-level nesting bomb has its own exact limit assertion. Mutating
     // each of its thousands of bytes would multiply the cross-reader sweep
     // without adding a distinct boundary.
     fixtures.retain(|(name, _)| !name.ends_with("bytecode-nesting-bomb.bin"));
+    // The fdt refusals are single-field edits of v4.bin, whose sweep already
+    // reaches each of their boundaries.
+    fixtures.retain(|(name, _)| {
+        let path = Path::new(name);
+        path.parent().and_then(Path::file_name) != Some("fdt".as_ref())
+            || path.file_name() == Some("v4.bin".as_ref())
+    });
     fixtures
 }
 
@@ -146,6 +154,7 @@ fn read_every_way(data: &[u8], name: &str) {
     let readings = [
         InspectAs::Auto,
         InspectAs::Region,
+        InspectAs::Fdt,
         InspectAs::Ssd,
         InspectAs::EnableFile,
         InspectAs::RowOffsets,

@@ -301,13 +301,13 @@
       "name": "FDT font",
       "category": "graphics",
       "phase": 4,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
       "export": "planned",
       "exportViews": [
         "json"
       ],
-      "notes": "Metadata export first; glyph rasterization is a later call."
+      "notes": "Explicit --as fdt walks the container in the order both retail FontData readers consume: optional VERS, DDSF then GTEX chunks, TEXC at version 4 and above, FSIZ, FSMX at 3 and above, BSLN, HMGN at 2 and above, HTBL, LTBL, and GLYP, each a tag, little-endian length, and payload. It requires four-byte scalars, a 256-byte HTBL, whole 512-byte LTBL pages, whole 14-byte GLYP records, and table indexes that land inside their targets, and lists chunks after GLYP as unread. Where the client reports a mismatch and continues, the reader refuses. All seven retail 1.23b font resources read with VERS 4 and a trailing zero-length TERM. Public cases cover three version shapes, following chunks, and each refusal. Glyph record fields, metric scalars, texture payloads, rasterization, writing, and lossless export are outside the claim. Evidence: docs/formats/fdt.md."
     },
     {
       "id": "wrb-model",

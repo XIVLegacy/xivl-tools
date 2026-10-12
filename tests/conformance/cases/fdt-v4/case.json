@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fdt-v4",
+  "formatId": "fdt",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/fdt/v4.bin"
+  },
+  "arguments": [
+    "--as",
+    "fdt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Version 4 chunk order with DDSF, two GTEX chunks, every gated scalar, shared and unreferenced records, and a zero-length TERM."
+}

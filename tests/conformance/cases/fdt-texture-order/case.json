@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fdt-texture-order",
+  "formatId": "fdt",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/fdt/texture-order.bin"
+  },
+  "arguments": [
+    "--as",
+    "fdt"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-chunk",
+    "errorOffset": 36
+  }
+}

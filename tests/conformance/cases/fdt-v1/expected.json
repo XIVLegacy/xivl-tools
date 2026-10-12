@@ -1,0 +1,136 @@
+{
+  "chunkCount": 7,
+  "chunks": [
+    {
+      "index": 0,
+      "payload": {
+        "length": 4,
+        "offset": 8
+      },
+      "payloadSha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+      "readByClient": true,
+      "span": {
+        "length": 12,
+        "offset": 0
+      },
+      "tag": "VERS"
+    },
+    {
+      "index": 1,
+      "payload": {
+        "length": 16,
+        "offset": 20
+      },
+      "payloadSha256": "f6c6515e329d9cbe17a9477b90a9538a6246174cec1c3c87d1600fcaba5b8a59",
+      "readByClient": true,
+      "span": {
+        "length": 24,
+        "offset": 12
+      },
+      "tag": "GTEX"
+    },
+    {
+      "index": 2,
+      "payload": {
+        "length": 4,
+        "offset": 44
+      },
+      "payloadSha256": "17fa9c7f5e9039a2d46e73e17d8e094a796ee4c313199bad42db4ee1dc30d865",
+      "readByClient": true,
+      "span": {
+        "length": 12,
+        "offset": 36
+      },
+      "tag": "FSIZ"
+    },
+    {
+      "index": 3,
+      "payload": {
+        "length": 4,
+        "offset": 56
+      },
+      "payloadSha256": "447e12701a0d03cf90a4ad7f02f1a045b35d284e26fe520440edb116d76bf700",
+      "readByClient": true,
+      "span": {
+        "length": 12,
+        "offset": 48
+      },
+      "tag": "BSLN"
+    },
+    {
+      "index": 4,
+      "payload": {
+        "length": 256,
+        "offset": 68
+      },
+      "payloadSha256": "43d56341f200591799f7e03f9514c0787adc31bd2fd43113a4768f0aa1572d75",
+      "readByClient": true,
+      "span": {
+        "length": 264,
+        "offset": 60
+      },
+      "tag": "HTBL"
+    },
+    {
+      "index": 5,
+      "payload": {
+        "length": 1024,
+        "offset": 332
+      },
+      "payloadSha256": "15f04a2102c8271b1abd5c5d9a95d614d53f321b2ddc02fb4bb1408ca6fdcd9e",
+      "readByClient": true,
+      "span": {
+        "length": 1032,
+        "offset": 324
+      },
+      "tag": "LTBL"
+    },
+    {
+      "index": 6,
+      "payload": {
+        "length": 42,
+        "offset": 1364
+      },
+      "payloadSha256": "6ea595b29bc254143fa27ab0c040165de66053edf1d942c6a9c264a2fcaac318",
+      "readByClient": true,
+      "span": {
+        "length": 50,
+        "offset": 1356
+      },
+      "tag": "GLYP"
+    }
+  ],
+  "endsAtEof": true,
+  "format": "fdt",
+  "glyphRecords": {
+    "count": 3,
+    "recordLength": 14,
+    "referenced": 2
+  },
+  "indexTable": {
+    "mappedKeys": 3,
+    "pageLength": 512,
+    "pages": 2
+  },
+  "input": {
+    "length": 1406
+  },
+  "operation": "inspect",
+  "pageTable": {
+    "length": 256,
+    "mappedPages": 2
+  },
+  "schemaVersion": 1,
+  "textureChunkCount": 1,
+  "trailing": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "span": {
+      "length": 0,
+      "offset": 1406
+    }
+  },
+  "version": {
+    "chunkPresent": true,
+    "value": 1
+  }
+}

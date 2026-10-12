@@ -17,6 +17,7 @@ pub mod csv;
 pub mod dds;
 pub mod digest;
 pub mod error;
+pub mod fdt;
 pub mod gtex_pwib;
 pub mod inspect;
 pub mod lpb;

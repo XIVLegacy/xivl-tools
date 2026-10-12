@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fdt-no-version",
+  "formatId": "fdt",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/fdt/no-version.bin"
+  },
+  "arguments": [
+    "--as",
+    "fdt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "No VERS chunk leaves the version zero and every gate closed."
+}

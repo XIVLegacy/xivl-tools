@@ -93,6 +93,14 @@ pub enum ErrorKind {
     UnsupportedPwibSelection,
     /// A selected PWIB RES/txb structure is malformed or escapes its view.
     InvalidPwibStructure,
+    /// A tagged chunk is not the one the observed reader order requires next.
+    UnexpectedChunk,
+    /// A chunk's declared payload length runs past the end of the input.
+    ChunkLengthOutOfRange,
+    /// A chunk payload length is not the one this reader establishes for its tag.
+    InvalidChunkLength,
+    /// A lookup-table entry names a page or record its target table lacks.
+    TableIndexOutOfRange,
 }
 
 impl ErrorKind {
@@ -135,6 +143,10 @@ impl ErrorKind {
             ErrorKind::InvalidPwibSelection => "invalid-pwib-selection",
             ErrorKind::UnsupportedPwibSelection => "unsupported-pwib-selection",
             ErrorKind::InvalidPwibStructure => "invalid-pwib-structure",
+            ErrorKind::UnexpectedChunk => "unexpected-chunk",
+            ErrorKind::ChunkLengthOutOfRange => "chunk-length-out-of-range",
+            ErrorKind::InvalidChunkLength => "invalid-chunk-length",
+            ErrorKind::TableIndexOutOfRange => "table-index-out-of-range",
         }
     }
 }

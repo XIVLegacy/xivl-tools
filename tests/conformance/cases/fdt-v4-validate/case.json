@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "fdt-v4-validate",
+  "formatId": "fdt",
+  "operation": "validate",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/fdt/v4.bin"
+  },
+  "arguments": [
+    "--as",
+    "fdt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  }
+}

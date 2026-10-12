@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fdt-v1",
+  "formatId": "fdt",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/fdt/v1.bin"
+  },
+  "arguments": [
+    "--as",
+    "fdt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Version 1 skips TEXC, FSMX, and HMGN."
+}

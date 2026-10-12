@@ -92,8 +92,8 @@ lua-path applies the reversible ASCII resource-path transform. extract-lpb
 removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
 5.1 chunk without interpreting it. The output path must not already exist.
 
-  --as sedb | ssd | scrambled-xml | sqwt | lpb | lpb-bytecode | staticactor-san | region | gtex | pwib | wrb-model
-     | map-layout | enable-file | row-offsets
+  --as sedb | ssd | scrambled-xml | sqwt | lpb | lpb-bytecode | staticactor-san | region | fdt | gtex | pwib
+     | wrb-model | map-layout | enable-file | row-offsets
      | sheet-data | config-sys | config-pad | config-lng | config-rgn
       Read the input as this format. Needed for enable-file and
       row-offsets, which are unsigned 32-bit arrays with no signature,
@@ -115,6 +115,8 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
       stream spans, descriptors, counts, and digests without model payloads.
       --as map-layout validates a MapLayout resource with the bounded zone reader and reports
       the header, resource table, and lyb node declarations without names or payload strings.
+      --as fdt walks a bitmap font container in the client's chunk order and reports chunk
+      spans, lookup-table counts, and digests without glyph metrics or texture payloads.
   --columns <type,...>
       Column types of a sheet-data file, from its schema document, for
       example 'str,s32,bool'. Without it the data is read as a stream of
@@ -387,6 +389,7 @@ mod tests {
         assert!(USAGE.contains("staticactor-san"));
         assert!(USAGE.contains("wrb-model"));
         assert!(USAGE.contains("map-layout"));
+        assert!(USAGE.contains("--as fdt walks a bitmap font container"));
         assert!(USAGE.contains("lyb node declarations without names or payload strings"));
     }
 }
