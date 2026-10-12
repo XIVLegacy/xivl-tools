@@ -172,6 +172,9 @@ A bitmap font's atlas textures are GTEX chunk payloads, extracted with
 cargo run --locked -p xivl-cli -- extract-resource font.DAT --output font --as fdt --materialize-payloads --export-dds --preview-png
 ```
 
+Every fdt extraction writes `payloads/glyphs.json`, the per-glyph metadata
+with role `fdt-glyph-metadata`; see the
+[glyph metadata export](formats/fdt.md#glyph-metadata-export).
 `--materialize-payloads` copies each GTEX chunk payload exactly as a
 standalone `.gtex` file, including a payload the GTEX reader refuses.
 `--export-dds` and `--preview-png` write `payloads/texture-tNNN.dds` and
@@ -287,8 +290,9 @@ It checks the texture artifacts against these distinct views. Source replay
 uses the recorded entry index to repeat selection and regenerate every
 complete output exactly.
 
-Bitmap font outputs are checked against the embedded GTEX report of the
-linked texture: raw copies against the chunk's payload span and digest, and
+Bitmap font glyph metadata is checked against its schema and the parsed
+GLYP payload digest and table counts. Texture outputs are checked against
+the embedded GTEX report of the linked texture: raw copies against the chunk's payload span and digest, and
 DDS and PNG files against that report with its spans moved to the payload
 offset. Source replay reruns the fdt extraction and compares every complete
 output.

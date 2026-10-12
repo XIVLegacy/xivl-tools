@@ -1,0 +1,157 @@
+{
+  "artifacts": [
+    {
+      "path": "payloads/glyphs.json",
+      "recordCount": 3,
+      "role": "fdt-glyph-metadata",
+      "sha256": "24a9c93a36f285eacc68d18baa83c1a73ce7c0d49eec48f5e631ab97d8e7fe0c",
+      "size": 2088
+    }
+  ],
+  "chunkCount": 6,
+  "chunks": [
+    {
+      "index": 0,
+      "payload": {
+        "length": 16,
+        "offset": 8
+      },
+      "payloadSha256": "308477764c770e4e0c835fade4a1f81199193abca3230d2183a044ba613c65eb",
+      "readByClient": true,
+      "span": {
+        "length": 24,
+        "offset": 0
+      },
+      "tag": "GTEX"
+    },
+    {
+      "index": 1,
+      "payload": {
+        "length": 4,
+        "offset": 32
+      },
+      "payloadSha256": "17fa9c7f5e9039a2d46e73e17d8e094a796ee4c313199bad42db4ee1dc30d865",
+      "readByClient": true,
+      "span": {
+        "length": 12,
+        "offset": 24
+      },
+      "tag": "FSIZ"
+    },
+    {
+      "index": 2,
+      "payload": {
+        "length": 4,
+        "offset": 44
+      },
+      "payloadSha256": "447e12701a0d03cf90a4ad7f02f1a045b35d284e26fe520440edb116d76bf700",
+      "readByClient": true,
+      "span": {
+        "length": 12,
+        "offset": 36
+      },
+      "tag": "BSLN"
+    },
+    {
+      "index": 3,
+      "payload": {
+        "length": 256,
+        "offset": 56
+      },
+      "payloadSha256": "43d56341f200591799f7e03f9514c0787adc31bd2fd43113a4768f0aa1572d75",
+      "readByClient": true,
+      "span": {
+        "length": 264,
+        "offset": 48
+      },
+      "tag": "HTBL"
+    },
+    {
+      "index": 4,
+      "payload": {
+        "length": 1024,
+        "offset": 320
+      },
+      "payloadSha256": "15f04a2102c8271b1abd5c5d9a95d614d53f321b2ddc02fb4bb1408ca6fdcd9e",
+      "readByClient": true,
+      "span": {
+        "length": 1032,
+        "offset": 312
+      },
+      "tag": "LTBL"
+    },
+    {
+      "index": 5,
+      "payload": {
+        "length": 42,
+        "offset": 1352
+      },
+      "payloadSha256": "1cc6afa06160eed017e78564daf3c957a8526df4f3648cd2120b095ec79e60d8",
+      "readByClient": true,
+      "span": {
+        "length": 50,
+        "offset": 1344
+      },
+      "tag": "GLYP"
+    }
+  ],
+  "endsAtEof": true,
+  "format": "fdt",
+  "glyphRecords": {
+    "checks": {
+      "negativeExtent": 0,
+      "offsetResourceOutsideTextures": 0,
+      "resourceOutsideTextures": 0,
+      "selectorOutsideVectors": 0,
+      "sourceOutsideTexture": 0,
+      "sourceUnchecked": 0
+    },
+    "count": 3,
+    "layout": "unversioned",
+    "recordLength": 14,
+    "referenced": 2
+  },
+  "indexTable": {
+    "mappedKeys": 3,
+    "pageLength": 512,
+    "pages": 2
+  },
+  "input": {
+    "length": 1394
+  },
+  "operation": "inspect",
+  "pageTable": {
+    "length": 256,
+    "mappedPages": 2
+  },
+  "schemaVersion": 1,
+  "textureChunkCount": 1,
+  "textureOffset": 0,
+  "textures": [
+    {
+      "chunkIndex": 0,
+      "gtex": {
+        "errorKind": "unexpected-end-of-input",
+        "errorOffset": 16,
+        "payloadOffset": 8,
+        "status": "error"
+      },
+      "gtexDimensions": {
+        "height": 16,
+        "width": 32
+      },
+      "tag": "GTEX"
+    }
+  ],
+  "trailing": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "span": {
+      "length": 0,
+      "offset": 1394
+    }
+  },
+  "version": {
+    "chunkPresent": false,
+    "value": 0
+  }
+}

@@ -1,6 +1,13 @@
 {
   "artifacts": [
     {
+      "path": "payloads/glyphs.json",
+      "recordCount": 3,
+      "role": "fdt-glyph-metadata",
+      "sha256": "2ec52ed47a1143ad77bd80f20e7c7c766c8e01678b267d5b683967fa8668ea05",
+      "size": 2549
+    },
+    {
       "chunkIndex": 2,
       "role": "fdt-gtex-payload",
       "sha256": "95dbd7d4de0bd7217e05936d8e1664af4cc412a43495b020641d1505786a2c60",

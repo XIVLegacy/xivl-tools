@@ -11,8 +11,8 @@ use xivl_formats::gtex_pwib::{self, GtexResource, TaggedResource, TaggedResource
 use xivl_formats::sedb::{self, EntryBody};
 use xivl_formats::texture_preview;
 use xivl_formats::{
-    extract_lpb, inspect_named_bytes_as, inspect_selected_pwib, parse_dat_path, to_canonical_json,
-    InspectAs, Span,
+    export_fdt_glyphs, extract_lpb, inspect_named_bytes_as, inspect_selected_pwib, parse_dat_path,
+    to_canonical_json, InspectAs, Span,
 };
 
 use crate::batch_extract::reject_link_if_present;
@@ -287,6 +287,26 @@ pub(crate) fn plan_bytes_options_with_pwib(
             }),
             path,
             bytes: decoded,
+        });
+    }
+    // Like decoded documents, glyph metadata is the resource's own content
+    // and is always written.
+    if parsed_format == "fdt" {
+        let glyphs = to_canonical_json(
+            &export_fdt_glyphs(data)
+                .map_err(|error| Failure::parse(format!("{input}: {error}")))?,
+        )
+        .into_bytes();
+        let path = "payloads/glyphs.json".to_string();
+        artifacts.push(PayloadArtifact {
+            manifest: json!({
+                "path": path,
+                "role": "fdt-glyph-metadata",
+                "sha256": sha256_hex(&glyphs),
+                "size": glyphs.len() as u64,
+            }),
+            path,
+            bytes: glyphs,
         });
     }
     if materialize_payloads {
@@ -1625,7 +1645,12 @@ mod tests {
         let document: Value =
             serde_yaml::from_str(&fs::read_to_string(raw.join("extraction.yaml")).unwrap())
                 .unwrap();
-        let payloads = document["payloads"].as_array().unwrap();
+        let payloads: Vec<&Value> = document["payloads"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|payload| payload["role"] == "fdt-gtex-payload")
+            .collect();
         assert_eq!(payloads.len(), 2);
         for payload in payloads {
             let span = &payload["sourceSpan"];

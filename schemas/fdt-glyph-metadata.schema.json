@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/XIVLegacy/xivl-tools/schemas/fdt-glyph-metadata.schema.json",
+  "title": "Bitmap font glyph metadata",
+  "description": "Per-glyph metadata that extract-resource --as fdt writes to payloads/glyphs.json. Field meanings are in docs/formats/fdt.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "format",
+    "version",
+    "layout",
+    "scalars",
+    "textures",
+    "pages",
+    "indexPageCount",
+    "unreachableIndexPages",
+    "records"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "format": { "const": "fdt-glyph-metadata" },
+    "version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chunkPresent", "value"],
+      "properties": {
+        "chunkPresent": { "type": "boolean" },
+        "value": { "$ref": "#/$defs/u32" }
+      }
+    },
+    "layout": { "enum": ["versioned", "unversioned"] },
+    "scalars": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["chunkIndex", "tag", "value"],
+        "properties": {
+          "chunkIndex": { "type": "integer", "minimum": 0 },
+          "tag": { "enum": ["TEXC", "FSIZ", "FSMX", "BSLN", "HMGN"] },
+          "value": { "$ref": "#/$defs/u32" }
+        }
+      }
+    },
+    "textures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["textureIndex", "chunkIndex", "tag", "gtexDimensions"],
+        "properties": {
+          "textureIndex": { "type": "integer", "minimum": 0 },
+          "chunkIndex": { "type": "integer", "minimum": 0 },
+          "tag": { "enum": ["DDSF", "GTEX"] },
+          "gtexDimensions": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["width", "height"],
+                "properties": {
+                  "width": { "$ref": "#/$defs/u16" },
+                  "height": { "$ref": "#/$defs/u16" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "pages": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["highByte", "page"],
+        "properties": {
+          "highByte": { "type": "integer", "minimum": 0, "maximum": 255 },
+          "page": { "type": "integer", "minimum": 0, "maximum": 254 }
+        }
+      }
+    },
+    "indexPageCount": { "type": "integer", "minimum": 0 },
+    "unreachableIndexPages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["page", "bytes"],
+        "properties": {
+          "page": { "type": "integer", "minimum": 0 },
+          "bytes": { "type": "string", "pattern": "^[0-9a-f]{1024}$" }
+        }
+      }
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "index",
+          "span",
+          "bytes",
+          "resourceIndex",
+          "selector",
+          "offsetX",
+          "offsetY",
+          "width",
+          "height",
+          "advance",
+          "byte07",
+          "flag02AdvanceAddend",
+          "byte09",
+          "sourceX",
+          "sourceY",
+          "unread",
+          "keys"
+        ],
+        "properties": {
+          "index": { "type": "integer", "minimum": 0 },
+          "span": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["offset", "length"],
+            "properties": {
+              "offset": { "type": "integer", "minimum": 0 },
+              "length": { "const": 14 }
+            }
+          },
+          "bytes": { "type": "string", "pattern": "^[0-9a-f]{28}$" },
+          "resourceIndex": { "$ref": "#/$defs/i8" },
+          "selector": { "$ref": "#/$defs/i8" },
+          "offsetX": { "$ref": "#/$defs/i8" },
+          "offsetY": { "$ref": "#/$defs/i8" },
+          "width": { "$ref": "#/$defs/i8" },
+          "height": { "$ref": "#/$defs/i8" },
+          "advance": { "$ref": "#/$defs/i8" },
+          "byte07": { "$ref": "#/$defs/u8" },
+          "flag02AdvanceAddend": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/u8" }] },
+          "byte09": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/u8" }] },
+          "sourceX": { "$ref": "#/$defs/u16" },
+          "sourceY": { "$ref": "#/$defs/u16" },
+          "unread": {
+            "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^[0-9a-f]{4}$" }]
+          },
+          "keys": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/u16" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "i8": { "type": "integer", "minimum": -128, "maximum": 127 },
+    "u8": { "type": "integer", "minimum": 0, "maximum": 255 },
+    "u16": { "type": "integer", "minimum": 0, "maximum": 65535 },
+    "u32": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+  }
+}

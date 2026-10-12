@@ -6,9 +6,10 @@ The `fdt` reader walks a bitmap font container in the chunk order the retail
 client reads. It reports chunk spans, digests, version gates, lookup-table
 counts, and GLYP record checks, and it supplies structural inspection and
 validation. The library decodes each GLYP record into the fields the client's
-glyph lookup and draw path consume. Read support is `partial`. Metric scalar
-meanings, texture payloads, rasterization, writing, and export are outside
-this contract.
+glyph lookup and draw path consume. Extraction writes per-glyph metadata
+and the GTEX atlas textures. Read and export support are `partial`. Metric
+scalar meanings, DDSF payloads, rasterization, and writing are outside this
+contract.
 
 ## Evidence and identity
 
@@ -188,6 +189,51 @@ Running all three options on the seven retail files wrote 20 payload copies,
 replay passed for every font. Each DDS file was byte-identical to the one
 `--export-dds` produced from the matching `.gtex` copy.
 
+## Glyph metadata export
+
+`extract-resource --as fdt` always writes `payloads/glyphs.json`, a canonical
+JSON document described by `schemas/fdt-glyph-metadata.schema.json`:
+
+| Field | Content |
+|---|---|
+| `version` | Whether a VERS chunk was present, and the version value |
+| `layout` | `versioned` or `unversioned`, the record layout the version selects |
+| `scalars` | Each TEXC, FSIZ, FSMX, BSLN, and HMGN chunk present: chunk index, tag, and little-endian value |
+| `textures` | Each DDSF or GTEX chunk in resource-list order, with its GTEX width and height or null |
+| `pages` | Each HTBL high byte that selects an LTBL page, with that page |
+| `indexPageCount` | LTBL page count |
+| `unreachableIndexPages` | Each LTBL page no HTBL byte selects, with its 512 bytes in hex |
+| `records` | Every GLYP record in file order |
+
+Each record holds its index, absolute span, 14 bytes in hex, the decoded
+fields from [Glyph records](#glyph-records) in camel case (`resourceIndex`,
+`selector`, `offsetX`, `offsetY`, `width`, `height`, `advance`, `byte07`,
+`flag02AdvanceAddend`, `byte09`, `sourceX`, `sourceY`, and `unread` in
+hex), and `keys`, the ascending 16-bit keys whose lookup reaches it. A
+record no key reaches has no keys. Fields the layout does not carry are
+null. Keys are numbers: the client's key encoding is not established, so
+the export names no characters. Scalar values carry no meaning beyond the
+chunk they came from.
+
+The document rebuilds VERS, the scalar payloads, HTBL, LTBL, and GLYP byte
+for byte: HTBL from `pages`, LTBL from each record's keys plus the
+unreachable pages, with every other entry `0xFFFF`, and GLYP from the record
+bytes. Library tests rebuild those chunks from four public fixtures,
+including one with an unreachable LTBL page. With the
+[texture payloads](#texture-payloads), it carries everything the client reads
+except DDSF payloads.
+
+`verify-extraction` checks the document's canonical form and schema, that
+record order and spans follow the GLYP payload, that the record bytes hash
+to the GLYP payload digest, and that the record, key, page, and texture
+counts and the version and layout match the parsed report. Source replay
+regenerates the document and compares its bytes.
+
+All seven retail fonts exported and verified with source replay. A separate
+script rebuilt each font's VERS, scalar, HTBL, LTBL, and GLYP payloads from
+its export. Every retail record reached by a key is reached by exactly one,
+and no retail LTBL page is unreachable.
+
 ## Reports
 
 `--as fdt` selects the reader; it has no automatic recognition.
@@ -213,7 +259,9 @@ following chunks and short trailing bytes; one record per glyph check; a
 GTEX payload the GTEX reader accepts beside a truncated one; and each
 refusal above. Extraction cases cover payload copies, DDS files, and PNG
 previews from two A4R4G4B4 atlases; payload copies beside a truncated GTEX
-payload; and the DDS refusal that payload causes. Library tests pin decoded fields in both layouts and key
+payload; the DDS refusal that payload causes; and glyph metadata for both
+layouts and an unreachable LTBL page. Glyph metadata expectations keep its
+digest, size, and record count; library tests pin the field values. Library tests pin decoded fields in both layouts and key
 lookup through both tables. The malformed-input sweep truncates and mutates
 the version 4 fixture.
 
@@ -225,5 +273,4 @@ assignment of glyphs to atlas channels, the metric scalars, bytes `0x07` and
 mapping, the TERM chunk's purpose, and versions other than 4 in retail data
 remain outside this claim. No retail file uses the zero-version layout. The
 reader's refusals are stricter than the client's observed behavior, not a
-description of it. Rasterizing glyphs and exporting per-glyph metadata
-are separate future work.
+description of it. Rasterizing glyphs is separate future work.

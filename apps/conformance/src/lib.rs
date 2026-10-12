@@ -715,8 +715,8 @@ fn pwib_selected_export_document(
     Ok(document)
 }
 
-/// The fdt inspection plus each GTEX payload copy, DDS file, and PNG preview
-/// the CLI writes, in its artifact order.
+/// The fdt inspection plus the glyph metadata and each GTEX payload copy,
+/// DDS file, and PNG preview the CLI writes, in its artifact order.
 fn fdt_export_document(
     input: &[u8],
     name: &str,
@@ -726,9 +726,19 @@ fn fdt_export_document(
 ) -> Result<Value, FormatError> {
     let mut document = inspect_named_bytes_as(input, name, &InspectAs::Fdt)?;
     let payloads = xivl_formats::fdt::parse(input)?.gtex_payloads();
+    // Glyph metadata carries record values, so the expectation keeps its
+    // identity and record count; library tests pin the fields.
+    let glyphs = xivl_formats::export_fdt_glyphs(input)?;
+    let glyph_text = xivl_formats::to_canonical_json(&glyphs);
     let format_json = |format: xivl_formats::gtex_pwib::GtexFormat| json!({ "clientIndex": format.index, "d3dName": format.d3d_name, "d3dValue": format.d3d_value });
     let absolute = |base: u64, span: xivl_formats::Span| json!({ "offset": base + span.offset, "length": span.length, "endExclusive": base + span.end() });
-    let mut artifacts = Vec::new();
+    let mut artifacts = vec![json!({
+        "path": "payloads/glyphs.json",
+        "recordCount": glyphs["records"].as_array().map_or(0, Vec::len),
+        "role": "fdt-glyph-metadata",
+        "sha256": sha256_hex(glyph_text.as_bytes()),
+        "size": glyph_text.len() as u64,
+    })];
     if materialize {
         for texture in &payloads {
             let span = texture.payload;

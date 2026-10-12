@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fdt-extract-glyphs",
+  "formatId": "fdt",
+  "operation": "extract",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/fdt/v4.bin"
+  },
+  "arguments": [
+    "--as",
+    "fdt"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Glyph metadata for versioned records, a DDSF texture, and a record no key reaches."
+}

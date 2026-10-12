@@ -11,7 +11,7 @@ use xivl_formats::dds::{self, DdsPixelFormat};
 use xivl_formats::digest::sha256_hex;
 use xivl_formats::gtex_pwib;
 use xivl_formats::texture_preview;
-use xivl_formats::{extract_lpb, parse_dat_path};
+use xivl_formats::{export_fdt_glyphs, extract_lpb, parse_dat_path, to_canonical_json};
 
 use crate::batch_extract::{
     normalize_relative_path, parse_catalog, reject_link_if_present, secure_root, secure_source,
@@ -24,6 +24,7 @@ use crate::{read_capped, Failure};
 
 const SINGLE_SCHEMA: &str = include_str!("../../../schemas/resource-extraction.schema.json");
 const BATCH_SCHEMA: &str = include_str!("../../../schemas/catalog-extraction.schema.json");
+const FDT_GLYPH_SCHEMA: &str = include_str!("../../../schemas/fdt-glyph-metadata.schema.json");
 
 #[derive(Debug)]
 pub struct VerifySummary {
@@ -404,9 +405,16 @@ fn verify_single(
     let is_fdt = string(object(&document, "format")?, "id")? == "fdt";
     let mut dds_count = 0usize;
     let mut png_count = 0usize;
+    let mut glyph_count = 0usize;
     for payload in payloads {
         let role = string(payload, "role")?;
         let path = string(payload, "path")?;
+        if (role == "fdt-glyph-metadata") != (path == "payloads/glyphs.json") {
+            return Err(fail("fdt-artifact-contract", format!("payload {path}")));
+        }
+        if role == "fdt-glyph-metadata" {
+            glyph_count += 1;
+        }
         if role.starts_with("fdt-") && !is_fdt {
             return Err(fail(
                 "fdt-format-mismatch",
@@ -467,6 +475,12 @@ fn verify_single(
             }
         }
     }
+    if is_fdt && glyph_count != 1 {
+        return Err(fail(
+            "fdt-glyph-metadata-missing",
+            "an FDT extraction has one glyph metadata artifact",
+        ));
+    }
     if dds_count > 1 {
         return Err(fail(
             "duplicate-dds-artifact",
@@ -520,6 +534,9 @@ fn verify_single(
         }
         if string(payload, "role")? == "pwib-gtex-png-preview" {
             verify_pwib_png_payload(payload, file, &document, index, recorded_source_size)?;
+        }
+        if string(payload, "role")? == "fdt-glyph-metadata" {
+            verify_fdt_glyph_payload(file, &document, index)?;
         }
         if string(payload, "role")? == "fdt-gtex-dds-texture" {
             verify_fdt_dds_payload(payload, file, &document, index, recorded_source_size)?;
@@ -2039,6 +2056,84 @@ fn fdt_texture_source<'a>(
     })
 }
 
+/// Ties glyph metadata to the parsed report: record order and spans, the
+/// GLYP payload digest over the recorded bytes, and the table counts.
+fn verify_fdt_glyph_payload(
+    file: &FileRecord,
+    document: &Value,
+    index: usize,
+) -> Result<(), Failure> {
+    let bytes =
+        fs::read(&file.path).map_err(|error| fail("payload-read-failed", error.to_string()))?;
+    let glyphs: Value = serde_json::from_slice(&bytes).map_err(|error| {
+        fail(
+            "glyph-metadata-invalid",
+            format!("payload {index}: {error}"),
+        )
+    })?;
+    if to_canonical_json(&glyphs).as_bytes() != bytes.as_slice() {
+        return Err(fail(
+            "glyph-metadata-noncanonical",
+            format!("payload {index}"),
+        ));
+    }
+    validate_schema(&glyphs, FDT_GLYPH_SCHEMA, &format!("payload {index}"))?;
+    let mismatch = |detail: &str| {
+        fail(
+            "glyph-metadata-mismatch",
+            format!("payload {index}: {detail}"),
+        )
+    };
+    let parsed = object(document, "parsed")?;
+    let glyph_chunk = array(parsed, "chunks")?
+        .iter()
+        .find(|chunk| chunk.get("tag").and_then(Value::as_str) == Some("GLYP"))
+        .ok_or_else(|| mismatch("parsed report has no GLYP chunk"))?;
+    let base = integer(object(glyph_chunk, "payload")?, "offset")?;
+    let records = array(&glyphs, "records")?;
+    let mut record_bytes = Vec::with_capacity(records.len() * 14);
+    let mut keys = 0u64;
+    let mut referenced = 0u64;
+    for (position, record) in records.iter().enumerate() {
+        let position = position as u64;
+        let span_offset = integer(object(record, "span")?, "offset")?;
+        if integer(record, "index")? != position
+            || Some(span_offset)
+                != position
+                    .checked_mul(14)
+                    .and_then(|value| value.checked_add(base))
+        {
+            return Err(mismatch("record order or span"));
+        }
+        let hex = string(record, "bytes")?;
+        for pair in hex.as_bytes().chunks(2) {
+            let text = std::str::from_utf8(pair).expect("schema restricts bytes to hex");
+            record_bytes.push(u8::from_str_radix(text, 16).expect("schema restricts bytes to hex"));
+        }
+        let record_keys = array(record, "keys")?.len() as u64;
+        keys += record_keys;
+        referenced += u64::from(record_keys > 0);
+    }
+    let glyph_records = object(parsed, "glyphRecords")?;
+    let index_table = object(parsed, "indexTable")?;
+    if records.len() as u64 != integer(glyph_records, "count")?
+        || referenced != integer(glyph_records, "referenced")?
+        || keys != integer(index_table, "mappedKeys")?
+        || string(&glyphs, "layout")? != string(glyph_records, "layout")?
+        || glyphs.get("version") != parsed.get("version")
+        || array(&glyphs, "textures")?.len() as u64 != integer(parsed, "textureChunkCount")?
+        || integer(&glyphs, "indexPageCount")? != integer(index_table, "pages")?
+        || array(&glyphs, "pages")?.len() as u64
+            != integer(object(parsed, "pageTable")?, "mappedPages")?
+    {
+        return Err(mismatch("counts differ from the parsed report"));
+    }
+    if sha256_hex(&record_bytes) != string(glyph_chunk, "payloadSha256")? {
+        return Err(mismatch("record bytes differ from the GLYP payload"));
+    }
+    Ok(())
+}
+
 fn verify_fdt_dds_payload(
     payload: &Value,
     file: &FileRecord,
@@ -2199,6 +2294,11 @@ fn replay_payload(
     } else {
         let role = string(payload, "role")?;
         let expected = match role {
+            "fdt-glyph-metadata" => to_canonical_json(
+                &export_fdt_glyphs(source)
+                    .map_err(|error| fail("source-replay-failed", error.to_string()))?,
+            )
+            .into_bytes(),
             "decoded-lua-5.1-chunk" => {
                 extract_lpb(source)
                     .map_err(|error| fail("source-replay-failed", error.to_string()))?
@@ -3350,32 +3450,33 @@ mod tests {
         assert!(run(&verify_arguments(&output, None)).is_ok());
         assert!(run(&verify_arguments(&output, Some(&source))).is_ok());
 
-        // Payloads are two raw GTEX copies, two DDS files, then two PNGs.
+        // Payloads are glyph metadata, two raw GTEX copies, two DDS files,
+        // then two PNGs.
         let original = manifest(&output);
         let cases: [(&str, &str, Value); 6] = [
             ("/format/id", "fdt-format-mismatch", json!("gtex")),
             (
-                "/payloads/0/entry/chunkIndex",
+                "/payloads/1/entry/chunkIndex",
                 "fdt-entry-relationship-mismatch",
                 json!(2),
             ),
             (
-                "/payloads/2/texture/textureIndex",
+                "/payloads/3/texture/textureIndex",
                 "dds-artifact-contract",
                 json!(1),
             ),
             (
-                "/payloads/2/texture/chunkIndex",
+                "/payloads/3/texture/chunkIndex",
                 "dds-fdt-texture-mismatch",
                 json!(2),
             ),
             (
-                "/payloads/2/dds/mips/0/sourceRelativeOffset",
+                "/payloads/3/dds/mips/0/sourceRelativeOffset",
                 "dds-mip-span-mismatch",
                 json!(0),
             ),
             (
-                "/payloads/4/texture/chunkIndex",
+                "/payloads/5/texture/chunkIndex",
                 "png-fdt-texture-mismatch",
                 json!(2),
             ),
@@ -3388,6 +3489,34 @@ mod tests {
             assert!(error.message.contains(code), "{pointer}: {}", error.message);
         }
         write_manifest(&output, &original);
+
+        let mut changed = original.clone();
+        changed["payloads"].as_array_mut().unwrap().remove(0);
+        write_manifest(&output, &changed);
+        let error = run(&verify_arguments(&output, None)).unwrap_err();
+        assert!(error.message.contains("fdt-glyph-metadata-missing"));
+        // Edited record bytes with a consistent manifest digest still disagree
+        // with the parsed GLYP payload digest.
+        let glyph_path = output.join("payloads/glyphs.json");
+        let original_glyphs = fs::read(&glyph_path).unwrap();
+        let mut glyphs: Value = serde_json::from_slice(&original_glyphs).unwrap();
+        glyphs["records"][0]["bytes"] = json!("ff000202020202000100000000ff");
+        let edited = to_canonical_json(&glyphs);
+        fs::write(&glyph_path, &edited).unwrap();
+        let mut changed = original.clone();
+        changed["payloads"][0]["sha256"] = json!(sha256_hex(edited.as_bytes()));
+        changed["payloads"][0]["size"] = json!(edited.len());
+        write_manifest(&output, &changed);
+        let error = run(&verify_arguments(&output, None)).unwrap_err();
+        assert!(
+            error.message.contains("glyph-metadata-mismatch"),
+            "{}",
+            error.message
+        );
+        fs::write(&glyph_path, original_glyphs).unwrap();
+        write_manifest(&output, &original);
+        assert!(run(&verify_arguments(&output, Some(&source))).is_ok());
+
         let mut tampered = fs::read(output.join("payloads/preview-t001.png")).unwrap();
         tampered.push(0);
         fs::write(output.join("payloads/preview-t001.png"), tampered).unwrap();

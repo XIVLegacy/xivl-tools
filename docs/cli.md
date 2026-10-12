@@ -439,8 +439,10 @@ externally backed, table-bearing, one-mip DXT1 descriptor, 2D flags zero,
 and depth one. Omitting entry selection keeps PWIB metadata-only. See the
 [selected-entry contract](formats/gtex-pwib.md#selected-pwib-restxb-texture).
 
-For a bitmap font, `extract-resource --as fdt` applies the raw, DDS, and PNG
-options to every GTEX chunk payload. Raw copies are `.gtex` files; DDS and
+For a bitmap font, `extract-resource --as fdt` always writes per-glyph
+metadata to `payloads/glyphs.json`; see the
+[glyph metadata export](formats/fdt.md#glyph-metadata-export). It applies
+the raw, DDS, and PNG options to every GTEX chunk payload. Raw copies are `.gtex` files; DDS and
 PNG files are named by texture index, such as `payloads/texture-t000.dds`
 and `payloads/preview-t000.png`. DDS and PNG require every GTEX payload to
 convert. See the [fdt texture extraction](formats/fdt.md#texture-payloads).

@@ -45,8 +45,8 @@ pub use config::{ConfigFile, ConfigKind};
 pub use csv::{export_sheet_data, parse_row_span, value_text, CsvTable};
 pub use error::{ErrorKind, FormatError, Result};
 pub use inspect::{
-    inspect_bytes, inspect_bytes_as, inspect_named_bytes_as, inspect_selected_pwib,
-    validate_named_bytes_as, InspectAs,
+    export_fdt_glyphs, inspect_bytes, inspect_bytes_as, inspect_named_bytes_as,
+    inspect_selected_pwib, validate_named_bytes_as, InspectAs, FDT_GLYPH_METADATA_SCHEMA_VERSION,
 };
 pub use lpb::{extract as extract_lpb, LpbFile, LpbVariant, PreservedBytes};
 pub use lua51::{

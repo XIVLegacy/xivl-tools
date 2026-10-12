@@ -20,7 +20,7 @@ use crate::lpb;
 use crate::lua51::{
     self, Lua51Instruction, Lua51Operand, Lua51Operands, Lua51Prototype, LuaConstant, LuaString,
 };
-use crate::reader::{escape_tag, Span};
+use crate::reader::{escape_tag, to_hex, Span};
 use crate::region::{self, RegionMembership};
 use crate::richstring::{payload_hex, RichString, Segment};
 use crate::scrambled;
@@ -1019,6 +1019,110 @@ fn fdt_texture_gtex(data: &[u8], chunk: fdt::Chunk) -> Value {
             "errorKind": error.kind().as_str(), "errorOffset": error.offset(),
         }),
     }
+}
+
+pub const FDT_GLYPH_METADATA_SCHEMA_VERSION: u64 = 1;
+
+/// Per-glyph metadata for a bitmap font: every GLYP record's bytes, decoded
+/// fields, and the keys that reach it, with the scalar chunks, the HTBL page
+/// assignment, and any LTBL page no HTBL byte selects. Together they rebuild
+/// VERS, the scalars, HTBL, LTBL, and GLYP exactly; texture payloads are
+/// extracted separately.
+pub fn export_fdt_glyphs(data: &[u8]) -> Result<Value> {
+    let file = fdt::parse(data)?;
+    let mut record_keys = vec![Vec::new(); file.glyphs.len()];
+    let mut selected_pages = vec![false; file.index_pages as usize];
+    let mut pages = Vec::new();
+    for (high_byte, &page) in file.page_table.iter().enumerate() {
+        if page == fdt::UNMAPPED_PAGE {
+            continue;
+        }
+        selected_pages[usize::from(page)] = true;
+        pages.push(json!({ "highByte": high_byte, "page": page }));
+        let entries = &file.index_table[usize::from(page) * 256..][..256];
+        for (low_byte, &record) in entries.iter().enumerate() {
+            if record != fdt::UNMAPPED_RECORD {
+                record_keys[usize::from(record)].push(high_byte << 8 | low_byte);
+            }
+        }
+    }
+    let index_chunk = file
+        .chunks
+        .iter()
+        .find(|chunk| chunk.tag == fdt::LTBL)
+        .expect("a parsed font has an LTBL chunk");
+    let unreachable_pages: Vec<Value> = selected_pages
+        .iter()
+        .enumerate()
+        .filter(|(_, selected)| !**selected)
+        .map(|(page, _)| {
+            let span = Span::new(
+                index_chunk.payload.offset + page as u64 * fdt::INDEX_PAGE_LENGTH,
+                fdt::INDEX_PAGE_LENGTH,
+            );
+            json!({ "page": page, "bytes": to_hex(span_bytes(data, span)) })
+        })
+        .collect();
+    let scalars: Vec<Value> = file.chunks[..file.glyph_chunk]
+        .iter()
+        .enumerate()
+        .filter(|(_, chunk)| {
+            [fdt::TEXC, fdt::FSIZ, fdt::FSMX, fdt::BSLN, fdt::HMGN].contains(&chunk.tag)
+        })
+        .map(|(index, chunk)| {
+            let bytes = span_bytes(data, chunk.payload);
+            json!({
+                "chunkIndex": index, "tag": escape_tag(&chunk.tag),
+                "value": u32::from_le_bytes(bytes.try_into().expect("scalars are four bytes")),
+            })
+        })
+        .collect();
+    let textures: Vec<Value> = file
+        .textures
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            json!({
+                "textureIndex": index, "chunkIndex": texture.chunk,
+                "tag": escape_tag(&file.chunks[texture.chunk].tag),
+                "gtexDimensions": texture.dimensions
+                    .map(|(width, height)| json!({ "width": width, "height": height })),
+            })
+        })
+        .collect();
+    let records: Vec<Value> = file
+        .glyphs
+        .iter()
+        .zip(record_keys)
+        .enumerate()
+        .map(|(index, (glyph, keys))| {
+            json!({
+                "index": index, "span": glyph.span.to_json(),
+                "bytes": to_hex(span_bytes(data, glyph.span)),
+                "resourceIndex": glyph.resource_index, "selector": glyph.selector,
+                "offsetX": glyph.offset_x, "offsetY": glyph.offset_y,
+                "width": glyph.width, "height": glyph.height, "advance": glyph.advance,
+                "byte07": glyph.byte_07,
+                "flag02AdvanceAddend": glyph.flag_02_advance_addend,
+                "byte09": glyph.byte_09,
+                "sourceX": glyph.source_x, "sourceY": glyph.source_y,
+                "unread": glyph.unread.map(|span| to_hex(span_bytes(data, span))),
+                "keys": keys,
+            })
+        })
+        .collect();
+    Ok(json!({
+        "schemaVersion": FDT_GLYPH_METADATA_SCHEMA_VERSION,
+        "format": "fdt-glyph-metadata",
+        "version": { "chunkPresent": file.has_version_chunk, "value": file.version },
+        "layout": file.layout.name(),
+        "scalars": scalars,
+        "textures": textures,
+        "pages": pages,
+        "indexPageCount": file.index_pages,
+        "unreachableIndexPages": unreachable_pages,
+        "records": records,
+    }))
 }
 
 fn inspect_region(data: &[u8]) -> Result<Value> {

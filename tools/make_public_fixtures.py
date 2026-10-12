@@ -2340,6 +2340,17 @@ def build_fixtures() -> dict[str, bytes]:
             + fdt_record(0, 2, (4, 2), (0, 0)),
         )
     )
+    # A third LTBL page that no HTBL byte selects, holding record 1 at low
+    # byte 0x20, so its entries are reachable by no key.
+    unreachable_page = bytearray([0xFF] * 512)
+    struct.pack_into("<H", unreachable_page, 2 * 0x20, 1)
+    fixtures["fdt/unreachable-page.bin"] = fdt_font(
+        fdt_replace(
+            font,
+            "LTBL",
+            dict(font)["LTBL"] + bytes(unreachable_page),
+        )
+    )
     # One record per check: a negative resource index; a resource whose TEXC
     # offset leaves the list, with selector 4 and a source past the 16x8
     # texture; and selector -1 with a negative width.
