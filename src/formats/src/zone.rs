@@ -1159,19 +1159,6 @@ const UNIT_TREE_FIELDS: &[(u16, u16)] =
     &[(4, 0), (8, 2), (28, 0), (32, 0), (44, 2), (36, 0), (48, 0)];
 const CHILD_FIELDS: &[(u16, u16)] = &[(20, 2), (12, 0), (16, 0), (24, 0), (32, 0)];
 const GROUP_FIELDS: &[(u16, u16)] = &[(0x0C, 0), (0x10, 0), (0x14, 0), (0x1C, 2), (0x20, 0)];
-// Some 1.23b layouts carry the same group payload with the surrounding
-// serializer's nine-descriptor declaration; both shapes are exact.
-const GROUP_FIELDS_EXTENDED: &[(u16, u16)] = &[
-    (0, 0),
-    (8, 2),
-    (12, 2),
-    (16, 2),
-    (20, 0),
-    (28, 2),
-    (32, 2),
-    (36, 2),
-    (40, 2),
-];
 const ATTRIBUTE_FIELDS: &[(u16, u16)] = &[(4, 0), (8, 2), (36, 2), (20, 0), (28, 0)];
 const COLLISION_BOX_FIELDS: &[(u16, u16)] = &[(4, 0), (8, 2)];
 const LAY_SETTINGS_FIELDS: &[(u16, u16)] = &[
@@ -1395,18 +1382,6 @@ impl<'a> LyGraph<'a> {
         }
         Ok(())
     }
-    fn require_group_shape(&self, node: u32) -> Result<()> {
-        let (kind, _) = self.node_kind(node)?;
-        if !exact_node_shape(kind, 0x30, GROUP_FIELDS)
-            && !exact_node_shape(kind, 0x30, GROUP_FIELDS_EXTENDED)
-        {
-            return Err(zone_error(
-                node as u64,
-                "lyb group node has an unsupported width or field descriptor set",
-            ));
-        }
-        Ok(())
-    }
     fn node_name(&self, offset: u32) -> Result<String> {
         let node = self.node_bytes(offset)?;
         if node.len() < 12 {
@@ -1613,7 +1588,7 @@ impl<'a> LyGraph<'a> {
             path.transforms[2] = Transform::default();
             path.transforms[1] = self.read_transform(node, 0x10, 0x1C, 0x20)?;
             for group in self.node_run(u32_le(bytes, 0x24)?, u32_le(bytes, 0x28)?)? {
-                self.require_group_shape(group)?;
+                self.require_shape(group, 0x30, GROUP_FIELDS, "group")?;
                 self.walk_group(group, zone, resources, path, output, depth + 1)?;
             }
             for child in self.node_run(u32_le(bytes, 0x30)?, u32_le(bytes, 0x34)?)? {
@@ -1697,7 +1672,7 @@ impl<'a> LyGraph<'a> {
             return Err(zone_error(node as u64, "lyb scene graph is too deep"));
         }
         let bytes = self.node_bytes(node)?;
-        self.require_group_shape(node)?;
+        self.require_shape(node, 0x30, GROUP_FIELDS, "group")?;
         let transform = self.read_transform(node, 0, 0x0C, 0x10)?;
         let previous = path.transforms[2];
         path.transforms[2] = transform;

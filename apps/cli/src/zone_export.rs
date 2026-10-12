@@ -429,7 +429,13 @@ mod tests {
         bytes[offset..offset + value.len()].copy_from_slice(value.as_bytes());
     }
 
+    const GROUP_FIELDS: &[(u16, u16)] = &[(0x0c, 0), (0x10, 0), (0x14, 0), (0x1c, 2), (0x20, 0)];
+
     fn layout_bytes() -> Vec<u8> {
+        layout_bytes_with_group_fields(GROUP_FIELDS)
+    }
+
+    fn layout_bytes_with_group_fields(group_fields: &[(u16, u16)]) -> Vec<u8> {
         let mut layout = vec![0u8; 0x60];
         layout[..21].copy_from_slice(b"MapLayoutResourceData");
         put_u32(&mut layout, 0x20, 0x60);
@@ -483,17 +489,7 @@ mod tests {
                 (0x24, 0),
                 (0x30, 0),
             ],
-            &[
-                (0x00, 0),
-                (0x08, 2),
-                (0x0c, 2),
-                (0x10, 2),
-                (0x14, 0),
-                (0x1c, 2),
-                (0x20, 2),
-                (0x24, 2),
-                (0x28, 2),
-            ],
+            group_fields,
             &[(0x14, 2), (0x0c, 0), (0x10, 0), (0x18, 0), (0x20, 0)],
             &[(0x04, 0), (0x08, 2), (0x24, 2), (0x14, 0), (0x1c, 0)],
             &[(0x04, 0), (0x08, 2), (0x10, 0)],
@@ -541,7 +537,6 @@ mod tests {
         put_f32(&mut payload, 0x550, 2.0);
         put_u32(&mut payload, 0x564, 0x590);
         put_u32(&mut payload, 0x568, 1);
-        put_u32(&mut payload, 0x594, 0x728);
         put_f32(&mut payload, 0x590, 3.0);
         put_u32(&mut payload, 0x5b0, 0x5c0);
         put_u32(&mut payload, 0x5b4, 1);
@@ -710,6 +705,42 @@ mod tests {
                 fs::read(second_output.join(relative)).unwrap()
             );
         }
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn export_rejects_group_with_noncanonical_declaration() {
+        let root = temp_root();
+        let layout_path = root.join(ResourceId::new(0x29D90003).dat_path());
+        let phb_path = root.join(ResourceId::new(0x05060708).dat_path());
+        for path in [&layout_path, &phb_path] {
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+        }
+        // A 0x30-wide node type with this nine-descriptor set occurs in
+        // retail layouts, but no unit tree references one as a group.
+        let nine_fields: &[(u16, u16)] = &[
+            (0x00, 0),
+            (0x08, 2),
+            (0x0c, 2),
+            (0x10, 2),
+            (0x14, 0),
+            (0x1c, 2),
+            (0x20, 2),
+            (0x24, 2),
+            (0x28, 2),
+        ];
+        fs::write(layout_path, layout_bytes_with_group_fields(nine_fields)).unwrap();
+        fs::write(phb_path, phb_bytes()).unwrap();
+        let error = run(&[
+            root.display().to_string(),
+            "--output".into(),
+            root.join("out").display().to_string(),
+        ])
+        .unwrap_err();
+        assert!(error
+            .message
+            .contains("lyb group node has an unsupported width or field descriptor set"));
+        assert!(!root.join("out").exists());
         fs::remove_dir_all(root).unwrap();
     }
 
