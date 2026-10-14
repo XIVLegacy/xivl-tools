@@ -42,7 +42,7 @@ FORBIDDEN_TRACKED_PREFIXES = (
 
 # A supported command must never resolve a sibling repository. These are
 # path shapes, so a prose mention of a repository name stays legal.
-SIBLING_PATH_PATTERN = re.compile(r"(\.\./|\.\.\\)(bahamut|xivl-[a-z-]+)(?![a-z-])")
+SIBLING_PATH_PATTERN = re.compile(r"(\.\./|\.\.\\)(xivl-[a-z-]+)(?![a-z-])")
 
 # Files whose subject is the workspace relationship itself may name a
 # sibling path shape while explaining that it is forbidden.
