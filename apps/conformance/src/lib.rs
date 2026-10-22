@@ -1115,8 +1115,7 @@ fn resolve_private(
     }
     let digest = sha256_hex(&bytes);
     if digest != entry.sha256 {
-        // The claim was established against a specific file, and this is
-        // not that file. Failing loudly is the whole point of the hash.
+        // The input differs from the exact file used to qualify this claim.
         return Err(format!(
             "private fixture '{fixture_id}' hashes to {digest}, the manifest records {}",
             entry.sha256

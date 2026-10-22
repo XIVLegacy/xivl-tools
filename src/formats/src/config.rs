@@ -205,8 +205,8 @@ pub fn parse(data: &[u8], kind: ConfigKind) -> Result<ConfigFile> {
     }
     let remainder = data.len() % WORD_SIZE;
     if remainder != 0 {
-        // The grid has no length field and no terminator, so a trailing run
-        // shorter than a word is unaccountable rather than ignorable.
+        // The grid has no length field or terminator that could account for a
+        // partial word at the end. Reject those bytes instead of ignoring them.
         return Err(FormatError::new(
             ErrorKind::TrailingPartialRecord,
             (data.len() - remainder) as u64,

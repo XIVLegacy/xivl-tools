@@ -343,9 +343,8 @@ fn read(arguments: &[String], operation: Operation) -> Result<(), Failure> {
     };
     let how = InspectAs::from_arguments(rest).map_err(Failure::usage)?;
     let data = read_capped(path)?;
-    // The SQEX container's key is the file's own base name, so the reading
-    // needs it. Taking it from the path the caller typed is the whole of
-    // the derivation. Nothing here searches for or resolves a path.
+    // SQEX decoding uses the file's base name as its key. Derive it from the
+    // caller-supplied path without searching for or resolving another path.
     let name = base_name(path);
     let produced = match operation {
         Operation::Inspect => inspect_named_bytes_as(&data, name, &how),
@@ -362,8 +361,7 @@ fn read(arguments: &[String], operation: Operation) -> Result<(), Failure> {
 }
 
 fn read_capped(path: &str) -> Result<Vec<u8>, Failure> {
-    // The caller supplied the path, so echoing it back leaks nothing they
-    // do not already know. It never reaches the JSON document.
+    // The caller-supplied path appears in terminal diagnostics, not in JSON.
     let file = std::fs::File::open(path).map_err(|error| read_failure(path, &error.to_string()))?;
     let mut data = Vec::new();
     file.take(MAX_INPUT_BYTES + 1)
