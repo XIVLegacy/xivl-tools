@@ -9,6 +9,7 @@ repository makes.
 ## Evidence pages
 
 - [SEDB, RES, and resource paths](formats/sedb-res.md)
+- [SSCF sound containers](formats/sscf.md)
 - [SSD documents, sheets, and scrambled XML](formats/ssd-sheet.md)
 - [Fixed-control diagnostics and phrase lookup](formats/fixed-control.md)
 - [SQEX containers](formats/sqex.md)

@@ -37,6 +37,7 @@ are detailed references.
 These pages describe the supported file formats.
 
 - [SEDB, RES, and resource paths](formats/sedb-res.md)
+- [SSCF sound containers](formats/sscf.md)
 - [SSD sheets and scrambled XML](formats/ssd-sheet.md)
 - [SQEX containers](formats/sqex.md)
 - [Configuration files](formats/configuration.md)

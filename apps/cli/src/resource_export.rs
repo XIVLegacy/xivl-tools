@@ -328,8 +328,8 @@ pub(crate) fn plan_bytes_options_with_pwib(
         }
     }
     if export_dds {
-        if !matches!(parsed_format.as_str(), "gtex" | "fdt")
-            && !(parsed_format == "pwib" && pwib_entry.is_some())
+        if !(matches!(parsed_format.as_str(), "gtex" | "fdt")
+            || (parsed_format == "pwib" && pwib_entry.is_some()))
         {
             return Err(Failure::usage(format!(
                 "--export-dds applies only to GTEX, selected PWIB, or FDT input, not '{parsed_format}'"
@@ -344,8 +344,8 @@ pub(crate) fn plan_bytes_options_with_pwib(
         }
     }
     if preview_png {
-        if !matches!(parsed_format.as_str(), "gtex" | "fdt")
-            && !(parsed_format == "pwib" && pwib_entry.is_some())
+        if !(matches!(parsed_format.as_str(), "gtex" | "fdt")
+            || (parsed_format == "pwib" && pwib_entry.is_some()))
         {
             return Err(Failure::usage(format!(
                 "--preview-png applies only to GTEX, selected PWIB, or FDT input, not '{parsed_format}'"

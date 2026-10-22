@@ -118,7 +118,10 @@ fn scan(root: &Path) -> Result<Vec<Value>, Failure> {
     paths.iter().map(|path| catalog_entry(root, path)).collect()
 }
 
-fn collect_dat_paths(directory: &Path, output: &mut Vec<PathBuf>) -> Result<(), Failure> {
+pub(crate) fn collect_dat_paths(
+    directory: &Path,
+    output: &mut Vec<PathBuf>,
+) -> Result<(), Failure> {
     let entries = fs::read_dir(directory).map_err(|error| {
         Failure::usage(format!(
             "cannot read directory '{}': {error}",
@@ -328,7 +331,7 @@ pub fn require_empty_output(output: &Path) -> Result<(), Failure> {
     Ok(())
 }
 
-fn relative_path(root: &Path, path: &Path) -> String {
+pub(crate) fn relative_path(root: &Path, path: &Path) -> String {
     path.strip_prefix(root)
         .unwrap_or(path)
         .components()
