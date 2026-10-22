@@ -527,6 +527,20 @@ The export preserves source triangle order and collision attributes. It does
 not include render meshes, textures, animations, or navigation data. See
 [zone geometry export](formats/zone-geometry.md) for the metadata contract.
 
+## Census SSCF sound containers
+
+`sscf-census` reads every SSCF sound container below an explicit client root
+and prints counts and distributions of its header fields, tables, and stream
+headers as canonical JSON:
+
+```powershell
+cargo run --locked -p xivl-cli -- sscf-census "C:\path\to\FINAL FANTASY XIV"
+```
+
+The report carries no file bytes, and the command writes no files. Parse
+failures are counted by error kind with up to five resource ids each. See
+[SSCF sound containers](formats/sscf.md) for the fields and observed values.
+
 ## Lua helpers
 
 `lua-path` reports the client's reversible transform for one ASCII resource

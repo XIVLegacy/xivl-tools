@@ -101,6 +101,14 @@ pub enum ErrorKind {
     InvalidChunkLength,
     /// A lookup-table entry names a page or record its target table lacks.
     TableIndexOutOfRange,
+    /// An offset table or one of its entries runs past the end of the input.
+    TableOutOfRange,
+    /// A stream header's extra data and codec data run past the end of the
+    /// input.
+    StreamOutOfRange,
+    /// An auxiliary chunk is smaller than its own header or escapes the
+    /// extra data that holds it.
+    InvalidAuxChunk,
 }
 
 impl ErrorKind {
@@ -147,6 +155,9 @@ impl ErrorKind {
             ErrorKind::ChunkLengthOutOfRange => "chunk-length-out-of-range",
             ErrorKind::InvalidChunkLength => "invalid-chunk-length",
             ErrorKind::TableIndexOutOfRange => "table-index-out-of-range",
+            ErrorKind::TableOutOfRange => "table-out-of-range",
+            ErrorKind::StreamOutOfRange => "stream-out-of-range",
+            ErrorKind::InvalidAuxChunk => "invalid-aux-chunk",
         }
     }
 }

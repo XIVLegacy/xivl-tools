@@ -18,6 +18,7 @@ mod batch_extract;
 mod command_inspect;
 mod resource_export;
 mod scan;
+mod sscf_census;
 mod verify_extract;
 mod zone_export;
 
@@ -40,6 +41,7 @@ usage:
   xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads] [--export-dds] [--preview-png] [--pwib-entry <index>]
   xivl verify-extraction <directory> [--source <file> | --catalog <catalog.json|catalog.jsonl> --root <directory>] [--report json]
   xivl export-zones <client-root> --output <directory> [--layout <resource-id>]
+  xivl sscf-census <client-root>
   xivl --help
   xivl --version
 
@@ -87,6 +89,10 @@ materialize-command-loadout projects one selected schema-2 trace and record
 range into one 136-byte synthetic 0x0137 application payload. It retains only
 the selected record fragments, zero-fills the remaining payload, and refuses
 to write an existing output path.
+
+sscf-census reads every SSCF sound container below an explicit client root
+and prints aggregate counts and distributions of header fields, tables, and
+stream headers as JSON. It reports no file bytes and writes no files.
 
 lua-path applies the reversible ASCII resource-path transform. extract-lpb
 removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
@@ -262,6 +268,12 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
             let summary = zone_export::run(&arguments[1..])?;
             println!("exported {} zones to {}", summary.zones, summary.output);
             Ok(())
+        }
+        Some("sscf-census") => {
+            let text = sscf_census::run(&arguments[1..])?;
+            std::io::stdout()
+                .write_all(text.as_bytes())
+                .map_err(|error| Failure::usage(format!("cannot write output: {error}")))
         }
         Some(other) => Err(Failure::usage(format!(
             "unknown command '{other}'; run 'xivl --help'"

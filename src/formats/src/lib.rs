@@ -34,6 +34,7 @@ pub mod scrambled;
 pub mod sedb;
 pub mod sheet;
 pub mod sqwt;
+pub mod sscf;
 pub mod ssd;
 pub mod staticactor;
 pub mod texture_preview;
