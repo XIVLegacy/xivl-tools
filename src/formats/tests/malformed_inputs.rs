@@ -3,6 +3,7 @@
 //! Test every truncation and a deterministic set of byte mutations for each
 //! committed fixture. Errors must have an offset within the input; parsing must
 //! not panic.
+//! Full-length truncations cover unchanged bytes skipped by the mutation sweeps.
 
 use std::path::{Path, PathBuf};
 
@@ -139,6 +140,9 @@ fn deterministic_byte_mutations_are_handled() {
     for (name, bytes) in binary_fixtures() {
         for position in 0..bytes.len() {
             for value in [0x00u8, 0x01, 0x7F, 0x80, 0xFE, 0xFF] {
+                if value == bytes[position] {
+                    continue;
+                }
                 let mut mutated = bytes.clone();
                 mutated[position] = value;
                 std::panic::catch_unwind(|| parse_and_check(&mutated)).unwrap_or_else(|_| {
@@ -273,6 +277,9 @@ fn deterministic_document_byte_mutations_are_handled() {
     for (name, bytes) in document_fixtures() {
         for position in 0..bytes.len() {
             for value in [0x00u8, 0x02, 0x03, 0x73, 0x80, 0xF1, 0xFF] {
+                if value == bytes[position] {
+                    continue;
+                }
                 let mut mutated = bytes.clone();
                 mutated[position] = value;
                 let short = base_name(&name);
