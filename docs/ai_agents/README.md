@@ -30,6 +30,7 @@ Read these pages in order:
 
 1. [Evidence and claims](evidence-and-claims.md)
 2. [Comments and prose](comments-and-prose.md)
+3. [Test authoring](test-authoring.md)
 
 The [documentation index](../README.md) provides entry points into the public
 documentation.
