@@ -903,6 +903,40 @@ def build_fixtures() -> dict[str, bytes]:
     model_mdlc = model_container(b"MDLC", [model_mdl])
     model_wrb = model_container(b"WRB\0", [model_mdlc])
     fixtures["wrb-model/supported.bin"] = model_resource(model_wrb)
+    # Stored counts overlay opaque HEAD and MICT bodies without traversing MINS.
+    count_head = model_chunk(b"HEAD", b"\xa5\x5a\x02\x03" + pattern(12, 0x61))
+    count_mesh = model_container(
+        b"MESH",
+        [
+            count_head,
+            position_stream,
+            index_stream,
+            model_chunk(b"ENVD", pattern(19, 0x31)),
+            model_chunk(b"ENVD", pattern(7, 0x41)),
+            model_chunk(b"ENVD", pattern(2, 0x51)),
+        ],
+    )
+    count_mdl = model_container(b"MDL\0", [model_chunk(b"COMP", comp), count_mesh])
+    count_mict = model_chunk(
+        b"MICT",
+        struct.pack(">I", 0x01020304)
+        + pattern(12, 0x71)
+        + model_chunk(b"MINS", pattern(17, 0x81)),
+    )
+    fixtures["wrb-model/stored-counts.bin"] = model_resource(
+        model_container(b"WRB\0", [model_container(b"MDLC", [count_mdl]), count_mict])
+    )
+    for label, body in (("stream", bytes(2)), ("envelope", bytes(3))):
+        short_mesh = model_container(
+            b"MESH", [model_chunk(b"HEAD", body), position_stream, index_stream]
+        )
+        short_mdl = model_container(b"MDL\0", [model_chunk(b"COMP", comp), short_mesh])
+        fixtures[f"wrb-model/short-{label}-count.bin"] = model_resource(
+            model_container(b"WRB\0", [model_container(b"MDLC", [short_mdl])])
+        )
+    fixtures["wrb-model/short-component-count.bin"] = model_resource(
+        model_container(b"WRB\0", [model_chunk(b"MICT", bytes(3))])
+    )
     declaration_fields = [
         (0, 4, 4, 0 << 16),
         (8, 3, 4, 1 << 16),

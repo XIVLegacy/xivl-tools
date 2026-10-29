@@ -94,6 +94,87 @@ unknown format or component indices, and lookup entries with type UNUSED.
 Authored cases cover every mapped usage and element type and accepted opaque
 descriptors.
 
+## Stored mesh and component counts
+
+Inspection reports these raw stored counts with absolute source spans. Offsets
+in the table are relative to the chunk payload, after its 16-byte header.
+
+| Exact parent / chunk | Payload offset | Encoding | Report field |
+|---|---:|---|---|
+| MESH / HEAD | `+0x02` | u8 | `meshHead.streamCount` |
+| MESH / HEAD | `+0x03` | u8 | `meshHead.envelopeCount` |
+| WRB / MICT | `+0x00` | big-endian u32 | `componentCount` |
+
+Each field contains `span` and `value`. The stored stream count is distinct
+from the MESH report's count of parsed STMS children. The MICT component count
+is distinct from the MINS info word that counts its HEAD and NAME children.
+The original opaque payload partition remains available, with these scalar
+views overlaid on it. A field that does not fit its logical payload is omitted,
+without reading alignment padding. A three-byte MESH HEAD still reports its
+stream byte. If neither HEAD count byte is available, `meshHead` is omitted.
+Short fields do not cause inspection or validation to fail.
+Inspection does not allocate or traverse records from these counts, require
+count agreement, or infer active meshes, skeleton associations or visibility.
+
+`xivl-decomp:docs/resource/floor-model-render-path.md`, "Streams and active
+counts", establishes a gate on MESH HEAD byte `+0x02 > 1` at consumer VA
+`0x00C8E01E` before iterating additional streams. The payload-relative byte
+position and its equality with the number of STMS children are first-hand
+census observations below. The report retains the name `streamCount` on that
+basis. The envelope byte follows
+`xivl-decomp:docs/resource/mesh-envelope-producer.md`, "Selected mesh and HEAD
+count", at `0x00C8E661` and `0x00C8E6C7`. The MICT word follows
+`xivl-decomp:docs/resource/floor-model-visibility.md`, "Component hierarchy
+matrix", at `0x00C885A0`. MICT placement as a direct WRB child rests on the
+first-hand retail census below, rather than that decomp observation. These
+native observations use retail 1.23b `ffxivgame.exe`, 15996808 bytes, SHA-256
+`9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9`.
+
+The first-hand read-only census is reproducible with
+[`tools/research/census_wrb_counts.py`](../../tools/research/census_wrb_counts.py):
+
+```text
+python tools/research/census_wrb_counts.py --client-root <install>
+```
+
+It reads the explicit install without writing client bytes and prints
+aggregate counts, histograms and inventory digests. It covered all 140180
+files under `data/` and 51772 under `client/`. It measured 19612 WRB trees:
+9969 in standalone data RES resources, three in client RES resources and
+9640 in PWIB files. Valid PWIB files contribute WRB trees in their first
+segment. For invalid PWIB extents, the command searches WRB signatures and
+bounds each hit by its own SEDB extent, including entries whose declared outer
+extent exceeded the installed file. This establishes field observations,
+not support for wrapped model inspection.
+
+The selected input inventories contain 9969 data resources and 9643 client
+resources. Each inventory hashes sorted ASCII lines
+`path<TAB>size<TAB>sha256<LF>`, with install-relative POSIX paths and decimal
+sizes. Their SHA-256 identities are
+`45918488f226217bbaa37adfcae9d8bd4deea8d7b1e1efb088029ce0307bda54`
+for data and
+`874b520e68677ac824d4c10f2d586132d9b4d10ba2459697707b58a704104fb7`
+for client. The census command prints these identities as `inventorySha256`.
+
+All 35394 MESH HEADs had stream count two, matching their STMS children.
+Their envelope bytes ranged from zero through 48 and matched all 84255 ENVD
+occurrences. All 19612 MICT chunks were direct WRB children. Their component
+counts matched their 18155 MINS children. The stored values ranged from zero
+through 128. There were no count or field
+boundary exceptions. The selected floor resource 0x7F1C0000 is 41088 bytes,
+SHA-256 `1af91b0e1e5e34f676f1af2884f82eddb63062e62bee058b0260e9646dfb7d0f`.
+The selected body file in
+`xivl-decomp:docs/actor/body-shader-constant-join.md`, "Profile and identity",
+is 107152 bytes, SHA-256
+`21570ade19172245ed9bb541fa3c2c7d4a74d5cd8f19500468abce51f788d093`.
+Both selected resources were checked against these sizes and digests
+separately; the census command reports only the inventory digests.
+
+Authored cases cover the three count fields, preserved opaque suffixes and
+ENVD/MINS bodies, and accepted short fields whose alignment padding cannot
+supply the missing bytes. Short fields are omitted independently. The retained
+retail case reports only the added count fields.
+
 ## Retail authentication
 
 The retained input is `retail-res-89eb0000` in
@@ -293,6 +374,18 @@ palette correspondence, or skinning. Those gaps remain unresolved in
 `xivl-decomp:docs/resource/wrb-vertex-declaration.md`, "Reproduction and limits".
 Unmapped usages and format/component combinations remain opaque as described
 under [vertex declaration metadata](#vertex-declaration-metadata).
+
+ENVD bodies and the remainder of MICT, including MINS HEAD node/mesh indexes
+and its mask-selector byte, remain opaque. The census found a leading
+big-endian word of 16 and a nonempty ASCII string terminated within the payload
+at that offset in all 84255 ENVD records. This does not close the conditional
+copy and allocation assumptions in
+`xivl-decomp:docs/resource/mesh-envelope-producer.md`, "Existing consumer join
+and name boundary" and "Exact surviving producer gap". No envelope name,
+bone/palette correspondence or skinning meaning is decoded. Other HEAD bytes,
+AABB leaf values, STMS header bytes `+0x0E/+0x0F`, STR text and RSID identifiers
+retain their opaque reports. Stored count metadata does not establish
+runtime admission, matrix selection, rendering or visibility.
 
 Structural JSON is a report and does not establish lossless export support.
 This reader does not establish glTF output, rendering, material or texture

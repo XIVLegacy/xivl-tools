@@ -1,0 +1,675 @@
+{
+  "format": "wrb-model",
+  "input": {
+    "length": 512
+  },
+  "operation": "inspect",
+  "root": {
+    "anomalies": [],
+    "declaredSize": 512,
+    "entries": [
+      {
+        "entryCount": 1,
+        "kind": "subresource-directory",
+        "sha256": "c4aebd9a7859a0c4ba976aaed71dff06c8d0570535c22acf14bd1fa0fe277b84",
+        "span": {
+          "length": 16,
+          "offset": 64
+        }
+      },
+      {
+        "child": {
+          "anomalies": [],
+          "declaredSize": 432,
+          "entries": [
+            {
+              "kind": "payload",
+              "sha256": "404e8af866ce17650ced4be6596b9273cf56acdb9b6ba8c6f55479d1423ad8b1",
+              "span": {
+                "length": 384,
+                "offset": 128
+              }
+            }
+          ],
+          "flags": 0,
+          "headerSize": 48,
+          "headerUnknown": [
+            {
+              "kind": "unknown-gap",
+              "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+              "span": {
+                "length": 28,
+                "offset": 100
+              }
+            }
+          ],
+          "kind": "sedb-container",
+          "span": {
+            "length": 432,
+            "offset": 80
+          },
+          "subtype": "wrb\\x00",
+          "totalSize": 432,
+          "unknownA": 0
+        },
+        "declaredKind": 2,
+        "declaredOffset": 0,
+        "declaredSize": 432,
+        "index": 0,
+        "kind": "subresource",
+        "sha256": "b93c62a9b158256b8b0456dc5b8fe64f4ac173ba09f6932880fbddb64a56edd8",
+        "span": {
+          "length": 432,
+          "offset": 80
+        }
+      }
+    ],
+    "flags": 0,
+    "headerSize": 64,
+    "headerUnknown": [
+      {
+        "kind": "unknown-gap",
+        "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+        "span": {
+          "length": 28,
+          "offset": 20
+        }
+      }
+    ],
+    "kind": "sedb-container",
+    "res": {
+      "subresourceCount": 1,
+      "typeName": "brt\\x00",
+      "unknownB": 0
+    },
+    "span": {
+      "length": 512,
+      "offset": 0
+    },
+    "subtype": "RES ",
+    "totalSize": 512,
+    "unknownA": 0
+  },
+  "schemaVersion": 1,
+  "trailing": [],
+  "wrb": {
+    "chunkCount": 8,
+    "meshCount": 1,
+    "resourceCount": 1,
+    "resources": [
+      {
+        "partition": {
+          "chunks": [
+            {
+              "contents": {
+                "chunks": [
+                  {
+                    "contents": {
+                      "chunks": [
+                        {
+                          "contents": {
+                            "chunks": [
+                              {
+                                "contents": {
+                                  "chunks": [],
+                                  "opaque": [],
+                                  "span": {
+                                    "length": 24,
+                                    "offset": 240
+                                  }
+                                },
+                                "declaredPaddedSize": 48,
+                                "declaredSize": 40,
+                                "descriptor": {
+                                  "kind": "COMP-bounds",
+                                  "sha256": "4d6c31e0de052499738fd007542f060ab51bc58e87e8d4179282ed5016b1b6f0",
+                                  "span": {
+                                    "length": 24,
+                                    "offset": 240
+                                  }
+                                },
+                                "header": {
+                                  "sha256": "1d9c944555d2fd15a9fa4db151071b6930cb417f39cfaba67e826a104b0b4f20",
+                                  "span": {
+                                    "length": 16,
+                                    "offset": 224
+                                  },
+                                  "unknown": [
+                                    {
+                                      "kind": "unknown-gap",
+                                      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                      "span": {
+                                        "length": 4,
+                                        "offset": 228
+                                      }
+                                    }
+                                  ]
+                                },
+                                "paddedSpan": {
+                                  "length": 48,
+                                  "offset": 224
+                                },
+                                "padding": [
+                                  {
+                                    "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+                                    "span": {
+                                      "length": 8,
+                                      "offset": 264
+                                    }
+                                  }
+                                ],
+                                "sha256": "122d504a4d74d2c2568520dd279057e5b1e0b17b784c9c656e010eba048f0cee",
+                                "span": {
+                                  "length": 40,
+                                  "offset": 224
+                                },
+                                "tag": "COMP"
+                              },
+                              {
+                                "contents": {
+                                  "chunks": [
+                                    {
+                                      "contents": {
+                                        "chunks": [],
+                                        "opaque": [
+                                          {
+                                            "kind": "opaque-chunk-payload",
+                                            "sha256": "709e80c88487a2411e1ee4dfb9f22a861492d20c4765150c0c794abd70f8147c",
+                                            "span": {
+                                              "length": 3,
+                                              "offset": 320
+                                            }
+                                          }
+                                        ],
+                                        "span": {
+                                          "length": 3,
+                                          "offset": 320
+                                        }
+                                      },
+                                      "declaredPaddedSize": 32,
+                                      "declaredSize": 19,
+                                      "header": {
+                                        "sha256": "c64f10602e938a1ddc9f4cff8c68c5226060a746fb3c0bb50a4c8c979f62a894",
+                                        "span": {
+                                          "length": 16,
+                                          "offset": 304
+                                        },
+                                        "unknown": [
+                                          {
+                                            "kind": "unknown-gap",
+                                            "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                            "span": {
+                                              "length": 4,
+                                              "offset": 308
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      "meshHead": {
+                                        "streamCount": {
+                                          "span": {
+                                            "length": 1,
+                                            "offset": 322
+                                          },
+                                          "value": 0
+                                        }
+                                      },
+                                      "paddedSpan": {
+                                        "length": 32,
+                                        "offset": 304
+                                      },
+                                      "padding": [
+                                        {
+                                          "sha256": "dd46c3eebb1884ff3b5258c0a2fc9398e560a29e0780d4b53869b6254aa46a96",
+                                          "span": {
+                                            "length": 13,
+                                            "offset": 323
+                                          }
+                                        }
+                                      ],
+                                      "sha256": "40430d3bcae4cd7860b734126a4813b11e8a5f4349430d03d82b6b436eb1e2e2",
+                                      "span": {
+                                        "length": 19,
+                                        "offset": 304
+                                      },
+                                      "tag": "HEAD"
+                                    },
+                                    {
+                                      "contents": {
+                                        "chunks": [],
+                                        "opaque": [],
+                                        "span": {
+                                          "length": 84,
+                                          "offset": 352
+                                        }
+                                      },
+                                      "declaredPaddedSize": 112,
+                                      "declaredSize": 100,
+                                      "header": {
+                                        "sha256": "755efc6f78c851c280a80691aadd1051900d00defce157b4f1b9b32b0df517ee",
+                                        "span": {
+                                          "length": 16,
+                                          "offset": 336
+                                        },
+                                        "unknown": [
+                                          {
+                                            "kind": "unknown-gap",
+                                            "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                            "span": {
+                                              "length": 4,
+                                              "offset": 340
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      "paddedSpan": {
+                                        "length": 112,
+                                        "offset": 336
+                                      },
+                                      "padding": [
+                                        {
+                                          "sha256": "15ec7bf0b50732b49f8228e07d24365338f9e3ab994b00af08e5a3bffe55fd8b",
+                                          "span": {
+                                            "length": 12,
+                                            "offset": 436
+                                          }
+                                        }
+                                      ],
+                                      "sha256": "a16f6a0b2587741133039fefcbdadf77b2f19ca6361f437385870332ad0c8eea",
+                                      "span": {
+                                        "length": 100,
+                                        "offset": 336
+                                      },
+                                      "stream": {
+                                        "data": {
+                                          "sha256": "8a062e37833848c235683e554f5075c03a6cb73ea92d0e0232cbe7322ca4f4ca",
+                                          "span": {
+                                            "length": 36,
+                                            "offset": 400
+                                          }
+                                        },
+                                        "fields": {
+                                          "count": 2,
+                                          "descriptors": [
+                                            {
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 368
+                                              },
+                                              "words": [
+                                                0,
+                                                3,
+                                                4,
+                                                33554432
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 8,
+                                                "elementType": 7,
+                                                "elementTypeName": "SHORT4",
+                                                "method": 0,
+                                                "offset": 0,
+                                                "semantic": "POSITION",
+                                                "usage": 0,
+                                                "usageIndex": 0
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 384
+                                              },
+                                              "words": [
+                                                0,
+                                                4,
+                                                4,
+                                                0
+                                              ]
+                                            }
+                                          ],
+                                          "sha256": "8acf552ff50a72c23e658daa374e21cc800e71e0dd2d776573d70d60987b291a",
+                                          "span": {
+                                            "length": 32,
+                                            "offset": 368
+                                          }
+                                        },
+                                        "header": {
+                                          "sha256": "cf9f1dae64f52d8b39e6ecb897925ec26cc67a14fe79d3816c15ce702eccbe6f",
+                                          "span": {
+                                            "length": 16,
+                                            "offset": 352
+                                          },
+                                          "unknown": [
+                                            {
+                                              "kind": "unknown-gap",
+                                              "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                              "span": {
+                                                "length": 4,
+                                                "offset": 364
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        "itemCount": 3,
+                                        "stride": 12
+                                      },
+                                      "tag": "STMS"
+                                    },
+                                    {
+                                      "contents": {
+                                        "chunks": [],
+                                        "opaque": [],
+                                        "span": {
+                                          "length": 38,
+                                          "offset": 464
+                                        }
+                                      },
+                                      "declaredPaddedSize": 64,
+                                      "declaredSize": 54,
+                                      "header": {
+                                        "sha256": "f1f967eb5b0eba7058ae26a2ad0c09ac48db502e5a1fe99a9569400684e32824",
+                                        "span": {
+                                          "length": 16,
+                                          "offset": 448
+                                        },
+                                        "unknown": [
+                                          {
+                                            "kind": "unknown-gap",
+                                            "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                            "span": {
+                                              "length": 4,
+                                              "offset": 452
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      "paddedSpan": {
+                                        "length": 64,
+                                        "offset": 448
+                                      },
+                                      "padding": [
+                                        {
+                                          "sha256": "01d448afd928065458cf670b60f5a594d735af0172c8d67f22a81680132681ca",
+                                          "span": {
+                                            "length": 10,
+                                            "offset": 502
+                                          }
+                                        }
+                                      ],
+                                      "sha256": "2e914d1c725a064a96e49201f41326442d26d61f67e101ab4f4fb89a40bc76c2",
+                                      "span": {
+                                        "length": 54,
+                                        "offset": 448
+                                      },
+                                      "stream": {
+                                        "data": {
+                                          "sha256": "a31e910680405ce5f30bc28f9a1cef773c238ba2574e121d94d63271a1651b94",
+                                          "span": {
+                                            "length": 6,
+                                            "offset": 496
+                                          }
+                                        },
+                                        "fields": {
+                                          "count": 1,
+                                          "descriptors": [
+                                            {
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 480
+                                              },
+                                              "words": [
+                                                0,
+                                                0,
+                                                1,
+                                                16711680
+                                              ]
+                                            }
+                                          ],
+                                          "sha256": "b022b3e41dfadbb58810858ebe5defa9f22cc33de4931b164563c848b004fb6d",
+                                          "span": {
+                                            "length": 16,
+                                            "offset": 480
+                                          }
+                                        },
+                                        "header": {
+                                          "sha256": "cbf89e7f664a9e4d525662b3fdd8601c46dc95f8d16dbb2d1186a68cc52ea239",
+                                          "span": {
+                                            "length": 16,
+                                            "offset": 464
+                                          },
+                                          "unknown": [
+                                            {
+                                              "kind": "unknown-gap",
+                                              "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                              "span": {
+                                                "length": 4,
+                                                "offset": 476
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        "itemCount": 3,
+                                        "stride": 2
+                                      },
+                                      "tag": "STMS"
+                                    }
+                                  ],
+                                  "opaque": [
+                                    {
+                                      "kind": "container-info",
+                                      "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+                                      "span": {
+                                        "length": 16,
+                                        "offset": 288
+                                      }
+                                    }
+                                  ],
+                                  "span": {
+                                    "length": 224,
+                                    "offset": 288
+                                  }
+                                },
+                                "declaredPaddedSize": 240,
+                                "declaredSize": 240,
+                                "header": {
+                                  "sha256": "670a9b2727a686968c93e3db542722762a7268cc52b14d2f6fb3371c84c278dd",
+                                  "span": {
+                                    "length": 16,
+                                    "offset": 272
+                                  },
+                                  "unknown": [
+                                    {
+                                      "kind": "unknown-gap",
+                                      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                      "span": {
+                                        "length": 4,
+                                        "offset": 276
+                                      }
+                                    }
+                                  ]
+                                },
+                                "mesh": {
+                                  "indexCount": 3,
+                                  "indexStreamCount": 1,
+                                  "positionStreamCount": 1,
+                                  "streamCount": 2,
+                                  "triangleCount": 1,
+                                  "vertexCount": 3
+                                },
+                                "paddedSpan": {
+                                  "length": 240,
+                                  "offset": 272
+                                },
+                                "padding": [],
+                                "sha256": "bc44141081c71a5a8490a220481438fe944f65e8f7be9843ed087121217229b4",
+                                "span": {
+                                  "length": 240,
+                                  "offset": 272
+                                },
+                                "tag": "MESH"
+                              }
+                            ],
+                            "opaque": [
+                              {
+                                "kind": "container-info",
+                                "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+                                "span": {
+                                  "length": 16,
+                                  "offset": 208
+                                }
+                              }
+                            ],
+                            "span": {
+                              "length": 304,
+                              "offset": 208
+                            }
+                          },
+                          "declaredPaddedSize": 320,
+                          "declaredSize": 320,
+                          "header": {
+                            "sha256": "5b5e5da7a2bcb2017e0ed71b17e8062d2e89cff0a7866b8ca7902004416aeb17",
+                            "span": {
+                              "length": 16,
+                              "offset": 192
+                            },
+                            "unknown": [
+                              {
+                                "kind": "unknown-gap",
+                                "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                "span": {
+                                  "length": 4,
+                                  "offset": 196
+                                }
+                              }
+                            ]
+                          },
+                          "paddedSpan": {
+                            "length": 320,
+                            "offset": 192
+                          },
+                          "padding": [],
+                          "sha256": "ed4282222d7e78e02b47d2a03c0603a7109e877f5fcef106043d65212c1fbe40",
+                          "span": {
+                            "length": 320,
+                            "offset": 192
+                          },
+                          "tag": "MDL\\x00"
+                        }
+                      ],
+                      "opaque": [
+                        {
+                          "kind": "container-info",
+                          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+                          "span": {
+                            "length": 16,
+                            "offset": 176
+                          }
+                        }
+                      ],
+                      "span": {
+                        "length": 336,
+                        "offset": 176
+                      }
+                    },
+                    "declaredPaddedSize": 352,
+                    "declaredSize": 352,
+                    "header": {
+                      "sha256": "38b2fefa479d7e034c19e119146261dc9f8a16aab342fe46dd24c2a328fdb81b",
+                      "span": {
+                        "length": 16,
+                        "offset": 160
+                      },
+                      "unknown": [
+                        {
+                          "kind": "unknown-gap",
+                          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                          "span": {
+                            "length": 4,
+                            "offset": 164
+                          }
+                        }
+                      ]
+                    },
+                    "paddedSpan": {
+                      "length": 352,
+                      "offset": 160
+                    },
+                    "padding": [],
+                    "sha256": "bc7fce1218e54c2083cdb2651978dc6c9654718aa54a470103d5bc32526ec9b9",
+                    "span": {
+                      "length": 352,
+                      "offset": 160
+                    },
+                    "tag": "MDLC"
+                  }
+                ],
+                "opaque": [
+                  {
+                    "kind": "container-info",
+                    "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+                    "span": {
+                      "length": 16,
+                      "offset": 144
+                    }
+                  }
+                ],
+                "span": {
+                  "length": 368,
+                  "offset": 144
+                }
+              },
+              "declaredPaddedSize": 384,
+              "declaredSize": 384,
+              "header": {
+                "sha256": "18ba0c29629a1083bbc086fa69324f3db3b5e7652e4a41f28d31556e3df4e12a",
+                "span": {
+                  "length": 16,
+                  "offset": 128
+                },
+                "unknown": [
+                  {
+                    "kind": "unknown-gap",
+                    "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                    "span": {
+                      "length": 4,
+                      "offset": 132
+                    }
+                  }
+                ]
+              },
+              "paddedSpan": {
+                "length": 384,
+                "offset": 128
+              },
+              "padding": [],
+              "sha256": "404e8af866ce17650ced4be6596b9273cf56acdb9b6ba8c6f55479d1423ad8b1",
+              "span": {
+                "length": 384,
+                "offset": 128
+              },
+              "tag": "WRB\\x00"
+            }
+          ],
+          "opaque": [],
+          "span": {
+            "length": 384,
+            "offset": 128
+          }
+        },
+        "payload": {
+          "sha256": "404e8af866ce17650ced4be6596b9273cf56acdb9b6ba8c6f55479d1423ad8b1",
+          "span": {
+            "length": 384,
+            "offset": 128
+          }
+        },
+        "sha256": "b93c62a9b158256b8b0456dc5b8fe64f4ac173ba09f6932880fbddb64a56edd8",
+        "span": {
+          "length": 432,
+          "offset": 80
+        }
+      }
+    ],
+    "spanOverlap": "nested-child-spans-are-inside-owning-spans",
+    "streamCount": 2
+  }
+}

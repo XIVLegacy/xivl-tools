@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-stored-counts",
+  "formatId": "wrb-model",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/wrb-model/stored-counts.bin"
+  },
+  "arguments": [
+    "--as",
+    "wrb-model"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Authored stored counts with opaque HEAD suffix, ENVD bodies and MICT/MINS remainder."
+}

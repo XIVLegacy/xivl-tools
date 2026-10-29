@@ -637,13 +637,18 @@ fn model_resource_to_json(data: &[u8], resource: &zone::ModelResourceInspection)
         },
         "partition": {
             "span": resource.payload.to_json(),
-            "chunks": resource.chunks.iter().map(|chunk| model_chunk_to_json(data, chunk)).collect::<Vec<_>>(),
+            "chunks": resource.chunks.iter().map(|chunk| model_chunk_to_json(data, chunk, None)).collect::<Vec<_>>(),
             "opaque": resource.opaque.iter().map(|item| model_opaque_to_json(data, item)).collect::<Vec<_>>(),
         },
     })
 }
 
-fn model_chunk_to_json(data: &[u8], chunk: &zone::ModelChunkInspection) -> Value {
+fn model_chunk_to_json(
+    data: &[u8],
+    chunk: &zone::ModelChunkInspection,
+    parent: Option<[u8; 4]>,
+) -> Value {
+    let counts = zone::model_chunk_counts(chunk.tag, parent, span_bytes(data, chunk.payload));
     let mut object = Map::new();
     object.insert("tag".into(), json!(escape_tag(&chunk.tag)));
     object.insert("span".into(), chunk.span.to_json());
@@ -684,7 +689,7 @@ fn model_chunk_to_json(data: &[u8], chunk: &zone::ModelChunkInspection) -> Value
         "contents".into(),
         json!({
             "span": chunk.payload.to_json(),
-            "chunks": chunk.children.iter().map(|child| model_chunk_to_json(data, child)).collect::<Vec<_>>(),
+            "chunks": chunk.children.iter().map(|child| model_chunk_to_json(data, child, Some(chunk.tag))).collect::<Vec<_>>(),
             "opaque": chunk.opaque.iter().map(|item| model_opaque_to_json(data, item)).collect::<Vec<_>>(),
         }),
     );
@@ -711,6 +716,35 @@ fn model_chunk_to_json(data: &[u8], chunk: &zone::ModelChunkInspection) -> Value
                 "vertexCount": mesh.vertex_count,
                 "indexCount": mesh.index_count,
                 "triangleCount": mesh.triangle_count,
+            }),
+        );
+    }
+    if let Some(head) = &counts.mesh_head {
+        let mut fields = Map::new();
+        for (name, offset, count) in [
+            ("streamCount", 2, head.stream_count),
+            ("envelopeCount", 3, head.envelope_count),
+        ] {
+            if let Some(count) = count {
+                fields.insert(
+                    name.into(),
+                    json!({
+                        "span": Span::new(chunk.payload.offset + offset, 1).to_json(),
+                        "value": count,
+                    }),
+                );
+            }
+        }
+        if !fields.is_empty() {
+            object.insert("meshHead".into(), Value::Object(fields));
+        }
+    }
+    if let Some(count) = counts.component_count {
+        object.insert(
+            "componentCount".into(),
+            json!({
+                "span": Span::new(chunk.payload.offset, 4).to_json(),
+                "value": count,
             }),
         );
     }

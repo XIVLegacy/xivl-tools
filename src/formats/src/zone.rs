@@ -341,6 +341,18 @@ pub(crate) struct ModelChunkInspection {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelChunkCounts {
+    pub(crate) mesh_head: Option<ModelMeshHeadInspection>,
+    pub(crate) component_count: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelMeshHeadInspection {
+    pub(crate) stream_count: Option<u8>,
+    pub(crate) envelope_count: Option<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ModelStreamInspection {
     pub(crate) header: Span,
     pub(crate) fields: Span,
@@ -2387,6 +2399,33 @@ fn parse_chunks(bytes: &[u8], base: u64) -> Result<ChunkList<'_>> {
     parse_chunks_at_depth(bytes, base, 0)
 }
 
+pub(crate) fn model_chunk_counts(
+    tag: [u8; 4],
+    parent: Option<[u8; 4]>,
+    bytes: &[u8],
+) -> ModelChunkCounts {
+    // Count positions and parent placement: docs/formats/wrb-model.md, first-hand census.
+    let mesh_head = if parent == Some(*b"MESH") && tag == *b"HEAD" {
+        Some(ModelMeshHeadInspection {
+            stream_count: bytes.get(2).copied(),
+            envelope_count: bytes.get(3).copied(),
+        })
+    } else {
+        None
+    };
+    let component_count = if parent == Some(*b"WRB\0") && tag == *b"MICT" {
+        bytes
+            .get(..4)
+            .map(|word| u32::from_be_bytes([word[0], word[1], word[2], word[3]]))
+    } else {
+        None
+    };
+    ModelChunkCounts {
+        mesh_head,
+        component_count,
+    }
+}
+
 fn parse_chunks_at_depth(bytes: &[u8], base: u64, depth: usize) -> Result<ChunkList<'_>> {
     if depth > MAX_MODEL_CHUNK_DEPTH {
         return Err(zone_error(
@@ -3438,6 +3477,50 @@ pub(crate) mod tests {
         let mut early_triangle = phb_bytes();
         put_le_u32(&mut early_triangle, 0xc0 + 0x60, 0x70);
         assert!(parse_phb(&early_triangle).is_err());
+    }
+
+    #[test]
+    fn model_stored_counts_use_only_the_documented_context() {
+        let counts = model_chunk_counts(*b"MICT", Some(*b"WRB\0"), &[1, 2, 3, 4, 0xa5]);
+        assert_eq!(counts.component_count, Some(0x01020304));
+        assert_eq!(counts.mesh_head, None);
+        let counts = model_chunk_counts(*b"HEAD", Some(*b"MESH"), &[0x99, 0x88, 0xfe, 0xfd, 0xaa]);
+        assert_eq!(
+            counts.mesh_head,
+            Some(ModelMeshHeadInspection {
+                stream_count: Some(254),
+                envelope_count: Some(253),
+            })
+        );
+        assert_eq!(counts.component_count, None);
+        for (tag, parent) in [
+            (*b"HEAD", Some(*b"WRB\0")),
+            (*b"HEAD", None),
+            (*b"HEAX", Some(*b"MESH")),
+            (*b"MICT", Some(*b"MESH")),
+            (*b"MICX", Some(*b"WRB\0")),
+            (*b"ENVD", Some(*b"MESH")),
+        ] {
+            let counts = model_chunk_counts(tag, parent, &[]);
+            assert_eq!(counts.mesh_head, None);
+            assert_eq!(counts.component_count, None);
+        }
+    }
+
+    #[test]
+    fn model_stored_counts_omit_short_fields() {
+        for length in 0..4 {
+            let counts = model_chunk_counts(*b"HEAD", Some(*b"MESH"), &[0xa5; 4][..length]);
+            assert_eq!(
+                counts.mesh_head,
+                Some(ModelMeshHeadInspection {
+                    stream_count: if length == 3 { Some(0xa5) } else { None },
+                    envelope_count: None,
+                })
+            );
+            let counts = model_chunk_counts(*b"MICT", Some(*b"WRB\0"), &[0xa5; 4][..length]);
+            assert_eq!(counts.component_count, None);
+        }
     }
 
     #[test]

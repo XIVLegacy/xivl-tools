@@ -469,6 +469,22 @@
                                           }
                                         ]
                                       },
+                                      "meshHead": {
+                                        "envelopeCount": {
+                                          "span": {
+                                            "length": 1,
+                                            "offset": 6335
+                                          },
+                                          "value": 0
+                                        },
+                                        "streamCount": {
+                                          "span": {
+                                            "length": 1,
+                                            "offset": 6334
+                                          },
+                                          "value": 2
+                                        }
+                                      },
                                       "paddedSpan": {
                                         "length": 32,
                                         "offset": 6316
@@ -1455,6 +1471,13 @@
                     "tag": "LTCD"
                   },
                   {
+                    "componentCount": {
+                      "span": {
+                        "length": 4,
+                        "offset": 7068
+                      },
+                      "value": 1
+                    },
                     "contents": {
                       "chunks": [],
                       "opaque": [

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "wrb-model-short-envelope-count",
+  "formatId": "wrb-model",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/wrb-model/short-envelope-count.bin"
+  },
+  "arguments": [
+    "--as",
+    "wrb-model"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "Short stored count fields are omitted without consuming alignment padding; existing opaque reports remain available."
+}
