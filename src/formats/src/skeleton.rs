@@ -1,15 +1,12 @@
 //! Bounded SKL framing from xivl-decomp:docs/resource/skeleton-bone-framing.md.
 //! Transform bytes and string encodings remain opaque. See docs/formats/skeleton.md.
 
-use std::collections::HashSet;
-
 use serde_json::{json, Value};
 
 use crate::digest::sha256_hex;
-use crate::error::{ErrorKind, FormatError, Result};
-use crate::gtex_pwib::{self, TaggedResource, TaggedResourceKind};
+use crate::error::{ErrorKind, Result};
 use crate::reader::{Reader, Span};
-use crate::sedb;
+use crate::res_extents::{self, error, word, Leaf, SelectedExtents};
 
 pub const RECORD_LENGTH: usize = 176;
 pub const NO_LINK: u32 = u32::MAX;
@@ -43,15 +40,6 @@ pub struct SkeletonFile {
     pub skeletons: Vec<Skeleton>,
     /// Complement of the selected SKL extents, including outer containers.
     pub opaque: Vec<Span>,
-}
-
-fn error(kind: ErrorKind, offset: u64, detail: &str) -> FormatError {
-    FormatError::new(kind, offset, detail)
-}
-
-fn word(reader: &mut Reader<'_>, at: usize) -> Result<u32> {
-    reader.seek(at)?;
-    reader.u32_le()
 }
 
 /// Parse one exact selected SKL extent, preserving absolute source offsets.
@@ -259,34 +247,12 @@ fn validate_parents(records: &[BoneRecord]) -> Result<()> {
     Ok(())
 }
 
-struct SelectedExtents {
-    visited: HashSet<(u64, u32)>,
-    // Deeper claims may replace ancestors, but siblings cannot share bytes.
-    depths: Vec<u8>,
-}
-
-impl SelectedExtents {
-    fn new(length: usize) -> Self {
-        Self {
-            visited: HashSet::new(),
-            depths: vec![0; length],
-        }
-    }
-
-    fn claim(&mut self, start: u64, length: u32, depth: u8, field: u64) -> Result<()> {
-        let bytes = &mut self.depths[start as usize..start as usize + length as usize];
-        if !self.visited.insert((start, length)) || bytes.iter().any(|claimed| *claimed >= depth) {
-            return Err(error(
-                ErrorKind::AmbiguousPayloadSpan,
-                field,
-                "selected SKL or RES extents alias or overlap",
-            ));
-        }
-        // Each input byte is claimed at most once per bounded nesting level.
-        bytes.fill(depth);
-        Ok(())
-    }
-}
+const LEAF: Leaf = Leaf {
+    magic: b"SEDBSKL ",
+    word: "SKL",
+    header_error: "RES header outside the evidenced skeleton containers",
+    extent_error: "selected SKL or RES escapes its containing extent",
+};
 
 fn collect(
     data: &[u8],
@@ -295,96 +261,19 @@ fn collect(
     found: &mut Vec<Skeleton>,
     selected: &mut SelectedExtents,
 ) -> Result<()> {
-    if path.len() > sedb::MAX_NESTING_DEPTH as usize {
-        return Err(error(
-            ErrorKind::NestingTooDeep,
-            base,
-            "RES nesting exceeds eight",
-        ));
-    }
-    let mut reader = Reader::with_base(data, base);
-    if reader.take(8)? != b"SEDBRES " {
-        return Err(error(
-            ErrorKind::BadMagic,
-            base,
-            "expected a RES tree containing SKL",
-        ));
-    }
-    reader.seek(14)?;
-    let header = reader.u16_le()?;
-    if !matches!(header, 0x30 | 0x40) {
-        return Err(error(
-            ErrorKind::InvalidChunkLength,
-            base + 14,
-            "RES header outside the evidenced skeleton containers",
-        ));
-    }
-    let extent = reader.u32_le()? as usize;
-    if extent < 64 || extent > data.len() {
-        return Err(error(
-            ErrorKind::DeclaredSizeOutOfRange,
-            base + 16,
-            "RES extent escapes its selected slice",
-        ));
-    }
-    let count = word(&mut reader, 0x30)?;
-    if word(&mut reader, 0x38)? != count {
-        return Err(error(
-            ErrorKind::SubresourceCountMismatch,
-            base + 0x38,
-            "RES directory counts disagree",
-        ));
-    }
-    let payload = 64 + u64::from(count) * sedb::RES_DIRECTORY_ENTRY_SIZE;
-    if payload > extent as u64 {
-        return Err(error(
-            ErrorKind::SubresourceCountOutOfRange,
-            base + 0x30,
-            "RES directory escapes its extent",
-        ));
-    }
-    let mut children = Vec::new();
-    for ordinal in 0..count {
-        let row = 64 + ordinal as usize * 16;
-        let start = payload + u64::from(word(&mut reader, row + 4)?);
-        let length = reader.u32_le()?;
-        // Opaque entries can alias or carry alignment extents; only selected tags are followed.
-        if start + 8 > extent as u64 || length < 8 {
-            continue;
-        }
-        let start = start as usize;
-        let tag = &data[start..start + 8];
-        if tag != b"SEDBSKL " && tag != b"SEDBRES " {
-            continue;
-        }
-        if u64::from(length) > (extent - start) as u64 {
-            return Err(error(
-                ErrorKind::AmbiguousPayloadSpan,
-                base + (row + 8) as u64,
-                "selected SKL or RES escapes its containing extent",
-            ));
-        }
-        selected.claim(
-            base + start as u64,
-            length,
-            (path.len() + 1) as u8,
-            base + (row + 8) as u64,
-        )?;
-        children.push((ordinal, start, length, tag == b"SEDBSKL "));
-    }
-    for (ordinal, start, length, is_skeleton) in children {
-        let bytes = &data[start..start + length as usize];
-        path.push(ordinal);
-        if is_skeleton {
-            let mut skeleton = parse_block(bytes, base + start as u64)?;
-            skeleton.entry_path = path.clone();
+    res_extents::collect(
+        data,
+        base,
+        path,
+        selected,
+        &LEAF,
+        &mut |bytes, base, path| {
+            let mut skeleton = parse_block(bytes, base)?;
+            skeleton.entry_path = path.to_vec();
             found.push(skeleton);
-        } else {
-            collect(bytes, base + start as u64, path, found, selected)?;
-        }
-        path.pop();
-    }
-    Ok(())
+            Ok(())
+        },
+    )
 }
 
 /// Enumerate explicit SKL blocks in a standalone block, RES tree, or PWIB first segment.
@@ -393,15 +282,7 @@ pub fn parse(data: &[u8]) -> Result<SkeletonFile> {
     if data.starts_with(b"SEDBSKL ") {
         skeletons.push(parse_block(data, 0)?);
     } else {
-        let span = if data.starts_with(b"PWIB") {
-            let TaggedResource::Pwib(pwib) = gtex_pwib::parse(data, TaggedResourceKind::Pwib)?
-            else {
-                unreachable!()
-            };
-            pwib.first_segment
-        } else {
-            Span::new(0, data.len() as u64)
-        };
+        let span = res_extents::first_segment(data)?;
         let bytes = Reader::new(data).slice_at(span.offset as usize, span.length as usize)?;
         collect(
             bytes,

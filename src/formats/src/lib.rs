@@ -32,6 +32,7 @@ pub mod normalize;
 pub mod phb_author;
 pub mod reader;
 pub mod region;
+mod res_extents;
 pub mod resource;
 pub mod richstring;
 pub mod scrambled;
