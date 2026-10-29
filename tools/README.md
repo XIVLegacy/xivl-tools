@@ -19,6 +19,8 @@ ruff check --no-cache tools .github/actions
   validated only from explicit external roots by the conformance runner and
   snapshot tool.
 - `check_contract.py` - the contract check. It must pass before every commit.
+- `test_freeze_private_fixtures.py` - the private fixture snapshot boundary
+  tests. Run with `python tools/test_freeze_private_fixtures.py`.
 - `make_public_fixtures.py` - generator for every byte under
   `tests/fixtures/public/`. `--check` regenerates in memory and fails if a
   committed fixture differs, which is what makes the fixtures auditable.
@@ -71,6 +73,16 @@ These commands require `--client-root`:
   `lyb` scene graphs.
 - `research/census_wrb.py` - census RES -> wrb chunk trees and model stream
   structure.
+- `research/census_wrb_counts.py` - census WRB field counts and inventory
+  digests. Run with
+  `python tools/research/census_wrb_counts.py --client-root <install>`.
+- `research/census_animation.py` - census animation bank and MTB framing.
+  Run with
+  `python tools/research/census_animation.py --client-root <install> --cli <xivl>`.
+- `research/census_skeleton.py` - census bounded skeleton framing. Run with
+  `python tools/research/census_skeleton.py --client-root <install> --xivl <xivl-executable>`.
+- `research/census_fdt.py` - census bitmap font records. Run with
+  `python tools/research/census_fdt.py --client-root <install>`.
 - `research/census_phb.py` - census SEDB PHB collision resources.
 - `research/census_sheet_stack.py` - census scrambled XML documents, the SSD
   sheet stack, and rich strings in one resource-tree walk.
