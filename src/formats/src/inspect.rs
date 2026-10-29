@@ -23,7 +23,7 @@ use crate::lua51::{
 };
 use crate::reader::{escape_tag, to_hex, Span};
 use crate::region::{self, RegionMembership};
-use crate::richstring::{payload_hex, RichString, Segment};
+use crate::richstring::{RichString, Segment};
 use crate::scrambled;
 use crate::sedb::{self, Container, Entry, EntryBody};
 use crate::sheet::{self, ColumnType, ColumnValue, EnableFile, Row, RowOffsets, SheetString};
@@ -1996,7 +1996,7 @@ fn segment_to_json(segment: &Segment) -> Value {
             "span": token.span.to_json(),
             "code": token.code,
             "lengthEncoding": token.encoding.name(),
-            "lengthBytes": payload_hex(&token.length_bytes),
+            "lengthBytes": to_hex(&token.length_bytes),
             "payloadLength": token.payload.len() as u64,
             "payloadSha256": sha256_hex(&token.payload),
         }),

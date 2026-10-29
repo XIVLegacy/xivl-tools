@@ -59,10 +59,6 @@ impl Element {
             .find(|attribute| attribute.name == name)
     }
 
-    pub fn children_named<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a Element> {
-        self.children.iter().filter(move |child| child.name == name)
-    }
-
     pub fn child(&self, name: &str) -> Option<&Element> {
         self.children.iter().find(|child| child.name == name)
     }
@@ -520,25 +516,6 @@ pub fn attribute_u32(element: &Element, name: &str) -> Result<u32> {
     parse_u32(&attribute.value, attribute.span.offset, name)
 }
 
-/// Read an attribute as a signed decimal value. `cache` is `-1` in most
-/// documents and `0` in one, so it cannot be unsigned.
-pub fn attribute_i64(element: &Element, name: &str) -> Result<i64> {
-    let attribute = element.attribute(name).ok_or_else(|| {
-        FormatError::new(
-            ErrorKind::MalformedXml,
-            element.span.offset,
-            format!("element '{}' has no '{name}' attribute", element.name),
-        )
-    })?;
-    attribute.value.trim().parse::<i64>().map_err(|_| {
-        FormatError::new(
-            ErrorKind::InvalidAttributeValue,
-            attribute.span.offset,
-            format!("'{name}' is not a decimal integer: '{}'", attribute.value),
-        )
-    })
-}
-
 /// Read decimal text, naming what it was supposed to be.
 pub fn parse_u32(text: &str, offset: u64, what: &str) -> Result<u32> {
     text.trim().parse::<u32>().map_err(|_| {
@@ -581,7 +558,9 @@ mod tests {
         let parsed = document("<a><b>str</b><b> 12 </b></a>").unwrap();
         let values: Vec<&str> = parsed
             .root
-            .children_named("b")
+            .children
+            .iter()
+            .filter(|child| child.name == "b")
             .map(Element::trimmed_text)
             .collect();
         assert_eq!(values, ["str", "12"]);

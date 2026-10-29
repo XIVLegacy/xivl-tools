@@ -466,7 +466,7 @@ fn parse_token(data: &[u8], base: u64, start: usize) -> Result<Token> {
 
     let (encoding, width) = match lead {
         0x00..=0xEF => (LengthEncoding::Direct, 0usize),
-        0xF0 => (LengthEncoding::Byte, 1),
+        LENGTH_ESCAPE_FLOOR => (LengthEncoding::Byte, 1),
         0xF1 => (LengthEncoding::ByteScaled, 1),
         0xF2 => (LengthEncoding::Word, 2),
         other => {
@@ -526,12 +526,6 @@ fn parse_token(data: &[u8], base: u64, start: usize) -> Result<Token> {
         length_bytes,
         payload,
     })
-}
-
-/// Lowercase hex of a token payload, for reports that name a payload
-/// without carrying client text.
-pub fn payload_hex(payload: &[u8]) -> String {
-    to_hex(payload)
 }
 
 #[cfg(test)]
@@ -651,10 +645,7 @@ mod tests {
         assert_eq!(rich.text_only(), "abcd");
         let codes: Vec<u8> = rich.tokens().map(|token| token.code).collect();
         assert_eq!(codes, [0x10, 0x13]);
-        let payloads: Vec<String> = rich
-            .tokens()
-            .map(|token| payload_hex(&token.payload))
-            .collect();
+        let payloads: Vec<String> = rich.tokens().map(|token| to_hex(&token.payload)).collect();
         assert_eq!(payloads, ["", "fefff3f3f3"]);
         assert_eq!(rich.encode(), bytes);
     }
@@ -696,7 +687,7 @@ mod tests {
         assert_eq!(rich.segments.len(), 1);
         let token = rich.tokens().next().unwrap();
         assert_eq!(token.code, 0x28);
-        assert_eq!(payload_hex(&token.payload), "02080103");
+        assert_eq!(to_hex(&token.payload), "02080103");
         assert_eq!(rich.encode(), bytes);
     }
 

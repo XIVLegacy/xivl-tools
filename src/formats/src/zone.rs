@@ -667,8 +667,8 @@ pub fn parse_layout_with_structure(data: &[u8]) -> Result<(Layout, LayoutInspect
     if data.len() < 0x40 || data.get(..24) != Some(b"MapLayoutResourceData\0\0\0") {
         return Err(zone_error(0, "expected MapLayoutResourceData header"));
     }
-    let scene_offset = u32_at(data, 0x20)? as usize;
-    let entry_count = bounded_u32(u32_at(data, 0x24)?, 0x24, "MapLayout entry")?;
+    let scene_offset = u32_le(data, 0x20)? as usize;
+    let entry_count = bounded_u32(u32_le(data, 0x24)?, 0x24, "MapLayout entry")?;
     let table_end = 0x40usize
         .checked_add(
             (entry_count as usize)
@@ -689,7 +689,7 @@ pub fn parse_layout_with_structure(data: &[u8]) -> Result<(Layout, LayoutInspect
         resources.push(LayoutResource {
             name: fixed_text(data, offset, 16)?,
             type_tag: fixed_text(data, offset + 16, 4)?,
-            resource_id: ResourceId::new(u32_at(data, offset + 20)?),
+            resource_id: ResourceId::new(u32_le(data, offset + 20)?),
         });
         rows.push(LayoutResourceInspection {
             span: Span::new(offset as u64, 32),
@@ -949,7 +949,7 @@ pub fn parse_phb(data: &[u8]) -> Result<Phb> {
             "expected PHB.GBD at file offset 0xC0",
         ));
     }
-    let gbd_size = u32_at(chunk, 8)? as usize;
+    let gbd_size = u32_le(chunk, 8)? as usize;
     let payload_end = gbd_size;
     let expected_end = payload_end
         .checked_add(16)
@@ -976,15 +976,15 @@ pub fn parse_phb(data: &[u8]) -> Result<Phb> {
         y: f32_le(chunk, 0x54)?,
         z: f32_le(chunk, 0x58)?,
     };
-    let vertex_offset = u32_at(chunk, 0x38)? as usize;
+    let vertex_offset = u32_le(chunk, 0x38)? as usize;
     let vertex_count = bounded_u32(
-        u32_at(chunk, 0x3C)?,
+        u32_le(chunk, 0x3C)?,
         chunk_start as u64 + 0x3C,
         "PHB vertex",
     )?;
-    let triangle_offset = u32_at(chunk, 0x60)? as usize;
+    let triangle_offset = u32_le(chunk, 0x60)? as usize;
     let triangle_count = bounded_u32(
-        u32_at(chunk, 0x64)?,
+        u32_le(chunk, 0x64)?,
         chunk_start as u64 + 0x64,
         "PHB triangle",
     )?;
@@ -1355,7 +1355,7 @@ fn parse_lyb_payload(
     if payload.len() < 0x18 || payload.get(..4) != Some(b"lyb\0") {
         return Err(zone_error(0, "expected lyb scene payload"));
     }
-    if u32_at(payload, 4)? != containing_size {
+    if u32_le(payload, 4)? != containing_size {
         return Err(zone_error(
             4,
             "lyb declared size does not match its containing SEDB size",
@@ -1363,8 +1363,8 @@ fn parse_lyb_payload(
     }
     inspection.relocation_flags = payload[0x0D];
     inspection.relocation_variant = payload[0x0E];
-    let node_table = u32_at(payload, 0x10)? as usize;
-    let object_list = u32_at(payload, 0x14)? as usize;
+    let node_table = u32_le(payload, 0x10)? as usize;
+    let object_list = u32_le(payload, 0x14)? as usize;
     inspection.node_type_table_offset = node_table as u32;
     inspection.object_list_offset = object_list as u32;
     if object_list < 0x18 || object_list > node_table || node_table > payload.len() {
@@ -1376,10 +1376,10 @@ fn parse_lyb_payload(
     }
     let mut objects = Vec::with_capacity(object_count);
     for index in 0..object_count {
-        objects.push(u32_at(payload, object_list + index * 4)?);
+        objects.push(u32_le(payload, object_list + index * 4)?);
     }
     inspection.object_list = objects.clone();
-    let first_fields = u32_at(payload, node_table + 4)? as usize;
+    let first_fields = u32_le(payload, node_table + 4)? as usize;
     if first_fields < node_table
         || first_fields > payload.len()
         || !(first_fields - node_table).is_multiple_of(16)
@@ -1399,9 +1399,9 @@ fn parse_lyb_payload(
     let mut node_types = Vec::with_capacity(type_count);
     for index in 0..type_count {
         let at = node_table + index * 16;
-        let extent_offset = u32_at(payload, at)? as usize;
-        let field_list = u32_at(payload, at + 4)? as usize;
-        let field_count = bounded_u32(u32_at(payload, at + 12)?, at as u64 + 12, "lyb field")?;
+        let extent_offset = u32_le(payload, at)? as usize;
+        let field_list = u32_le(payload, at + 4)? as usize;
+        let field_count = bounded_u32(u32_le(payload, at + 12)?, at as u64 + 12, "lyb field")?;
         let field_bytes = (field_count as usize)
             .checked_mul(4)
             .ok_or_else(|| zone_error(field_list as u64, "lyb field list overflows"))?;
@@ -1417,19 +1417,19 @@ fn parse_lyb_payload(
         let mut fields = Vec::with_capacity(field_count as usize);
         for field in 0..field_count as usize {
             let at = field_list + field * 4;
-            fields.push((u16_at(payload, at)?, u16_at(payload, at + 2)?));
+            fields.push((u16_le(payload, at)?, u16_le(payload, at + 2)?));
         }
-        let data_offset = u32_at(payload, extent_offset)?;
+        let data_offset = u32_le(payload, extent_offset)?;
         let node_count = bounded_u32(
-            u32_at(payload, extent_offset + 4)?,
+            u32_le(payload, extent_offset + 4)?,
             extent_offset as u64 + 4,
             "lyb node",
         )?;
-        let node_size = u32_at(payload, extent_offset + 8)?;
+        let node_size = u32_le(payload, extent_offset + 8)?;
         inspection.node_types.push(LayoutNodeTypeInspection {
             span: Span::new(inspection.payload.offset + at as u64, 16),
             extent_ref: extent_offset as u32,
-            extent_count: u32_at(payload, at + 8)?,
+            extent_count: u32_le(payload, at + 8)?,
             field_list_ref: field_list as u32,
             field_count,
             fields: fields.clone(),
@@ -2589,9 +2589,6 @@ fn bounded_u32(value: u32, offset: u64, field: &str) -> Result<u32> {
     Ok(value)
 }
 
-fn u32_at(data: &[u8], offset: usize) -> Result<u32> {
-    u32_le(data, offset)
-}
 fn u32_le(data: &[u8], offset: usize) -> Result<u32> {
     let bytes = data
         .get(offset..offset + 4)
@@ -2603,9 +2600,6 @@ fn u16_le(data: &[u8], offset: usize) -> Result<u16> {
         .get(offset..offset + 2)
         .ok_or_else(|| zone_error(offset as u64, "u16 is outside input"))?;
     Ok(u16::from_le_bytes([bytes[0], bytes[1]]))
-}
-fn u16_at(data: &[u8], offset: usize) -> Result<u16> {
-    u16_le(data, offset)
 }
 fn u32_be(data: &[u8], offset: usize, base: u64) -> Result<u32> {
     let bytes = data

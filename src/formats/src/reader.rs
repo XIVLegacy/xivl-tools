@@ -81,11 +81,6 @@ impl<'a> Reader<'a> {
         self.data
     }
 
-    /// Span of this reader's whole slice in the original input.
-    pub fn span(&self) -> Span {
-        Span::new(self.base, self.data.len() as u64)
-    }
-
     /// Move the cursor to a slice-relative position.
     pub fn seek(&mut self, position: usize) -> Result<()> {
         if position > self.data.len() {

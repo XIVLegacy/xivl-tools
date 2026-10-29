@@ -369,14 +369,6 @@ pub fn parse_string_stream(data: &[u8]) -> Result<Vec<SheetString>> {
     Ok(strings)
 }
 
-/// Does this input tile exactly as a stream of string values?
-///
-/// Used for reporting, never for a support claim: an enable file and a
-/// row-offset array carry no signature, so the caller names the format.
-pub fn looks_like_string_stream(data: &[u8]) -> bool {
-    !data.is_empty() && parse_string_stream(data).is_ok()
-}
-
 /// One column value inside a row.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ColumnValue {
@@ -674,9 +666,6 @@ mod tests {
         let strings = parse_string_stream(&data).unwrap();
         assert_eq!(strings.len(), 2);
         assert_eq!(strings[1].span.offset, strings[0].span.length);
-        assert!(looks_like_string_stream(&data));
-        assert!(!looks_like_string_stream(b"SEDB"));
-        assert!(!looks_like_string_stream(b""));
     }
 
     #[test]

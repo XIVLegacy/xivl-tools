@@ -2,6 +2,7 @@
 
 use png::{BitDepth, ColorType, Encoder};
 
+use crate::dds::max_mip_levels;
 use crate::digest::sha256_hex;
 use crate::error::{ErrorKind, FormatError, Result};
 use crate::gtex_pwib::{GtexFormat, GtexResource};
@@ -227,15 +228,6 @@ fn preview_refusal(gtex: &GtexResource) -> Option<&'static str> {
         return Some("GTEX mip count exceeds the dimension-derived preview limit");
     }
     None
-}
-
-fn max_mip_levels(width: u32, height: u32) -> u32 {
-    let max = width.max(height);
-    if max == 0 {
-        0
-    } else {
-        u32::BITS - max.leading_zeros()
-    }
 }
 
 fn checked_rgba_len(width: u32, height: u32) -> Result<usize> {
