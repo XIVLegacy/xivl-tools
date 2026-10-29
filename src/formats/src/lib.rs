@@ -21,6 +21,7 @@ pub mod error;
 pub mod fdt;
 pub mod gtex_pwib;
 pub mod inspect;
+pub mod layout_edit;
 pub mod lpb;
 pub mod lua51;
 pub mod lua_path;
