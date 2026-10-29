@@ -1221,6 +1221,22 @@ mod tests {
         assert_eq!(error.role, "renderObj");
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn zone_project_rejects_symbolic_client_root() {
+        let inputs = Inputs::new();
+        let alias = inputs.root.join("client-alias");
+        std::os::unix::fs::symlink(inputs.root.join("client"), &alias).unwrap();
+        let error = load_project(&inputs.root.join("project.json"), &alias).unwrap_err();
+        fs::remove_file(alias).unwrap();
+        assert_eq!(error.kind, ProjectFailureKind::InvalidPath);
+        assert_eq!(error.role, "client root");
+        assert_eq!(
+            error.detail,
+            "reparse points and symbolic links are not allowed"
+        );
+    }
+
     #[cfg(windows)]
     #[test]
     fn zone_project_rejects_junction_aliases_in_inputs_and_roots() {
