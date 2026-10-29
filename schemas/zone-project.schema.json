@@ -1,0 +1,262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Offline floor zone project",
+  "description": "Explicit relative input paths with exact byte identities and unchanged placement assertions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profile",
+    "layout",
+    "resources",
+    "collisionTemplate",
+    "geometry",
+    "binding",
+    "expectedPlacements"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "type": "integer"
+    },
+    "profile": {
+      "const": "floor-blockout-v1"
+    },
+    "layout": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/file"
+        },
+        {
+          "properties": {
+            "size": {
+              "maximum": 67108864
+            }
+          }
+        }
+      ]
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/resource"
+      }
+    },
+    "collisionTemplate": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/file"
+        },
+        {
+          "properties": {
+            "size": {
+              "maximum": 67108864
+            }
+          }
+        }
+      ]
+    },
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "renderObj",
+        "collisionJson"
+      ],
+      "properties": {
+        "renderObj": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/file"
+            },
+            {
+              "properties": {
+                "size": {
+                  "maximum": 67108864
+                }
+              }
+            }
+          ]
+        },
+        "collisionJson": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/file"
+            },
+            {
+              "properties": {
+                "size": {
+                  "maximum": 16777216
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "binding": {
+      "$ref": "#/$defs/binding"
+    },
+    "expectedPlacements": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/placement"
+      }
+    }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "size",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[\\x20-\\x7e]+$",
+          "allOf": [
+            {
+              "not": {
+                "pattern": "(^/|/$|//|[\\\\:<>\"|?*])"
+              }
+            },
+            {
+              "not": {
+                "pattern": "(^|/)\\.{1,2}(/|$)"
+              }
+            },
+            {
+              "not": {
+                "pattern": "[. ](/|$)"
+              }
+            },
+            {
+              "not": {
+                "pattern": "(^|/)([cC][oO][nN]|[pP][rR][nN]|[aA][uU][xX]|[nN][uU][lL]|[cC][oO][mM][1-9]|[lL][pP][tT][1-9])(\\.|/|$)"
+              }
+            }
+          ]
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 268435456
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^0x[0-9A-F]{8}$",
+      "not": {
+        "const": "0x00000000"
+      }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "row",
+        "id",
+        "tag",
+        "file"
+      ],
+      "properties": {
+        "row": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^[ -~]{0,4}$"
+        },
+        "file": {
+          "$ref": "#/$defs/file"
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resourceKey",
+        "modelRow",
+        "collisionRow",
+        "outputModelId",
+        "outputCollisionId"
+      ],
+      "properties": {
+        "resourceKey": {
+          "type": "string",
+          "pattern": "^[ -~]{1,16}$"
+        },
+        "modelRow": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "collisionRow": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "outputModelId": {
+          "$ref": "#/$defs/id"
+        },
+        "outputCollisionId": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "placement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceNode",
+        "sourceBlock",
+        "worldMatrix"
+      ],
+      "properties": {
+        "sourceNode": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "sourceBlock": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "worldMatrix": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "number",
+              "minimum": -3.4028234663852886e+38,
+              "maximum": 3.4028234663852886e+38
+            }
+          }
+        }
+      }
+    }
+  }
+}

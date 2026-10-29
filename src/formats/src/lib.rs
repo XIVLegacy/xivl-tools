@@ -12,6 +12,7 @@
 
 pub mod anomaly;
 pub mod blowfish;
+pub mod collision_json;
 pub mod config;
 pub mod csv;
 pub mod dds;

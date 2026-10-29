@@ -8,6 +8,7 @@ mod fixed_phrase;
 mod initial_registry;
 mod initial_registry_inputs;
 mod sheet_reference;
+pub mod zone_project;
 
 use xivl_formats::{ErrorKind, FormatError};
 

@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "profile": "floor-blockout-v1",
+  "layout": {
+    "path": "layout.bin",
+    "size": 1528,
+    "sha256": "9189da31740637f1a3562ed0385adc7890a37a6b8c90b5b924c335d67f453f1f"
+  },
+  "resources": [
+    {
+      "row": 1,
+      "id": "0x01020304",
+      "tag": "brt",
+      "file": {
+        "path": "model.bin",
+        "size": 672,
+        "sha256": "709d855d66fc17fd50320d58fdc228e20c153f0ed0c098fb2b2e981f4982d498"
+      }
+    },
+    {
+      "row": 2,
+      "id": "0x05060708",
+      "tag": "bhp",
+      "file": {
+        "path": "old-collision.bin",
+        "size": 1232,
+        "sha256": "78b664ca3b17443ecb3d5db7898ab9cdcce82ce3dfc13fc5e4c8732601d39e43"
+      }
+    },
+    {
+      "row": 3,
+      "id": "0x090A0B0C",
+      "tag": "tex",
+      "file": {
+        "path": "unplaced.bin",
+        "size": 34,
+        "sha256": "ad65250377745316e77d96c7fae4532575d53100c4ee22071ee3f1a05cdb44de"
+      }
+    }
+  ],
+  "collisionTemplate": {
+    "path": "collision-template.bin",
+    "size": 1232,
+    "sha256": "03acbe072c6173a68f43b47b40fe542ef8fc45e20b1cdb69a114eb79d7792fb0"
+  },
+  "geometry": {
+    "renderObj": {
+      "path": "floor.obj",
+      "size": 68,
+      "sha256": "cc5a3e94448f88515e4fc924bc0f39247902e4ddf8081ad98ebc0b106eb38e58"
+    },
+    "collisionJson": {
+      "path": "collision.json",
+      "size": 418,
+      "sha256": "ffd7bb097d1cd4f370f620a3f7bd329f142fedebd0e1c7229e17a64670803057"
+    }
+  },
+  "binding": {
+    "resourceKey": "floor",
+    "modelRow": 1,
+    "collisionRow": 2,
+    "outputModelId": "0xFFFF0001",
+    "outputCollisionId": "0xFFFF0002"
+  },
+  "expectedPlacements": [
+    {
+      "sourceNode": 1008,
+      "sourceBlock": 1008,
+      "worldMatrix": [
+        [
+          1,
+          0,
+          0,
+          16
+        ],
+        [
+          0,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          -16
+        ],
+        [
+          0,
+          0,
+          0,
+          1
+        ]
+      ]
+    },
+    {
+      "sourceNode": 1008,
+      "sourceBlock": 1008,
+      "worldMatrix": [
+        [
+          1,
+          0,
+          0,
+          16
+        ],
+        [
+          0,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          16
+        ],
+        [
+          0,
+          0,
+          0,
+          1
+        ]
+      ]
+    },
+    {
+      "sourceNode": 1008,
+      "sourceBlock": 1008,
+      "worldMatrix": [
+        [
+          1,
+          0,
+          0,
+          -16
+        ],
+        [
+          0,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          16
+        ],
+        [
+          0,
+          0,
+          0,
+          1
+        ]
+      ]
+    },
+    {
+      "sourceNode": 1008,
+      "sourceBlock": 1008,
+      "worldMatrix": [
+        [
+          1,
+          0,
+          0,
+          -16
+        ],
+        [
+          0,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          -16
+        ],
+        [
+          0,
+          0,
+          0,
+          1
+        ]
+      ]
+    }
+  ]
+}

@@ -15,6 +15,7 @@ CI runs --check to require byte-for-byte reproduction of every fixture.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import struct
 import sys
@@ -1247,6 +1248,283 @@ def build_fixtures() -> dict[str, bytes]:
         len(layout_payload) // 0x30 + 1,
     )
     fixtures["map-layout/extent-outside.bin"] = bytes(layout_bad_extent)
+
+    # -- zone-project ----------------------------------------------------
+    # Authoring templates have the writer's bounds and retained allocations.
+    floor_vertices = [(-16, 0, -16), (16, 0, -16), (16, 0, 16), (-16, 0, 16)]
+    floor_indices = [(0, 2, 1), (0, 3, 2)]
+    floor_obj = (
+        "o floor\n"
+        + "".join(f"v {x} {y} {z}\n" for x, y, z in floor_vertices)
+        + "f 1 3 2\nf 1 4 3\n"
+    )
+    fixtures["zone-project/floor.obj"] = floor_obj.encode("ascii")
+    fixtures["zone-project/collision.json"] = (
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "vertices": floor_vertices,
+                "triangles": [
+                    {"indices": indices, "surface": 0} for indices in floor_indices
+                ],
+            },
+            indent=2,
+        )
+        + "\n"
+    ).encode("ascii")
+
+    bounds = struct.pack(">6f", -1, -1, -1, 1, 1, 1)
+    author_positions = model_stms(
+        [(8, 3, 4, 0x00020000), (0, 4, 4, 0)],
+        4,
+        12,
+        b"".join(
+            struct.pack(">4h4x", *v, 32767)
+            for v in (
+                (-32767, 0, -32767),
+                (32767, 0, -32767),
+                (32767, 0, 32767),
+                (-32767, 0, 32767),
+            )
+        ),
+    )
+    author_indices = model_stms(
+        [(0, 0, 1, 0x00FF0000)], 6, 2, struct.pack(">6H", 0, 2, 1, 0, 3, 2)
+    )
+    author_mesh = model_container(
+        b"MESH",
+        [
+            model_chunk(b"HEAD", b"KEEP" + struct.pack(">II", 0, 2)),
+            author_indices,
+            author_positions,
+            model_container(b"AABB", [model_chunk(b"AABB", bounds)]),
+        ],
+    )
+    author_mdl = model_container(
+        b"MDL\0",
+        [
+            model_container(b"AABB", [model_chunk(b"AABB", bounds)]),
+            model_chunk(b"COMP", bounds),
+            author_mesh,
+        ],
+    )
+    fixtures["zone-project/client/model.bin"] = model_resource(
+        model_container(b"WRB\0", [model_container(b"MDLC", [author_mdl])])
+    )
+
+    phb = bytearray(0x4D0)
+    phb[:8] = b"SEDBPHB\0"
+    struct.pack_into("<IHHI", phb, 8, 0x120, 0x400, 0x48, 0x48)
+    phb[0x20:0x24] = b"KEEP"
+    gbd = 0xC0
+    phb[gbd : gbd + 8] = b"PHB.GBD\0"
+    for at, value in {
+        8: 0x400,
+        0xC: 0x212,
+        0x10: 1,
+        0x14: 0x80,
+        0x18: 0x80,
+        0x1C: 0x100,
+        0x20: 0x80,
+        0x24: 0x180,
+        0x28: 0x80,
+        0x2C: 0x200,
+        0x30: 0xF0,
+        0x34: 1,
+        0x38: 0x380,
+        0x3C: 4,
+        0x60: 0x300,
+        0x64: 2,
+        0x70: 0x400,
+        0x74: 0x400,
+        0x78: 0x400,
+        0x100: 0xFFFF0000,
+        0x184: 0xF0,
+        0x208: 0x100,
+        0x20C: 0xF0,
+        0x230: 1,
+        0x234: 0x50,
+        0x238: 0x60,
+        0x250: 0x70,
+        0x260: 0x80,
+        0x278: 0x80,
+        0x27C: 1,
+        0x280: 0x50,
+        0x284: 2,
+        0x288: 0x70,
+    }.items():
+        struct.pack_into("<I", phb, gbd + at, value)
+    for at, pad in ((0x40, 0.005), (0x210, 0.01), (0x290, 0.005)):
+        struct.pack_into(
+            "<8f",
+            phb,
+            gbd + at,
+            -16 - pad,
+            -pad,
+            -16 - pad,
+            1,
+            16 + pad,
+            pad,
+            16 + pad,
+            1,
+        )
+    phb[gbd + 0x200 : gbd + 0x208] = b"PHB.TBC\0"
+    phb[gbd + 0x270 : gbd + 0x278] = b"PHB.TBD\0"
+    struct.pack_into(
+        "<18H",
+        phb,
+        gbd + 0x2C0,
+        0x4000,
+        0x4000,
+        0x8000,
+        1,
+        0xC000,
+        0xC000,
+        0x8000,
+        0x4000,
+        0xFFFF,
+        0xFFFF,
+        0xFFFF,
+        3,
+        0,
+        0,
+        0,
+        0xFFFF,
+        0,
+        1,
+    )
+    for index, indices in enumerate(floor_indices):
+        struct.pack_into("<4H", phb, gbd + 0x300 + index * 8, *indices, 0)
+    for index, vertex in enumerate(floor_vertices):
+        struct.pack_into("<3f", phb, gbd + 0x380 + index * 12, *vertex)
+    phb[gbd + 0x2F0 : gbd + 0x300] = b"\xa5" * 16
+    phb[gbd + 0x400 :] = b"OPAQUE_PHB_TAIL_"
+    fixtures["zone-project/client/collision-template.bin"] = bytes(phb)
+    # The old binding is readable but outside the author's template profile.
+    struct.pack_into("<I", phb, gbd + 0xC, 0x213)
+    fixtures["zone-project/client/old-collision.bin"] = bytes(phb)
+    fixtures["zone-project/client/unplaced.bin"] = (
+        b"authored opaque direct dependency\n"
+    )
+
+    project_types = [
+        (name, 4 if name in ("class", "instance") else 1, width, fields)
+        for name, _, width, fields in layout_types
+        if name not in ("group", "box")
+    ]
+    node_table = 0x18 + 6 * 4
+    scene = bytearray(node_table + len(project_types) * 16)
+    scene[:4] = b"lyb\0"
+    struct.pack_into("<IIII", scene, 8, 0, 0x00020004, node_table, 0x18)
+
+    def project_allocate(data: bytes) -> int:
+        offset = len(scene)
+        scene.extend(data)
+        scene.extend(bytes(-len(scene) % 4))
+        return offset
+
+    nodes = {}
+    for index, (name, count, width, fields) in enumerate(project_types):
+        descriptors = project_allocate(b"".join(struct.pack("<HH", *v) for v in fields))
+        extent = project_allocate(bytes(12))
+        nodes[name] = project_allocate(bytes(count * width))
+        struct.pack_into(
+            "<4I", scene, node_table + index * 16, extent, descriptors, 1, len(fields)
+        )
+        struct.pack_into("<3I", scene, extent, nodes[name], count, width)
+    for index, (name, class_path) in enumerate(
+        zip(("settings", "instance", "tree", "attribute"), layout_class_paths[:4])
+    ):
+        class_node = nodes["class"] + index * 0x14
+        pointer = project_allocate(class_path.encode("ascii") + b"\0")
+        struct.pack_into("<I", scene, class_node + 8, pointer)
+        for item in range(4 if name == "instance" else 1):
+            struct.pack_into(
+                "<II", scene, nodes[name] + item * 0x40, index + 1, class_node
+            )
+    zone_name = project_allocate(b"synthetic-floor\0")
+    root_name = project_allocate(b"synthetic-floor/Test\0")
+    instance_name = project_allocate(b"tile\0")
+    resource_key = project_allocate(b"floor\0")
+    struct.pack_into(
+        "<6I",
+        scene,
+        0x18,
+        nodes["root"],
+        nodes["settings"],
+        *(nodes["instance"] + index * 0x40 for index in range(4)),
+    )
+    struct.pack_into("<3I", scene, nodes["root"], 0x1C, 5, root_name)
+    struct.pack_into("<I", scene, nodes["settings"] + 8, zone_name)
+    translations = [(16, 0, -16), (16, 0, 16), (-16, 0, 16), (-16, 0, -16)]
+    for index, translation in enumerate(translations):
+        at = nodes["instance"] + index * 0x40
+        struct.pack_into("<I", scene, at + 8, instance_name)
+        struct.pack_into("<3f", scene, at + 0x20, *translation)
+        struct.pack_into("<3I", scene, at + 0x34, nodes["range"], 1, nodes["tree"])
+    struct.pack_into("<2I", scene, nodes["tree"] + 0x30, nodes["child"], 1)
+    struct.pack_into("<I", scene, nodes["child"] + 0x18, nodes["attribute"])
+    struct.pack_into("<2I", scene, nodes["attribute"] + 0x24, resource_key, 1)
+    struct.pack_into("<3I", scene, nodes["range"], nodes["child"], 1, 0)
+    project_rows = [
+        ("tile", "", 0, 0),
+        ("floor", "brt", 0x01020304, 0x102),
+        ("floor", "bhp", 0x05060708, 2),
+        ("opaque", "tex", 0x090A0B0C, 3),
+    ]
+    fixtures["zone-project/client/layout.bin"] = map_layout_resource(
+        project_rows, bytes(scene)
+    )
+
+    def project_reference(path: str, *, client: bool = False) -> dict:
+        data = fixtures["zone-project/" + ("client/" if client else "") + path]
+        return {
+            "path": path,
+            "size": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+        }
+
+    project = {
+        "schemaVersion": 1,
+        "profile": "floor-blockout-v1",
+        "layout": project_reference("layout.bin", client=True),
+        "resources": [
+            {
+                "row": row,
+                "id": resource_id,
+                "tag": type_tag,
+                "file": project_reference(path, client=True),
+            }
+            for row, resource_id, type_tag, path in (
+                (1, "0x01020304", "brt", "model.bin"),
+                (2, "0x05060708", "bhp", "old-collision.bin"),
+                (3, "0x090A0B0C", "tex", "unplaced.bin"),
+            )
+        ],
+        "collisionTemplate": project_reference("collision-template.bin", client=True),
+        "geometry": {
+            "renderObj": project_reference("floor.obj"),
+            "collisionJson": project_reference("collision.json"),
+        },
+        "binding": {
+            "resourceKey": "floor",
+            "modelRow": 1,
+            "collisionRow": 2,
+            "outputModelId": "0xFFFF0001",
+            "outputCollisionId": "0xFFFF0002",
+        },
+        "expectedPlacements": [
+            {
+                "sourceNode": nodes["attribute"],
+                "sourceBlock": nodes["attribute"],
+                "worldMatrix": [[1, 0, 0, x], [0, 1, 0, y], [0, 0, 1, z], [0, 0, 0, 1]],
+            }
+            for x, y, z in translations
+        ],
+    }
+    fixtures["zone-project/project.json"] = (
+        json.dumps(project, indent=2) + "\n"
+    ).encode("ascii")
 
     # A well-formed non-composite container: 0x30 header, 0x20 payload, and
     # a totalSize that covers the whole file as a top-level container does.
