@@ -380,7 +380,7 @@ pub(crate) fn plan_bytes_options_with_pwib(
             "size": data.len() as u64,
         },
         "tool": {
-            "commit": option_env!("XIVL_GIT_COMMIT"),
+            "commit": null,
             "name": "xivl",
             "version": env!("CARGO_PKG_VERSION"),
         },

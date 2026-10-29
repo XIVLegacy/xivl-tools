@@ -22,8 +22,6 @@ use xivl_formats::{
 pub const MAX_INPUT_BYTES: u64 = 256 * 1024 * 1024;
 
 pub const CASE_DIR: &str = "tests/conformance/cases";
-/// Retained for source compatibility with early runner integrations.
-pub const ORACLE_DIR: &str = "tests/conformance/oracles";
 pub const PRIVATE_MANIFEST: &str = "tests/fixtures/private-manifest.json";
 pub const FIXTURE_ROOT_VARIABLE: &str = "XIVL_TOOLS_FIXTURE_ROOT";
 
@@ -57,9 +55,6 @@ pub struct Options {
     /// sets [`DEFAULT_FIXTURE_ROOT`].
     pub fixture_roots: BTreeMap<String, PathBuf>,
     pub require_private: bool,
-    /// Retained for source compatibility; the case schema has no oracle
-    /// records and the runner does not invoke external implementations.
-    pub oracles: BTreeMap<String, PathBuf>,
     pub update_expected: bool,
 }
 
@@ -81,9 +76,6 @@ pub struct CaseResult {
 #[derive(Debug, Clone, Default)]
 pub struct Report {
     pub results: Vec<CaseResult>,
-    /// Retained for source compatibility; it is always empty because oracle
-    /// cases are not part of the conformance schema.
-    pub oracle_skips: Vec<String>,
 }
 
 impl Report {

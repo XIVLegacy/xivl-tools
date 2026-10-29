@@ -52,7 +52,6 @@ pub struct ExtractFailure {
     message: String,
     code: u8,
     kind: ExtractFailureKind,
-    offset: Option<u64>,
 }
 
 impl ExtractFailure {
@@ -61,7 +60,6 @@ impl ExtractFailure {
             message: message.into(),
             code: 1,
             kind: ExtractFailureKind::Usage,
-            offset: None,
         }
     }
 
@@ -70,7 +68,6 @@ impl ExtractFailure {
             message: message.into(),
             code: 1,
             kind: ExtractFailureKind::Io,
-            offset: None,
         }
     }
 
@@ -79,7 +76,6 @@ impl ExtractFailure {
             message: message.into(),
             code: 2,
             kind,
-            offset: None,
         }
     }
 
@@ -88,7 +84,6 @@ impl ExtractFailure {
             message: message.into(),
             code: 2,
             kind: ExtractFailureKind::Format(error.kind()),
-            offset: Some(error.offset()),
         }
     }
 
@@ -102,9 +97,5 @@ impl ExtractFailure {
 
     pub fn kind(&self) -> ExtractFailureKind {
         self.kind
-    }
-
-    pub fn offset(&self) -> Option<u64> {
-        self.offset
     }
 }

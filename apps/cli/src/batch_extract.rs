@@ -733,7 +733,7 @@ fn render_batch(
             "resources": resources,
             "schemaVersion": BATCH_SCHEMA_VERSION,
             "tool": {
-                "commit": option_env!("XIVL_GIT_COMMIT"),
+                "commit": null,
                 "name": "xivl",
                 "version": env!("CARGO_PKG_VERSION"),
             },
