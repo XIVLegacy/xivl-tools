@@ -1,4 +1,4 @@
-//! Explicit, identity-pinned inputs for an offline floor project.
+//! Identity-pinned inputs and in-memory preparation for an offline floor project.
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -8,10 +8,19 @@ use std::path::{Component, Path, PathBuf};
 
 use serde::de::{value::MapAccessDeserializer, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer};
+use serde_json::{json, Value};
 use xivl_formats::collision_json::{parse_geometry_json, MAX_GEOMETRY_JSON_BYTES};
 use xivl_formats::digest::sha256_hex;
-use xivl_formats::phb_author::CollisionGeometry;
-use xivl_formats::zone::{parse_layout_with_structure, Layout, LayoutInspection};
+use xivl_formats::layout_edit::{
+    edit_layout_binding, LayoutBindingPlacement, LayoutBindingRequest, LayoutBindingRow,
+};
+use xivl_formats::model_import::import_obj_to_model;
+use xivl_formats::phb_author::{author_phb, CollisionGeometry};
+use xivl_formats::sedb::{parse_container, Container, EntryBody, RES_DIRECTORY_ENTRY_SIZE};
+use xivl_formats::zone::{
+    flatten_zone, parse_layout_with_structure, parse_model, parse_phb, FlattenedZone, Layout,
+    LayoutInspection, Matrix4, Model, Vec3,
+};
 use xivl_formats::{ErrorKind, FormatError, ResourceId};
 
 /// Limits apply before parsing or allocating the declared input size.
@@ -201,6 +210,452 @@ pub struct LoadedZoneProject {
     pub collision_geometry: CollisionGeometry,
 }
 
+#[derive(Debug)]
+pub struct PreparedZoneProject {
+    pub layout: Vec<u8>,
+    pub model: Vec<u8>,
+    pub collision: Vec<u8>,
+    pub report: Value,
+}
+
+/// Author and verify all three resources in memory without publishing output files.
+pub fn prepare_project(
+    project_path: &Path,
+    client_root: &Path,
+) -> Result<PreparedZoneProject, ProjectFailure> {
+    prepare_loaded(load_project(project_path, client_root)?)
+}
+
+fn prepare_loaded(loaded: LoadedZoneProject) -> Result<PreparedZoneProject, ProjectFailure> {
+    let project = &loaded.project;
+    let binding = &project.binding;
+    let selected = |row| {
+        loaded
+            .resources
+            .iter()
+            .find(|resource| resource.declaration.row == row)
+            .ok_or_else(|| invalid("selected resource is missing from the direct inventory"))
+    };
+    let model_source = selected(binding.model_row)?;
+    let collision_source = selected(binding.collision_row)?;
+    let obj = std::str::from_utf8(&loaded.render_obj.bytes).map_err(|error| {
+        ProjectFailure::format(
+            "renderObj",
+            FormatError::new(
+                ErrorKind::InvalidAttributeValue,
+                error.valid_up_to() as u64,
+                "OBJ must be UTF-8",
+            ),
+        )
+    })?;
+    let model = import_obj_to_model(&model_source.bytes, obj)
+        .map_err(|error| ProjectFailure::format("model/renderObj", error))?;
+    let collision = author_phb(&loaded.collision_template.bytes, &loaded.collision_geometry)
+        .map_err(|error| ProjectFailure::format("collisionTemplate/collisionJson", error))?;
+    let request = LayoutBindingRequest {
+        resource_key: binding.resource_key.clone(),
+        model: LayoutBindingRow {
+            row: binding.model_row,
+            expected_id: model_source.declaration.id.0,
+            output_id: binding.output_model_id.0,
+        },
+        collision: LayoutBindingRow {
+            row: binding.collision_row,
+            expected_id: collision_source.declaration.id.0,
+            output_id: binding.output_collision_id.0,
+        },
+        expected_placements: project.expected_placements.clone().map(|placement| {
+            LayoutBindingPlacement {
+                source_node: placement.source_node,
+                source_block: placement.source_block,
+                world_matrix: Matrix4 {
+                    values: placement.world_matrix,
+                },
+            }
+        }),
+    };
+    let layout = edit_layout_binding(&loaded.layout.bytes, &request)
+        .map_err(|error| ProjectFailure::format("layout binding", error))?;
+    let (output_layout, _) = parse_layout_with_structure(&layout)
+        .map_err(|error| ProjectFailure::format("prepared layout", error))?;
+    let output_model =
+        parse_model(&model).map_err(|error| ProjectFailure::format("prepared model", error))?;
+    let output_phb = parse_phb(&collision)
+        .map_err(|error| ProjectFailure::format("prepared collision", error))?;
+    let (model_allocation, model_offset) =
+        verify_allocation(&model_source.bytes, &model, "model", true)?;
+    let (collision_allocation, collision_offset) = verify_allocation(
+        &loaded.collision_template.bytes,
+        &collision,
+        "collision",
+        false,
+    )?;
+    let flattened = flatten_zone(
+        &output_layout,
+        &[(binding.output_collision_id.0, output_phb)],
+    )
+    .map_err(|error| ProjectFailure::format("prepared collision placements", error))?;
+    let bounds = compare_triangles(
+        &output_layout,
+        &output_model,
+        &flattened,
+        model_offset,
+        collision_offset,
+    )?;
+    let resources = loaded
+        .resources
+        .iter()
+        .map(|resource| {
+            let row = resource.declaration.row;
+            json!({
+                "row": row,
+                "id": resource.declaration.id.0.to_hex(),
+                "tag": resource.declaration.tag,
+                "input": input_report(&resource.declaration.file),
+                "retained": row != binding.model_row && row != binding.collision_row,
+            })
+        })
+        .collect::<Vec<_>>();
+    let mut selected_rows = [binding.model_row, binding.collision_row];
+    selected_rows.sort();
+    let selected_rows = selected_rows.map(|row| {
+        let source = &loaded.layout_inspection.rows[row as usize];
+        let output_id = if row == binding.model_row {
+            binding.output_model_id.0
+        } else {
+            binding.output_collision_id.0
+        };
+        json!({
+            "row": row, "span": source.span.to_json(),
+            "changedSpan": {"offset": source.span.offset + 0x14, "length": 4},
+            "sourceId": source.resource_id.to_hex(), "outputId": output_id.to_hex(),
+        })
+    });
+    let mut placements = flattened
+        .placements
+        .iter()
+        .map(|placement| {
+            json!({
+                "sourceNode": placement.source_node, "sourceBlock": placement.source_block,
+                "worldMatrix": placement.world_matrix.values,
+            })
+        })
+        .collect::<Vec<_>>();
+    // Sort whole identities, including matrices: repeated source nodes are valid.
+    placements.sort_by_cached_key(Value::to_string);
+    let report = json!({
+        "schemaVersion": 1, "profile": project.profile,
+        "toolVersion": env!("CARGO_PKG_VERSION"),
+        "status": "offline-validated", "clientVerification": "unverified",
+        "inputs": {
+            "layout": input_report(&loaded.layout.reference),
+            "collisionTemplate": input_report(&loaded.collision_template.reference),
+            "renderObj": input_report(&loaded.render_obj.reference),
+            "collisionJson": input_report(&loaded.collision_json.reference),
+        },
+        "resources": resources,
+        "outputs": {
+            "layout": output_report("layout.dat", &layout, None),
+            "model": output_report("model.dat", &model, Some(binding.output_model_id.0)),
+            "collision": output_report("collision.dat", &collision, Some(binding.output_collision_id.0)),
+        },
+        "binding": {"resourceKey": binding.resource_key, "selectedRows": selected_rows},
+        "coverage": {
+            "directTable": {"status": "complete", "nonzeroRows": loaded.resources.len()},
+            "sceneDependencies": "unresolved", "transitiveDependencies": "unresolved",
+        },
+        "checks": {
+            "placementCount": flattened.placements.len(),
+            "flattenedVertexCount": flattened.vertices.len(), "triangleCount": flattened.faces.len(),
+            "worldBounds": bounds, "orderedTriangles": "exact-finite-equality",
+            "placements": placements,
+            "modelAllocation": model_allocation, "collisionAllocation": collision_allocation,
+            "layoutOutsideBindingFields": "byte-identical",
+        },
+    });
+    Ok(PreparedZoneProject {
+        layout,
+        model,
+        collision,
+        report,
+    })
+}
+
+fn input_report(reference: &FileReference) -> Value {
+    json!({"path": reference.path, "size": reference.size, "sha256": reference.sha256})
+}
+
+fn output_report(path: &str, bytes: &[u8], id: Option<ResourceId>) -> Value {
+    let mut report = json!({"path": path, "size": bytes.len(), "sha256": sha256_hex(bytes)});
+    if let Some(id) = id {
+        report["id"] = json!(id.to_hex());
+    }
+    report
+}
+
+fn verify_allocation(
+    before: &[u8],
+    after: &[u8],
+    role: &str,
+    require_res: bool,
+) -> Result<(Value, u64), ProjectFailure> {
+    let source = parse_container(before, 0).map_err(|error| ProjectFailure::format(role, error))?;
+    let output = parse_container(after, 0).map_err(|error| ProjectFailure::format(role, error))?;
+    // Without a RES directory, PHB retention rests on structure plus file length.
+    let directory_retained = source.res.as_ref().is_none_or(|res| {
+        let start = usize::from(source.directory_start());
+        let end = start + res.subresource_count as usize * RES_DIRECTORY_ENTRY_SIZE as usize;
+        matches!((before.get(start..end), after.get(start..end)), (Some(a), Some(b)) if a == b)
+    });
+    if before.len() != after.len()
+        || (require_res && source.res.is_none())
+        || !directory_retained
+        || !same_allocation(&source, &output)
+    {
+        return Err(invalid_resource(
+            role,
+            u64::from(source.directory_start()),
+            "prepared resource changed its container allocation or RES directory",
+        ));
+    }
+    Ok((
+        json!({
+            "status": "retained", "fileSize": after.len(),
+            "declaredSize": output.declared_size, "resolvedSpan": output.span.to_json(),
+            "directoryStart": output.directory_start(),
+            "entries": output.entries.iter().map(|entry| json!({
+                "span": entry.span.to_json(), "kind": entry.body.kind_name(),
+            })).collect::<Vec<_>>(),
+        }),
+        u64::from(source.directory_start()),
+    ))
+}
+
+fn same_allocation(before: &Container, after: &Container) -> bool {
+    before.span == after.span
+        && before.subtype == after.subtype
+        && before.unknown_a == after.unknown_a
+        && before.flags == after.flags
+        && before.header_size == after.header_size
+        && before.declared_size == after.declared_size
+        && before.total_size == after.total_size
+        && before.header_unknown == after.header_unknown
+        && before.res == after.res
+        && before.anomalies == after.anomalies
+        && before.directory_start() == after.directory_start()
+        && before.entries.len() == after.entries.len()
+        && before.entries.iter().zip(&after.entries).all(|(a, b)| {
+            a.span == b.span
+                && match (&a.body, &b.body) {
+                    (
+                        EntryBody::Directory { entry_count: x },
+                        EntryBody::Directory { entry_count: y },
+                    ) => {
+                        x == y
+                            && a.sha256 == b.sha256
+                            && a.span.offset
+                                == before.span.offset + u64::from(before.directory_start())
+                    }
+                    (
+                        EntryBody::Subresource {
+                            index: ai,
+                            declared_offset: ao,
+                            declared_size: az,
+                            kind: ak,
+                            child: ac,
+                        },
+                        EntryBody::Subresource {
+                            index: bi,
+                            declared_offset: bo,
+                            declared_size: bz,
+                            kind: bk,
+                            child: bc,
+                        },
+                    ) => {
+                        ai == bi
+                            && ao == bo
+                            && az == bz
+                            && ak == bk
+                            && match (ac, bc) {
+                                (Some(a), Some(b)) => same_allocation(a, b),
+                                (None, None) => true,
+                                _ => false,
+                            }
+                    }
+                    (EntryBody::Payload, EntryBody::Payload) | (EntryBody::Gap, EntryBody::Gap) => {
+                        true
+                    }
+                    _ => false,
+                }
+        })
+}
+
+fn finite(vertex: Vec3) -> bool {
+    [vertex.x, vertex.y, vertex.z]
+        .iter()
+        .all(|value| value.is_finite())
+}
+
+fn finite_bounds(
+    vertices: impl IntoIterator<Item = Vec3>,
+    role: &str,
+    offset: u64,
+) -> Result<[[f32; 3]; 2], ProjectFailure> {
+    let mut min = [f32::INFINITY; 3];
+    let mut max = [f32::NEG_INFINITY; 3];
+    let mut empty = true;
+    for vertex in vertices {
+        empty = false;
+        if !finite(vertex) {
+            return Err(invalid_resource(
+                role,
+                offset,
+                "prepared world coordinates must be finite",
+            ));
+        }
+        for (axis, value) in [vertex.x, vertex.y, vertex.z].into_iter().enumerate() {
+            min[axis] = min[axis].min(value);
+            max[axis] = max[axis].max(value);
+        }
+    }
+    if empty {
+        return Err(invalid_resource(role, offset, "prepared geometry is empty"));
+    }
+    Ok([min, max])
+}
+
+fn compare_triangles(
+    layout: &Layout,
+    model: &Model,
+    collision: &FlattenedZone,
+    model_offset: u64,
+    collision_offset: u64,
+) -> Result<[[f32; 3]; 2], ProjectFailure> {
+    let vertices_per_placement = model
+        .parts
+        .iter()
+        .map(|part| part.vertices.len())
+        .sum::<usize>();
+    let triangles_per_placement = model
+        .parts
+        .iter()
+        .map(|part| part.indices.len() / 3)
+        .sum::<usize>();
+    if triangles_per_placement == 0
+        || collision.placements.len() != layout.objects.len()
+        || collision.faces.len() != triangles_per_placement * layout.objects.len()
+    {
+        return Err(invalid_resource(
+            "collision",
+            collision_offset,
+            "render and collision triangle or placement counts differ",
+        ));
+    }
+    if collision.vertices.len() != vertices_per_placement * layout.objects.len()
+        || layout.objects.iter().any(|object| {
+            collision
+                .collision_resources
+                .iter()
+                .find(|resource| Some(resource.resource_id) == object.phb)
+                .is_none_or(|resource| {
+                    resource
+                        .hulls
+                        .iter()
+                        .map(|hull| hull.vertex_count)
+                        .sum::<usize>()
+                        != vertices_per_placement
+                })
+        })
+    {
+        return Err(invalid_resource(
+            "collision",
+            collision_offset,
+            "render and collision vertex counts differ per placement",
+        ));
+    }
+    let mut faces = collision.faces.iter();
+    for (object_index, object) in layout.objects.iter().enumerate() {
+        let placement = &collision.placements[object_index];
+        if placement.source_node != object.source_node
+            || placement.source_block != object.source_block
+            || placement.world_matrix != object.world_matrix
+            || placement.resource_key != object.resource_key
+            || placement.model_resource_id != object.model
+            || placement.phb_resource_id != object.phb
+        {
+            return Err(invalid_resource(
+                "collision",
+                collision_offset,
+                "render and collision placement identities differ",
+            ));
+        }
+        for (part_index, part) in model.parts.iter().enumerate() {
+            let vertices = part
+                .vertices
+                .iter()
+                .map(|vertex| object.world_matrix.transform_point(*vertex))
+                .collect::<Vec<_>>();
+            finite_bounds(vertices.iter().copied(), "model", model_offset)?;
+            for (triangle_index, triangle) in part.indices.as_chunks::<3>().0.iter().enumerate() {
+                let face = faces.next().ok_or_else(|| {
+                    invalid_resource(
+                        "collision",
+                        collision_offset,
+                        "collision triangle is missing",
+                    )
+                })?;
+                if face.source.object_index != object_index
+                    || face.source.placement_index != object_index
+                    || face.source.resource_id != object.phb
+                    || face.source.model_resource_id != object.model
+                    || triangle
+                        .iter()
+                        .zip(face.indices)
+                        .any(|(render, collision_index)| {
+                            let render = vertices.get(*render as usize);
+                            let collision = collision.vertices.get(collision_index as usize);
+                            match (render, collision) {
+                                (Some(a), Some(b)) => {
+                                    !finite(*a)
+                                        || !finite(*b)
+                                        || [a.x, a.y, a.z].map(f32::to_bits)
+                                            != [b.x, b.y, b.z].map(f32::to_bits)
+                                }
+                                _ => true,
+                            }
+                        })
+                {
+                    return Err(invalid_resource("collision", collision_offset, format!("ordered render/collision triangle mismatch at placement {object_index}, part {part_index}, triangle {triangle_index}")));
+                }
+            }
+        }
+    }
+    let render_bounds = finite_bounds(
+        layout.objects.iter().flat_map(|object| {
+            model.parts.iter().flat_map(move |part| {
+                part.vertices
+                    .iter()
+                    .map(move |vertex| object.world_matrix.transform_point(*vertex))
+            })
+        }),
+        "model",
+        model_offset,
+    )?;
+    let collision_bounds = finite_bounds(
+        collision.vertices.iter().copied(),
+        "collision",
+        collision_offset,
+    )?;
+    if render_bounds != collision_bounds {
+        return Err(invalid_resource(
+            "collision",
+            collision_offset,
+            "render and collision world bounds differ",
+        ));
+    }
+    Ok(collision_bounds)
+}
+
 /// Parse at most 1 MiB. File paths and identities are validated independently of the schema.
 pub fn parse_project(bytes: &[u8]) -> Result<ZoneProject, ProjectFailure> {
     if bytes.len() as u64 > MAX_PROJECT_BYTES {
@@ -233,6 +688,15 @@ pub fn parse_project(bytes: &[u8]) -> Result<ZoneProject, ProjectFailure> {
 
 fn invalid(detail: impl Into<String>) -> ProjectFailure {
     ProjectFailure::new(ProjectFailureKind::InvalidProject, "project", detail)
+}
+
+fn invalid_resource(role: &str, offset: u64, detail: impl Into<String>) -> ProjectFailure {
+    ProjectFailure {
+        kind: ProjectFailureKind::InvalidProject,
+        role: role.into(),
+        offset: Some(offset),
+        detail: detail.into(),
+    }
 }
 
 fn validate_project(project: &ZoneProject) -> Result<(), ProjectFailure> {
@@ -798,6 +1262,316 @@ mod tests {
             let _ = fs::remove_dir(self.root.join("client"));
             let _ = fs::remove_dir(&self.root);
         }
+    }
+
+    #[test]
+    fn zone_project_prepares_floor_without_writing_and_reports_deterministically() {
+        let inputs = Inputs::new();
+        let prepare = || {
+            prepare_project(
+                &inputs.root.join("project.json"),
+                &inputs.root.join("client"),
+            )
+            .unwrap()
+        };
+        let prepared = prepare();
+        let again = prepare();
+        assert_eq!(prepared.layout, again.layout);
+        assert_eq!(prepared.model, again.model);
+        assert_eq!(prepared.collision, again.collision);
+        assert_eq!(prepared.report, again.report);
+        let report = &prepared.report;
+        assert_eq!(report["status"], "offline-validated");
+        assert_eq!(report["checks"]["placementCount"], 4);
+        assert_eq!(report["checks"]["flattenedVertexCount"], 16);
+        assert_eq!(report["checks"]["triangleCount"], 8);
+        assert_eq!(
+            report["checks"]["worldBounds"],
+            json!([[-32.0, 0.0, -32.0], [32.0, 0.0, 32.0]])
+        );
+        assert_eq!(
+            report["coverage"]["directTable"],
+            json!({"status": "complete", "nonzeroRows": 3})
+        );
+        assert_eq!(report["coverage"]["sceneDependencies"], "unresolved");
+        assert_eq!(report["coverage"]["transitiveDependencies"], "unresolved");
+        assert_eq!(report["resources"][2]["tag"], "tex");
+        assert_eq!(report["resources"][2]["retained"], true);
+        assert_eq!(report["outputs"]["model"]["id"], "0xFFFF0001");
+        assert_eq!(report["outputs"]["collision"]["id"], "0xFFFF0002");
+        for (name, bytes) in [
+            ("layout", &prepared.layout),
+            ("model", &prepared.model),
+            ("collision", &prepared.collision),
+        ] {
+            assert_eq!(report["outputs"][name]["sha256"], sha256_hex(bytes));
+            assert_eq!(report["outputs"][name]["size"], bytes.len());
+        }
+        let layout = xivl_formats::zone::parse_layout(&prepared.layout).unwrap();
+        assert!(layout
+            .objects
+            .iter()
+            .all(|object| object.model == Some(ResourceId::new(0xFFFF0001))
+                && object.phb == Some(ResourceId::new(0xFFFF0002))));
+        let model = parse_model(&prepared.model).unwrap();
+        let collision = flatten_zone(
+            &layout,
+            &[(
+                ResourceId::new(0xFFFF0002),
+                parse_phb(&prepared.collision).unwrap(),
+            )],
+        )
+        .unwrap();
+        let first_triangle = collision.faces[0]
+            .indices
+            .map(|index| collision.vertices[index as usize]);
+        assert_eq!(
+            first_triangle,
+            [
+                Vec3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: -32.0
+                },
+                Vec3 {
+                    x: 32.0,
+                    y: 0.0,
+                    z: 0.0
+                },
+                Vec3 {
+                    x: 32.0,
+                    y: 0.0,
+                    z: -32.0
+                },
+            ]
+        );
+        assert_eq!(model.parts[0].indices, [0, 2, 1, 0, 3, 2]);
+        let before = inputs.load().unwrap();
+        let mut allowed = Vec::new();
+        for row in [1, 2] {
+            let at = before.layout_inspection.rows[row].span.offset as usize + 0x14;
+            allowed.extend(at..at + 4);
+        }
+        for (at, (a, b)) in before.layout.bytes.iter().zip(&prepared.layout).enumerate() {
+            assert!(a == b || allowed.contains(&at));
+        }
+        for (path, bytes) in FIXTURES {
+            assert_eq!(fs::read(inputs.root.join(path)).unwrap(), *bytes);
+        }
+        assert_eq!(fs::read_dir(&inputs.root).unwrap().count(), 4);
+        assert_eq!(fs::read_dir(inputs.root.join("client")).unwrap().count(), 5);
+        assert!(!report.to_string().contains(inputs.root.to_str().unwrap()));
+        let mut project: Value = serde_json::from_slice(PROJECT).unwrap();
+        project["resources"].as_array_mut().unwrap().reverse();
+        project["expectedPlacements"]
+            .as_array_mut()
+            .unwrap()
+            .reverse();
+        inputs.save(&project);
+        assert_eq!(prepare().report, prepared.report);
+    }
+
+    #[test]
+    fn zone_project_refuses_same_bounds_collision_changes_and_reversed_winding() {
+        for reversed in [false, true] {
+            let inputs = Inputs::new();
+            let mut geometry: Value =
+                serde_json::from_slice(&fs::read(inputs.root.join("collision.json")).unwrap())
+                    .unwrap();
+            if reversed {
+                geometry["triangles"][0]["indices"] = json!([0, 1, 2]);
+            } else {
+                geometry["vertices"][0][0] = json!(f32::from_bits((-16.0f32).to_bits() - 1));
+            }
+            let bytes = serde_json::to_vec(&geometry).unwrap();
+            fs::write(inputs.root.join("collision.json"), &bytes).unwrap();
+            let mut project: Value = serde_json::from_slice(PROJECT).unwrap();
+            project["geometry"]["collisionJson"]["size"] = json!(bytes.len());
+            project["geometry"]["collisionJson"]["sha256"] = json!(sha256_hex(&bytes));
+            inputs.save(&project);
+            let loaded = inputs.load().unwrap();
+            let authored =
+                author_phb(&loaded.collision_template.bytes, &loaded.collision_geometry).unwrap();
+            let zone = flatten_zone(
+                &loaded.parsed_layout,
+                &[(ResourceId::new(0x05060708), parse_phb(&authored).unwrap())],
+            )
+            .unwrap();
+            assert_eq!(
+                finite_bounds(zone.vertices.iter().copied(), "collision", 0x48).unwrap(),
+                [[-32.0, 0.0, -32.0], [32.0, 0.0, 32.0]]
+            );
+            assert_eq!(zone.faces.len(), 8);
+            let error = prepare_project(
+                &inputs.root.join("project.json"),
+                &inputs.root.join("client"),
+            )
+            .unwrap_err();
+            assert_eq!(error.kind, ProjectFailureKind::InvalidProject);
+            assert_eq!(error.role, "collision");
+            assert_eq!(error.offset, Some(0x48));
+            assert_eq!(
+                error.detail,
+                "ordered render/collision triangle mismatch at placement 0, part 0, triangle 0"
+            );
+        }
+    }
+
+    #[test]
+    fn zone_project_refuses_unreferenced_collision_vertex_outside_render_bounds() {
+        let inputs = Inputs::new();
+        let mut loaded = inputs.load().unwrap();
+        loaded.collision_geometry.vertices.push(Vec3 {
+            x: 64.0,
+            y: 0.0,
+            z: 0.0,
+        });
+        let error = prepare_loaded(loaded).unwrap_err();
+        assert_eq!(error.kind, ProjectFailureKind::InvalidProject);
+        assert_eq!(error.role, "collision");
+        assert_eq!(error.offset, Some(0x48));
+        assert_eq!(
+            error.detail,
+            "render and collision vertex counts differ per placement"
+        );
+
+        let mut loaded = inputs.load().unwrap();
+        loaded.parsed_layout.objects.truncate(1);
+        loaded.collision_geometry.vertices.push(Vec3 {
+            x: 64.0,
+            y: 0.0,
+            z: 0.0,
+        });
+        let bytes =
+            author_phb(&loaded.collision_template.bytes, &loaded.collision_geometry).unwrap();
+        let zone = flatten_zone(
+            &loaded.parsed_layout,
+            &[(ResourceId::new(0x05060708), parse_phb(&bytes).unwrap())],
+        )
+        .unwrap();
+        let prepared = prepare_loaded(inputs.load().unwrap()).unwrap();
+        let mut model = parse_model(&prepared.model).unwrap();
+        model.parts[0].vertices.push(Vec3::ZERO);
+        let error =
+            compare_triangles(&loaded.parsed_layout, &model, &zone, 0x40, 0x48).unwrap_err();
+        assert_eq!(error.kind, ProjectFailureKind::InvalidProject);
+        assert_eq!(error.role, "collision");
+        assert_eq!(error.offset, Some(0x48));
+        assert_eq!(error.detail, "render and collision world bounds differ");
+    }
+
+    #[test]
+    fn zone_project_refuses_signed_zero_triangle_difference() {
+        let inputs = Inputs::new();
+        let prepared = prepare_loaded(inputs.load().unwrap()).unwrap();
+        let (layout, _) = parse_layout_with_structure(&prepared.layout).unwrap();
+        let model = parse_model(&prepared.model).unwrap();
+        let mut zone = flatten_zone(
+            &layout,
+            &[(
+                ResourceId::new(0xFFFF0002),
+                parse_phb(&prepared.collision).unwrap(),
+            )],
+        )
+        .unwrap();
+        compare_triangles(&layout, &model, &zone, 0x40, 0x48).unwrap();
+        assert_eq!(zone.vertices[0].y.to_bits(), 0.0f32.to_bits());
+        zone.vertices[0].y = -0.0;
+        let error = compare_triangles(&layout, &model, &zone, 0x40, 0x48).unwrap_err();
+        assert_eq!(error.kind, ProjectFailureKind::InvalidProject);
+        assert_eq!(error.role, "collision");
+        assert_eq!(error.offset, Some(0x48));
+        assert_eq!(
+            error.detail,
+            "ordered render/collision triangle mismatch at placement 0, part 0, triangle 0"
+        );
+    }
+
+    #[test]
+    fn zone_project_preparation_preserves_writer_failure_kinds_and_offsets() {
+        for (path, pointer, at, kind, role) in [
+            (
+                "client/model.bin",
+                "/resources/0/file",
+                0,
+                ErrorKind::BadMagic,
+                "model/renderObj",
+            ),
+            (
+                "client/collision-template.bin",
+                "/collisionTemplate",
+                0xcc,
+                ErrorKind::InvalidAttributeValue,
+                "collisionTemplate/collisionJson",
+            ),
+        ] {
+            let inputs = Inputs::new();
+            let mut bytes = fs::read(inputs.root.join(path)).unwrap();
+            bytes[at] ^= 1;
+            fs::write(inputs.root.join(path), &bytes).unwrap();
+            let mut project: Value = serde_json::from_slice(PROJECT).unwrap();
+            project.pointer_mut(pointer).unwrap()["sha256"] = json!(sha256_hex(&bytes));
+            inputs.save(&project);
+            let error = prepare_project(
+                &inputs.root.join("project.json"),
+                &inputs.root.join("client"),
+            )
+            .unwrap_err();
+            assert_eq!(error.kind, ProjectFailureKind::Format(kind));
+            assert_eq!(error.offset, Some(at as u64));
+            assert_eq!(error.role, role);
+        }
+    }
+
+    #[test]
+    fn zone_project_checks_retained_allocations_without_comparing_payload_hashes() {
+        let inputs = Inputs::new();
+        let loaded = inputs.load().unwrap();
+        let prepared = prepare_project(
+            &inputs.root.join("project.json"),
+            &inputs.root.join("client"),
+        )
+        .unwrap();
+        let original = &loaded.resources[0].bytes;
+        let source = parse_container(original, 0).unwrap();
+        let authored = parse_container(&prepared.model, 0).unwrap();
+        assert_ne!(source, authored);
+        assert!(same_allocation(&source, &authored));
+        let mut changed = prepared.model.clone();
+        let directory = source.directory_start() as usize;
+        changed[directory + 12] ^= 1;
+        let error = verify_allocation(original, &changed, "model", true).unwrap_err();
+        assert_eq!(error.kind, ProjectFailureKind::InvalidProject);
+        assert_eq!(error.role, "model");
+        assert_eq!(error.offset, Some(0x40));
+        assert_eq!(
+            error.detail,
+            "prepared resource changed its container allocation or RES directory"
+        );
+        let mut changed = prepared.collision.clone();
+        changed.push(0);
+        let error = verify_allocation(
+            &loaded.collision_template.bytes,
+            &changed,
+            "collision",
+            false,
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, ProjectFailureKind::InvalidProject);
+        assert_eq!(error.role, "collision");
+        assert_eq!(error.offset, Some(0x48));
+        assert_eq!(
+            error.detail,
+            "prepared resource changed its container allocation or RES directory"
+        );
+        let mut short_header = original.clone();
+        short_header[0x0e..0x10].copy_from_slice(&0x30u16.to_le_bytes());
+        let mut output = prepared.model.clone();
+        output[0x0e..0x10].copy_from_slice(&0x30u16.to_le_bytes());
+        let (report, offset) = verify_allocation(&short_header, &output, "model", true).unwrap();
+        assert_eq!(offset, 0x40);
+        assert_eq!(report["directoryStart"], 0x40);
+        assert_eq!(&short_header[0x40..0x50], &output[0x40..0x50]);
     }
 
     #[test]
