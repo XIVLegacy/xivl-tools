@@ -7,6 +7,214 @@ use crate::error::{ErrorKind, FormatError, Result};
 use crate::sheet::{self, ColumnType, ColumnValue};
 use crate::InspectAs;
 
+/// Read extract's two headers and LF-terminated CSV records without changing cells.
+pub fn read_table(
+    text: &str,
+    columns: &[Option<ColumnType>],
+) -> Result<BTreeMap<u32, Vec<String>>> {
+    let bad = |offset, message| {
+        FormatError::new(ErrorKind::InvalidAttributeValue, offset as u64, message)
+    };
+    let mut records = Vec::new();
+    let mut record = Vec::new();
+    let mut position = 0;
+    let bytes = text.as_bytes();
+    while position < bytes.len() {
+        let mut field = Vec::new();
+        if bytes[position] == b'"' {
+            position += 1;
+            loop {
+                let Some(&byte) = bytes.get(position) else {
+                    return Err(bad(position, "unterminated quoted CSV field"));
+                };
+                position += 1;
+                if byte == b'"' {
+                    if bytes.get(position) == Some(&b'"') {
+                        field.push(b'"');
+                        position += 1;
+                    } else {
+                        break;
+                    }
+                } else {
+                    field.push(byte);
+                }
+            }
+        } else {
+            while let Some(&byte) = bytes.get(position) {
+                if matches!(byte, b',' | b'\n') {
+                    break;
+                }
+                if matches!(byte, b'"' | b'\r') {
+                    return Err(bad(position, "invalid unquoted CSV field"));
+                }
+                field.push(byte);
+                position += 1;
+            }
+        }
+        record.push(String::from_utf8(field).map_err(|_| bad(position, "invalid CSV UTF-8"))?);
+        match bytes.get(position) {
+            Some(b',') => position += 1,
+            Some(b'\n') => {
+                position += 1;
+                records.push(std::mem::take(&mut record));
+            }
+            _ => {
+                return Err(bad(
+                    position,
+                    "CSV records require LF endings and comma separators",
+                ))
+            }
+        }
+    }
+    if !record.is_empty() {
+        return Err(bad(position, "incomplete CSV record"));
+    }
+    let indexes: Vec<String> = std::iter::once(" ".into())
+        .chain((0..columns.len()).map(|i| i.to_string()))
+        .collect();
+    let types: Vec<String> = std::iter::once(" ".into())
+        .chain(
+            columns
+                .iter()
+                .map(|c| c.map_or("", ColumnType::name).into()),
+        )
+        .collect();
+    if records.first() != Some(&indexes) || records.get(1) != Some(&types) {
+        return Err(bad(0, "CSV headers disagree with the client sheet columns"));
+    }
+    let mut rows = BTreeMap::new();
+    for record in records.into_iter().skip(2) {
+        if record.len() != columns.len() + 1 {
+            return Err(bad(0, "CSV row width disagrees with the headers"));
+        }
+        let id: u32 = record[0]
+            .parse()
+            .map_err(|_| bad(0, "invalid CSV row id"))?;
+        if id.to_string() != record[0] {
+            return Err(bad(0, "noncanonical CSV row id"));
+        }
+        if rows
+            .insert(id, record.into_iter().skip(1).collect())
+            .is_some()
+        {
+            return Err(bad(0, "duplicate CSV row id"));
+        }
+    }
+    Ok(rows)
+}
+
+/// Parse one ordinary cell, refusing any spelling that would render differently.
+/// Missing and duplicate markers need the caller's original logical cell.
+pub fn parse_cell(text: &str, column: ColumnType, scrambled: bool) -> Result<ColumnValue> {
+    let bad = || {
+        FormatError::new(
+            ErrorKind::InvalidAttributeValue,
+            0,
+            format!("invalid or inexact {} cell", column.name()),
+        )
+    };
+    let span = crate::Span::new(0, column.width().unwrap_or(0) as u64);
+    let value = match column {
+        ColumnType::Text => ColumnValue::Text(Box::new(sheet::SheetString::from_decoded(
+            &crate::RichString::from_lossless_text(text)?.encode(),
+            scrambled,
+        )?)),
+        ColumnType::Unsigned8 => ColumnValue::Unsigned8 {
+            span,
+            value: text.parse().map_err(|_| bad())?,
+        },
+        ColumnType::Signed8 => ColumnValue::Signed8 {
+            span,
+            value: text.parse().map_err(|_| bad())?,
+        },
+        ColumnType::Unsigned16 => ColumnValue::Unsigned16 {
+            span,
+            value: text.parse().map_err(|_| bad())?,
+        },
+        ColumnType::Signed16 => ColumnValue::Signed16 {
+            span,
+            value: text.parse().map_err(|_| bad())?,
+        },
+        ColumnType::Unsigned32 => ColumnValue::Unsigned32 {
+            span,
+            value: text.parse().map_err(|_| bad())?,
+        },
+        ColumnType::Signed32 => ColumnValue::Signed32 {
+            span,
+            value: text.parse().map_err(|_| bad())?,
+        },
+        ColumnType::Boolean => {
+            let raw = match text {
+                "false" => 0,
+                "true" => 1,
+                _ => u8::from_str_radix(
+                    text.strip_prefix("bool:0x")
+                        .and_then(|s| s.split_once(':'))
+                        .ok_or_else(bad)?
+                        .0,
+                    16,
+                )
+                .map_err(|_| bad())?,
+            };
+            ColumnValue::Boolean {
+                span,
+                raw,
+                value: raw != 0,
+            }
+        }
+        ColumnType::Float32 => {
+            let value = if let Some(hex) = text.strip_prefix("nan:0x") {
+                let value = f32::from_bits(u32::from_str_radix(hex, 16).map_err(|_| bad())?);
+                if !value.is_nan() {
+                    return Err(bad());
+                }
+                value
+            } else {
+                text.parse().map_err(|_| bad())?
+            };
+            ColumnValue::Float32 { span, value }
+        }
+        ColumnType::Half16 => {
+            let raw = if let Some(hex) = text.strip_prefix("nan:0x") {
+                let raw = u16::from_str_radix(hex, 16).map_err(|_| bad())?;
+                if !sheet::half_to_f32(raw).is_nan() {
+                    return Err(bad());
+                }
+                raw
+            } else {
+                let value: f32 = text.parse().map_err(|_| bad())?;
+                if value.is_nan() {
+                    return Err(bad());
+                }
+                let mut low = 0u16;
+                let mut high = 0x7C00u16;
+                while low < high {
+                    let mid = low + (high - low) / 2;
+                    if sheet::half_to_f32(mid) < value.abs() {
+                        low = mid + 1;
+                    } else {
+                        high = mid;
+                    }
+                }
+                let raw = low | if value.is_sign_negative() { 0x8000 } else { 0 };
+                if sheet::half_to_f32(raw).to_bits() != value.to_bits() {
+                    return Err(bad());
+                }
+                raw
+            };
+            ColumnValue::Half16 {
+                span,
+                raw,
+                value: sheet::half_to_f32(raw),
+            }
+        }
+    };
+    if value_text(&value) != text {
+        return Err(bad());
+    }
+    Ok(value)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum LogicalValue {
     Missing,
@@ -293,6 +501,112 @@ pub fn export_sheet_data(data: &[u8], how: &InspectAs) -> Result<serde_json::Val
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn csv_reader_preserves_quoted_multiline_fields_and_headers() {
+        let mut table = CsvTable {
+            columns: vec![Some(ColumnType::Text)],
+            ..CsvTable::default()
+        };
+        table.rows.insert(
+            3,
+            vec![Some("comma, quote\" LF\nCR\r backslash\\ bracket[".into())],
+        );
+        let rows = read_table(&table.render(), &table.columns).unwrap();
+        assert_eq!(rows[&3][0], "comma, quote\" LF\nCR\r backslash\\ bracket[");
+        for text in [
+            " ,0\r\n ,str\r\n",
+            " ,1\n ,str\n",
+            " ,0\n ,u8\n",
+            " ,0\n ,str\n3,\"open\n",
+            " ,0\n ,str\n3,a\"b\n",
+            " ,0\n ,str\n3,\"a\"b\n",
+            " ,0\n ,str\n3,x",
+            " ,0\n ,str\n3,x,\n",
+            " ,0\n ,str\n3,x\n3,y\n",
+            " ,0\n ,str\n03,x\n",
+        ] {
+            assert!(read_table(text, &table.columns).is_err(), "{text:?}");
+        }
+    }
+
+    #[test]
+    fn cells_preserve_all_half_patterns_and_reject_rounding() {
+        for raw in 0..=u16::MAX {
+            let value = ColumnValue::Half16 {
+                span: crate::Span::new(0, 2),
+                raw,
+                value: sheet::half_to_f32(raw),
+            };
+            let text = value_text(&value);
+            let parsed = parse_cell(&text, ColumnType::Half16, false).unwrap();
+            let mut bytes = Vec::new();
+            sheet::encode_column_value(&parsed, &mut bytes).unwrap();
+            assert_eq!(bytes, raw.to_le_bytes(), "{text}");
+        }
+        for (kind, text) in [
+            (ColumnType::Half16, "0.1"),
+            (ColumnType::Half16, "1.00001"),
+            (ColumnType::Float32, "1.00000001"),
+            (ColumnType::Unsigned8, "01"),
+            (ColumnType::Unsigned8, "256"),
+            (ColumnType::Boolean, "bool:0x02:false"),
+            (ColumnType::Boolean, "1"),
+            (ColumnType::Text, "[@missing]"),
+            (ColumnType::Text, "[@duplicate:61]"),
+            (ColumnType::Float32, "nan:0x00000000"),
+        ] {
+            assert!(parse_cell(text, kind, false).is_err(), "{text}");
+        }
+    }
+
+    #[test]
+    fn cells_preserve_numeric_bits_and_rich_tokens() {
+        for raw in [
+            0,
+            1,
+            0x8000_0000,
+            0x7F80_0000,
+            0xFF80_0000,
+            0x7FC0_0001,
+            0xFFA0_0002,
+            0x3F80_0000,
+            0x0080_0000,
+        ] {
+            let text = value_text(&ColumnValue::Float32 {
+                span: crate::Span::new(0, 4),
+                value: f32::from_bits(raw),
+            });
+            let mut bytes = Vec::new();
+            sheet::encode_column_value(
+                &parse_cell(&text, ColumnType::Float32, false).unwrap(),
+                &mut bytes,
+            )
+            .unwrap();
+            assert_eq!(bytes, raw.to_le_bytes());
+        }
+        for raw in 0..=u8::MAX {
+            let text = value_text(&ColumnValue::Boolean {
+                span: crate::Span::new(0, 1),
+                value: raw != 0,
+                raw,
+            });
+            assert_eq!(
+                value_text(&parse_cell(&text, ColumnType::Boolean, false).unwrap()),
+                text
+            );
+        }
+        for (kind, text) in [
+            (ColumnType::Signed8, "-128"),
+            (ColumnType::Unsigned16, "65535"),
+            (ColumnType::Signed16, "-32768"),
+            (ColumnType::Unsigned32, "4294967295"),
+            (ColumnType::Signed32, "-2147483648"),
+            (ColumnType::Text, "\\[literal]\\\\[@newline:02100103]"),
+        ] {
+            assert_eq!(value_text(&parse_cell(text, kind, true).unwrap()), text);
+        }
+    }
 
     #[test]
     fn csv_quotes_only_fields_that_need_it() {

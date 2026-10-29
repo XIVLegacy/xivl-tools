@@ -218,6 +218,84 @@ pub struct RichString {
 }
 
 impl RichString {
+    /// Read the lossless cell spelling, requiring exact token framing and names.
+    pub fn from_lossless_text(text: &str) -> Result<RichString> {
+        let invalid = |offset, message| {
+            FormatError::new(ErrorKind::MalformedRichStringToken, offset as u64, message)
+        };
+        let mut bytes = Vec::new();
+        let mut position = 0;
+        while position < text.len() {
+            match text.as_bytes()[position] {
+                b'\\' => {
+                    match text.as_bytes().get(position + 1) {
+                        Some(byte @ (b'\\' | b'[')) => bytes.push(*byte),
+                        _ => return Err(invalid(position, "invalid lossless text escape")),
+                    }
+                    position += 2;
+                }
+                b'[' => {
+                    let start = position;
+                    let rest = text[position..]
+                        .strip_prefix("[@")
+                        .ok_or_else(|| invalid(start, "unescaped opening bracket"))?;
+                    let end = rest
+                        .find(']')
+                        .ok_or_else(|| invalid(start, "unterminated lossless token"))?;
+                    let (name, hex) = rest[..end].split_once(':').ok_or_else(|| {
+                        invalid(start, "lossless token needs a name and hex bytes")
+                    })?;
+                    if hex.is_empty()
+                        || hex.len() % 2 != 0
+                        || !hex.bytes().all(|b| b.is_ascii_hexdigit())
+                    {
+                        return Err(invalid(start, "invalid lossless token hex"));
+                    }
+                    let raw: Vec<u8> = hex
+                        .as_bytes()
+                        .as_chunks::<2>()
+                        .0
+                        .iter()
+                        .map(|pair| {
+                            let digit = |b: u8| {
+                                if b.is_ascii_digit() {
+                                    b - b'0'
+                                } else {
+                                    b.to_ascii_lowercase() - b'a' + 10
+                                }
+                            };
+                            digit(pair[0]) * 16 + digit(pair[1])
+                        })
+                        .collect();
+                    if raw.first() != Some(&TOKEN_START) {
+                        return Err(invalid(start, "invalid lossless token opener"));
+                    }
+                    let token = parse_token(&raw, 0, 0)
+                        .map_err(|_| invalid(start, "invalid lossless token framing"))?;
+                    if token.span.length != raw.len() as u64 || token.macro_code().name() != name {
+                        return Err(invalid(
+                            start,
+                            "lossless token name or extent disagrees with its bytes",
+                        ));
+                    }
+                    bytes.extend_from_slice(&raw);
+                    position += 2 + end + 1;
+                }
+                TOKEN_START => {
+                    return Err(invalid(
+                        position,
+                        "literal token opener needs lossless token notation",
+                    ))
+                }
+                _ => {
+                    bytes.push(text.as_bytes()[position]);
+                    position += 1;
+                }
+            }
+        }
+        Self::parse(&bytes, 0)
+    }
+
     /// Parse decoded string bytes. `base` is the absolute offset of
     /// `data[0]` in the file the bytes came from, so segment spans point at
     /// the *decoded* text. The encoded bytes they came from are the
@@ -533,7 +611,61 @@ mod tests {
     use super::*;
 
     fn parse(bytes: &[u8]) -> RichString {
-        RichString::parse(bytes, 0).unwrap()
+        let rich = RichString::parse(bytes, 0).unwrap();
+        assert_eq!(
+            RichString::from_lossless_text(&rich.to_lossless_text())
+                .unwrap()
+                .encode(),
+            bytes
+        );
+        rich
+    }
+
+    #[test]
+    fn lossless_text_rejects_invalid_escapes_and_tokens() {
+        for text in [
+            "[",
+            "[literal]",
+            "[@newline",
+            "[@newline]",
+            "[@newline:]",
+            "[@newline:0]",
+            "[@newline:GG]",
+            "[@icon:02100103]",
+            "[@newline:0210010300]",
+            "[@newline:02100104]",
+            "[@newline:00100103]",
+            "[@newline:00]",
+            "\\",
+            "\\x",
+            "\u{2}",
+        ] {
+            assert_eq!(
+                RichString::from_lossless_text(text).unwrap_err().kind(),
+                ErrorKind::MalformedRichStringToken,
+                "{text:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn lossless_text_round_trips_public_richstring_corpus() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/public/rich-string");
+        for entry in std::fs::read_dir(root).unwrap() {
+            let path = entry.unwrap().path();
+            let bytes = std::fs::read(&path).unwrap();
+            if let Ok(rich) = RichString::parse(&bytes, 0) {
+                assert_eq!(
+                    RichString::from_lossless_text(&rich.to_lossless_text())
+                        .unwrap()
+                        .encode(),
+                    rich.encode(),
+                    "{}",
+                    path.display()
+                );
+            }
+        }
     }
 
     #[test]

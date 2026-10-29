@@ -5,6 +5,7 @@ pub mod extract;
 pub mod fixed_batch;
 pub mod fixed_control;
 mod fixed_phrase;
+pub mod import_sheets;
 mod initial_registry;
 mod initial_registry_inputs;
 mod sheet_reference;

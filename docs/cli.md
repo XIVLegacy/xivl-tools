@@ -547,6 +547,28 @@ The CSV view accepts at most 4096 declared columns and rejects inconsistent
 linked resources. See the [SSD contract](formats/ssd-sheet.md#static-sheet-csv-export)
 for the exact boundary and public extraction coverage.
 
+## Import edited sheet CSVs
+
+```powershell
+cargo run --locked -p xivl-cli -- import-sheets "C:\path\to\FINAL FANTASY XIV" --csv csv --output edited
+```
+
+`import-sheets` reads CSVs with extract's filenames, two header rows and
+encoding: UTF-8 without a byte order mark and LF record endings. Save edits
+without converting line endings.
+Absent CSVs leave their documents unchanged. Edit cells, insert a fully
+specified row within a declared block range, or delete a line to disable a row.
+Missing and duplicate markers must remain unchanged. Cell spellings must
+render exactly, including floating-point values and rich-token names and hex.
+
+The output must be new or empty and outside the game directory. Only changed
+data, enable, and row-offset resources are written at their original `data/`
+paths. An unedited extract writes zero resources. A failure removes entries
+created by the import. The canonical JSON report lists resource ids, paths,
+roles, byte lengths and SHA-256 digests, plus document, CSV, cell, row and
+resource counts. It contains no client values. See
+[Importing edited CSV](formats/ssd-sheet.md#importing-edited-csv).
+
 ## Export zone collision geometry
 
 `export-zones` reads documented map-layout resources from an explicit client

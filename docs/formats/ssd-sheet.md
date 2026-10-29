@@ -148,9 +148,9 @@ byte for byte. Strings retain rich-token bytes and plain or scrambled state,
 with recomputed length prefixes. Boolean and binary16 columns retain their
 raw fields, and binary32 columns retain their exact bits, including NaN
 payloads. `SheetString::from_decoded` constructs replacement strings and
-computes their decoded digest. Plain strings containing an interior NUL or
-starting with the scramble marker are refused. String bodies must fit the
-`u16` length field, and data must fit the `u32` row-offset range. Reparse
+computes their decoded digest. Plain strings starting with the scramble
+marker are refused. String bodies must fit the `u16` length field, and data
+must fit the `u32` row-offset range. Reparse
 written bytes to obtain current spans and digests after edits.
 
 ## The sheet string and its obfuscation
@@ -622,6 +622,45 @@ declares `s32` plus eleven strings. Row offsets bound every record exactly. No
 non-trailing column is missing. The CSV view therefore represents the
 last declared value as an explicit `[@missing]` cell instead of inventing
 bytes or rejecting the other ten values.
+
+### Importing edited CSV
+
+`xivl import-sheets <game-directory> --csv <extract-output-directory> --output <new-directory>`
+uses the same definition discovery, filenames and logical columns as extract.
+It writes changed data, enable and row-offset resources under the output's
+`data/` tree. Missing CSVs preserve their documents, unknown CSV names fail,
+and an unedited extract writes zero resources. The destination must be new
+or empty and outside the game directory.
+
+Edited CSVs must keep extract's encoding: UTF-8 without a byte order mark,
+LF record endings, and extract's quoting. A file re-saved with CRLF endings
+or a byte order mark is refused. Cell parsing must reproduce each cell's
+exact rendered spelling. Rich-string
+tokens require their original macro name and valid raw framing. Missing and
+duplicate markers are accepted only as unchanged logical cells. Edits to a
+shared ordinary cell update every block that stores that row and column.
+Existing language-specific disabled rows stay disabled. Deleting a CSV line
+disables the row in all its blocks. Inserting a new id enables its present
+blocks only within their declared slot ranges and requires every stored cell.
+Changing definitions or synthesizing wholly absent triples is outside this
+command's scope.
+
+Existing strings retain their scramble flag. A new string uses that column's
+flag from the block's first enabled row, or plain framing in an empty block.
+Omitted trailing columns stay omitted and cannot be filled. Changed enabled
+sets use maximal ordered runs. Unchanged enable bytes and unchanged resources
+are retained verbatim. Written blocks are reparsed and compared with the
+intended rows before the command succeeds. Failures remove this run's files
+and directories. The JSON report contains resource identities, lengths,
+digests and counts without cell values. Cell and row counts refer to the
+merged logical tables. Public generated-tree Rust tests
+cover no-op imports, edits, row toggles, omissions and refusals.
+
+Against retail 1.23b, importing the unedited 803-file export writes no
+resource. Forcing every present block through the writers reproduces each
+data and row-offset resource byte for byte. A row-offset array the client
+stores shorter than its block keeps its stored length unless a newly enabled
+row lies past its end.
 
 ### Static-sheet CSV export
 

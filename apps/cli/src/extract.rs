@@ -1,13 +1,13 @@
 //! Game-install discovery and SSD sheet CSV export.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
 use xivl_formats::sheet::{parse_enable_file, parse_row_offsets};
 use xivl_formats::ssd::{self, SheetBody};
-use xivl_formats::{parse_row_span, scrambled, CsvTable, ResourceId};
+use xivl_formats::{parse_row_span, scrambled, ColumnType, ColumnValue, CsvTable, ResourceId};
 
 use crate::{ExtractFailure as Failure, ExtractFailureKind};
 
@@ -80,6 +80,49 @@ fn extract(game: &Path, output: &Path) -> Result<ExtractSummary, Failure> {
         ))
     })?;
 
+    let definitions = discover_definitions(game)?;
+
+    let mut used_names = BTreeSet::new();
+    let mut summary = ExtractSummary::default();
+    for (source, document) in definitions {
+        let Some(first) = document.sheets.first() else {
+            continue;
+        };
+        let base = safe_name(&first.name);
+        let file_name = unique_name(&base, &mut used_names);
+        let (table, _) = load_document(game, &source, &document, &mut summary)?;
+
+        let destination = output.join(file_name);
+        fs::write(&destination, table.render()).map_err(|error| {
+            Failure::io(format!("cannot write '{}': {error}", destination.display()))
+        })?;
+        summary.documents += 1;
+        summary.files += 1;
+        summary.rows += table.rows.len();
+    }
+    Ok(summary)
+}
+
+pub(crate) struct LoadedBlock {
+    pub definition: ssd::FileBlock,
+    pub columns: Vec<ColumnType>,
+    pub indexes: Vec<u32>,
+    pub data: Vec<u8>,
+    pub enable: Vec<u8>,
+    pub offsets: Vec<u8>,
+    pub rows: BTreeMap<u32, Vec<Option<ColumnValue>>>,
+}
+
+pub(crate) fn discover_definitions(
+    game: &Path,
+) -> Result<Vec<(PathBuf, ssd::SsdDocument)>, Failure> {
+    let data_root = game.join("data");
+    if !data_root.is_dir() {
+        return Err(Failure::io(format!(
+            "'{}' has no data directory",
+            game.display()
+        )));
+    }
     let mut candidates = Vec::new();
     collect_dat_paths(&data_root, &mut candidates)?;
     candidates.sort();
@@ -104,226 +147,230 @@ fn extract(game: &Path, output: &Path) -> Result<ExtractSummary, Failure> {
         }
     }
 
-    let mut used_names = BTreeSet::new();
-    let mut summary = ExtractSummary::default();
-    for (source, document) in definitions {
-        let Some(first) = document.sheets.first() else {
+    Ok(definitions)
+}
+
+pub(crate) fn load_document(
+    game: &Path,
+    source: &Path,
+    document: &ssd::SsdDocument,
+    summary: &mut ExtractSummary,
+) -> Result<(CsvTable, Vec<LoadedBlock>), Failure> {
+    let mut table = CsvTable::default();
+    let mut loaded_blocks = Vec::new();
+
+    for sheet in &document.sheets {
+        let SheetBody::Definition {
+            columns,
+            index,
+            blocks,
+        } = &sheet.body
+        else {
             continue;
         };
-        let base = safe_name(&first.name);
-        let file_name = unique_name(&base, &mut used_names);
-        let mut table = CsvTable::default();
-        let mut document_rows = BTreeSet::new();
-
-        for sheet in &document.sheets {
-            let SheetBody::Definition {
-                columns,
-                index,
-                blocks,
-            } = &sheet.body
-            else {
-                continue;
-            };
-            let declared_width = attribute_u32(sheet, "column_max", &source)? as usize;
-            if declared_width > MAX_EXPORT_COLUMNS {
-                return Err(Failure::semantic(
+        let declared_width = attribute_u32(sheet, "column_max", source)? as usize;
+        if declared_width > MAX_EXPORT_COLUMNS {
+            return Err(Failure::semantic(
                     ExtractFailureKind::InvalidAttributeValue,
                     format!("{}: declared column width {declared_width} exceeds export limit {MAX_EXPORT_COLUMNS}", source.display()),
                 ));
-            }
-            let declared_count = attribute_u32(sheet, "column_count", &source)? as usize;
-            if declared_count != columns.len() {
-                return Err(Failure::semantic(
-                    ExtractFailureKind::InvalidAttributeValue,
-                    format!(
-                        "{}: sheet declares {declared_count} columns but lists {} types",
-                        source.display(),
-                        columns.len()
-                    ),
-                ));
-            }
-            let mut seen_indexes = BTreeSet::new();
-            for &column_index in index {
-                if column_index as usize >= declared_width {
-                    return Err(Failure::semantic(ExtractFailureKind::InvalidAttributeValue, format!(
+        }
+        let declared_count = attribute_u32(sheet, "column_count", source)? as usize;
+        if declared_count != columns.len() {
+            return Err(Failure::semantic(
+                ExtractFailureKind::InvalidAttributeValue,
+                format!(
+                    "{}: sheet declares {declared_count} columns but lists {} types",
+                    source.display(),
+                    columns.len()
+                ),
+            ));
+        }
+        let mut seen_indexes = BTreeSet::new();
+        for &column_index in index {
+            if column_index as usize >= declared_width {
+                return Err(Failure::semantic(ExtractFailureKind::InvalidAttributeValue, format!(
                         "{}: column index {column_index} is outside declared width {declared_width}",
                         source.display()
                     )));
-                }
-                if !seen_indexes.insert(column_index) {
-                    return Err(Failure::semantic(
-                        ExtractFailureKind::InvalidAttributeValue,
-                        format!(
-                            "{}: column index {column_index} is repeated",
-                            source.display()
-                        ),
-                    ));
-                }
             }
-            table.ensure_width(declared_width);
-            table
-                .insert_columns(index, columns)
-                .map_err(|error| parse_failure(&source, error))?;
-
-            for block in blocks {
-                let present = [block.data, block.enable, block.offsets]
-                    .map(|id| resource_path(game, id).is_file());
-                if present.iter().all(|value| !value) {
-                    summary.absent_blocks += 1;
-                    continue;
-                }
-                if present.iter().any(|value| !value) {
-                    return Err(Failure::semantic(
-                        ExtractFailureKind::IncompleteResourceTriple,
-                        format!(
-                            "{}: block has only some of its data, enable, and offset resources",
-                            source.display()
-                        ),
-                    ));
-                }
-                let data = read_resource(game, block.data)?;
-                let enable = read_resource(game, block.enable)?;
-                let offsets_data = read_resource(game, block.offsets)?;
-                let enable = parse_enable_file(&enable)
-                    .map_err(|error| resource_failure(block.enable, error))?;
-                let offsets = parse_row_offsets(&offsets_data)
-                    .map_err(|error| resource_failure(block.offsets, error))?;
-                if !enable.anomalies.is_empty() {
-                    return Err(Failure::semantic(
-                        ExtractFailureKind::InvalidResourceStructure,
-                        format!(
-                            "{}: enable file contains structural anomalies",
-                            source.display()
-                        ),
-                    ));
-                }
-                if !offsets.anomalies.is_empty() {
-                    return Err(Failure::semantic(
-                        ExtractFailureKind::InvalidResourceStructure,
-                        format!(
-                            "{}: row-offset file contains structural anomalies",
-                            source.display()
-                        ),
-                    ));
-                }
-                if offsets.slot_count() != block.count as usize {
-                    return Err(Failure::semantic(
-                        ExtractFailureKind::OffsetCountMismatch,
-                        format!(
-                            "{}: block declares {} slots but its offset file has {} entries",
-                            source.display(),
-                            block.count,
-                            offsets.slot_count()
-                        ),
-                    ));
-                }
-                if offsets.data_length() != data.len() as u64 {
-                    return Err(Failure::semantic(
-                        ExtractFailureKind::OffsetDataLengthMismatch,
-                        format!(
-                            "{}: data length {} disagrees with final row offset {}",
-                            source.display(),
-                            data.len(),
-                            offsets.data_length()
-                        ),
-                    ));
-                }
-                for range in &enable.ranges {
-                    let end = u64::from(range.first_row)
-                        .checked_add(u64::from(range.count))
-                        .ok_or_else(|| {
-                            Failure::semantic(
-                                ExtractFailureKind::InvalidResourceStructure,
-                                format!(
-                                    "{}: enable range overflows row-id space",
-                                    block.enable.dat_path()
-                                ),
-                            )
-                        })?;
-                    let block_end = u64::from(block.begin)
-                        .checked_add(u64::from(block.count))
-                        .ok_or_else(|| {
-                            Failure::semantic(
-                                ExtractFailureKind::InvalidResourceStructure,
-                                format!("{}: block range overflows row-id space", source.display()),
-                            )
-                        })?;
-                    if u64::from(range.first_row) < u64::from(block.begin) || end > block_end {
-                        return Err(Failure::semantic(
-                            ExtractFailureKind::InvalidResourceStructure,
-                            format!(
-                                "{}: enable range lies outside block row range",
-                                source.display()
-                            ),
-                        ));
-                    }
-                }
-                if enable
-                    .ranges
-                    .iter()
-                    .map(|range| u64::from(range.count))
-                    .sum::<u64>()
-                    > u64::from(block.count)
-                {
-                    return Err(Failure::semantic(
-                        ExtractFailureKind::InvalidResourceStructure,
-                        format!("{}: enable ranges contain too many rows", source.display()),
-                    ));
-                }
-                let mut enabled = BTreeSet::new();
-                for range in &enable.ranges {
-                    for offset in 0..range.count {
-                        let row_id = range.first_row.checked_add(offset).ok_or_else(|| {
-                            Failure::semantic(
-                                ExtractFailureKind::InvalidResourceStructure,
-                                format!(
-                                    "{}: enable range exceeds the u32 row-id space",
-                                    block.enable.dat_path()
-                                ),
-                            )
-                        })?;
-                        enabled.insert(row_id);
-                    }
-                }
-                let mut stored = BTreeSet::new();
-                for row in &offsets.rows {
-                    stored.insert(row_id(block.begin, row.index, &source)?);
-                }
-                if enabled != stored {
-                    return Err(Failure::semantic(
-                        ExtractFailureKind::EnableRowMismatch,
-                        format!(
-                            "{}: enable and row-offset resources name different rows",
-                            source.display()
-                        ),
-                    ));
-                }
-
-                for row in &offsets.rows {
-                    let start = row.span.offset as usize;
-                    let end = start + row.span.length as usize;
-                    let values = parse_row_span(&data[start..end], columns)
-                        .map_err(|error| resource_failure(block.data, error))?;
-                    summary.missing_trailing_values +=
-                        values.iter().filter(|value| value.is_none()).count();
-                    let row_id = row_id(block.begin, row.index, &source)?;
-                    summary.conflicting_values += table
-                        .insert_row(row_id, index, values)
-                        .map_err(|error| parse_failure(&source, error))?;
-                    document_rows.insert(row_id);
-                }
+            if !seen_indexes.insert(column_index) {
+                return Err(Failure::semantic(
+                    ExtractFailureKind::InvalidAttributeValue,
+                    format!(
+                        "{}: column index {column_index} is repeated",
+                        source.display()
+                    ),
+                ));
             }
         }
+        table.ensure_width(declared_width);
+        table
+            .insert_columns(index, columns)
+            .map_err(|error| parse_failure(source, error))?;
 
-        let destination = output.join(file_name);
-        fs::write(&destination, table.render()).map_err(|error| {
-            Failure::io(format!("cannot write '{}': {error}", destination.display()))
-        })?;
-        summary.documents += 1;
-        summary.files += 1;
-        summary.rows += document_rows.len();
+        for block in blocks {
+            let present = [block.data, block.enable, block.offsets]
+                .map(|id| resource_path(game, id).is_file());
+            if present.iter().all(|value| !value) {
+                summary.absent_blocks += 1;
+                continue;
+            }
+            if present.iter().any(|value| !value) {
+                return Err(Failure::semantic(
+                    ExtractFailureKind::IncompleteResourceTriple,
+                    format!(
+                        "{}: block has only some of its data, enable, and offset resources",
+                        source.display()
+                    ),
+                ));
+            }
+            let data = read_resource(game, block.data)?;
+            let enable = read_resource(game, block.enable)?;
+            let offsets_data = read_resource(game, block.offsets)?;
+            let enable_bytes = enable;
+            let enable = parse_enable_file(&enable_bytes)
+                .map_err(|error| resource_failure(block.enable, error))?;
+            let offsets = parse_row_offsets(&offsets_data)
+                .map_err(|error| resource_failure(block.offsets, error))?;
+            if !enable.anomalies.is_empty() {
+                return Err(Failure::semantic(
+                    ExtractFailureKind::InvalidResourceStructure,
+                    format!(
+                        "{}: enable file contains structural anomalies",
+                        source.display()
+                    ),
+                ));
+            }
+            if !offsets.anomalies.is_empty() {
+                return Err(Failure::semantic(
+                    ExtractFailureKind::InvalidResourceStructure,
+                    format!(
+                        "{}: row-offset file contains structural anomalies",
+                        source.display()
+                    ),
+                ));
+            }
+            if offsets.slot_count() != block.count as usize {
+                return Err(Failure::semantic(
+                    ExtractFailureKind::OffsetCountMismatch,
+                    format!(
+                        "{}: block declares {} slots but its offset file has {} entries",
+                        source.display(),
+                        block.count,
+                        offsets.slot_count()
+                    ),
+                ));
+            }
+            if offsets.data_length() != data.len() as u64 {
+                return Err(Failure::semantic(
+                    ExtractFailureKind::OffsetDataLengthMismatch,
+                    format!(
+                        "{}: data length {} disagrees with final row offset {}",
+                        source.display(),
+                        data.len(),
+                        offsets.data_length()
+                    ),
+                ));
+            }
+            for range in &enable.ranges {
+                let end = u64::from(range.first_row)
+                    .checked_add(u64::from(range.count))
+                    .ok_or_else(|| {
+                        Failure::semantic(
+                            ExtractFailureKind::InvalidResourceStructure,
+                            format!(
+                                "{}: enable range overflows row-id space",
+                                block.enable.dat_path()
+                            ),
+                        )
+                    })?;
+                let block_end = u64::from(block.begin)
+                    .checked_add(u64::from(block.count))
+                    .ok_or_else(|| {
+                        Failure::semantic(
+                            ExtractFailureKind::InvalidResourceStructure,
+                            format!("{}: block range overflows row-id space", source.display()),
+                        )
+                    })?;
+                if u64::from(range.first_row) < u64::from(block.begin) || end > block_end {
+                    return Err(Failure::semantic(
+                        ExtractFailureKind::InvalidResourceStructure,
+                        format!(
+                            "{}: enable range lies outside block row range",
+                            source.display()
+                        ),
+                    ));
+                }
+            }
+            if enable
+                .ranges
+                .iter()
+                .map(|range| u64::from(range.count))
+                .sum::<u64>()
+                > u64::from(block.count)
+            {
+                return Err(Failure::semantic(
+                    ExtractFailureKind::InvalidResourceStructure,
+                    format!("{}: enable ranges contain too many rows", source.display()),
+                ));
+            }
+            let mut enabled = BTreeSet::new();
+            for range in &enable.ranges {
+                for offset in 0..range.count {
+                    let row_id = range.first_row.checked_add(offset).ok_or_else(|| {
+                        Failure::semantic(
+                            ExtractFailureKind::InvalidResourceStructure,
+                            format!(
+                                "{}: enable range exceeds the u32 row-id space",
+                                block.enable.dat_path()
+                            ),
+                        )
+                    })?;
+                    enabled.insert(row_id);
+                }
+            }
+            let mut stored = BTreeSet::new();
+            for row in &offsets.rows {
+                stored.insert(row_id(block.begin, row.index, source)?);
+            }
+            if enabled != stored {
+                return Err(Failure::semantic(
+                    ExtractFailureKind::EnableRowMismatch,
+                    format!(
+                        "{}: enable and row-offset resources name different rows",
+                        source.display()
+                    ),
+                ));
+            }
+
+            let mut loaded_rows = BTreeMap::new();
+            for row in &offsets.rows {
+                let start = row.span.offset as usize;
+                let end = start + row.span.length as usize;
+                let values = parse_row_span(&data[start..end], columns)
+                    .map_err(|error| resource_failure(block.data, error))?;
+                summary.missing_trailing_values +=
+                    values.iter().filter(|value| value.is_none()).count();
+                let row_id = row_id(block.begin, row.index, source)?;
+                summary.conflicting_values += table
+                    .insert_row(row_id, index, values.clone())
+                    .map_err(|error| parse_failure(source, error))?;
+                loaded_rows.insert(row_id, values);
+            }
+            loaded_blocks.push(LoadedBlock {
+                definition: block.clone(),
+                columns: columns.clone(),
+                indexes: index.clone(),
+                data,
+                enable: enable_bytes,
+                offsets: offsets_data,
+                rows: loaded_rows,
+            });
+        }
     }
-    Ok(summary)
+
+    Ok((table, loaded_blocks))
 }
 
 fn collect_dat_paths(directory: &Path, output: &mut Vec<PathBuf>) -> Result<(), Failure> {
@@ -402,7 +449,7 @@ fn read_resource(game: &Path, id: ResourceId) -> Result<Vec<u8>, Failure> {
     fs::read(&path).map_err(|error| read_failure(&path, &error))
 }
 
-fn resource_path(game: &Path, id: ResourceId) -> PathBuf {
+pub(crate) fn resource_path(game: &Path, id: ResourceId) -> PathBuf {
     let mut path = game.to_path_buf();
     for component in id.dat_path().split('/') {
         path.push(component);
@@ -444,7 +491,7 @@ fn row_id(begin: u32, index: u64, source: &Path) -> Result<u32, Failure> {
         })
 }
 
-fn safe_name(name: &str) -> String {
+pub(crate) fn safe_name(name: &str) -> String {
     let mut value: String = name
         .chars()
         .map(|character| match character {
@@ -458,7 +505,7 @@ fn safe_name(name: &str) -> String {
     value
 }
 
-fn unique_name(base: &str, used: &mut BTreeSet<String>) -> String {
+pub(crate) fn unique_name(base: &str, used: &mut BTreeSet<String>) -> String {
     let first = format!("{base}.csv");
     if used.insert(first.to_ascii_lowercase()) {
         return first;
@@ -481,7 +528,7 @@ fn parse_failure(path: &Path, error: xivl_formats::FormatError) -> Failure {
     Failure::format(error, message)
 }
 
-fn resource_failure(id: ResourceId, error: xivl_formats::FormatError) -> Failure {
+pub(crate) fn resource_failure(id: ResourceId, error: xivl_formats::FormatError) -> Failure {
     let message = format!("{}: {error}", id.dat_path());
     Failure::format(error, message)
 }
@@ -522,23 +569,7 @@ mod tests {
         let game = root.join("game");
         let first = root.join("first");
         let second = root.join("second");
-        let descriptor_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../tests/fixtures/public/ssd-extract/complete.json");
-        let descriptor: serde_json::Value =
-            serde_json::from_slice(&std::fs::read(&descriptor_path).unwrap()).unwrap();
-        for resource in descriptor["resources"].as_array().unwrap() {
-            let id = xivl_formats::parse_resource_id(resource["id"].as_str().unwrap(), 0).unwrap();
-            let bytes = std::fs::read(
-                descriptor_path
-                    .parent()
-                    .unwrap()
-                    .join(resource["file"].as_str().unwrap()),
-            )
-            .unwrap();
-            let path = game.join(id.dat_path());
-            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-            std::fs::write(path, bytes).unwrap();
-        }
+        write_complete_tree(&game, |_| {});
 
         let summary = extract(&game, &first).unwrap();
         assert_eq!(summary.documents, 2);
@@ -569,6 +600,27 @@ mod tests {
             std::fs::read(second.join("independent.csv")).unwrap()
         );
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    fn write_complete_tree(game: &Path, patch: impl Fn(&mut Vec<u8>)) {
+        let descriptor_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/public/ssd-extract/complete.json");
+        let descriptor: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&descriptor_path).unwrap()).unwrap();
+        for resource in descriptor["resources"].as_array().unwrap() {
+            let id = xivl_formats::parse_resource_id(resource["id"].as_str().unwrap(), 0).unwrap();
+            let mut bytes = std::fs::read(
+                descriptor_path
+                    .parent()
+                    .unwrap()
+                    .join(resource["file"].as_str().unwrap()),
+            )
+            .unwrap();
+            patch(&mut bytes);
+            let path = game.join(id.dat_path());
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, bytes).unwrap();
+        }
     }
 
     fn unique_test_directory() -> PathBuf {

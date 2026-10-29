@@ -10,7 +10,7 @@
 use std::io::{Read, Write};
 use std::process::ExitCode;
 
-use xivl_cli::{extract, fixed_batch, fixed_control, zone_project};
+use xivl_cli::{extract, fixed_batch, fixed_control, import_sheets, zone_project};
 use xivl_formats::{extract_lpb, lua_path_document};
 use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_bytes_as, InspectAs};
 
@@ -40,6 +40,7 @@ usage:
   xivl decode-fixed-batch <messages.jsonl | -> [--initial-registry <client-root> --locale ja|en|de|fr]
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
+  xivl import-sheets <game-directory> --csv <extract-output-directory> --output <new-directory>
   xivl catalog <game-or-resource-directory> --output <directory> [--format json|jsonl]
   xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--export-dds] [--preview-png] [--pwib-entry <index>] [--as <format>] [--columns <list>]
   xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads] [--export-dds] [--preview-png] [--pwib-entry <index>]
@@ -62,6 +63,10 @@ input exactly.
 extract discovers SSD sheet definitions under a 1.23b game directory,
 reads their data, enable, and row-offset resources, and writes one
 lossless CSV view per definition document.
+
+import-sheets reads edited extract CSVs and writes changed data, enable, and
+row-offset resources into a new or empty directory outside the game directory.
+Absent CSVs leave sheets unchanged. The JSON report contains counts and digests.
 
 validate-zone-project prepares and checks a floor-blockout-v1 project in memory
 and prints an offline-validated JSON report without writing files.
@@ -258,6 +263,13 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         }
         Some("lua-path") => lua_path(&arguments[1..]),
         Some("extract-lpb") => extract_lpb_command(&arguments[1..]),
+        Some("import-sheets") => {
+            let report = import_sheets::run(&arguments[1..])?;
+            let text = to_canonical_json(&report);
+            std::io::stdout()
+                .write_all(text.as_bytes())
+                .map_err(|error| Failure::usage(format!("cannot write output: {error}")))
+        }
         Some("extract") => {
             let summary = extract::run(&arguments[1..])?;
             println!(
