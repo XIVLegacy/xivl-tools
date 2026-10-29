@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "shader-root-tag",
+  "formatId": "shader",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/shader/root-tag.bin"
+  },
+  "arguments": [
+    "--as",
+    "shader"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-chunk",
+    "errorOffset": 48
+  }
+}

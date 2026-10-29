@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "shader-pwib",
+  "formatId": "shader",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/shader/pwib.bin"
+  },
+  "arguments": [
+    "--as",
+    "shader"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  }
+}

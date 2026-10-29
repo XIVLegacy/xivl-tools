@@ -35,6 +35,7 @@ pub mod resource;
 pub mod richstring;
 pub mod scrambled;
 pub mod sedb;
+pub mod shader;
 pub mod sheet;
 pub mod skeleton;
 pub mod sqwt;

@@ -108,7 +108,7 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
 5.1 chunk without interpreting it. The output path must not already exist.
 
   --as sedb | ssd | scrambled-xml | sqwt | lpb | lpb-bytecode | staticactor-san | region | fdt | gtex | pwib
-     | skeleton | material | wrb-model | map-layout | enable-file | row-offsets
+     | skeleton | material | shader | wrb-model | map-layout | enable-file | row-offsets
      | sheet-data | config-sys | config-pad | config-lng | config-rgn
       Read the input as this format. Needed for enable-file and
       row-offsets, which are unsigned 32-bit arrays with no signature,
@@ -135,6 +135,7 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
       without record values or texture payloads.
       --as skeleton reports bounded SKL record and string spans, hierarchy indices, and digests.
       --as material reports bounded PRAM sampler prefixes, binding bytes, and digests.
+      --as shader reports bounded SHD FILE spans and digests with opaque program bodies.
   --columns <type,...>
       Column types of a sheet-data file, from its schema document, for
       example 'str,s32,bool'. Without it the data is read as a stream of
@@ -427,6 +428,7 @@ mod tests {
         assert!(USAGE.contains("--as fdt walks a bitmap font container"));
         assert!(USAGE.contains("--as skeleton reports bounded SKL"));
         assert!(USAGE.contains("--as material reports bounded PRAM"));
+        assert!(USAGE.contains("--as shader reports bounded SHD FILE"));
         assert!(USAGE.contains("lyb node declarations without names or payload strings"));
     }
 }

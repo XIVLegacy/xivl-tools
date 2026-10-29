@@ -370,13 +370,14 @@
       "name": "Shader program and bytecode",
       "category": "graphics",
       "phase": 4,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
       "export": "planned",
       "exportViews": [
         "json",
         "binary"
-      ]
+      ],
+      "notes": "Explicit --as shader inspection and validation report bounded version-29 SEDBshd SHD/FILE chunk envelopes, body spans, padded-size words, physical directory paths, digests, and opaque ranges. Container selection reuses the material reader, including PRAM and PWIB restrictions and selected-extent preflight before recursion. FILE descriptors, program locations within bodies, kind/version tokens, bytecode, constants, names, candidate selection, runtime binding, rendering, writing, and lossless export remain outside the claim. Public synthetic cases and first-hand retail census identities: docs/formats/shader.md."
     },
     {
       "id": "map-layout",

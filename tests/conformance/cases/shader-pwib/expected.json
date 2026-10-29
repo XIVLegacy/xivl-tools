@@ -1,0 +1,155 @@
+{
+  "format": "shader",
+  "input": {
+    "length": 392
+  },
+  "opaque": [
+    {
+      "sha256": "bd0d05ffe06cfe4048459db6a5b9904125d237cae9f9ee44f93a9b302e576c8b",
+      "span": {
+        "length": 176,
+        "offset": 0
+      }
+    }
+  ],
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "shaders": [
+    {
+      "entryPath": [
+        0,
+        0
+      ],
+      "files": [
+        {
+          "body": {
+            "sha256": "8ac93f05092ce1982cd937c5b9a0a3420e772ec619748204d841d09bb3529ca8",
+            "span": {
+              "length": 7,
+              "offset": 272
+            }
+          },
+          "paddedSize": 32,
+          "source": {
+            "sha256": "0852ff66c3f49a7eb0dd98d1d881ad014a71ccdcf571c656ffa4e23e7829455d",
+            "span": {
+              "length": 23,
+              "offset": 256
+            }
+          }
+        },
+        {
+          "body": {
+            "sha256": "1da37afb17fe3924a7bde26e39d4c7c451d4399482dd3844c6d8f57e300cdc44",
+            "span": {
+              "length": 13,
+              "offset": 304
+            }
+          },
+          "paddedSize": 0,
+          "source": {
+            "sha256": "6b39db3ca378fa48b232021de978e696620f0e0d49e1911a54b7c759060252ea",
+            "span": {
+              "length": 29,
+              "offset": 288
+            }
+          }
+        }
+      ],
+      "opaque": [
+        {
+          "sha256": "dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986",
+          "span": {
+            "length": 1,
+            "offset": 189
+          }
+        },
+        {
+          "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+          "span": {
+            "length": 28,
+            "offset": 196
+          }
+        },
+        {
+          "sha256": "af04efda8654cdedb809134f59b19710c4e0fa4d10213de1885f4019cd27bca0",
+          "span": {
+            "length": 4,
+            "offset": 228
+          }
+        },
+        {
+          "sha256": "f0a2f999191ae4fdca9c56053353925b1a4a0dbaad485eb3b14456ffe175be8c",
+          "span": {
+            "length": 20,
+            "offset": 236
+          }
+        },
+        {
+          "sha256": "af04efda8654cdedb809134f59b19710c4e0fa4d10213de1885f4019cd27bca0",
+          "span": {
+            "length": 4,
+            "offset": 260
+          }
+        },
+        {
+          "sha256": "8ac93f05092ce1982cd937c5b9a0a3420e772ec619748204d841d09bb3529ca8",
+          "span": {
+            "length": 7,
+            "offset": 272
+          }
+        },
+        {
+          "sha256": "03fa17a5d3ebc1d00c08dd27d1fb574a12f37694bf6d9d75a97c9f5bd6ef2d9e",
+          "span": {
+            "length": 9,
+            "offset": 279
+          }
+        },
+        {
+          "sha256": "af04efda8654cdedb809134f59b19710c4e0fa4d10213de1885f4019cd27bca0",
+          "span": {
+            "length": 4,
+            "offset": 292
+          }
+        },
+        {
+          "sha256": "1da37afb17fe3924a7bde26e39d4c7c451d4399482dd3844c6d8f57e300cdc44",
+          "span": {
+            "length": 13,
+            "offset": 304
+          }
+        },
+        {
+          "sha256": "60fc312973734f7a6aaaefe98b05fc87ed6d390f4ef035db4d5efef3c0fe0270",
+          "span": {
+            "length": 3,
+            "offset": 317
+          }
+        },
+        {
+          "sha256": "48c22817d6f5659c075903f9202fdd8a153d9dc1983f3771b63b3d1e18f0c533",
+          "span": {
+            "length": 24,
+            "offset": 320
+          }
+        },
+        {
+          "sha256": "97af3df827c39340c06794a75c66520944df10ab5ac240f6214cd271f7ca938b",
+          "span": {
+            "length": 48,
+            "offset": 344
+          }
+        }
+      ],
+      "source": {
+        "sha256": "6a52cebbc844a507164edfaa7550eebdaa0aa5ec864009d9fc7de6ea521fc763",
+        "span": {
+          "length": 216,
+          "offset": 176
+        }
+      },
+      "version": 29
+    }
+  ]
+}

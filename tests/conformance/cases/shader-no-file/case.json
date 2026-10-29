@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "shader-no-file",
+  "formatId": "shader",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/shader/no-file.bin"
+  },
+  "arguments": [
+    "--as",
+    "shader"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-chunk",
+    "errorOffset": 48
+  }
+}

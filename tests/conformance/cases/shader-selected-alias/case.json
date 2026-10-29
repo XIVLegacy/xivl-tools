@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "shader-selected-alias",
+  "formatId": "shader",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/shader/selected-alias.bin"
+  },
+  "arguments": [
+    "--as",
+    "shader"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "ambiguous-payload-span",
+    "errorOffset": 88
+  }
+}

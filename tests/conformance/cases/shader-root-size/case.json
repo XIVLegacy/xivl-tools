@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "shader-root-size",
+  "formatId": "shader",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/shader/root-size.bin"
+  },
+  "arguments": [
+    "--as",
+    "shader"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "chunk-length-out-of-range",
+    "errorOffset": 56
+  }
+}

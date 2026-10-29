@@ -2893,6 +2893,7 @@ def build_fixtures() -> dict[str, bytes]:
         )
     fixtures["skeleton/selected-alias.bin"] = bytes(aliased)
     fixtures.update(material_fixtures())
+    fixtures.update(shader_fixtures())
     return fixtures
 
 
@@ -3012,6 +3013,73 @@ def material_fixtures() -> dict[str, bytes]:
         + sample
         + pattern(16, 0x97)
     )
+    return fixtures
+
+
+def shader_fixtures() -> dict[str, bytes]:
+    """Authored FILE envelopes with opaque bodies, never compiled shader code."""
+    fixtures = {}
+
+    def chunk(kind: bytes, body: bytes, padded: int = 0) -> bytes:
+        size = 16 + len(body)
+        return kind + pattern(4, 0x37) + struct.pack(">II", size, padded) + body
+
+    pram = bytearray(32)
+    struct.pack_into("<I", pram, 0x18, 32)
+    children = (
+        chunk(b"FILE", pattern(7, 0x51), 32)
+        + pattern(9, 0x63)
+        + chunk(b"FILE", pattern(13, 0x75))
+        + pattern(3, 0x87)
+        + chunk(b"JUNK", pattern(8, 0x99), 24)
+        + chunk(b"PRAM", bytes(pram))
+    )
+    payload = chunk(b"SHD\0", struct.pack(">I", 4) + pattern(12, 0xAB) + children)
+    sample = sedb_header("shd", 29, 0x0200, 0x30, 0x30 + len(payload)) + payload
+    fixtures["shader/files.bin"] = sample
+    no_file = bytearray(sample)
+    no_file[80:84] = no_file[112:116] = b"NONE"
+    fixtures["shader/no-file.bin"] = bytes(no_file)
+    fixtures["shader/truncated.bin"] = sample[:18]
+    for name, offset, value, order in [
+        ("version", 8, 28, "<I"),
+        ("extent", 16, len(sample) + 1, "<I"),
+        ("root-size", 56, len(sample) - 49, ">I"),
+        ("child-size", 88, 0xFFFFFFFF, ">I"),
+        ("child-padding", 92, 0xFFFFFFFF, ">I"),
+        ("conversion", 12, 1, "B"),
+        ("header-size", 14, 0x40, "<H"),
+        ("root-tag", 51, ord("!"), "B"),
+    ]:
+        malformed = bytearray(sample)
+        struct.pack_into(order, malformed, offset, value)
+        fixtures[f"shader/{name}.bin"] = bytes(malformed)
+
+    def res(body: bytes, count: int = 1) -> bytes:
+        return (
+            sedb_header(
+                "RES ",
+                4000,
+                0x0400,
+                0x40,
+                64 + 16 * count + len(body),
+                res_extended(count, 0, "syn"),
+            )
+            + directory_entry(7, 0, len(body), 0) * count
+            + body
+        )
+
+    nested = res(res(sample))
+    fixtures["shader/nested-res.bin"] = nested
+    fixtures["shader/selected-alias.bin"] = res(res(sample), 2)
+    malformed = bytearray(nested)
+    struct.pack_into(">I", malformed, 248, 0xFFFFFFFF)
+    fixtures["shader/nested-child-size.bin"] = bytes(malformed)
+    wrapped = b"PWIB" + struct.pack(">III", 16 + len(nested), 16, 16 + len(nested))
+    fixtures["shader/pwib.bin"] = wrapped + nested
+    malformed = bytearray(wrapped + nested)
+    struct.pack_into(">I", malformed, 4, len(malformed) + 1)
+    fixtures["shader/pwib-boundary.bin"] = bytes(malformed)
     return fixtures
 
 

@@ -9,6 +9,9 @@ bind argument, and environment-slot byte. Parameter values, strings,
 shader programs, and sampler-state bytes remain opaque. There is no writer,
 lossless export, or rendering claim.
 
+The [shader reader](shader.md) reports FILE envelopes separately while
+retaining opaque program bodies.
+
 ```text
 xivl inspect <input> --as material
 xivl validate <input> --as material
