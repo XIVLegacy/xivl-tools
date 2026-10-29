@@ -12,5 +12,5 @@
     "outcome": "parse-error",
     "errorKind": "offset-count-mismatch"
   },
-  "notes": "The offset array has fewer entries than the block declares."
+  "notes": "The offset array has more entries than the block declares."
 }

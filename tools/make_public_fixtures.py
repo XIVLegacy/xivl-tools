@@ -1974,11 +1974,11 @@ def build_fixtures() -> dict[str, bytes]:
     )
     bad_tree(
         "offset-count",
-        one_sheet_document(block(400, 2, 0x14000010, 0x14000020, 0x14000030)),
+        one_sheet_document(block(400, 1, 0x14000010, 0x14000020, 0x14000030)),
         [
             (0x14000010, "count-data.bin", typed_row("count", 1, 1)),
             (0x14000020, "count-enable.bin", enable_records([(400, 1)])),
-            (0x14000030, "count-offset.bin", u32_array([9])),
+            (0x14000030, "count-offset.bin", u32_array([9, 9])),
         ],
     )
     bad_tree(

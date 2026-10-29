@@ -251,7 +251,9 @@ pub(crate) fn load_document(
                     ),
                 ));
             }
-            if offsets.slot_count() != block.count as usize {
+            // Retail item blocks stop the array at the last enabled row
+            // (0x01030566 stores 10702 of 11001 slots); a missing slot is empty.
+            if offsets.slot_count() > block.count as usize {
                 return Err(Failure::semantic(
                     ExtractFailureKind::OffsetCountMismatch,
                     format!(
@@ -599,6 +601,30 @@ mod tests {
             std::fs::read(first.join("independent.csv")).unwrap(),
             std::fs::read(second.join("independent.csv")).unwrap()
         );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn a_row_offset_array_may_end_before_the_declared_slots() {
+        let root = unique_test_directory();
+        let game = root.join("game");
+        let output = root.join("output");
+        // Declare a second slot for the one-row block whose array stores one.
+        write_complete_tree(&game, |bytes| {
+            let from = b"count=\"1\" offset=\"301990049\"";
+            let to = b"count=\"2\" offset=\"301990049\"";
+            if let Some(at) = bytes.windows(from.len()).position(|window| window == from) {
+                bytes[at..at + to.len()].copy_from_slice(to);
+            }
+        });
+        let summary = extract(&game, &output).unwrap();
+        assert_eq!(summary.rows, 5);
+        assert!(std::fs::read_to_string(output.join("synthetic_main.csv"))
+            .unwrap()
+            .ends_with(
+                "200,solo,1,true
+"
+            ));
         std::fs::remove_dir_all(root).unwrap();
     }
 

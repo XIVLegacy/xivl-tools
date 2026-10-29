@@ -758,8 +758,11 @@ SSD documents. Low-level enable and row-offset readers continue to report
 their structural anomalies; directory extraction refuses anomalous linked
 resources. It does not broaden the XML or column vocabulary.
 
-The directory exporter requires exactly the declared number of row-offset
-entries, matching data length and enabled row membership. Enable ranges
+The directory exporter requires at most the declared number of row-offset
+entries, matching data length and enabled row membership. Retail item
+blocks may end the array at their last enabled row: resource `0x01030566`
+stores 10702 entries for a block that declares 11001 slots. A slot past the
+end of the array is empty. Enable ranges
 must lie within their block before their rows are enumerated. Column
 indexes must be unique, match the type list, and fit the declared width.
 The CSV view limits that width to 4096 columns before allocating the table.
