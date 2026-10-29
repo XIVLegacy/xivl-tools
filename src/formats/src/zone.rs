@@ -6,7 +6,8 @@
 //! CollisionBox unit primitives.  Render meshes are decoded for source
 //! association but are never added to the collision OBJ.
 
-use std::collections::BTreeMap;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::error::{ErrorKind, FormatError, Result};
 use crate::reader::Span;
@@ -202,7 +203,43 @@ pub struct LayoutInspection {
     pub object_list_offset: u32,
     pub object_list: Vec<u32>,
     pub node_types: Vec<LayoutNodeTypeInspection>,
+    pub relocation_flags: u8,
+    pub relocation_variant: u8,
+    pub node_fields: Vec<LayoutNodeInspection>,
     pub placements: LayoutPlacementCounts,
+}
+
+/// Raw serialized inputs to the documented layout binding consumers.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LayoutNodeInspection {
+    pub reference: u32,
+    pub span: Span,
+    pub fields: LayoutNodeFields,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LayoutNodeFields {
+    Class {
+        id: u32,
+    },
+    Instance {
+        flags: u8,
+    },
+    InstanceChildDescriptor {
+        flags: u8,
+        child_id: u32,
+    },
+    Child {
+        base_reference: u32,
+        child_id: u32,
+    },
+    BgChip {
+        resource_key_reference: u32,
+    },
+    Attribute {
+        resource_key_reference: u32,
+        shape_group: u8,
+    },
 }
 
 /// Resource-table metadata with absolute file spans and the raw type tag.
@@ -219,6 +256,7 @@ pub struct LayoutResourceInspection {
 pub struct LayoutNodeTypeInspection {
     pub span: Span,
     pub extent_ref: u32,
+    pub extent_count: u32,
     pub field_list_ref: u32,
     pub field_count: u32,
     pub fields: Vec<(u16, u16)>,
@@ -672,6 +710,9 @@ pub fn parse_layout_with_structure(data: &[u8]) -> Result<(Layout, LayoutInspect
         object_list_offset: 0,
         object_list: Vec::new(),
         node_types: Vec::new(),
+        relocation_flags: 0,
+        relocation_variant: 0,
+        node_fields: Vec::new(),
         placements: LayoutPlacementCounts::default(),
         container,
     };
@@ -1255,6 +1296,7 @@ struct LyGraph<'a> {
     node_types: Vec<LyNodeType>,
     objects: Vec<u32>,
     type_index: BTreeMap<u32, usize>,
+    reached: RefCell<BTreeSet<u32>>,
 }
 
 struct WalkPath {
@@ -1271,6 +1313,8 @@ const UNIT_TREE_FIELDS: &[(u16, u16)] =
 const CHILD_FIELDS: &[(u16, u16)] = &[(20, 2), (12, 0), (16, 0), (24, 0), (32, 0)];
 const GROUP_FIELDS: &[(u16, u16)] = &[(0x0C, 0), (0x10, 0), (0x14, 0), (0x1C, 2), (0x20, 0)];
 const ATTRIBUTE_FIELDS: &[(u16, u16)] = &[(4, 0), (8, 2), (36, 2), (20, 0), (28, 0)];
+const BG_CHIP_FIELDS: &[(u16, u16)] =
+    &[(4, 0), (8, 2), (20, 0), (32, 2), (36, 2), (40, 0), (44, 2)];
 const COLLISION_BOX_FIELDS: &[(u16, u16)] = &[(4, 0), (8, 2)];
 const LAY_SETTINGS_FIELDS: &[(u16, u16)] = &[
     (4, 0),
@@ -1305,6 +1349,8 @@ fn parse_lyb_payload(
             "lyb declared size does not match its containing SEDB size",
         ));
     }
+    inspection.relocation_flags = payload[0x0D];
+    inspection.relocation_variant = payload[0x0E];
     let node_table = u32_at(payload, 0x10)? as usize;
     let object_list = u32_at(payload, 0x14)? as usize;
     inspection.node_type_table_offset = node_table as u32;
@@ -1371,6 +1417,7 @@ fn parse_lyb_payload(
         inspection.node_types.push(LayoutNodeTypeInspection {
             span: Span::new(inspection.payload.offset + at as u64, 16),
             extent_ref: extent_offset as u32,
+            extent_count: u32_at(payload, at + 8)?,
             field_list_ref: field_list as u32,
             field_count,
             fields: fields.clone(),
@@ -1411,6 +1458,7 @@ fn parse_lyb_payload(
         node_types,
         objects,
         type_index,
+        reached: RefCell::default(),
     };
     let mut zone = Transform::default();
     let mut zone_name = String::new();
@@ -1448,6 +1496,7 @@ fn parse_lyb_payload(
             graph.walk_instance(object, zone, &resources, &mut path, &mut objects_out, 0)?;
         }
     }
+    inspection.node_fields = graph.inspect_binding_fields(inspection.payload.offset);
     Ok(Layout {
         zone_name,
         zone,
@@ -1457,6 +1506,91 @@ fn parse_lyb_payload(
 }
 
 impl<'a> LyGraph<'a> {
+    fn inspect_binding_fields(&self, base: u64) -> Vec<LayoutNodeInspection> {
+        // Inspection never expands the walk or makes unresolved binding fields fatal.
+        let reached = self.reached.borrow().clone();
+        // Root folders share the class shape; incoming class references identify class extents.
+        let mut class_types = BTreeSet::new();
+        for &reference in &reached {
+            let Ok((kind, _)) = self.node_kind(reference) else {
+                continue;
+            };
+            let Ok(bytes) = self.node_bytes(reference) else {
+                continue;
+            };
+            if kind.node_size >= 12
+                && kind.fields.contains(&(4, 0))
+                && kind.fields.contains(&(8, 2))
+            {
+                if let Ok((class_kind, class_index)) =
+                    u32_le(bytes, 4).and_then(|class| self.node_kind(class))
+                {
+                    if exact_node_shape(class_kind, 0x14, CLASS_NODE_FIELDS) {
+                        class_types.insert(class_index);
+                    }
+                }
+            }
+        }
+        reached
+            .into_iter()
+            .filter_map(|reference| {
+                self.inspect_binding_node(reference, base, &class_types)
+                    .ok()
+                    .flatten()
+            })
+            .collect()
+    }
+
+    fn inspect_binding_node(
+        &self,
+        reference: u32,
+        base: u64,
+        class_types: &BTreeSet<usize>,
+    ) -> Result<Option<LayoutNodeInspection>> {
+        let (kind, index) = self.node_kind(reference)?;
+        let bytes = self.node_bytes(reference)?;
+        let fields = if class_types.contains(&index) {
+            LayoutNodeFields::Class {
+                id: u32_le(bytes, 0)?,
+            }
+        } else if exact_node_shape(kind, 0x0C, INSTANCE_CHILD_RANGE_FIELDS) {
+            LayoutNodeFields::InstanceChildDescriptor {
+                flags: bytes[4],
+                child_id: u32_le(bytes, 8)?,
+            }
+        } else if exact_node_shape(kind, 0x30, CHILD_FIELDS) {
+            LayoutNodeFields::Child {
+                base_reference: u32_le(bytes, 0x18)?,
+                child_id: u32_le(bytes, 0x1C)?,
+            }
+        } else if exact_node_shape(kind, 0x40, INSTANCE_FIELDS)
+            && self.class_path(reference)?.as_deref() == Some("RefObjects/InstanceObject")
+        {
+            LayoutNodeFields::Instance { flags: bytes[0x14] }
+        } else if exact_node_shape(kind, 0x2C, ATTRIBUTE_FIELDS)
+            && self.class_path(reference)?.as_deref()
+                == Some("BaseObjects/Attribute/AttributeBaseObject")
+        {
+            LayoutNodeFields::Attribute {
+                resource_key_reference: u32_le(bytes, 0x24)?,
+                shape_group: bytes[0x28],
+            }
+        } else if exact_node_shape(kind, 0x54, BG_CHIP_FIELDS)
+            && self.class_path(reference)?.as_deref() == Some("BaseObjects/BG/BGChipBaseObject")
+        {
+            LayoutNodeFields::BgChip {
+                resource_key_reference: u32_le(bytes, 0x20)?,
+            }
+        } else {
+            return Ok(None);
+        };
+        Ok(Some(LayoutNodeInspection {
+            reference,
+            span: Span::new(base + u64::from(reference), u64::from(kind.node_size)),
+            fields,
+        }))
+    }
+
     fn node_kind(&self, offset: u32) -> Result<(&LyNodeType, usize)> {
         let index = *self
             .type_index
@@ -1466,6 +1600,7 @@ impl<'a> LyGraph<'a> {
     }
     fn node_bytes(&self, offset: u32) -> Result<&[u8]> {
         let (kind, _) = self.node_kind(offset)?;
+        self.reached.borrow_mut().insert(offset);
         self.payload
             .get(offset as usize..offset as usize + kind.node_size as usize)
             .ok_or_else(|| zone_error(offset as u64, "lyb node is outside payload"))
@@ -2541,6 +2676,148 @@ pub(crate) mod tests {
         let error = parse_layout_with_structure(&data).unwrap_err();
         assert_eq!(error.kind(), ErrorKind::BadMagic);
         assert_eq!(error.offset(), 0x60);
+    }
+
+    #[test]
+    fn layout_binding_fields_remain_raw_without_changing_placements() {
+        let mut data = layout_bytes();
+        let original = parse_layout(&data).unwrap();
+        data[0x90 + 0x0D] = 0xA1;
+        data[0x90 + 0x0E] = 7;
+        put_le_u32(&mut data, 0x90 + 0x28, 3);
+        data[0x90 + 0x514] = 13;
+        put_le_u32(&mut data, 0x90 + 0x904, 0x10005);
+        put_le_u32(&mut data, 0x90 + 0x908, 0xF1234567);
+        put_le_u32(&mut data, 0x90 + 0x5DC, 0x12345678);
+        put_le_u32(&mut data, 0x90 + 0x700, 0xB0B);
+        data[0x90 + 0x618..0x90 + 0x61C].copy_from_slice(&[0xE1, 0xAA, 0xBB, 0xCC]);
+        let (layout, inspection) = parse_layout_with_structure(&data).unwrap();
+        assert_eq!(layout, original);
+        assert_eq!(inspection.relocation_flags, 0xA1);
+        assert_eq!(inspection.relocation_variant, 7);
+        assert_eq!(inspection.node_types[0].extent_count, 3);
+        let fields = |reference| {
+            &inspection
+                .node_fields
+                .iter()
+                .find(|n| n.reference == reference)
+                .unwrap()
+                .fields
+        };
+        assert_eq!(fields(0x500), &LayoutNodeFields::Instance { flags: 13 });
+        assert_eq!(
+            fields(0x900),
+            &LayoutNodeFields::InstanceChildDescriptor {
+                flags: 5,
+                child_id: 0xF1234567
+            }
+        );
+        assert_eq!(
+            fields(0x5C0),
+            &LayoutNodeFields::Child {
+                base_reference: 0x5F0,
+                child_id: 0x12345678
+            }
+        );
+        assert_eq!(fields(0x700), &LayoutNodeFields::Class { id: 0xB0B });
+        assert!(!inspection.node_fields.iter().any(|n| n.reference == 0x728));
+        assert_eq!(
+            fields(0x5F0),
+            &LayoutNodeFields::Attribute {
+                resource_key_reference: 0x820,
+                shape_group: 0xE1
+            }
+        );
+        assert_eq!(&data[0x90 + 0x619..0x90 + 0x61C], &[0xAA, 0xBB, 0xCC]);
+        let attribute = inspection
+            .node_fields
+            .iter()
+            .find(|n| n.reference == 0x5F0)
+            .unwrap();
+        assert_eq!(attribute.span, Span::new(0x680, 0x2C));
+
+        put_le_u32(&mut data, 0x90 + 0x538, 0);
+        let (_, inspection) = parse_layout_with_structure(&data).unwrap();
+        assert!(!inspection.node_fields.iter().any(|n| n.reference == 0x900));
+    }
+
+    #[test]
+    fn layout_unreached_binding_nodes_preserve_acceptance_and_export() {
+        let data = layout_bytes();
+        let original = parse_layout(&data).unwrap();
+        let phbs = [(
+            ResourceId::new(0x05060708),
+            parse_phb(&phb_bytes()).unwrap(),
+        )];
+        let exported = flatten_zone(&original, &phbs).unwrap();
+        for malformed_run in [false, true] {
+            let mut data = data.clone();
+            if malformed_run {
+                // Replace the unused group class with an unreached InstanceObject.
+                let row = 0x90 + 0x20 + 7 * 16;
+                put_le_u32(&mut data, row, 0x940);
+                put_le_u32(&mut data, row + 4, 0x950);
+                put_le_u32(&mut data, row + 12, 7);
+                put_le_u32(&mut data, 0x90 + 0x940, 0x980);
+                put_le_u32(&mut data, 0x90 + 0x944, 1);
+                put_le_u32(&mut data, 0x90 + 0x948, 0x40);
+                for (index, &(offset, kind)) in INSTANCE_FIELDS.iter().enumerate() {
+                    let at = 0x90 + 0x950 + index * 4;
+                    data[at..at + 2].copy_from_slice(&offset.to_le_bytes());
+                    data[at + 2..at + 4].copy_from_slice(&kind.to_le_bytes());
+                }
+                put_le_u32(&mut data, 0x90 + 0x984, 0x700);
+                put_le_u32(&mut data, 0x90 + 0x9B4, 0x900);
+                put_le_u32(&mut data, 0x90 + 0x9B8, MAX_RECORDS);
+            } else {
+                put_le_u32(&mut data, 0x90 + 0x72C, 0xDEADBEEF);
+            }
+            assert_eq!(parse_layout(&data).unwrap(), original);
+            let (layout, inspection) = parse_layout_with_structure(&data).unwrap();
+            assert_eq!(layout, original);
+            assert!(!inspection.node_fields.iter().any(|n| n.reference == 0x980));
+            let actual = flatten_zone(&layout, &phbs).unwrap();
+            assert_eq!(actual.obj(), exported.obj());
+            assert_eq!(
+                actual.metadata(&layout.zone_name, &[]),
+                exported.metadata(&original.zone_name, &[])
+            );
+        }
+    }
+
+    #[test]
+    fn layout_reports_bgchip_key_reference_without_resolving_it() {
+        let mut data = layout_bytes();
+        // Reuse the unused group-class declaration for a child-referenced BGChip.
+        let row = 0x90 + 0x20 + 7 * 16;
+        put_le_u32(&mut data, row, 0x940);
+        put_le_u32(&mut data, row + 4, 0x950);
+        put_le_u32(&mut data, row + 12, 7);
+        put_le_u32(&mut data, 0x90 + 0x940, 0x980);
+        put_le_u32(&mut data, 0x90 + 0x944, 1);
+        put_le_u32(&mut data, 0x90 + 0x948, 0x54);
+        for (index, &(offset, kind)) in BG_CHIP_FIELDS.iter().enumerate() {
+            let at = 0x90 + 0x950 + index * 4;
+            data[at..at + 2].copy_from_slice(&offset.to_le_bytes());
+            data[at + 2..at + 4].copy_from_slice(&kind.to_le_bytes());
+        }
+        put_le_u32(&mut data, 0x90 + 0x984, 0x73C);
+        put_le_u32(&mut data, 0x90 + 0x9A0, 0xDEADBEEF);
+        put_le_u32(&mut data, 0x90 + 0x5D8, 0x980);
+        put_string(&mut data, 0x90 + 0x7E0, "BaseObjects/BG/BGChipBaseObject\0");
+        let (_, inspection) = parse_layout_with_structure(&data).unwrap();
+        let chip = inspection
+            .node_fields
+            .iter()
+            .find(|n| n.reference == 0x980)
+            .unwrap();
+        assert_eq!(
+            chip.fields,
+            LayoutNodeFields::BgChip {
+                resource_key_reference: 0xDEADBEEF
+            }
+        );
+        assert_eq!(chip.span, Span::new(0xA10, 0x54));
     }
 
     fn put_f32(bytes: &mut [u8], offset: usize, value: f32) {

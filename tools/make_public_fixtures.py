@@ -1249,6 +1249,39 @@ def build_fixtures() -> dict[str, bytes]:
     )
     fixtures["map-layout/extent-outside.bin"] = bytes(layout_bad_extent)
 
+    # Keep the original scene and replace its box with an authored BGChip.
+    layout_binding = bytearray(layout_payload)
+
+    def binding_allocate(data: bytes) -> int:
+        offset = len(layout_binding)
+        layout_binding.extend(data)
+        layout_binding.extend(bytes(-len(layout_binding) % 4))
+        return offset
+
+    chip_fields = [(4, 0), (8, 2), (20, 0), (32, 2), (36, 2), (40, 0), (44, 2)]
+    chip_field_list = binding_allocate(
+        b"".join(struct.pack("<HH", *field) for field in chip_fields)
+    )
+    chip = binding_allocate(bytes(0x54))
+    chip_path = binding_allocate(b"BaseObjects/BG/BGChipBaseObject\0")
+    chip_class = layout_nodes["class"] + 4 * 0x14
+    struct.pack_into("<I", layout_binding, chip_class, 0xA1B2C3D4)
+    struct.pack_into("<I", layout_binding, chip_class + 8, chip_path)
+    struct.pack_into("<I", layout_binding, chip + 4, chip_class)
+    struct.pack_into("<I", layout_binding, chip + 0x20, layout_key)
+    struct.pack_into("<I", layout_binding, layout_type_rows["box"] + 4, chip_field_list)
+    struct.pack_into(
+        "<I", layout_binding, layout_type_rows["box"] + 12, len(chip_fields)
+    )
+    struct.pack_into("<III", layout_binding, layout_extents["box"], chip, 1, 0x54)
+    struct.pack_into("<I", layout_binding, child + 0x30 + 0x18, chip)
+    struct.pack_into("<I", layout_binding, child + 0x30 + 0x1C, 0x10203040)
+    layout_binding[instance + 0x14] = 0xAD
+    struct.pack_into("<II", layout_binding, child_range + 4, 0x10005, 0x10203040)
+    fixtures["map-layout/binding-fields.bin"] = map_layout_resource(
+        layout_rows, bytes(layout_binding)
+    )
+
     # -- zone-project ----------------------------------------------------
     # Authoring templates have the writer's bounds and retained allocations.
     floor_vertices = [(-16, 0, -16), (16, 0, -16), (16, 0, 16), (-16, 0, 16)]

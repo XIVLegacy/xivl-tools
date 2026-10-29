@@ -522,6 +522,7 @@ fn inspect_map_layout(data: &[u8]) -> Result<Value> {
             "index": index,
             "span": row.span.to_json(),
             "extentReference": row.extent_ref,
+            "extentCount": row.extent_count,
             "fieldListReference": row.field_list_ref,
             "unknown": unknown(Span::new(row.span.offset + 8, 4)),
             "fieldCount": row.field_count,
@@ -573,6 +574,8 @@ fn inspect_map_layout(data: &[u8]) -> Result<Value> {
             "span": layout.payload.to_json(),
             "sha256": span_sha256(data, layout.payload),
             "size": layout.container.total_size,
+            "relocationFlags": layout.relocation_flags,
+            "relocationVariant": layout.relocation_variant,
             "unknown": [unknown(Span::new(layout.payload.offset + 8, 4)), unknown(Span::new(layout.payload.offset + 12, 4))],
         },
         "objectList": {
@@ -585,6 +588,31 @@ fn inspect_map_layout(data: &[u8]) -> Result<Value> {
             "count": layout.node_types.len(),
             "rows": node_rows,
         },
+        "nodeFields": layout.node_fields.iter().map(|node| {
+            let (kind, fields) = match &node.fields {
+                zone::LayoutNodeFields::Class { id } => ("class", json!({ "id": id })),
+                zone::LayoutNodeFields::Instance { flags } => ("instance", json!({ "flags": flags })),
+                zone::LayoutNodeFields::InstanceChildDescriptor { flags, child_id } => (
+                    "instance-child-descriptor", json!({ "flags": flags, "childId": child_id }),
+                ),
+                zone::LayoutNodeFields::Child { base_reference, child_id } => (
+                    "child", json!({ "baseReference": base_reference, "childId": child_id }),
+                ),
+                zone::LayoutNodeFields::BgChip { resource_key_reference } => (
+                    "bg-chip", json!({ "resourceKeyReference": resource_key_reference }),
+                ),
+                zone::LayoutNodeFields::Attribute { resource_key_reference, shape_group } => (
+                    "attribute", json!({ "resourceKeyReference": resource_key_reference, "shapeGroup": shape_group }),
+                ),
+            };
+            json!({
+                "reference": node.reference,
+                "span": node.span.to_json(),
+                "sha256": span_sha256(data, node.span),
+                "kind": kind,
+                "fields": fields,
+            })
+        }).collect::<Vec<_>>(),
     }));
     object.insert(
         "placements".into(),
@@ -2077,12 +2105,32 @@ mod tests {
         );
         let node = &document["scene"]["nodeTypes"]["rows"][0];
         assert_eq!(node["extentReference"], 0x220);
+        assert_eq!(node["extentCount"], 1);
         assert_eq!(node["fieldListReference"], 0xe0);
         assert_eq!(node["nodes"]["span"], Span::new(0x590, 0x40).to_json());
         assert_eq!(
             node["nodes"]["sha256"],
             span_sha256(&data, Span::new(0x590, 0x40))
         );
+        assert_eq!(document["scene"]["payload"]["relocationFlags"], 0);
+        assert_eq!(document["scene"]["payload"]["relocationVariant"], 0);
+        let fields = document["scene"]["nodeFields"].as_array().unwrap();
+        let attribute = fields
+            .iter()
+            .find(|node| node["kind"] == "attribute")
+            .unwrap();
+        assert_eq!(attribute["reference"], 0x5F0);
+        assert_eq!(attribute["span"], Span::new(0x680, 0x2C).to_json());
+        assert_eq!(
+            attribute["fields"],
+            json!({ "resourceKeyReference": 0x820, "shapeGroup": 0 })
+        );
+        let descriptor = fields
+            .iter()
+            .find(|node| node["kind"] == "instance-child-descriptor")
+            .unwrap();
+        assert_eq!(descriptor["reference"], 0x900);
+        assert_eq!(descriptor["fields"], json!({ "flags": 1, "childId": 15 }));
         assert_eq!(
             document["placements"],
             json!({ "count": 1, "phb": 1, "model": 0, "collisionBoxes": 0 })
@@ -2110,6 +2158,35 @@ mod tests {
         assert_eq!(
             inspect_bytes(&data).unwrap_err().kind(),
             crate::ErrorKind::BadMagic
+        );
+    }
+
+    #[test]
+    fn map_layout_reports_authored_bgchip_binding_fields() {
+        let data = include_bytes!("../../../tests/fixtures/public/map-layout/binding-fields.bin");
+        let document = inspect_bytes_as(data, &InspectAs::MapLayout).unwrap();
+        let fields = document["scene"]["nodeFields"].as_array().unwrap();
+        let node = |reference| {
+            fields
+                .iter()
+                .find(|node| node["reference"] == reference)
+                .unwrap()
+        };
+        assert_eq!(node(0x590)["kind"], "bg-chip");
+        assert_eq!(node(0x590)["span"], Span::new(0x660, 0x54).to_json());
+        assert_eq!(
+            node(0x590)["fields"],
+            json!({ "resourceKeyReference": 0x56C })
+        );
+        assert_eq!(node(0x268)["fields"], json!({ "id": 0xA1B2C3D4u32 }));
+        assert_eq!(node(0x2EC)["fields"], json!({ "flags": 0xAD }));
+        assert_eq!(
+            node(0x3DC)["fields"],
+            json!({ "baseReference": 0x590, "childId": 0x10203040 })
+        );
+        assert_eq!(
+            node(0x44C)["fields"],
+            json!({ "flags": 5, "childId": 0x10203040 })
         );
     }
 

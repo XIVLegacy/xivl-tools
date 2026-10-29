@@ -147,6 +147,132 @@
       "totalSize": 1444,
       "unknownA": 0
     },
+    "nodeFields": [
+      {
+        "fields": {
+          "id": 0
+        },
+        "kind": "class",
+        "reference": 536,
+        "sha256": "bdd6aca6ee1dff190f12312e2533645d11a0b94fc9cd4c2e26a26aa6633fa446",
+        "span": {
+          "length": 20,
+          "offset": 744
+        }
+      },
+      {
+        "fields": {
+          "id": 0
+        },
+        "kind": "class",
+        "reference": 556,
+        "sha256": "b4d0d77cd19ec88cc707da4eb520220bbe8a7b948b4685b934466dd3d7b40eff",
+        "span": {
+          "length": 20,
+          "offset": 764
+        }
+      },
+      {
+        "fields": {
+          "id": 0
+        },
+        "kind": "class",
+        "reference": 576,
+        "sha256": "d99378e65dd63fd9bfdf32ca4d17164c754b94570246366601c47c33666cc8ab",
+        "span": {
+          "length": 20,
+          "offset": 784
+        }
+      },
+      {
+        "fields": {
+          "id": 0
+        },
+        "kind": "class",
+        "reference": 596,
+        "sha256": "8ad3db00e6efeea066b7088ecc0587e024fcd88c7fb85120b80e9b778bfe9fc1",
+        "span": {
+          "length": 20,
+          "offset": 804
+        }
+      },
+      {
+        "fields": {
+          "id": 0
+        },
+        "kind": "class",
+        "reference": 616,
+        "sha256": "15da6cbc32ee51ae4547bed901dc289e0686f9ae6375758f431bf91dd744a3df",
+        "span": {
+          "length": 20,
+          "offset": 824
+        }
+      },
+      {
+        "fields": {
+          "flags": 0
+        },
+        "kind": "instance",
+        "reference": 748,
+        "sha256": "352139155cc46f912568b93c5a45069766f589199c30d0cc19e7dd1b0cf0e77c",
+        "span": {
+          "length": 64,
+          "offset": 956
+        }
+      },
+      {
+        "fields": {
+          "baseReference": 1036,
+          "childId": 0
+        },
+        "kind": "child",
+        "reference": 940,
+        "sha256": "d83549930d161af84ced576988d8542840fbeef39bdab94bab6de05e810024fe",
+        "span": {
+          "length": 48,
+          "offset": 1148
+        }
+      },
+      {
+        "fields": {
+          "baseReference": 1080,
+          "childId": 0
+        },
+        "kind": "child",
+        "reference": 988,
+        "sha256": "7b7fe1fb8675c34e65f7bea1be66ed869dace9eb7662e1fd435622c748a781e1",
+        "span": {
+          "length": 48,
+          "offset": 1196
+        }
+      },
+      {
+        "fields": {
+          "resourceKeyReference": 1388,
+          "shapeGroup": 1
+        },
+        "kind": "attribute",
+        "reference": 1036,
+        "sha256": "e95d66dc1f431c13d31bdb2587ca0c089d292ef57f15764bc98c349f059209f8",
+        "span": {
+          "length": 44,
+          "offset": 1244
+        }
+      },
+      {
+        "fields": {
+          "childId": 0,
+          "flags": 1
+        },
+        "kind": "instance-child-descriptor",
+        "reference": 1100,
+        "sha256": "7c9e2e7338f6b273238b01d5e582ded3afa1a4942a9191b2162c58758ea38374",
+        "span": {
+          "length": 12,
+          "offset": 1308
+        }
+      }
+    ],
     "nodeTypes": {
       "count": 10,
       "rows": [
@@ -160,6 +286,7 @@
               "offset": 604
             }
           },
+          "extentCount": 1,
           "extentReference": 396,
           "fieldCount": 3,
           "fieldList": {
@@ -214,6 +341,7 @@
               "offset": 616
             }
           },
+          "extentCount": 1,
           "extentReference": 408,
           "fieldCount": 3,
           "fieldList": {
@@ -268,6 +396,7 @@
               "offset": 628
             }
           },
+          "extentCount": 1,
           "extentReference": 420,
           "fieldCount": 8,
           "fieldList": {
@@ -342,6 +471,7 @@
               "offset": 640
             }
           },
+          "extentCount": 1,
           "extentReference": 432,
           "fieldCount": 7,
           "fieldList": {
@@ -412,6 +542,7 @@
               "offset": 652
             }
           },
+          "extentCount": 1,
           "extentReference": 444,
           "fieldCount": 7,
           "fieldList": {
@@ -482,6 +613,7 @@
               "offset": 664
             }
           },
+          "extentCount": 1,
           "extentReference": 456,
           "fieldCount": 5,
           "fieldList": {
@@ -544,6 +676,7 @@
               "offset": 676
             }
           },
+          "extentCount": 1,
           "extentReference": 468,
           "fieldCount": 5,
           "fieldList": {
@@ -606,6 +739,7 @@
               "offset": 688
             }
           },
+          "extentCount": 1,
           "extentReference": 480,
           "fieldCount": 5,
           "fieldList": {
@@ -668,6 +802,7 @@
               "offset": 700
             }
           },
+          "extentCount": 1,
           "extentReference": 492,
           "fieldCount": 2,
           "fieldList": {
@@ -718,6 +853,7 @@
               "offset": 712
             }
           },
+          "extentCount": 1,
           "extentReference": 504,
           "fieldCount": 1,
           "fieldList": {
@@ -769,6 +905,8 @@
       }
     },
     "payload": {
+      "relocationFlags": 0,
+      "relocationVariant": 2,
       "sha256": "a11a0b9964c1076dae16e19f6bfc7363af6d414710c05b718682daa3fb6e6edb",
       "size": 1444,
       "span": {

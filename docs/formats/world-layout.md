@@ -100,7 +100,7 @@ References are payload-relative `u32` values. Zero is null.
 +0x00  char[4] tag                  "lyb", zero-padded
 +0x04  u32     size                 equals SEDB totalSize on all 287
 +0x08  u32     unknownA             varies per layout; meaning unresolved
-+0x0C  u32     unknownB             0x00020004 on all 287
++0x0C  u32     unknownB             includes +0x0D flags / +0x0E variant
 +0x10  u32     nodeTypeTableOffset  start of node-type rows
 +0x14  u32     objectListOffset     0x18 on all 287
 +0x18  u32[]   object list          ends at nodeTypeTableOffset
@@ -108,6 +108,9 @@ References are payload-relative `u32` values. Zero is null.
 
 The exemplar's payload `unknownA` is `0x15000036`. This is a payload
 word, distinct from the SEDB header's field of the same name.
+The `unknownB` word was `0x00020004` on all 287 layouts. Its `+0x0D`
+flags and `+0x0E` variant are described under
+[serialized binding inputs](#serialized-binding-inputs).
 
 The root is the first object-list entry. On all 287 layouts, the entries
 after it equal the root's child array. All 496068 object-list entries
@@ -120,7 +123,7 @@ The node-type table runs to its first field list. Each row is 16 bytes:
 ```text
 +0x00  u32 extentRef     reference to an extent record
 +0x04  u32 fieldListRef  reference to field descriptors
-+0x08  u32 unknown       1 on all 12461 rows; meaning unresolved
++0x08  u32 extentCount   1 on all 12461 rows
 +0x0C  u32 fieldCount    number of descriptors
 
 extent record:
@@ -132,6 +135,8 @@ field descriptor, 4 bytes:
 +0x00  u16 offset        field offset within the node
 +0x02  u16 kind          0: generic reference, 2: string reference
 ```
+
+The reader reports `extentCount` but reads only the first extent record.
 
 For the classes decoded on this page, descriptors list reference fields,
 not inline scalars. The census counted
@@ -357,9 +362,56 @@ BlockLinkObject:
 ```
 
 Material entries are 12 bytes each; their first word is a key string
-reference. The folder and BG box interpretations and Attribute kind are
-inferred or unresolved.
+reference. The folder and BG box interpretations are inferred or unresolved.
 No extent meaning is assigned to LaySettings `+0x3C` here.
+
+## Serialized binding inputs
+
+The instruction observations in
+`xivl-decomp:docs/resource/bgchip-model-binding.md`, sections "LYB relocation
+and attachment" and "UnitTree child creation and admission source", and
+`xivl-decomp:docs/resource/attribute-resource-and-scene-binding.md`, section
+"Placed setup flags and group byte", establish these serialized inputs.
+Both cite retail `ffxivgame.exe`, SHA-256
+`9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9`.
+
+| Record | Field | Evidenced consumer meaning |
+|---|---|---|
+| LYB payload | byte `+0x0D` | Bit 0 records relocation state |
+| LYB payload | byte `+0x0E` | Relocation variant selector |
+| Node-type row | u32 `+0x08` | Extent count |
+| Class node | u32 `+0x00` | Creator lookup ID |
+| InstanceObject | byte `+0x14` | Bit 1 is tested before the manager's instance-creation call |
+| Instance child descriptor, 12 bytes | byte `+0x04` | Bit 2 supplies the child's initial setup admission input |
+| Instance child descriptor | u32 `+0x08` | Child ID compared with child-record `+0x1C` |
+| Child record, 48 bytes | reference `+0x18` | Child pointer read by the UnitTree creation path (`xivl-decomp:docs/resource/bgchip-model-binding.md`, "UnitTree child creation and admission source") |
+| Child record | u32 `+0x1C` | Child ID used by that comparison |
+| BGChip | reference `+0x20` | Primary `brt` request name |
+| Attribute | reference `+0x24` | `bhp` request name |
+| Attribute | byte `+0x28` | Raw shape-group input |
+
+The native relocation helper reads field count and stride as low 16-bit
+values. The reader retains its existing 32-bit count and stride validation.
+
+The report does not join descriptor IDs to UnitTree children or apply
+admission flags. Other nodes with the same 12-byte declaration are not
+labeled as Instance child descriptors unless the placement walk reads them
+from an InstanceObject array.
+
+The selected layout `0x7F1F0000`, 9816 bytes, SHA-256
+`c0a0e6128d36946ba32f8980ad80d39fd3aec990f3fc8a18742bbd8851a76b48`,
+matched the decomp document's identity and its group byte 1 at file `0x1DF4`.
+
+Inspection reports raw bytes, IDs and payload-relative references with
+absolute node spans and digests. Class IDs are reported only for extents
+reached by class references, since root-folder records share their declaration.
+Binding inspection visits only nodes read by the existing placement walk
+and skips fields it cannot resolve, preserving the reader's acceptance.
+It does not dereference the reported BGChip key, mask the group byte,
+join descriptor IDs to placements, or change collision export.
+Other flag bits and descriptor bytes remain opaque.
+These fields establish serialized inputs to conditional consumers, without
+claiming layout selection, ownership, runtime setup, rendering or contact.
 
 ## Inspection and validation
 
@@ -383,7 +435,7 @@ requires:
   of 16-byte rows, with every field list and declared extent inside the
   payload and every node size nonzero;
 - the exact node shapes listed above for each class the reader dispatches:
-  class nodes, LaySettings, InstanceObject and its `0x0C` child-range
+  class nodes, LaySettings, InstanceObject and its `0x0C` child-descriptor
   record, UnitTree, the five-descriptor group, children of instances,
   unit trees, and groups, Attribute, and CollisionBox. The nine-descriptor
   `0x30` declaration is refused when it is reached as a group;
@@ -395,11 +447,15 @@ The report retains:
 - every resource-table row, with its span, type tag, resource id, and
   marker or resource kind. A row's name is a span and digest, and its
   `+0x18..+0x20` words are an unknown span;
-- the lyb SEDB container, the payload span, `size`, and the unresolved
-  `unknownA` and `unknownB` words as unknown spans;
+- the lyb SEDB container, the payload span, `size`, and the `unknownA`
+  and `unknownB` words as opaque spans;
 - the object-list span, count, and root reference;
 - every node-type row, with its descriptors, extent record, and the
   absolute span and digest of its declared nodes;
+- raw relocation bytes, extent counts, and the class, InstanceObject,
+  referenced child-descriptor, child, BGChip and Attribute fields listed
+  under [serialized binding inputs](#serialized-binding-inputs). Existing
+  opaque digests remain present and can overlap these reported fields;
 - placement counts from the reader's walk, and bytes after the SEDB
   extent as a trailing entry.
 
@@ -410,10 +466,11 @@ report carries no names, class paths, resource keys, transforms, or other
 payload strings. Validation reports a parse check and marks round-trip as
 not applicable.
 
-This read is partial. It does not decode node fields beyond the ones the
-zone reader consumes, interpret the unresolved fields above, walk classes
-other than the dispatched ones, or export or write a layout. A layout that
-uses a dispatched class with another shape is refused rather than read.
+This read is partial. It decodes only the placement fields and serialized
+binding inputs listed above. It does not interpret the remaining opaque
+fields, walk classes other than the dispatched ones, or export or write a
+layout. A layout that uses a dispatched class with another shape is refused
+rather than read.
 Which layouts the client selects for a region is outside this reader;
 `xivl-decomp:docs/resource/map-layout-selector.md` traces that selection.
 
@@ -449,8 +506,8 @@ strings and `+0x28` is null. The following words have unresolved meanings:
 | BG `+0x34` | `0` | 8643 |
 | BG `+0x38` | `0x100` | 10713 |
 
-Attribute `+0x0C..+0x23` is zero on all 9938 nodes. Its `+0x28` word,
-whose kind interpretation is unresolved, has these values:
+Attribute `+0x0C..+0x23` is zero on all 9938 nodes. Its `+0x28` word
+has these values; only the low byte's shape-group input role is established:
 
 | Value | Nodes |
 |---|---:|
@@ -541,11 +598,13 @@ carry 123 distinct names.
 
 ## Open questions
 
-- Resource-row `+0x18` and payload `lyb unknownA`.
+- Resource-row `+0x18`, payload `lyb unknownA`, and the other relocation
+  bits and bytes in payload `+0x0C..+0x0F`.
 - The nine-descriptor `0x30` node type.
 - LaySettings `+0x3C`.
 - BG `+0x30`, `+0x34`, and `+0x38`.
-- Attribute `+0x28`.
+- Attribute `+0x29..+0x2B`, other InstanceObject and descriptor flag bits,
+  and descriptor IDs without a direct UnitTree child match.
 - CollisionBox classification bytes.
 - Group `+0x28` and `+0x2C`.
 - The fourth transform pool lane.

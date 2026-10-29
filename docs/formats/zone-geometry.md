@@ -23,11 +23,24 @@ available through explicit `inspect --as map-layout` and
 [MapLayout inspection contract](world-layout.md#inspection-and-validation)
 defines that report.
 
-Retail InstanceObject child slots also contain an exact 0x0C flat range record
-with the descriptor `[(0,0)]`; its target and count are bounds-checked but its
-unresolved range payload is not treated as a ChildObject. Direct ChildObject,
-UnitTree, group, Attribute, CollisionBox, and LaySettings dispatch remains
-exact-shape validated.
+Retail InstanceObject child slots also contain an exact 0x0C child-descriptor
+record with the declaration `[(0,0)]`. The reader bounds its first word as a
+payload offset and its second word as a scalar count no greater than
+1,000,000. A target past the payload is refused, as is a target at the
+payload end with a nonzero count. It reports the low flag byte
+at `+0x04` and child ID at `+0x08` without treating the record as a ChildObject.
+Direct ChildObject, UnitTree, group, Attribute, CollisionBox, and LaySettings
+dispatch remains exact-shape validated.
+
+The shared layout reader also retains the raw serialized binding inputs
+documented in [world layout](world-layout.md#serialized-binding-inputs):
+relocation bytes, extent counts, class IDs, InstanceObject and child-descriptor
+flag bytes, child IDs, BGChip and Attribute key references, and the Attribute
+shape-group byte. Explicit MapLayout inspection reports these fields.
+Collision placement, admission, OBJ faces and sidecar output do not use them.
+Attribute bytes `+0x29..+0x2B`, other flag bits, unmatched descriptor IDs,
+and the remaining layout words and classes stay opaque. Selection, ownership
+and runtime physics behavior remain outside this partial read.
 
 The UnitTree group declaration is the five-field set at offsets `0x0C`,
 `0x10`, `0x14`, `0x1C`, and `0x20`. Every group reached from a unit tree in
