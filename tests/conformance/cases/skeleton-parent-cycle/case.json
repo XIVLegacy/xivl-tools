@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "skeleton-parent-cycle",
+  "formatId": "skeleton",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/skeleton/parent-cycle.bin"
+  },
+  "arguments": [
+    "--as",
+    "skeleton"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-chunk",
+    "errorOffset": 312
+  }
+}

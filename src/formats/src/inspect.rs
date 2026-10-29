@@ -63,6 +63,8 @@ pub enum InspectAs {
     Region,
     /// A bitmap font container walked in the retail reader's chunk order.
     Fdt,
+    /// Explicit bounded SKL record and string framing.
+    Skeleton,
     /// A GTEX texture with loader-backed metadata and source addressing.
     Gtex,
     /// A PWIB resource with two loader-bounded segments.
@@ -84,7 +86,7 @@ pub enum InspectAs {
 
 impl InspectAs {
     /// Names accepted by the `--as` option.
-    pub const NAMES: [&'static str; 20] = [
+    pub const NAMES: [&'static str; 21] = [
         "sedb",
         "ssd",
         "scrambled-xml",
@@ -94,6 +96,7 @@ impl InspectAs {
         "staticactor-san",
         "region",
         "fdt",
+        "skeleton",
         "gtex",
         "pwib",
         "wrb-model",
@@ -144,6 +147,7 @@ impl InspectAs {
             Some("staticactor-san") => Self::StaticActorSan,
             Some("region") => Self::Region,
             Some("fdt") => Self::Fdt,
+            Some("skeleton") => Self::Skeleton,
             Some("gtex") => Self::Gtex,
             Some("pwib") => Self::Pwib,
             Some("wrb-model") => Self::WrbModel,
@@ -221,6 +225,7 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
         InspectAs::StaticActorSan => inspect_staticactor(data),
         InspectAs::Region => inspect_region(data),
         InspectAs::Fdt => inspect_fdt(data),
+        InspectAs::Skeleton => crate::skeleton::inspect(data),
         InspectAs::Gtex => inspect_tagged_resource(data, TaggedResourceKind::Gtex),
         InspectAs::Pwib => inspect_tagged_resource(data, TaggedResourceKind::Pwib),
         InspectAs::WrbModel => inspect_wrb_model(data),

@@ -2792,6 +2792,106 @@ def build_fixtures() -> dict[str, bytes]:
     fixtures["config/sys-short-stamp.bin"] = b"\x01\x02\x03"
     fixtures["config/pad-short-stamp.bin"] = b"\x01\x02"
 
+    # -- skeleton -------------------------------------------------------
+    # Framing from docs/formats/skeleton.md; names and opaque bytes are invented.
+    skeleton = bytearray(pattern(628, 0x53))
+    skeleton[:8] = b"SEDBSKL "
+    struct.pack_into("<IHHI", skeleton, 8, 7000, 0x0400, 0x30, len(skeleton))
+    struct.pack_into("<III", skeleton, 0x30, 1, 528, 4)
+    struct.pack_into("<II", skeleton, 0x44, 0, 528)
+    for index, (name, parent, child) in enumerate(
+        [(0, 0xFFFFFFFF, 1), (0, 0, 2), (2, 1, 0xFFFFFFFF)]
+    ):
+        at = 80 + index * 176
+        struct.pack_into("<III", skeleton, at, name, 3, 3)
+        struct.pack_into("<IIII", skeleton, at + 0x38, parent, child, 0xFFFFFFFF, index)
+    skeleton[608:625] = b"oak\0limb\0tip\0aux\0"
+    fixtures["skeleton/records.bin"] = bytes(skeleton)
+    for name, offset, value in [
+        ("scalar", 8, 7001),
+        ("directory-count", 0x30, 2),
+        ("directory-offset", 0x44, 1),
+        ("partial-record", 0x48, 527),
+        ("string-overlap", 0x34, 527),
+        ("string-count", 0x38, 100),
+        ("string-index", 80 + 4, 4),
+        ("hierarchy-index", 80 + 0x38, 3),
+        ("self-index", 80 + 0x44, 1),
+        ("parent-self", 80 + 0x38, 0),
+        ("parent-cycle", 80 + 0x38, 2),
+    ]:
+        malformed = bytearray(skeleton)
+        struct.pack_into("<I", malformed, offset, value)
+        fixtures[f"skeleton/{name}.bin"] = bytes(malformed)
+    for name, offset, value in [
+        ("bad-tag", 7, ord("!")),
+        ("conversion", 12, 1),
+        ("header-size", 14, 0x40),
+    ]:
+        malformed = bytearray(skeleton)
+        malformed[offset] = value
+        fixtures[f"skeleton/{name}.bin"] = bytes(malformed)
+    fixtures["skeleton/truncated.bin"] = bytes(skeleton[:72])
+    unterminated = bytearray(skeleton)
+    unterminated[624:] = b"xxxx"
+    fixtures["skeleton/unterminated.bin"] = bytes(unterminated)
+
+    def skeleton_res(payload: bytes) -> bytes:
+        return (
+            sedb_header(
+                "RES ", 4000, 0x0400, 0x40, 80 + len(payload), res_extended(1, 0, "syn")
+            )
+            + directory_entry(27, 0, len(payload), 0)
+            + payload
+        )
+
+    nested_skeleton = skeleton_res(skeleton_res(bytes(skeleton)))
+    fixtures["skeleton/nested-res.bin"] = nested_skeleton
+    short_header = bytearray(nested_skeleton)
+    struct.pack_into("<H", short_header, 14, 0x30)
+    struct.pack_into("<H", short_header, 94, 0x30)
+    fixtures["skeleton/res-header-0x30.bin"] = bytes(short_header)
+    wrapped_skeleton = (
+        b"PWIB"
+        + struct.pack(">III", 16 + len(nested_skeleton), 16, 16 + len(nested_skeleton))
+        + nested_skeleton
+    )
+    fixtures["skeleton/pwib.bin"] = wrapped_skeleton
+    malformed = bytearray(wrapped_skeleton)
+    struct.pack_into(">I", malformed, 4, len(wrapped_skeleton) + 16)
+    fixtures["skeleton/pwib-boundary.bin"] = bytes(malformed)
+    malformed = bytearray(wrapped_skeleton)
+    struct.pack_into("<I", malformed, 260, 4)
+    fixtures["skeleton/nested-string-index.bin"] = bytes(malformed)
+    malformed = bytearray(nested_skeleton)
+    struct.pack_into("<I", malformed, 16, len(nested_skeleton) - 16)
+    fixtures["skeleton/container-boundary.bin"] = bytes(malformed)
+    fixtures["skeleton/opaque-alias.bin"] = (
+        sedb_header("RES ", 4000, 0x0400, 0x40, 756, res_extended(3, 0, "syn"))
+        + directory_entry(91, 628, 16, 0)
+        + directory_entry(27, 0, 628, 0)
+        + directory_entry(92, 628, 16, 0)
+        + bytes(skeleton)
+        + pattern(16, 0x97)
+    )
+    aliased = bytearray(80)
+    aliased[:8] = b"SEDBSKL "
+    struct.pack_into("<IHHI", aliased, 8, 7000, 0x0400, 0x30, 80)
+    struct.pack_into("<I", aliased, 0x30, 1)
+    for _ in range(7):
+        aliased = (
+            sedb_header(
+                "RES ",
+                4000,
+                0x0400,
+                0x40,
+                576 + len(aliased),
+                res_extended(32, 0, "syn"),
+            )
+            + directory_entry(27, 0, len(aliased), 0) * 32
+            + aliased
+        )
+    fixtures["skeleton/selected-alias.bin"] = bytes(aliased)
     return fixtures
 
 

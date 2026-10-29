@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "skeleton-header-size",
+  "formatId": "skeleton",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/skeleton/header-size.bin"
+  },
+  "arguments": [
+    "--as",
+    "skeleton"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-chunk-length",
+    "errorOffset": 14
+  }
+}

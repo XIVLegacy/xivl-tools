@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "skeleton-res-header-0x30",
+  "formatId": "skeleton",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/skeleton/res-header-0x30.bin"
+  },
+  "arguments": [
+    "--as",
+    "skeleton"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  }
+}

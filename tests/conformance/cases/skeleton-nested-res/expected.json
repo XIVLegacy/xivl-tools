@@ -1,0 +1,195 @@
+{
+  "format": "skeleton",
+  "input": {
+    "length": 788
+  },
+  "opaque": [
+    {
+      "sha256": "348c54ef13e09a9b7306eba3b9bd569518492ca44d9958ec57735b50f054f2a3",
+      "span": {
+        "length": 160,
+        "offset": 0
+      }
+    }
+  ],
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "skeletons": [
+    {
+      "entryPath": [
+        0,
+        0
+      ],
+      "opaque": [
+        {
+          "sha256": "e52d9c508c502347344d8c07ad91cbd6068afc75ff6292f062a09ca381c89e71",
+          "span": {
+            "length": 1,
+            "offset": 173
+          }
+        },
+        {
+          "sha256": "327aa004af856441ec232ae04377c141bc5442af6161b961841c0c0a5d07e42e",
+          "span": {
+            "length": 28,
+            "offset": 180
+          }
+        },
+        {
+          "sha256": "f81824d630fe512bc5b6edc15e689cc2dd012655f9e92219d3a07e2615f18cdb",
+          "span": {
+            "length": 8,
+            "offset": 220
+          }
+        },
+        {
+          "sha256": "4975fecd1f805dfe01917bd8a0f0047a95f5e3a91909d3a59261ca1489f4088e",
+          "span": {
+            "length": 4,
+            "offset": 236
+          }
+        },
+        {
+          "sha256": "1646625dfcc6fa0c39a204b5a9ac7e31765b754020ec67f485bfcd974c14f4fa",
+          "span": {
+            "length": 44,
+            "offset": 252
+          }
+        },
+        {
+          "sha256": "7a5be988dc873d1fe9f9f72d5a4b1dad226b6c390ae2eeca19a4e610c3de9437",
+          "span": {
+            "length": 104,
+            "offset": 312
+          }
+        },
+        {
+          "sha256": "bb8408999f8123b17b297dc06db5272cfdf656b9013c4faa4b6f7c628fe6bd24",
+          "span": {
+            "length": 44,
+            "offset": 428
+          }
+        },
+        {
+          "sha256": "a3d7b3416824fa3df00f71b3c76f40ea386282dc2edcef858529f6b229438017",
+          "span": {
+            "length": 104,
+            "offset": 488
+          }
+        },
+        {
+          "sha256": "563c5c677968cc66089fa30f718555b98cf295a025e1e49b3f61d7fb475a9729",
+          "span": {
+            "length": 44,
+            "offset": 604
+          }
+        },
+        {
+          "sha256": "1d92266abbc04a9ea75b0a71561195c63d8b299bce294fe2626380bf1fdbea06",
+          "span": {
+            "length": 104,
+            "offset": 664
+          }
+        },
+        {
+          "sha256": "6b79b69f037a7bf17038bb18bb17ff1b7540688265743765fe69746a3bb944b9",
+          "span": {
+            "length": 3,
+            "offset": 785
+          }
+        }
+      ],
+      "recordArray": {
+        "sha256": "aa53dd1887afe9035d389a5ebee2f5f0dccab6c7d2f9da9d6c7d0344af7e3b75",
+        "span": {
+          "length": 528,
+          "offset": 240
+        }
+      },
+      "recordCount": 3,
+      "recordStride": 176,
+      "records": [
+        {
+          "auxiliaryStringIndices": [
+            3,
+            3
+          ],
+          "firstChild": 1,
+          "nameIndex": 0,
+          "nextSibling": 4294967295,
+          "parent": 4294967295,
+          "selfIndex": 0,
+          "span": {
+            "length": 176,
+            "offset": 240
+          }
+        },
+        {
+          "auxiliaryStringIndices": [
+            3,
+            3
+          ],
+          "firstChild": 2,
+          "nameIndex": 0,
+          "nextSibling": 4294967295,
+          "parent": 0,
+          "selfIndex": 1,
+          "span": {
+            "length": 176,
+            "offset": 416
+          }
+        },
+        {
+          "auxiliaryStringIndices": [
+            3,
+            3
+          ],
+          "firstChild": 4294967295,
+          "nameIndex": 2,
+          "nextSibling": 4294967295,
+          "parent": 1,
+          "selfIndex": 2,
+          "span": {
+            "length": 176,
+            "offset": 592
+          }
+        }
+      ],
+      "rootCount": 1,
+      "scalar": 7000,
+      "source": {
+        "sha256": "ae231cefff84af7886490637dea5658c6a4a388f6d4bb580be61e1823e2fb288",
+        "span": {
+          "length": 628,
+          "offset": 160
+        }
+      },
+      "stringCount": 4,
+      "stringPool": {
+        "sha256": "dfc89ef2a07c071e54e0139ae8022c2340c3c20c9554e8b3478130cd0ff2bf2f",
+        "span": {
+          "length": 17,
+          "offset": 768
+        }
+      },
+      "strings": [
+        {
+          "length": 4,
+          "offset": 768
+        },
+        {
+          "length": 5,
+          "offset": 772
+        },
+        {
+          "length": 4,
+          "offset": 777
+        },
+        {
+          "length": 4,
+          "offset": 781
+        }
+      ]
+    }
+  ]
+}

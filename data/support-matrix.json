@@ -330,13 +330,14 @@
       "name": "Skeleton and skin",
       "category": "graphics",
       "phase": 4,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
       "export": "planned",
       "exportViews": [
         "gltf",
         "json"
-      ]
+      ],
+      "notes": "Explicit --as skeleton inspection and validation read bounded little-endian SEDBSKL blocks in standalone inputs, RES trees, and PWIB first-segment RES trees. The evidenced shape has scalar 7000, conversion byte zero, header size 0x30, and one directory row. The reader bounds 176-byte records and counted NUL-terminated strings, validates three string indices and four hierarchy indices, and reports physical entry paths, absolute spans, references, counts, digests, and opaque spans without text or transforms. Public synthetic cases cover accepted framing and typed refusals. Other scalar values, conversion, directory shapes, invalid indices, and unbounded extents are refused. Transform contents, text encoding, hierarchy consistency, native selection, skinning, animation, writing, and lossless export remain outside the claim. Evidence, census identities, and gaps: docs/formats/skeleton.md."
     },
     {
       "id": "animation",

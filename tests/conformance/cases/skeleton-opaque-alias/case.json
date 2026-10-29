@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "skeleton-opaque-alias",
+  "formatId": "skeleton",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/skeleton/opaque-alias.bin"
+  },
+  "arguments": [
+    "--as",
+    "skeleton"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  }
+}

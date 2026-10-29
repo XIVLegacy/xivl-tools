@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "skeleton-string-overlap",
+  "formatId": "skeleton",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/skeleton/string-overlap.bin"
+  },
+  "arguments": [
+    "--as",
+    "skeleton"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "table-out-of-range",
+    "errorOffset": 52
+  }
+}

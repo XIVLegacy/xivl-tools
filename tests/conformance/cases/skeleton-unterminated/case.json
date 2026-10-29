@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "skeleton-unterminated",
+  "formatId": "skeleton",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/skeleton/unterminated.bin"
+  },
+  "arguments": [
+    "--as",
+    "skeleton"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 621
+  }
+}

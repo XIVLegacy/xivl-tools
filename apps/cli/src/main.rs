@@ -99,7 +99,7 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
 5.1 chunk without interpreting it. The output path must not already exist.
 
   --as sedb | ssd | scrambled-xml | sqwt | lpb | lpb-bytecode | staticactor-san | region | fdt | gtex | pwib
-     | wrb-model | map-layout | enable-file | row-offsets
+     | skeleton | wrb-model | map-layout | enable-file | row-offsets
      | sheet-data | config-sys | config-pad | config-lng | config-rgn
       Read the input as this format. Needed for enable-file and
       row-offsets, which are unsigned 32-bit arrays with no signature,
@@ -124,6 +124,7 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
       --as fdt walks a bitmap font container in the client's chunk order and reports chunk
       spans, lookup-table counts, GLYP record checks, a GTEX report per GTEX chunk, and digests
       without record values or texture payloads.
+      --as skeleton reports bounded SKL record and string spans, hierarchy indices, and digests.
   --columns <type,...>
       Column types of a sheet-data file, from its schema document, for
       example 'str,s32,bool'. Without it the data is read as a stream of
@@ -401,6 +402,7 @@ mod tests {
         assert!(USAGE.contains("wrb-model"));
         assert!(USAGE.contains("map-layout"));
         assert!(USAGE.contains("--as fdt walks a bitmap font container"));
+        assert!(USAGE.contains("--as skeleton reports bounded SKL"));
         assert!(USAGE.contains("lyb node declarations without names or payload strings"));
     }
 }

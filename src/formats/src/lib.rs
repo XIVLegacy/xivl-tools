@@ -35,6 +35,7 @@ pub mod richstring;
 pub mod scrambled;
 pub mod sedb;
 pub mod sheet;
+pub mod skeleton;
 pub mod sqwt;
 pub mod sscf;
 pub mod ssd;
