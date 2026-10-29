@@ -5,7 +5,7 @@ data addressing, plus the three boundaries of the PWIB split container. The
 canonical promoted finding is:
 
 - `xivl-decomp:docs/resource/gtex-pwib-loader.md` at commit
-  `8ea63af8dbb6ae335d025116e7602006e58f745b`.
+  `eec7a84053cd5d3707e56b45446e4c7b71bf2b84`.
 - `xivl-decomp:docs/resource/gtex-pwib-loader.md`, "GTEX index 22", at
   commit `6cde38cab4d4ee97190968a27b85d1baa9f61b5c`.
 
