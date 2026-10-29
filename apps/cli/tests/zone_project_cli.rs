@@ -110,6 +110,71 @@ fn files(directory: &Path) -> BTreeMap<String, Vec<u8>> {
 }
 
 #[test]
+fn zone_project_cli_runs_documented_examples_from_public_fixtures() {
+    let guide = include_str!("../../../docs/zone-project.md");
+    let commands = guide
+        .lines()
+        .filter_map(|line| line.strip_prefix("target/debug/xivl "))
+        .collect::<Vec<_>>();
+    assert_eq!(commands.len(), 6);
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let fixtures = repo.join("tests/fixtures/public/zone-project");
+    let before = INPUTS.map(|name| fs::read(fixtures.join(name)).unwrap());
+    for (procedure_index, procedure) in commands.as_chunks::<3>().0.iter().enumerate() {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let outputs = Project {
+            root: std::env::temp_dir().join(format!(
+                "xivl-zone-docs-{}-{stamp}-{procedure_index}",
+                std::process::id()
+            )),
+        };
+        fs::create_dir(&outputs.root).unwrap();
+        for (index, command) in procedure.iter().enumerate() {
+            let arguments = command
+                .split_whitespace()
+                .map(|word| {
+                    word.trim_matches('"')
+                        .replace("$outputRoot", &outputs.root.to_string_lossy())
+                        .replace(
+                            "$project",
+                            "tests/fixtures/public/zone-project/project.json",
+                        )
+                        .replace("$clientRoot", "tests/fixtures/public/zone-project/client")
+                })
+                .collect::<Vec<_>>();
+            let output = Command::new(env!("CARGO_BIN_EXE_xivl"))
+                .current_dir(&repo)
+                .args(arguments)
+                .output()
+                .unwrap();
+            status(&output, 0);
+            assert!(output.stderr.is_empty());
+            if index == 0 {
+                let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+                assert_eq!(report["status"], "offline-validated");
+                assert!(!outputs.root.join("zone-project-first").exists());
+                assert!(!outputs.root.join("zone-project-second").exists());
+            } else {
+                assert!(output.stdout.is_empty());
+            }
+        }
+        let first = files(&outputs.root.join("zone-project-first"));
+        assert_eq!(
+            first.keys().map(String::as_str).collect::<Vec<_>>(),
+            OUTPUTS
+        );
+        assert_eq!(first, files(&outputs.root.join("zone-project-second")));
+    }
+    assert_eq!(
+        before,
+        INPUTS.map(|name| fs::read(fixtures.join(name)).unwrap())
+    );
+}
+
+#[test]
 fn zone_project_cli_validates_and_builds_identical_outputs_without_mutating_inputs() {
     let project = Project::new();
     let inputs = project.inputs();

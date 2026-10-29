@@ -9,8 +9,15 @@ defines the status vocabulary and promotion rules.
 - reusable libraries for client file and container formats;
 - the `xivl` command line for inspection, validation, and extraction;
 - deterministic world-geometry export to OBJ and versioned JSON metadata;
+- experimental [offline zone projects](zone-project.md) for reproducible
+  model/PHB/layout prototypes from explicit pinned inputs;
 - lossless export views and structural reports that do not publish private
   client data.
+
+Zone-project output remains client-unverified. It does not register or install
+a zone or allocate resource IDs. Its output IDs are checked only for
+consistency inside the offline build. The command contract does not promote
+format support status.
 
 ## Planned direction
 

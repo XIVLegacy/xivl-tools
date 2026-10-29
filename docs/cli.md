@@ -15,8 +15,26 @@ cargo run --release --locked -p xivl-cli -- --version
 ```
 
 Use a built binary in place of `cargo run ... --` when a script or another
-program needs to invoke it. All examples below use Cargo so they work from a
-fresh checkout.
+program needs to invoke it. Examples use Cargo or a binary built from this
+checkout.
+
+## Experimental zone projects
+
+`validate-zone-project <project.json> --client-root <root>` prepares and
+checks an offline floor project in memory. It prints an `offline-validated`
+JSON report without writing files. `build-zone-project <project.json>
+--client-root <root> --output <new-directory>` performs the same checks and
+writes `layout.dat`, `model.dat`, `collision.dat` and `build-report.json`.
+Build success is silent on stdout. The report records `offline-built` and
+retains `clientVerification: "unverified"`.
+
+The [zone-project guide](zone-project.md) defines the experimental profile,
+saved project, paths, limits, reports and failure contract. Start with its
+[complete synthetic reproduction](zone-project.md#synthetic-reproduction),
+which needs no retail installation. Its [private-input procedure](zone-project.md#explicit-private-inputs)
+requires an explicit client root and saved local project. Offline output is
+a model/PHB/layout prototype. It does not register or install a zone, allocate
+IDs, or establish client acceptance.
 
 ## Decode one fixed control
 
@@ -597,9 +615,9 @@ error, so a successful report can be piped without mixing it with an error.
 
 | Exit status | Meaning |
 |---|---|
-| `0` | The requested read, report, or export succeeded. |
+| `0` | The requested read, report, build, or export succeeded. |
 | `1` | Usage, input, or output failure. |
-| `2` | The input was read but failed a format parse. |
+| `2` | The input failed content validation, identity checks, or a format/profile check. |
 
 Most direct file reads are bounded to 256 MiB. The command refuses unsafe
 paths, ambiguous payload spans, unsupported materialization requests, and

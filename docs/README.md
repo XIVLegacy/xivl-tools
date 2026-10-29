@@ -28,6 +28,7 @@ are detailed references.
 | Verify an extraction without changing it | [CLI: verify-extraction](cli.md#verify-an-extraction) |
 | Export sheet definitions as CSV | [CLI: export sheets](cli.md#export-sheets) |
 | Export collision geometry | [Zone geometry](formats/zone-geometry.md) |
+| Validate and build an experimental offline floor prototype | [Zone projects](zone-project.md) |
 | Read Lua paths, LPB wrappers, or bytecode structure | [Lua and LPB](formats/lua-lpb.md) |
 | Query command metadata and observed loadout writes | [CLI: advanced reports](cli.md#advanced-reports) |
 | Understand command getter and level-adjustment profiles | [Command level-adjustment profiles](command-formula-profiles.md) |

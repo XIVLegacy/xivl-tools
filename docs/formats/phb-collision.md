@@ -8,6 +8,10 @@ profile is a retained allocation with one `PHB.TBC`, one `PHB.TBD`, one tree
 leaf, and no optional GBD tail tables. Client collision acceptance is a
 separate requirement from successful serialization or `parse_phb` decoding.
 
+The experimental [zone-project builder](../zone-project.md) uses this writer
+with an explicitly declared PHB template and compares its placed triangles
+with the authored render model before publishing offline output.
+
 PHB authoring carries no support-matrix status. It has no public conformance
 case, and the bounded PHB read used for collision export belongs to the
 `zone-geometry` row.

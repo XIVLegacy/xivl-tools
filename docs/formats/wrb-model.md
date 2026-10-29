@@ -297,3 +297,7 @@ under [vertex declaration metadata](#vertex-declaration-metadata).
 Structural JSON is a report and does not establish lossless export support.
 This reader does not establish glTF output, rendering, material or texture
 meaning, skeletons, animation, client runtime use, or a WRB writer.
+
+The separate experimental [zone-project builder](../zone-project.md) uses the
+bounded OBJ importer with a compatible template. Its offline output does not
+change this reader's support status or establish client rendering acceptance.

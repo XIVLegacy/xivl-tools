@@ -417,6 +417,10 @@ uses a dispatched class with another shape is refused rather than read.
 Which layouts the client selects for a region is outside this reader;
 `xivl-decomp:docs/resource/map-layout-selector.md` traces that selection.
 
+The experimental [zone-project builder](../zone-project.md) changes only two
+selected resource-ID fields after checking four unchanged placements. It
+preserves all other layout bytes and does not provide a general serializer.
+
 ## Field observations
 
 LaySettings `+0x3C`, interpreted as `f32`, has this distribution. Its
