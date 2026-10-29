@@ -1262,6 +1262,19 @@ def build_fixtures() -> dict[str, bytes]:
     assert len(two) == 0xC0
     fixtures["res/two-subresources.bin"] = two
 
+    # The declared 0x30 header leaves the extended fields before the directory at 0x40.
+    short_header = (
+        sedb_header("RES ", 0xFA0, 0, 0x30, 0x64, res_extended(2, 0, "test"))
+        + directory_entry(0, 0, 3, 0)
+        + directory_entry(1, 3, 1, 0)
+        + pattern(4, 0x37)
+    )
+    assert len(short_header) == 0x64
+    fixtures["res/header-0x30.bin"] = short_header
+    short_directory_overrun = bytearray(short_header)
+    struct.pack_into("<I", short_directory_overrun, 0x10, 0x58)
+    fixtures["res/header-0x30-directory-overrun.bin"] = bytes(short_directory_overrun)
+
     # One subresource whose declared extent runs 0x16 bytes past the end of
     # the file, the alignment slack the evidence document records. The
     # parser clamps it and reports the clamp. The case still succeeds.
@@ -1292,8 +1305,7 @@ def build_fixtures() -> dict[str, bytes]:
         "RES ", 0xFA0, 0, RES_HEADER_SIZE, 0x60, res_extended(0x1000, 0x60, "brt")
     ) + bytes(0x20)
 
-    # A RES container with a 0x30 header, too small to hold the extended
-    # fields. Expect header-too-small at 0x0E.
+    # A 0x30 RES header without a nonempty directory remains unsupported.
     fixtures["res/header-too-small.bin"] = sedb_header(
         "RES ", 0xFA0, 0, 0x30, 0x60
     ) + bytes(0x30)

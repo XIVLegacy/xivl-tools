@@ -22,8 +22,7 @@ pub const FIXED_HEADER_SIZE: u16 = 0x14;
 /// Offset of the RES extended header fields inside the container header.
 pub const RES_EXTENDED_HEADER_OFFSET: usize = 0x30;
 
-/// Header size a RES container is observed to declare. The directory
-/// begins there.
+/// End of the RES extended fields and minimum directory offset.
 pub const RES_HEADER_SIZE: u16 = 0x40;
 
 /// Bytes per RES subresource directory entry.
@@ -100,12 +99,21 @@ pub struct Container {
     /// Header bytes past the fixed fields that this parser does not read.
     pub header_unknown: Vec<Entry>,
     pub res: Option<ResHeader>,
-    /// Payload entries, ordered by offset, tiling `[header_size, total_size)`.
+    /// Payload entries, ordered by offset, tiling `[directory_start(), total_size)`.
     pub entries: Vec<Entry>,
     pub anomalies: Vec<Anomaly>,
 }
 
 impl Container {
+    /// Payload start relative to the container, including the RES directory.
+    pub fn directory_start(&self) -> u16 {
+        if self.res.is_some() {
+            self.header_size.max(RES_HEADER_SIZE)
+        } else {
+            self.header_size
+        }
+    }
+
     /// The support-matrix format id this container belongs to.
     pub fn format_id(&self) -> &'static str {
         if self.res.is_some() {
@@ -216,7 +224,8 @@ fn parse_container_at_depth(data: &[u8], base: u64, depth: u32) -> Result<Contai
     let mut res = None;
 
     if is_res {
-        if header_size < RES_HEADER_SIZE {
+        let short_res_header = header_size as usize == RES_EXTENDED_HEADER_OFFSET;
+        if header_size < RES_HEADER_SIZE && !short_res_header {
             return Err(FormatError::new(
                 ErrorKind::HeaderTooSmall,
                 header_size_offset,
@@ -225,7 +234,7 @@ fn parse_container_at_depth(data: &[u8], base: u64, depth: u32) -> Result<Contai
                 ),
             ));
         }
-        if header_size != RES_HEADER_SIZE {
+        if header_size != RES_HEADER_SIZE && !short_res_header {
             anomalies.push(Anomaly {
                 kind: "unexpected-res-header-size",
                 span: Span::new(header_size_offset, 2),
@@ -243,6 +252,15 @@ fn parse_container_at_depth(data: &[u8], base: u64, depth: u32) -> Result<Contai
         let repeated_count = reader.u32_le()?;
         let type_name = reader.tag4()?;
 
+        // The evidenced 0x30 shape has a nonempty directory after the extended fields.
+        if short_res_header && subresource_count == 0 {
+            return Err(FormatError::new(
+                ErrorKind::HeaderTooSmall,
+                header_size_offset,
+                "a RES header of 0x30 requires a nonempty directory at 0x40",
+            ));
+        }
+
         if subresource_count != repeated_count {
             return Err(FormatError::new(
                 ErrorKind::SubresourceCountMismatch,
@@ -254,7 +272,8 @@ fn parse_container_at_depth(data: &[u8], base: u64, depth: u32) -> Result<Contai
         }
 
         let directory_bytes = u64::from(subresource_count) * RES_DIRECTORY_ENTRY_SIZE;
-        if u64::from(header_size) + directory_bytes > u64::from(total_size) {
+        let directory_start = header_size.max(RES_HEADER_SIZE);
+        if u64::from(directory_start) + directory_bytes > u64::from(total_size) {
             return Err(FormatError::new(
                 ErrorKind::SubresourceCountOutOfRange,
                 count_offset,
@@ -262,6 +281,14 @@ fn parse_container_at_depth(data: &[u8], base: u64, depth: u32) -> Result<Contai
                     "{subresource_count} subresource entries do not fit in the {total_size} byte container"
                 ),
             ));
+        }
+
+        if short_res_header {
+            anomalies.push(Anomaly {
+                kind: "unexpected-res-header-size",
+                span: Span::new(header_size_offset, 2),
+                detail: "RES declares a 0x30 byte header, 0x10 short of the extended fields ending at 0x40 and the directory starting there".to_string(),
+            });
         }
 
         push_unknown(
@@ -294,12 +321,17 @@ fn parse_container_at_depth(data: &[u8], base: u64, depth: u32) -> Result<Contai
         )?;
     }
 
-    let payload_region = header_size as usize..total_size as usize;
+    let payload_start = if is_res {
+        header_size.max(RES_HEADER_SIZE)
+    } else {
+        header_size
+    };
+    let payload_region = payload_start as usize..total_size as usize;
     let entries = match &res {
         Some(header) => parse_res_payload(
             data,
             base,
-            header_size,
+            payload_start,
             total_size,
             header.subresource_count,
             depth,
@@ -332,10 +364,10 @@ fn parse_container_at_depth(data: &[u8], base: u64, depth: u32) -> Result<Contai
 
 impl Container {
     /// The accounting invariant: payload entries are ordered, contiguous
-    /// from the end of the header, and reach at least the end of the
+    /// from `directory_start()`, and reach at least the end of the
     /// container. They reach past it only when a flagged anomaly says so.
     pub fn entries_tile_the_payload(&self) -> bool {
-        let mut cursor = self.span.offset + u64::from(self.header_size);
+        let mut cursor = self.span.offset + u64::from(self.directory_start());
         for entry in &self.entries {
             if entry.span.offset != cursor {
                 return false;
@@ -396,13 +428,13 @@ pub fn validate_payload_materialization(container: &Container) -> Result<()> {
 fn parse_res_payload(
     data: &[u8],
     base: u64,
-    header_size: u16,
+    directory_start: u16,
     total_size: u32,
     subresource_count: u32,
     depth: u32,
     anomalies: &mut Vec<Anomaly>,
 ) -> Result<Vec<Entry>> {
-    let directory_start = header_size as usize;
+    let directory_start = directory_start as usize;
     let directory_bytes = subresource_count as usize * RES_DIRECTORY_ENTRY_SIZE as usize;
     let payload_base = directory_start + directory_bytes;
     let container_end = total_size as usize;

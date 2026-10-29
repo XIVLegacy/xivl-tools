@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "errorKind": "subresource-count-out-of-range",
+    "errorOffset": 48,
+    "outcome": "parse-error"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/res/header-0x30-directory-overrun.bin"
+  },
+  "formatId": "res",
+  "id": "res-header-0x30-directory-overrun",
+  "notes": "The 0x30 shape's directory fits the input but exceeds the declared container extent.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

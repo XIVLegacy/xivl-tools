@@ -1,0 +1,15 @@
+{
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/res/header-0x30.bin"
+  },
+  "formatId": "res",
+  "id": "res-header-0x30",
+  "notes": "The declared header size is 0x10 short of the parsed extended fields and the directory at 0x40; no bytes in that range are unexplained. Payload offsets are relative to the directory end.",
+  "operation": "inspect",
+  "schemaVersion": 1
+}

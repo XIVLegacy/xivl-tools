@@ -124,6 +124,66 @@ fn parse_and_check(data: &[u8]) {
 }
 
 #[test]
+fn sedb_res_header_0x30_keeps_extended_fields_out_of_payload() {
+    let bytes = std::fs::read(fixture_root().join("res/header-0x30.bin")).unwrap();
+    let container = sedb::parse_container(&bytes, 0x100).unwrap();
+    assert_eq!(container.header_size, 0x30);
+    assert_eq!(container.directory_start(), 0x40);
+    assert_eq!(container.total_size, 0x64);
+    assert_eq!(container.res.as_ref().unwrap().subresource_count, 2);
+    assert_eq!(container.header_unknown[0].span.offset, 0x114);
+    assert_eq!(container.header_unknown[0].span.length, 0x1C);
+    assert_eq!(container.entries.len(), 3);
+    let directory = &container.entries[0];
+    assert_eq!(directory.span.offset, 0x140);
+    assert_eq!(directory.span.length, 0x20);
+    assert!(matches!(
+        directory.body,
+        sedb::EntryBody::Directory { entry_count: 2 }
+    ));
+    assert_eq!(container.entries[1].span.offset, 0x160);
+    assert_eq!(container.entries[1].span.length, 3);
+    assert_eq!(container.entries[2].span.offset, 0x163);
+    assert_eq!(container.entries[2].span.length, 1);
+    assert_eq!(container.anomalies.len(), 1);
+    assert_eq!(container.anomalies[0].kind, "unexpected-res-header-size");
+    assert!(container.entries_tile_the_payload());
+    sedb::validate_payload_materialization(&container).unwrap();
+}
+
+#[test]
+fn sedb_res_header_0x30_requires_consistent_bounded_directory() {
+    let bytes = std::fs::read(fixture_root().join("res/header-0x30.bin")).unwrap();
+    for (field, value, kind, offset) in [
+        (0x10, 0x58, ErrorKind::SubresourceCountOutOfRange, 0x30),
+        (0x10, 0x30, ErrorKind::SubresourceCountOutOfRange, 0x30),
+        (0x38, 3, ErrorKind::SubresourceCountMismatch, 0x38),
+    ] {
+        let mut malformed = bytes.clone();
+        malformed[field..field + 4].copy_from_slice(&u32::to_le_bytes(value));
+        let error = sedb::parse_container(&malformed, 0x100).unwrap_err();
+        assert_eq!(error.kind(), kind);
+        assert_eq!(error.offset(), 0x100 + offset);
+    }
+    for header_size in [0x2Fu16, 0x31, 0x3F] {
+        let mut malformed = bytes.clone();
+        malformed[0x0E..0x10].copy_from_slice(&header_size.to_le_bytes());
+        let error = sedb::parse_container(&malformed, 0x100).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::HeaderTooSmall);
+        assert_eq!(error.offset(), 0x10E);
+    }
+    let mut truncated = bytes[..0x38].to_vec();
+    truncated[0x10..0x14].copy_from_slice(&0x38u32.to_le_bytes());
+    let error = sedb::parse_container(&truncated, 0x100).unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::UnexpectedEndOfInput);
+    assert_eq!(error.offset(), 0x138);
+    let empty = std::fs::read(fixture_root().join("res/header-too-small.bin")).unwrap();
+    let error = sedb::parse_container(&empty, 0x100).unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::HeaderTooSmall);
+    assert_eq!(error.offset(), 0x10E);
+}
+
+#[test]
 fn every_truncation_of_every_fixture_is_handled() {
     for (name, bytes) in binary_fixtures() {
         for length in 0..=bytes.len() {

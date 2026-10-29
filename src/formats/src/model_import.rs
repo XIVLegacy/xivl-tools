@@ -319,6 +319,12 @@ impl TemplateProfile {
         if root.subtype != "RES " || root.res.is_none() {
             return Err(import_error(4, "native input is not a RES resource"));
         }
+        if root.header_size < sedb::RES_HEADER_SIZE {
+            return Err(import_error(
+                0x0e,
+                "native RES header is shorter than 0x40 bytes",
+            ));
+        }
         let records = directory_records(native, root)?;
         let mut wrb = Vec::new();
         for record in &records {
@@ -1565,6 +1571,22 @@ mod tests {
         root.extend_from_slice(&child);
         root.extend_from_slice(&tail);
         root
+    }
+
+    #[test]
+    fn rejects_short_res_header_before_rewriting_extended_fields() {
+        let mut native = template_bytes(false);
+        native[0x0e..0x10].copy_from_slice(&0x30u16.to_le_bytes());
+        let root = sedb::parse_container(&native, 0).unwrap();
+        assert_eq!(root.directory_start(), 0x40);
+        let error =
+            import_obj_to_model(&native, "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n").unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidAttributeValue);
+        assert_eq!(error.offset(), 0x0e);
+        assert_eq!(
+            error.detail(),
+            "native RES header is shorter than 0x40 bytes"
+        );
     }
 
     #[test]

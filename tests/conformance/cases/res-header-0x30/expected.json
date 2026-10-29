@@ -1,0 +1,82 @@
+{
+  "format": "res",
+  "input": {
+    "length": 100
+  },
+  "operation": "inspect",
+  "root": {
+    "anomalies": [
+      {
+        "detail": "RES declares a 0x30 byte header, 0x10 short of the extended fields ending at 0x40 and the directory starting there",
+        "kind": "unexpected-res-header-size",
+        "span": {
+          "length": 2,
+          "offset": 14
+        }
+      }
+    ],
+    "declaredSize": 100,
+    "entries": [
+      {
+        "entryCount": 2,
+        "kind": "subresource-directory",
+        "sha256": "7a0a8819599571714d6a31c28fcfd264f2ace5ef62329015ea7c5ef2446129cb",
+        "span": {
+          "length": 32,
+          "offset": 64
+        }
+      },
+      {
+        "declaredKind": 0,
+        "declaredOffset": 0,
+        "declaredSize": 3,
+        "index": 0,
+        "kind": "subresource",
+        "sha256": "2aefb5ba7b29d4ba8fdba22ec93bc535cac6fb456146c01bd6891bf4a3aa57c5",
+        "span": {
+          "length": 3,
+          "offset": 96
+        }
+      },
+      {
+        "declaredKind": 0,
+        "declaredOffset": 3,
+        "declaredSize": 1,
+        "index": 1,
+        "kind": "subresource",
+        "sha256": "72dfcfb0c470ac255cde83fb8fe38de8a128188e03ea5ba5b2a93adbea1062fa",
+        "span": {
+          "length": 1,
+          "offset": 99
+        }
+      }
+    ],
+    "flags": 0,
+    "headerSize": 48,
+    "headerUnknown": [
+      {
+        "kind": "unknown-gap",
+        "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+        "span": {
+          "length": 28,
+          "offset": 20
+        }
+      }
+    ],
+    "kind": "sedb-container",
+    "res": {
+      "subresourceCount": 2,
+      "typeName": "test",
+      "unknownB": 0
+    },
+    "span": {
+      "length": 100,
+      "offset": 0
+    },
+    "subtype": "RES ",
+    "totalSize": 100,
+    "unknownA": 4000
+  },
+  "schemaVersion": 1,
+  "trailing": []
+}

@@ -48,7 +48,7 @@ All integer fields are little-endian.
 0x08  u32     unknownA   observed values by subtype below; meaning unresolved
 0x0C  u16     flags      0x0000, 0x0200, or 0x0400 observed;
                          meaning unresolved
-0x0E  u16     headerSize payload begins at container start + headerSize
+0x0E  u16     headerSize declared payload boundary; RES directory rule below
                          (0x30, 0x40, 0x48 observed)
 0x10  u32     declaredSize  advisory; see "The 0x10 field" below. It is
                          the file size for most subtypes, the header size
@@ -88,8 +88,12 @@ runs past what the input holds, rather than reading what happens to follow.
 
 Top-level `RES ` containers declare `headerSize` 0x40 except 0x15D90001,
 which declares 0x30 while its directory still starts at 0x40. Nested RES
-children declare 0x30. The reader requires a RES header of at least 0x40
-bytes and rejects `headerSize` 0x30. The extended header fields are:
+children declare 0x30. The reader accepts exactly 0x30, top-level or
+nested, as an additional short-header shape when the directory is
+nonempty, its counts agree, and
+the extended fields and complete directory fit in the resolved container
+extent and input. Other RES headers below 0x40 remain refused. The extended
+header fields are:
 
 ```text
 0x30  u32     subresourceCount
@@ -99,12 +103,12 @@ bytes and rejects `headerSize` 0x30. The extended header fields are:
 0x3C  char[4] typeName          the resource type tag, for example "brt"
 ```
 
-Directory at 0x40, one 16-byte entry per subresource:
+Directory at `max(headerSize, 0x40)`, one 16-byte entry per subresource:
 
 ```text
 0x00  u32 index
 0x04  u32 offset   relative to the payload base,
-                   headerSize + 16 * subresourceCount
+                   max(headerSize, 0x40) + 16 * subresourceCount
 0x08  u32 size
 0x0C  u32 kind     0, 2, and 4 observed; semantics unresolved
 ```
@@ -122,8 +126,23 @@ end of the file, by at most 57 bytes.
 
 Resource 0x15D90001, `data/15/D9/00/01.DAT`, 1189004 bytes, SHA-256
 `9b1fca85933590e6e4d66a1b670408383519ef70b788a5118c3d61cc3c1df891`,
-declares `headerSize` 0x30 while its directory starts at 0x40. This is a
-retail observation outside the parser's accepted RES header boundary.
+declares `headerSize` 0x30 with five matching directory entries starting
+at 0x40 and a payload base of 0x90. The reader retains the declared header
+size and records an `unexpected-res-header-size` anomaly: the declared header
+size is 0x10 short of the extended fields ending at 0x40 and the directory
+starting there. The fields at 0x30..0x3F are parsed as the extended header,
+so no bytes in that range are unexplained or reported as a payload gap.
+Directory kind values, `unknownB`, and the other unknown header bytes remain
+uninterpreted.
+
+Supporting observations in
+`xivl-decomp:docs/resource/vfx-qix-resource-container.md`, "Banks that hold
+the blobs", also place the directory at 0x40 for both declared header sizes.
+`xivl-decomp:docs/resource/sqpack.md`, "PackRead's actual scope", distinguishes
+the installer chunk reader from runtime DAT resources. Neither establishes
+additional RES header semantics. Authored public cases `res-header-0x30`
+and `res-header-0x30-directory-overrun` cover the accepted shape and a
+directory that fits the input but exceeds the declared container extent.
 
 ## First-hand retail observation
 
