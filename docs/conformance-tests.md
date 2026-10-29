@@ -218,9 +218,12 @@ a `parse-error` expectation.
 
 The `region` cases exercise RegionResourceData 1.1.0 root and child walking
 through `inspect` and `validate`. Public fixtures include duplicate rows and
-a child with nonzero opaque `+0x0C`, plus concrete header and count boundaries.
-Private expectations retain membership, counts, spans, and digests rather than
-decoded tokens, row values, or recoverable payload bytes. Run the pinned vector
+a child with a nonzero stored kind at `+0x0C`, plus concrete header and count
+boundaries, size-word mismatches, unterminated tokens and auxiliary-key
+statuses. Private expectations retain membership, counts, spans, digests,
+effective-name lengths, token-termination and size-match flags, and
+auxiliary-key statuses rather than decoded tokens, row values, or recoverable
+payload bytes. Run the pinned vector
 against an explicit frozen root containing its original `data/` path:
 
 ```text

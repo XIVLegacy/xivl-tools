@@ -117,14 +117,23 @@ def staticactor_san(
     return b"sane" + bytes(byte ^ 0x73 for byte in decoded)
 
 
-def region_row(row_id: int, dat_key: int, field_0c: int, token: bytes) -> bytes:
-    """Authored row values; child field_0c deliberately need not be zero."""
+def region_row(
+    row_id: int,
+    dat_key: int,
+    field_0c: int,
+    token: bytes,
+    *,
+    word_04: int = 0x13579BDF,
+    word_20: int = 0x03020100,
+) -> bytes:
+    """Authored words; child field_0c is a stored kind, never a count."""
     if len(token) > 16:
         raise ValueError("region token exceeds its span")
     return (
-        struct.pack("<IIII", row_id, 0x13579BDF, dat_key, field_0c)
+        struct.pack("<IIII", row_id, word_04, dat_key, field_0c)
         + token.ljust(16, b"\x00")
-        + bytes(range(16))
+        + struct.pack("<I", word_20)
+        + bytes(range(4, 16))
     )
 
 
@@ -2569,6 +2578,36 @@ def build_fixtures() -> dict[str, bytes]:
     advisory = bytearray(region)
     struct.pack_into("<I", advisory, 0x20, 1)
     fixtures["region/advisory-size.bin"] = bytes(advisory)
+    fixtures["region/unterminated-root.bin"] = region_table(
+        [region_row(7, 0, 0, b"abcdefghijklmnop", word_20=0)], 1
+    )
+    fixtures["region/nonzero-layout-argument.bin"] = region_table(
+        [
+            region_row(7, 0, 1, b"Root", word_20=5),
+            region_row(70, 0x12340005, 9, b"Child", word_04=0x3000),
+        ],
+        1,
+    )
+    fixtures["region/auxiliary-overflow.bin"] = region_table(
+        [
+            region_row(7, 0, 1, b"Root", word_20=0),
+            region_row(70, 0x1234FFFF, 9, b"Child", word_04=0x3000),
+        ],
+        1,
+    )
+    fixtures["region/auxiliary-all-types.bin"] = region_table(
+        [
+            region_row(7, 0, 3, b"RootZeroMax", word_20=0),
+            region_row(70, 0x12340002, 9, b"LayoutA", word_04=0x3000),
+            region_row(71, 0x56780007, 10, b"TypeZeroA", word_04=0),
+            region_row(72, 0x9ABC0005, 11, b"TypeOneA", word_04=1),
+            region_row(8, 0, 3, b"RootOneMax", word_20=0),
+            region_row(80, 0xABCD0001, 12, b"LayoutB", word_04=0x3000),
+            region_row(81, 0x56780003, 13, b"TypeZeroB", word_04=0),
+            region_row(82, 0x9ABC0009, 14, b"TypeOneB", word_04=1),
+        ],
+        2,
+    )
 
     # -- bitmap font container (fdt) -------------------------------------
     # Chunk order, table shapes, and record layouts from docs/formats/fdt.md.

@@ -20,6 +20,7 @@
       },
       "value": 0
     },
+    "sizeMatchesInput": true,
     "span": {
       "length": 64,
       "offset": 0

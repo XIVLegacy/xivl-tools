@@ -1320,6 +1320,15 @@ fn inspect_region(data: &[u8]) -> Result<Value> {
             "span": span.to_json(), "sha256": span_sha256(data, span),
         })
     };
+    let word = |offset: u64| {
+        json!({
+            "span": Span::new(offset, 4).to_json(),
+            "sha256": span_sha256(data, Span::new(offset, 4)),
+        })
+    };
+    // Small-range words are located but not digested: a 4-byte digest would
+    // reveal the value.
+    let located = |offset: u64| json!({ "span": Span::new(offset, 4).to_json() });
     let rows: Vec<Value> = file.rows.iter().enumerate().map(|(index, row)| {
         let membership = match row.membership {
             RegionMembership::Root { index, child_count } => json!({
@@ -1330,14 +1339,36 @@ fn inspect_region(data: &[u8]) -> Result<Value> {
                 "kind": "child", "rootIndex": root_index, "childIndex": index,
             }),
         };
-        json!({
+        let mut reported = json!({
             "index": index, "span": row.span.to_json(),
             "sha256": span_sha256(data, row.span), "membership": membership,
-            "id": digest_span(Span::new(row.span.offset, 4)),
-            "datKey": digest_span(Span::new(row.span.offset + 0x08, 4)),
+            "id": word(row.span.offset),
+            "datKey": word(row.span.offset + 0x08),
             "token": digest_span(row.token),
+            "effectiveName": region::effective_name(data, row).map(|name| json!({
+                "byteLength": name.len(), "sha256": sha256_hex(name),
+            })),
+            "tokenTerminated": region::token_terminated(data, row),
             "unknown": row.unknown.iter().copied().map(digest_span).collect::<Vec<_>>(),
-        })
+        });
+        match row.membership {
+            RegionMembership::Root { .. } => {
+                reported["storedWord04"] = located(row.span.offset + 0x04);
+                reported["layoutWorldArgument"] = located(row.span.offset + 0x20);
+                reported["auxiliaryKey"] = match region::auxiliary_key(&file, index) {
+                    Some(region::AuxiliaryKey::Derived(_)) => json!({ "status": "derived" }),
+                    Some(region::AuxiliaryKey::NonzeroLayoutArgument) => json!({ "status": "nonzero-layout-argument" }),
+                    Some(region::AuxiliaryKey::NoChildren) => json!({ "status": "no-children" }),
+                    Some(region::AuxiliaryKey::LowIndexOverflow) => json!({ "status": "low-index-overflow" }),
+                    None => Value::Null,
+                };
+            }
+            RegionMembership::Child { .. } => {
+                reported["type"] = located(row.span.offset + 0x04);
+                reported["storedKind"] = located(row.span.offset + 0x0C);
+            }
+        }
+        reported
     }).collect();
     let mut object = envelope("region", data);
     object.insert(
@@ -1346,6 +1377,7 @@ fn inspect_region(data: &[u8]) -> Result<Value> {
             "span": file.header.to_json(), "tableName": "RegionResourceData", "version": "1.1.0",
             "nameSpan": Span::new(0, 19).to_json(), "versionSpan": Span::new(0x18, 6).to_json(),
             "declaredSize": { "span": Span::new(0x20, 4).to_json(), "value": file.declared_size },
+            "sizeMatchesInput": u64::from(file.declared_size) == data.len() as u64,
             "rootCount": { "span": Span::new(0x24, 4).to_json(), "value": file.root_count },
             "unknown": file.unknown_header.into_iter().map(digest_span).collect::<Vec<_>>(),
         }),

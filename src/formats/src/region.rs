@@ -33,7 +33,7 @@ pub struct RegionRow {
 pub struct RegionResourceData {
     pub header: Span,
     pub unknown_header: [Span; 3],
-    /// Observed header word, not an established bound on the row walk.
+    /// Native loader extent check, reported without bounding this row walk.
     pub declared_size: u32,
     pub root_count: u32,
     pub rows: Vec<RegionRow>,
@@ -188,11 +188,10 @@ fn parse_row(bytes: &[u8], start: u64, membership: RegionMembership) -> Result<R
     let word_0c = reader.u32_le()?;
     reader.seek(0x20)?;
     let word_20 = reader.u32_le()?;
-    let mut unknown = vec![Span::new(start + 4, 4), Span::new(start + 0x20, 0x10)];
-    // Only roots have a following-child count. Child +0x0C is opaque.
-    if matches!(membership, RegionMembership::Child { .. }) {
-        unknown.insert(1, Span::new(start + 0x0C, 4));
-    }
+    let unknown = match membership {
+        RegionMembership::Root { .. } => vec![Span::new(start + 0x24, 0x0C)],
+        RegionMembership::Child { .. } => vec![Span::new(start + 0x20, 0x10)],
+    };
     Ok(RegionRow {
         span: Span::new(start, ROW_STRIDE as u64),
         membership,

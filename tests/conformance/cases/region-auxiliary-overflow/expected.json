@@ -1,0 +1,208 @@
+{
+  "endsAtEof": true,
+  "format": "region",
+  "header": {
+    "declaredSize": {
+      "span": {
+        "length": 4,
+        "offset": 32
+      },
+      "value": 160
+    },
+    "nameSpan": {
+      "length": 19,
+      "offset": 0
+    },
+    "rootCount": {
+      "span": {
+        "length": 4,
+        "offset": 36
+      },
+      "value": 1
+    },
+    "sizeMatchesInput": true,
+    "span": {
+      "length": 64,
+      "offset": 0
+    },
+    "tableName": "RegionResourceData",
+    "unknown": [
+      {
+        "sha256": "188889c978c8a536e54c50e0c5e04aa460c5f2135705ed08c6a96f9354375bf0",
+        "span": {
+          "length": 5,
+          "offset": 19
+        }
+      },
+      {
+        "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153",
+        "span": {
+          "length": 2,
+          "offset": 30
+        }
+      },
+      {
+        "sha256": "1d64add2a6388367c9bc2d1f1b384b069a6ef382cdaaa89771dd103e28613a25",
+        "span": {
+          "length": 24,
+          "offset": 40
+        }
+      }
+    ],
+    "version": "1.1.0",
+    "versionSpan": {
+      "length": 6,
+      "offset": 24
+    }
+  },
+  "input": {
+    "length": 160
+  },
+  "operation": "inspect",
+  "rowCount": 2,
+  "rowStride": 48,
+  "rows": [
+    {
+      "auxiliaryKey": {
+        "status": "low-index-overflow"
+      },
+      "datKey": {
+        "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+        "span": {
+          "length": 4,
+          "offset": 72
+        }
+      },
+      "effectiveName": {
+        "byteLength": 4,
+        "sha256": "44cb005ee2e65d9cc817b0a083579369fb6c24a4be728cb43fd9d4c3ca7f4c2e"
+      },
+      "id": {
+        "sha256": "e8613f5a5bc9f9feeda32a8e7c80b69dd4878e47b6a91723fb15eb84236b6a2b",
+        "span": {
+          "length": 4,
+          "offset": 64
+        }
+      },
+      "index": 0,
+      "layoutWorldArgument": {
+        "span": {
+          "length": 4,
+          "offset": 96
+        }
+      },
+      "membership": {
+        "childCount": {
+          "span": {
+            "length": 4,
+            "offset": 76
+          },
+          "value": 1
+        },
+        "kind": "root",
+        "rootIndex": 0
+      },
+      "sha256": "fefdb57fb48dfd1bbe70152c8acc27235a4e7cf095d4cd86cab5a27a77216514",
+      "span": {
+        "length": 48,
+        "offset": 64
+      },
+      "storedWord04": {
+        "span": {
+          "length": 4,
+          "offset": 68
+        }
+      },
+      "token": {
+        "sha256": "73acc899b83dad7e12aea83c0dfd5c30f3022590a13a2b22cee3e80be2511609",
+        "span": {
+          "length": 16,
+          "offset": 80
+        }
+      },
+      "tokenTerminated": true,
+      "unknown": [
+        {
+          "sha256": "6187ea5647a15f9568333d9cc98dd51088189a683a3d8451a0c41fa9a6c555c1",
+          "span": {
+            "length": 12,
+            "offset": 100
+          }
+        }
+      ]
+    },
+    {
+      "datKey": {
+        "sha256": "d1f46a893c1e43d98944bdcd57a75c2302af0d71d4c4ab1c991ab4432ce62d8b",
+        "span": {
+          "length": 4,
+          "offset": 120
+        }
+      },
+      "effectiveName": {
+        "byteLength": 5,
+        "sha256": "8053321281f5d162ee6c1c1263a0d1a88ee2d500e4c30c65dc343f37240aaefd"
+      },
+      "id": {
+        "sha256": "ba8c9eac092a503e4fb70771c34a00c5bb651043de24db4d3525ebbb3ee7ff08",
+        "span": {
+          "length": 4,
+          "offset": 112
+        }
+      },
+      "index": 1,
+      "membership": {
+        "childIndex": 0,
+        "kind": "child",
+        "rootIndex": 0
+      },
+      "sha256": "8c98612f60eae905ee94882b9f9d78a4b94eceda5e93e7e83ac6aafb4329f186",
+      "span": {
+        "length": 48,
+        "offset": 112
+      },
+      "storedKind": {
+        "span": {
+          "length": 4,
+          "offset": 124
+        }
+      },
+      "token": {
+        "sha256": "20f1a8c5867ab31942c444ed16c0dc5a8117ed021cb4d8da0ef8e8f12f03582f",
+        "span": {
+          "length": 16,
+          "offset": 128
+        }
+      },
+      "tokenTerminated": true,
+      "type": {
+        "span": {
+          "length": 4,
+          "offset": 116
+        }
+      },
+      "unknown": [
+        {
+          "sha256": "be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991",
+          "span": {
+            "length": 16,
+            "offset": 144
+          }
+        }
+      ]
+    }
+  ],
+  "rowsEnd": 160,
+  "rowsSpan": {
+    "length": 96,
+    "offset": 64
+  },
+  "schemaVersion": 1,
+  "trailing": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "span": {
+      "length": 0,
+      "offset": 160
+    }
+  }
+}

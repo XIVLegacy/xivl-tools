@@ -12,5 +12,5 @@
     "outcome": "ok",
     "output": "expected.json"
   },
-  "notes": "Authored roots, duplicate children, and opaque nonzero child +0x0C; automatic recognition."
+  "notes": "Authored roots, duplicate children, and a nonzero child stored kind at +0x0C; automatic recognition."
 }

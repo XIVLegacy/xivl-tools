@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "region-size-mismatch-validate",
+  "formatId": "region",
+  "operation": "validate",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/region/advisory-size.bin"
+  },
+  "arguments": [
+    "--as",
+    "region"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  }
+}

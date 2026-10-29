@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "region-unterminated-root",
+  "formatId": "region",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/region/unterminated-root.bin"
+  },
+  "arguments": [
+    "--as",
+    "region"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  }
+}
