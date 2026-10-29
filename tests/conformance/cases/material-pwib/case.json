@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "material-pwib",
+  "formatId": "material",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/material/pwib.bin"
+  },
+  "arguments": [
+    "--as",
+    "material"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  }
+}

@@ -375,6 +375,7 @@ no identifying signature or when you want a particular view.
 | `staticactor-san` | The static-actor SAN record framing without assigning meanings to its record members. See [SAN records](formats/staticactor-san.md). |
 | `region` | RegionResourceData 1.1.0 root and child structure, token spans, and opaque fields. See [RegionResourceData](formats/region.md). |
 | `fdt` | Explicit bitmap font container walk in the client's chunk order. Reports chunk spans, digests, lookup-table counts, an embedded GTEX report per GTEX chunk, and GLYP record layout and check counts without metrics, record values, or texture bytes. See [bitmap font container](formats/fdt.md). |
+| `material` | Explicit bounded shd/SHD/PRAM sampler prefixes, flag and binding bytes, spans, and digests. Parameter values, strings, shader programs, and sampler state remain opaque. See [material samplers](formats/material.md). |
 | `skeleton` | Explicit bounded SKL record and string spans, hierarchy indices, and digests. Names and transform bytes remain opaque. See [skeleton framing](formats/skeleton.md). |
 | `wrb-model` | Explicit bounded WRB model structure inside a RES resource. Reports metadata, counts, spans, digests, and opaque ranges. See [WRB inspection](formats/wrb-model.md). |
 | `map-layout` | Explicit MapLayout header, resource table, and lyb node declarations, read by the zone reader. Reports counts, spans, and digests without names or payload strings. See [world layout](formats/world-layout.md#inspection-and-validation). |

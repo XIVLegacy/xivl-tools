@@ -65,6 +65,8 @@ pub enum InspectAs {
     Fdt,
     /// Explicit bounded SKL record and string framing.
     Skeleton,
+    /// Explicit bounded material sampler framing.
+    Material,
     /// A GTEX texture with loader-backed metadata and source addressing.
     Gtex,
     /// A PWIB resource with two loader-bounded segments.
@@ -86,7 +88,7 @@ pub enum InspectAs {
 
 impl InspectAs {
     /// Names accepted by the `--as` option.
-    pub const NAMES: [&'static str; 21] = [
+    pub const NAMES: [&'static str; 22] = [
         "sedb",
         "ssd",
         "scrambled-xml",
@@ -97,6 +99,7 @@ impl InspectAs {
         "region",
         "fdt",
         "skeleton",
+        "material",
         "gtex",
         "pwib",
         "wrb-model",
@@ -148,6 +151,7 @@ impl InspectAs {
             Some("region") => Self::Region,
             Some("fdt") => Self::Fdt,
             Some("skeleton") => Self::Skeleton,
+            Some("material") => Self::Material,
             Some("gtex") => Self::Gtex,
             Some("pwib") => Self::Pwib,
             Some("wrb-model") => Self::WrbModel,
@@ -226,6 +230,7 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
         InspectAs::Region => inspect_region(data),
         InspectAs::Fdt => inspect_fdt(data),
         InspectAs::Skeleton => crate::skeleton::inspect(data),
+        InspectAs::Material => crate::material::inspect(data),
         InspectAs::Gtex => inspect_tagged_resource(data, TaggedResourceKind::Gtex),
         InspectAs::Pwib => inspect_tagged_resource(data, TaggedResourceKind::Pwib),
         InspectAs::WrbModel => inspect_wrb_model(data),

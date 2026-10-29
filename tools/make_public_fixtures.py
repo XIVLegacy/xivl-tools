@@ -2892,6 +2892,126 @@ def build_fixtures() -> dict[str, bytes]:
             + aliased
         )
     fixtures["skeleton/selected-alias.bin"] = bytes(aliased)
+    fixtures.update(material_fixtures())
+    return fixtures
+
+
+def material_fixtures() -> dict[str, bytes]:
+    """Authored shd/SHD/PRAM sampler framing, without shader or retail content."""
+    fixtures = {}
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return kind + bytes(4) + struct.pack(">II", 16 + len(body), 0) + body
+
+    def material(body: bytes, include_pram: bool = True) -> bytes:
+        children = chunk(b"FILE", pattern(16, 0x57))
+        if include_pram:
+            children += chunk(b"PRAM", body)
+        info = struct.pack(">I", 2 if include_pram else 1) + pattern(12, 0x6D)
+        payload = chunk(b"SHD\0", info + children)
+        return sedb_header("shd", 29, 0x0200, 0x30, 0x30 + len(payload)) + payload
+
+    body = bytearray(pattern(120, 0x39))
+    struct.pack_into("<III", body, 0x14, 2, 32, 112)
+    struct.pack_into("<II", body, 32, 40, 80)
+    body[43], body[52], body[53] = 0xA0, 0, 0
+    body[83], body[92], body[93] = 0x21, 0xFF, 0xE1
+    sample = material(bytes(body))
+    fixtures["material/samplers.bin"] = sample
+    padded = bytearray(sample[:112] + pattern(16, 0x83) + sample[112:])
+    struct.pack_into("<I", padded, 16, len(padded))
+    struct.pack_into(">I", padded, 56, len(padded) - 48)
+    struct.pack_into(">I", padded, 92, 48)
+    fixtures["material/padded.bin"] = bytes(padded)
+    empty = bytearray(32)
+    struct.pack_into("<I", empty, 0x18, 32)
+    fixtures["material/empty.bin"] = material(bytes(empty))
+    fixtures["material/no-pram.bin"] = material(b"", False)
+    fixtures["material/short-body.bin"] = material(bytes(28))
+    fixtures["material/truncated.bin"] = sample[:18]
+    for name, offset, value in [
+        ("version", 8, 28),
+        ("extent", 16, len(sample) + 1),
+        ("sampler-count", 148, 0xFFFFFFFF),
+        ("sampler-table", 152, 28),
+        ("sampler-offset", 160, 100),
+        ("sampler-alias", 164, 40),
+        ("sampler-overlap", 164, 64),
+        ("sampler-header", 160, 0),
+        ("sampler-table-overlap", 160, 32),
+    ]:
+        malformed = bytearray(sample)
+        struct.pack_into("<I", malformed, offset, value)
+        fixtures[f"material/{name}.bin"] = bytes(malformed)
+    for name, offset, value in [
+        ("root-size", 56, 201),
+        ("child-size", 88, 0xFFFFFFFF),
+        ("child-padding", 92, 0xFFFFFFFF),
+    ]:
+        malformed = bytearray(sample)
+        struct.pack_into(">I", malformed, offset, value)
+        fixtures[f"material/{name}.bin"] = bytes(malformed)
+    for name, offset, value in [
+        ("bad-tag", 7, ord("!")),
+        ("conversion", 12, 1),
+        ("header-size", 14, 0x40),
+        ("root-tag", 51, ord("!")),
+    ]:
+        malformed = bytearray(sample)
+        malformed[offset] = value
+        fixtures[f"material/{name}.bin"] = bytes(malformed)
+
+    def res(payload: bytes) -> bytes:
+        return (
+            sedb_header(
+                "RES ", 4000, 0x0400, 0x40, 80 + len(payload), res_extended(1, 0, "syn")
+            )
+            + directory_entry(7, 0, len(payload), 0)
+            + payload
+        )
+
+    nested = res(res(sample))
+    fixtures["material/nested-res.bin"] = nested
+    fixtures["material/pwib.bin"] = (
+        b"PWIB" + struct.pack(">III", 16 + len(nested), 16, 16 + len(nested)) + nested
+    )
+    malformed = bytearray(fixtures["material/pwib.bin"])
+    struct.pack_into(">I", malformed, 4, len(malformed) + 1)
+    fixtures["material/pwib-boundary.bin"] = bytes(malformed)
+    malformed = bytearray(nested)
+    struct.pack_into("<I", malformed, 16, len(nested) - 1)
+    fixtures["material/container-boundary.bin"] = bytes(malformed)
+    malformed = bytearray(nested)
+    struct.pack_into("<I", malformed, 56, 2)
+    fixtures["material/container-count.bin"] = bytes(malformed)
+    aliased = sample
+    for _ in range(7):
+        aliased = (
+            sedb_header(
+                "RES ",
+                4000,
+                0x0400,
+                0x40,
+                576 + len(aliased),
+                res_extended(32, 0, "syn"),
+            )
+            + directory_entry(7, 0, len(aliased), 0) * 32
+            + aliased
+        )
+    fixtures["material/selected-alias.bin"] = aliased
+    overlap = bytearray(aliased)
+    struct.pack_into("<I", overlap, 88, len(aliased) - 577)
+    fixtures["material/selected-overlap.bin"] = bytes(overlap)
+    fixtures["material/opaque-alias.bin"] = (
+        sedb_header(
+            "RES ", 4000, 0x0400, 0x40, 128 + len(sample), res_extended(3, 0, "syn")
+        )
+        + directory_entry(91, len(sample), 16, 0)
+        + directory_entry(7, 0, len(sample), 0)
+        + directory_entry(92, len(sample), 16, 0)
+        + sample
+        + pattern(16, 0x97)
+    )
     return fixtures
 
 

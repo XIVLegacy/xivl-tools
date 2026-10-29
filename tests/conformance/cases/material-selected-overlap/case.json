@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "material-selected-overlap",
+  "formatId": "material",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/material/selected-overlap.bin"
+  },
+  "arguments": [
+    "--as",
+    "material"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "ambiguous-payload-span",
+    "errorOffset": 88
+  }
+}

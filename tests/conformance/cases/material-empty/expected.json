@@ -1,0 +1,88 @@
+{
+  "format": "material",
+  "input": {
+    "length": 160
+  },
+  "materials": [
+    {
+      "entryPath": [],
+      "opaque": [
+        {
+          "sha256": "dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986",
+          "span": {
+            "length": 1,
+            "offset": 13
+          }
+        },
+        {
+          "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+          "span": {
+            "length": 28,
+            "offset": 20
+          }
+        },
+        {
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "span": {
+            "length": 4,
+            "offset": 52
+          }
+        },
+        {
+          "sha256": "07b622edb0b5a532458e24fb54368b5f47598905ab0b9c7c1c4f8d17fea7dd1f",
+          "span": {
+            "length": 68,
+            "offset": 60
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "offsetTable": {
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "span": {
+              "length": 0,
+              "offset": 160
+            }
+          },
+          "opaque": [
+            {
+              "sha256": "de47c9b27eb8d300dbb5f2c353e632c393262cf06340c4fa7f1b40c4cbd36f90",
+              "span": {
+                "length": 20,
+                "offset": 128
+              }
+            },
+            {
+              "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+              "span": {
+                "length": 4,
+                "offset": 156
+              }
+            }
+          ],
+          "samplerCount": 0,
+          "samplers": [],
+          "source": {
+            "sha256": "76ca7485a665d0b76abbb2909b193d8f8572c8db77f969256480f63728aca867",
+            "span": {
+              "length": 32,
+              "offset": 128
+            }
+          }
+        }
+      ],
+      "source": {
+        "sha256": "e713c0ddaa241f250c8d51e7b7307e7ee907b1eba95770ab65afc177771beaa1",
+        "span": {
+          "length": 160,
+          "offset": 0
+        }
+      },
+      "version": 29
+    }
+  ],
+  "opaque": [],
+  "operation": "inspect",
+  "schemaVersion": 1
+}

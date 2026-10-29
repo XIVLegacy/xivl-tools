@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "material-child-padding",
+  "formatId": "material",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/material/child-padding.bin"
+  },
+  "arguments": [
+    "--as",
+    "material"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "chunk-length-out-of-range",
+    "errorOffset": 92
+  }
+}

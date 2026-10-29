@@ -25,6 +25,7 @@ pub mod layout_edit;
 pub mod lpb;
 pub mod lua51;
 pub mod lua_path;
+pub mod material;
 pub mod model_import;
 pub mod normalize;
 pub mod phb_author;

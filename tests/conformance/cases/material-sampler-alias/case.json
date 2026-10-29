@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "material-sampler-alias",
+  "formatId": "material",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/material/sampler-alias.bin"
+  },
+  "arguments": [
+    "--as",
+    "material"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "ambiguous-payload-span",
+    "errorOffset": 164
+  }
+}

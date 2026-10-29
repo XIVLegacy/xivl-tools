@@ -46,6 +46,7 @@ These pages describe the supported file formats.
 - [RegionResourceData root and child rows](formats/region.md)
 - [Bitmap font container (fdt)](formats/fdt.md)
 - [Bounded skeleton framing](formats/skeleton.md)
+- [Bounded material samplers](formats/material.md)
 - [GTEX fields and PWIB segments](formats/gtex-pwib.md)
 - [Bounded WRB model inspection](formats/wrb-model.md)
 - [World layout: MapLayout and lyb](formats/world-layout.md)

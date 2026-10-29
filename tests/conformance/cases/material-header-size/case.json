@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "material-header-size",
+  "formatId": "material",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/material/header-size.bin"
+  },
+  "arguments": [
+    "--as",
+    "material"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "invalid-chunk-length",
+    "errorOffset": 14
+  }
+}

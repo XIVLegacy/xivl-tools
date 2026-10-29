@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "material-opaque-alias",
+  "formatId": "material",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/material/opaque-alias.bin"
+  },
+  "arguments": [
+    "--as",
+    "material"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  }
+}

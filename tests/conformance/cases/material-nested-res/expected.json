@@ -1,0 +1,159 @@
+{
+  "format": "material",
+  "input": {
+    "length": 408
+  },
+  "materials": [
+    {
+      "entryPath": [
+        0,
+        0
+      ],
+      "opaque": [
+        {
+          "sha256": "dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986",
+          "span": {
+            "length": 1,
+            "offset": 173
+          }
+        },
+        {
+          "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+          "span": {
+            "length": 28,
+            "offset": 180
+          }
+        },
+        {
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "span": {
+            "length": 4,
+            "offset": 212
+          }
+        },
+        {
+          "sha256": "ac5f80da1e643ebdc9b2e4490e695e33f77b524eecfe21e0decce2a5220f3ed1",
+          "span": {
+            "length": 68,
+            "offset": 220
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "offsetTable": {
+            "sha256": "7891de21109dbc23d389bbf9c32de665b2c68be5f747a69f8f0706f3d57a5bec",
+            "span": {
+              "length": 8,
+              "offset": 320
+            }
+          },
+          "opaque": [
+            {
+              "sha256": "bc29fda88a66db1c3adfb170a41a7f9a5f4a2a1e22690f18ab79bea515b34692",
+              "span": {
+                "length": 20,
+                "offset": 288
+              }
+            },
+            {
+              "sha256": "d3fe97979d0fbe3bf464e5001637443d72b890242a801cc221b1c8a169a69761",
+              "span": {
+                "length": 4,
+                "offset": 316
+              }
+            },
+            {
+              "sha256": "5738509b8cd2b80cf17c013e47291d278c57dd5aa79434f30af4859670c0ad3e",
+              "span": {
+                "length": 3,
+                "offset": 328
+              }
+            },
+            {
+              "sha256": "52d6a9466e99b258c78ffde3f56bf5c0576fe2a414712c6e36e827f3d0d64987",
+              "span": {
+                "length": 8,
+                "offset": 332
+              }
+            },
+            {
+              "sha256": "414627126e604c5f45c988215a995a6666226d20f04242da8150e21c67422981",
+              "span": {
+                "length": 29,
+                "offset": 342
+              }
+            },
+            {
+              "sha256": "bffd1912b175ec62958c6c8035be83398be0c16e83d8b2faa1f91056dbe77fcb",
+              "span": {
+                "length": 8,
+                "offset": 372
+              }
+            },
+            {
+              "sha256": "ac0e52a7a68f3beb973d9e9e328ca0e61c6467b71be35c16c014f186622a6856",
+              "span": {
+                "length": 26,
+                "offset": 382
+              }
+            }
+          ],
+          "samplerCount": 2,
+          "samplers": [
+            {
+              "argument": 0,
+              "environmentSlot": 0,
+              "flags": 160,
+              "prefix": {
+                "sha256": "ce92d1ee5bae3d39e0746ddf3fbb1bf71a7086f689dd6c53a87645432ee1b24f",
+                "span": {
+                  "length": 32,
+                  "offset": 328
+                }
+              }
+            },
+            {
+              "argument": 255,
+              "environmentSlot": 225,
+              "flags": 33,
+              "prefix": {
+                "sha256": "11d70065be3b02e441a121e9a79debfbfbd0f1b6082d3a784e3a4b995f36eeef",
+                "span": {
+                  "length": 32,
+                  "offset": 368
+                }
+              }
+            }
+          ],
+          "source": {
+            "sha256": "0a36fe0f03113e7778e1393050831601c0db4d166d69d8eac2cefe30c81326d6",
+            "span": {
+              "length": 120,
+              "offset": 288
+            }
+          }
+        }
+      ],
+      "source": {
+        "sha256": "ae23b71acebe0ab38cb34a7c991b2439f6f31dc19f8b997e3ff91f853b75732e",
+        "span": {
+          "length": 248,
+          "offset": 160
+        }
+      },
+      "version": 29
+    }
+  ],
+  "opaque": [
+    {
+      "sha256": "bb961e761df67e2c0a6baf7cf8152393d1c6dbe0ffacae31a0da18b53428f814",
+      "span": {
+        "length": 160,
+        "offset": 0
+      }
+    }
+  ],
+  "operation": "inspect",
+  "schemaVersion": 1
+}

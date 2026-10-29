@@ -357,12 +357,13 @@
       "name": "Material definition",
       "category": "graphics",
       "phase": 4,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
       "export": "planned",
       "exportViews": [
         "json"
-      ]
+      ],
+      "notes": "Explicit --as material inspection and validation enumerate bounded version-29 SEDBshd containers in standalone inputs, RES trees, and PWIB first-segment RES trees. SHD child framing selects PRAM bodies. Reports retain sampler counts, offset-table spans, minimum record prefixes, flag bytes, bind arguments, environment-slot bytes, physical directory paths, digests, and opaque ranges. Selected aliases, overlapping sampler prefixes, and escaping tables or extents are refused. Shader programs, parameter values, strings, sampler-state interpretation, native material selection, runtime texture ownership, rendering, writing, and lossless export remain outside the claim. Public synthetic cases and retail census identities: docs/formats/material.md."
     },
     {
       "id": "shader",

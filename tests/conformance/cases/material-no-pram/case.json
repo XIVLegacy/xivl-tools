@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "material-no-pram",
+  "formatId": "material",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/material/no-pram.bin"
+  },
+  "arguments": [
+    "--as",
+    "material"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-chunk",
+    "errorOffset": 48
+  }
+}

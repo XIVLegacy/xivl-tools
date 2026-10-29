@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "material-root-tag",
+  "formatId": "material",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/material/root-tag.bin"
+  },
+  "arguments": [
+    "--as",
+    "material"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-chunk",
+    "errorOffset": 48
+  }
+}
