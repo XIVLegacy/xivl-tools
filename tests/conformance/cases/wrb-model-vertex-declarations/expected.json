@@ -1,0 +1,963 @@
+{
+  "format": "wrb-model",
+  "input": {
+    "length": 1024
+  },
+  "operation": "inspect",
+  "root": {
+    "anomalies": [],
+    "declaredSize": 1024,
+    "entries": [
+      {
+        "entryCount": 1,
+        "kind": "subresource-directory",
+        "sha256": "2e03fc2a8e9927c37f15b739f92e1b2e00f3b3567105d88b5ba0b8c0e2ec3b19",
+        "span": {
+          "length": 16,
+          "offset": 64
+        }
+      },
+      {
+        "child": {
+          "anomalies": [],
+          "declaredSize": 944,
+          "entries": [
+            {
+              "kind": "payload",
+              "sha256": "eb4e82f7ae89ef06a6de56a4f97b2ea9c8bab1f743c92b42422edd6f819a11a6",
+              "span": {
+                "length": 896,
+                "offset": 128
+              }
+            }
+          ],
+          "flags": 0,
+          "headerSize": 48,
+          "headerUnknown": [
+            {
+              "kind": "unknown-gap",
+              "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+              "span": {
+                "length": 28,
+                "offset": 100
+              }
+            }
+          ],
+          "kind": "sedb-container",
+          "span": {
+            "length": 944,
+            "offset": 80
+          },
+          "subtype": "wrb\\x00",
+          "totalSize": 944,
+          "unknownA": 0
+        },
+        "declaredKind": 2,
+        "declaredOffset": 0,
+        "declaredSize": 944,
+        "index": 0,
+        "kind": "subresource",
+        "sha256": "3024a7703acbee3862d3cc539b3fa9ae07bb001f3d3d6210f23d687508a5908b",
+        "span": {
+          "length": 944,
+          "offset": 80
+        }
+      }
+    ],
+    "flags": 0,
+    "headerSize": 64,
+    "headerUnknown": [
+      {
+        "kind": "unknown-gap",
+        "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+        "span": {
+          "length": 28,
+          "offset": 20
+        }
+      }
+    ],
+    "kind": "sedb-container",
+    "res": {
+      "subresourceCount": 1,
+      "typeName": "brt\\x00",
+      "unknownB": 0
+    },
+    "span": {
+      "length": 1024,
+      "offset": 0
+    },
+    "subtype": "RES ",
+    "totalSize": 1024,
+    "unknownA": 0
+  },
+  "schemaVersion": 1,
+  "trailing": [],
+  "wrb": {
+    "chunkCount": 7,
+    "meshCount": 1,
+    "resourceCount": 1,
+    "resources": [
+      {
+        "partition": {
+          "chunks": [
+            {
+              "contents": {
+                "chunks": [
+                  {
+                    "contents": {
+                      "chunks": [
+                        {
+                          "contents": {
+                            "chunks": [
+                              {
+                                "contents": {
+                                  "chunks": [],
+                                  "opaque": [],
+                                  "span": {
+                                    "length": 24,
+                                    "offset": 240
+                                  }
+                                },
+                                "declaredPaddedSize": 48,
+                                "declaredSize": 40,
+                                "descriptor": {
+                                  "kind": "COMP-bounds",
+                                  "sha256": "4d6c31e0de052499738fd007542f060ab51bc58e87e8d4179282ed5016b1b6f0",
+                                  "span": {
+                                    "length": 24,
+                                    "offset": 240
+                                  }
+                                },
+                                "header": {
+                                  "sha256": "1d9c944555d2fd15a9fa4db151071b6930cb417f39cfaba67e826a104b0b4f20",
+                                  "span": {
+                                    "length": 16,
+                                    "offset": 224
+                                  },
+                                  "unknown": [
+                                    {
+                                      "kind": "unknown-gap",
+                                      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                      "span": {
+                                        "length": 4,
+                                        "offset": 228
+                                      }
+                                    }
+                                  ]
+                                },
+                                "paddedSpan": {
+                                  "length": 48,
+                                  "offset": 224
+                                },
+                                "padding": [
+                                  {
+                                    "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+                                    "span": {
+                                      "length": 8,
+                                      "offset": 264
+                                    }
+                                  }
+                                ],
+                                "sha256": "122d504a4d74d2c2568520dd279057e5b1e0b17b784c9c656e010eba048f0cee",
+                                "span": {
+                                  "length": 40,
+                                  "offset": 224
+                                },
+                                "tag": "COMP"
+                              },
+                              {
+                                "contents": {
+                                  "chunks": [
+                                    {
+                                      "contents": {
+                                        "chunks": [],
+                                        "opaque": [],
+                                        "span": {
+                                          "length": 640,
+                                          "offset": 320
+                                        }
+                                      },
+                                      "declaredPaddedSize": 656,
+                                      "declaredSize": 656,
+                                      "header": {
+                                        "sha256": "bedbfc6878e7968be2661a5c770ed851b5b1199923cd5b465afc9f5b1d33a08b",
+                                        "span": {
+                                          "length": 16,
+                                          "offset": 304
+                                        },
+                                        "unknown": [
+                                          {
+                                            "kind": "unknown-gap",
+                                            "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                            "span": {
+                                              "length": 4,
+                                              "offset": 308
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      "paddedSpan": {
+                                        "length": 656,
+                                        "offset": 304
+                                      },
+                                      "padding": [],
+                                      "sha256": "9d43c68dbe73b6be8abaaa81405ace0d57ad9ae8af2ef0bc73f11627e15664a9",
+                                      "span": {
+                                        "length": 656,
+                                        "offset": 304
+                                      },
+                                      "stream": {
+                                        "data": {
+                                          "sha256": "52a3e0804d93dc525ec3c67ef8ac5b01756ecf0513e36f3c19435e4c82cb5d29",
+                                          "span": {
+                                            "length": 336,
+                                            "offset": 624
+                                          }
+                                        },
+                                        "fields": {
+                                          "count": 18,
+                                          "descriptors": [
+                                            {
+                                              "declaration": {
+                                                "byteLength": 8,
+                                                "elementType": 7,
+                                                "elementTypeName": "SHORT4",
+                                                "method": 0,
+                                                "offset": 0,
+                                                "semantic": "POSITION",
+                                                "usage": 0,
+                                                "usageIndex": 0
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 336
+                                              },
+                                              "words": [
+                                                0,
+                                                4,
+                                                4,
+                                                0
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 4,
+                                                "elementType": 8,
+                                                "elementTypeName": "UBYTE4N",
+                                                "method": 0,
+                                                "offset": 8,
+                                                "semantic": "BLENDWEIGHT",
+                                                "usage": 1,
+                                                "usageIndex": 0
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 352
+                                              },
+                                              "words": [
+                                                8,
+                                                3,
+                                                4,
+                                                65536
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 4,
+                                                "elementType": 8,
+                                                "elementTypeName": "UBYTE4N",
+                                                "method": 0,
+                                                "offset": 12,
+                                                "semantic": "NORMAL",
+                                                "usage": 3,
+                                                "usageIndex": 0
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 368
+                                              },
+                                              "words": [
+                                                12,
+                                                3,
+                                                4,
+                                                131072
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 8,
+                                                "elementType": 16,
+                                                "elementTypeName": "FLOAT16_4",
+                                                "method": 0,
+                                                "offset": 16,
+                                                "semantic": "COLOR",
+                                                "usage": 10,
+                                                "usageIndex": 0
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 384
+                                              },
+                                              "words": [
+                                                16,
+                                                2,
+                                                4,
+                                                196608
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 8,
+                                                "elementType": 16,
+                                                "elementTypeName": "FLOAT16_4",
+                                                "method": 0,
+                                                "offset": 24,
+                                                "semantic": "COLOR",
+                                                "usage": 10,
+                                                "usageIndex": 1
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 400
+                                              },
+                                              "words": [
+                                                24,
+                                                2,
+                                                4,
+                                                262144
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 4,
+                                                "elementType": 0,
+                                                "elementTypeName": "FLOAT1",
+                                                "method": 0,
+                                                "offset": 32,
+                                                "semantic": "FOG",
+                                                "usage": 11,
+                                                "usageIndex": 0
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 416
+                                              },
+                                              "words": [
+                                                32,
+                                                1,
+                                                1,
+                                                327680
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 8,
+                                                "elementType": 1,
+                                                "elementTypeName": "FLOAT2",
+                                                "method": 0,
+                                                "offset": 36,
+                                                "semantic": "PSIZE",
+                                                "usage": 4,
+                                                "usageIndex": 0
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 432
+                                              },
+                                              "words": [
+                                                36,
+                                                1,
+                                                2,
+                                                393216
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 4,
+                                                "elementType": 5,
+                                                "elementTypeName": "UBYTE4",
+                                                "method": 0,
+                                                "offset": 44,
+                                                "semantic": "BLENDINDICES",
+                                                "usage": 2,
+                                                "usageIndex": 0
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 448
+                                              },
+                                              "words": [
+                                                44,
+                                                6,
+                                                4,
+                                                458752
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 4,
+                                                "elementType": 15,
+                                                "elementTypeName": "FLOAT16_2",
+                                                "method": 0,
+                                                "offset": 48,
+                                                "semantic": "TEXCOORD",
+                                                "usage": 5,
+                                                "usageIndex": 0
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 464
+                                              },
+                                              "words": [
+                                                48,
+                                                2,
+                                                2,
+                                                524288
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 4,
+                                                "elementType": 9,
+                                                "elementTypeName": "SHORT2N",
+                                                "method": 0,
+                                                "offset": 52,
+                                                "semantic": "TEXCOORD",
+                                                "usage": 5,
+                                                "usageIndex": 1
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 480
+                                              },
+                                              "words": [
+                                                52,
+                                                0,
+                                                2,
+                                                589824
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 8,
+                                                "elementType": 10,
+                                                "elementTypeName": "SHORT4N",
+                                                "method": 0,
+                                                "offset": 56,
+                                                "semantic": "TEXCOORD",
+                                                "usage": 5,
+                                                "usageIndex": 2
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 496
+                                              },
+                                              "words": [
+                                                56,
+                                                0,
+                                                4,
+                                                655360
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 12,
+                                                "elementType": 2,
+                                                "elementTypeName": "FLOAT3",
+                                                "method": 0,
+                                                "offset": 64,
+                                                "semantic": "TEXCOORD",
+                                                "usage": 5,
+                                                "usageIndex": 3
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 512
+                                              },
+                                              "words": [
+                                                64,
+                                                1,
+                                                3,
+                                                720896
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 16,
+                                                "elementType": 3,
+                                                "elementTypeName": "FLOAT4",
+                                                "method": 0,
+                                                "offset": 76,
+                                                "semantic": "TEXCOORD",
+                                                "usage": 5,
+                                                "usageIndex": 4
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 528
+                                              },
+                                              "words": [
+                                                76,
+                                                1,
+                                                4,
+                                                786432
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 4,
+                                                "elementType": 8,
+                                                "elementTypeName": "UBYTE4N",
+                                                "method": 0,
+                                                "offset": 92,
+                                                "semantic": "TEXCOORD",
+                                                "usage": 5,
+                                                "usageIndex": 5
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 544
+                                              },
+                                              "words": [
+                                                92,
+                                                3,
+                                                4,
+                                                851968
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 4,
+                                                "elementType": 6,
+                                                "elementTypeName": "SHORT2",
+                                                "method": 0,
+                                                "offset": 96,
+                                                "semantic": "TEXCOORD",
+                                                "usage": 5,
+                                                "usageIndex": 6
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 560
+                                              },
+                                              "words": [
+                                                96,
+                                                4,
+                                                2,
+                                                917504
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 4,
+                                                "elementType": 5,
+                                                "elementTypeName": "UBYTE4",
+                                                "method": 0,
+                                                "offset": 100,
+                                                "semantic": "TEXCOORD",
+                                                "usage": 5,
+                                                "usageIndex": 7
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 576
+                                              },
+                                              "words": [
+                                                100,
+                                                6,
+                                                4,
+                                                983040
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 4,
+                                                "elementType": 8,
+                                                "elementTypeName": "UBYTE4N",
+                                                "method": 0,
+                                                "offset": 104,
+                                                "semantic": "TANGENT",
+                                                "usage": 6,
+                                                "usageIndex": 0
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 592
+                                              },
+                                              "words": [
+                                                104,
+                                                3,
+                                                4,
+                                                1048576
+                                              ]
+                                            },
+                                            {
+                                              "declaration": {
+                                                "byteLength": 4,
+                                                "elementType": 8,
+                                                "elementTypeName": "UBYTE4N",
+                                                "method": 0,
+                                                "offset": 108,
+                                                "semantic": "BINORMAL",
+                                                "usage": 7,
+                                                "usageIndex": 0
+                                              },
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 608
+                                              },
+                                              "words": [
+                                                108,
+                                                3,
+                                                4,
+                                                1146880
+                                              ]
+                                            }
+                                          ],
+                                          "sha256": "6883b950053f1a07574b0e469562f44d93ed55ea995c48d0940ec8bebe5291a9",
+                                          "span": {
+                                            "length": 288,
+                                            "offset": 336
+                                          }
+                                        },
+                                        "header": {
+                                          "sha256": "a60b2fafe947f6d5c117e185f0f03978f70f26b2ad48c6d7731b01c7c76eab8e",
+                                          "span": {
+                                            "length": 16,
+                                            "offset": 320
+                                          },
+                                          "unknown": [
+                                            {
+                                              "kind": "unknown-gap",
+                                              "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                              "span": {
+                                                "length": 4,
+                                                "offset": 332
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        "itemCount": 3,
+                                        "stride": 112
+                                      },
+                                      "tag": "STMS"
+                                    },
+                                    {
+                                      "contents": {
+                                        "chunks": [],
+                                        "opaque": [],
+                                        "span": {
+                                          "length": 38,
+                                          "offset": 976
+                                        }
+                                      },
+                                      "declaredPaddedSize": 64,
+                                      "declaredSize": 54,
+                                      "header": {
+                                        "sha256": "f1f967eb5b0eba7058ae26a2ad0c09ac48db502e5a1fe99a9569400684e32824",
+                                        "span": {
+                                          "length": 16,
+                                          "offset": 960
+                                        },
+                                        "unknown": [
+                                          {
+                                            "kind": "unknown-gap",
+                                            "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                            "span": {
+                                              "length": 4,
+                                              "offset": 964
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      "paddedSpan": {
+                                        "length": 64,
+                                        "offset": 960
+                                      },
+                                      "padding": [
+                                        {
+                                          "sha256": "01d448afd928065458cf670b60f5a594d735af0172c8d67f22a81680132681ca",
+                                          "span": {
+                                            "length": 10,
+                                            "offset": 1014
+                                          }
+                                        }
+                                      ],
+                                      "sha256": "2e914d1c725a064a96e49201f41326442d26d61f67e101ab4f4fb89a40bc76c2",
+                                      "span": {
+                                        "length": 54,
+                                        "offset": 960
+                                      },
+                                      "stream": {
+                                        "data": {
+                                          "sha256": "a31e910680405ce5f30bc28f9a1cef773c238ba2574e121d94d63271a1651b94",
+                                          "span": {
+                                            "length": 6,
+                                            "offset": 1008
+                                          }
+                                        },
+                                        "fields": {
+                                          "count": 1,
+                                          "descriptors": [
+                                            {
+                                              "span": {
+                                                "length": 16,
+                                                "offset": 992
+                                              },
+                                              "words": [
+                                                0,
+                                                0,
+                                                1,
+                                                16711680
+                                              ]
+                                            }
+                                          ],
+                                          "sha256": "b022b3e41dfadbb58810858ebe5defa9f22cc33de4931b164563c848b004fb6d",
+                                          "span": {
+                                            "length": 16,
+                                            "offset": 992
+                                          }
+                                        },
+                                        "header": {
+                                          "sha256": "cbf89e7f664a9e4d525662b3fdd8601c46dc95f8d16dbb2d1186a68cc52ea239",
+                                          "span": {
+                                            "length": 16,
+                                            "offset": 976
+                                          },
+                                          "unknown": [
+                                            {
+                                              "kind": "unknown-gap",
+                                              "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                              "span": {
+                                                "length": 4,
+                                                "offset": 988
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        "itemCount": 3,
+                                        "stride": 2
+                                      },
+                                      "tag": "STMS"
+                                    }
+                                  ],
+                                  "opaque": [
+                                    {
+                                      "kind": "container-info",
+                                      "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+                                      "span": {
+                                        "length": 16,
+                                        "offset": 288
+                                      }
+                                    }
+                                  ],
+                                  "span": {
+                                    "length": 736,
+                                    "offset": 288
+                                  }
+                                },
+                                "declaredPaddedSize": 752,
+                                "declaredSize": 752,
+                                "header": {
+                                  "sha256": "d2fe0b41864660150f1ab5b4aae22074a0d2a2cc339674a30bbbe1e30316943a",
+                                  "span": {
+                                    "length": 16,
+                                    "offset": 272
+                                  },
+                                  "unknown": [
+                                    {
+                                      "kind": "unknown-gap",
+                                      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                      "span": {
+                                        "length": 4,
+                                        "offset": 276
+                                      }
+                                    }
+                                  ]
+                                },
+                                "mesh": {
+                                  "indexCount": 3,
+                                  "indexStreamCount": 1,
+                                  "positionStreamCount": 1,
+                                  "streamCount": 2,
+                                  "triangleCount": 1,
+                                  "vertexCount": 3
+                                },
+                                "paddedSpan": {
+                                  "length": 752,
+                                  "offset": 272
+                                },
+                                "padding": [],
+                                "sha256": "21036c23e594bc198d6ab19bec67b4e666ddccbaac3b8488fc519a2f8634e78b",
+                                "span": {
+                                  "length": 752,
+                                  "offset": 272
+                                },
+                                "tag": "MESH"
+                              }
+                            ],
+                            "opaque": [
+                              {
+                                "kind": "container-info",
+                                "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+                                "span": {
+                                  "length": 16,
+                                  "offset": 208
+                                }
+                              }
+                            ],
+                            "span": {
+                              "length": 816,
+                              "offset": 208
+                            }
+                          },
+                          "declaredPaddedSize": 832,
+                          "declaredSize": 832,
+                          "header": {
+                            "sha256": "355c30ee3698e8c5ae97085bfaf2791a56237de2e040af2606d9af048e5926a1",
+                            "span": {
+                              "length": 16,
+                              "offset": 192
+                            },
+                            "unknown": [
+                              {
+                                "kind": "unknown-gap",
+                                "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                                "span": {
+                                  "length": 4,
+                                  "offset": 196
+                                }
+                              }
+                            ]
+                          },
+                          "paddedSpan": {
+                            "length": 832,
+                            "offset": 192
+                          },
+                          "padding": [],
+                          "sha256": "0e766bab2bd08f1a761aecd4fb50a3b9173ef1bb89e310bd05ec877b51faec5f",
+                          "span": {
+                            "length": 832,
+                            "offset": 192
+                          },
+                          "tag": "MDL\\x00"
+                        }
+                      ],
+                      "opaque": [
+                        {
+                          "kind": "container-info",
+                          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+                          "span": {
+                            "length": 16,
+                            "offset": 176
+                          }
+                        }
+                      ],
+                      "span": {
+                        "length": 848,
+                        "offset": 176
+                      }
+                    },
+                    "declaredPaddedSize": 864,
+                    "declaredSize": 864,
+                    "header": {
+                      "sha256": "5cdd6cf188863e7f519301b09bed6d8d57635e3df881513f0d6009a1b6bd21dd",
+                      "span": {
+                        "length": 16,
+                        "offset": 160
+                      },
+                      "unknown": [
+                        {
+                          "kind": "unknown-gap",
+                          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                          "span": {
+                            "length": 4,
+                            "offset": 164
+                          }
+                        }
+                      ]
+                    },
+                    "paddedSpan": {
+                      "length": 864,
+                      "offset": 160
+                    },
+                    "padding": [],
+                    "sha256": "93511f85d3af1d4ae282b3a2e205ec9542406c9e869b838f6a485250ff80daa2",
+                    "span": {
+                      "length": 864,
+                      "offset": 160
+                    },
+                    "tag": "MDLC"
+                  }
+                ],
+                "opaque": [
+                  {
+                    "kind": "container-info",
+                    "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+                    "span": {
+                      "length": 16,
+                      "offset": 144
+                    }
+                  }
+                ],
+                "span": {
+                  "length": 880,
+                  "offset": 144
+                }
+              },
+              "declaredPaddedSize": 896,
+              "declaredSize": 896,
+              "header": {
+                "sha256": "32c2b6aa0a09170431f4eddf9c0a96d1dac49ed17c2cd91109909a9fd617dc44",
+                "span": {
+                  "length": 16,
+                  "offset": 128
+                },
+                "unknown": [
+                  {
+                    "kind": "unknown-gap",
+                    "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+                    "span": {
+                      "length": 4,
+                      "offset": 132
+                    }
+                  }
+                ]
+              },
+              "paddedSpan": {
+                "length": 896,
+                "offset": 128
+              },
+              "padding": [],
+              "sha256": "eb4e82f7ae89ef06a6de56a4f97b2ea9c8bab1f743c92b42422edd6f819a11a6",
+              "span": {
+                "length": 896,
+                "offset": 128
+              },
+              "tag": "WRB\\x00"
+            }
+          ],
+          "opaque": [],
+          "span": {
+            "length": 896,
+            "offset": 128
+          }
+        },
+        "payload": {
+          "sha256": "eb4e82f7ae89ef06a6de56a4f97b2ea9c8bab1f743c92b42422edd6f819a11a6",
+          "span": {
+            "length": 896,
+            "offset": 128
+          }
+        },
+        "sha256": "3024a7703acbee3862d3cc539b3fa9ae07bb001f3d3d6210f23d687508a5908b",
+        "span": {
+          "length": 944,
+          "offset": 80
+        }
+      }
+    ],
+    "spanOverlap": "nested-child-spans-are-inside-owning-spans",
+    "streamCount": 2
+  }
+}

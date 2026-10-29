@@ -683,10 +683,25 @@ fn model_stream_to_json(data: &[u8], stream: &zone::ModelStreamInspection) -> Va
             "span": stream.fields.to_json(),
             "sha256": sha256_hex(span_bytes(data, stream.fields)),
             "count": stream.field_count,
-            "descriptors": stream.descriptors.iter().map(|field| json!({
-                "span": field.span.to_json(),
-                "words": field.words,
-            })).collect::<Vec<_>>(),
+            "descriptors": stream.descriptors.iter().map(|field| {
+                let mut descriptor = json!({
+                    "span": field.span.to_json(),
+                    "words": field.words,
+                });
+                if let Some(declaration) = &field.declaration {
+                    descriptor["declaration"] = json!({
+                        "offset": declaration.offset,
+                        "elementType": declaration.element_type,
+                        "elementTypeName": declaration.element_type_name,
+                        "byteLength": declaration.byte_length,
+                        "method": 0,
+                        "usage": declaration.usage,
+                        "semantic": declaration.semantic,
+                        "usageIndex": declaration.usage_index,
+                    });
+                }
+                descriptor
+            }).collect::<Vec<_>>(),
         },
         "itemCount": stream.item_count,
         "stride": stream.stride,

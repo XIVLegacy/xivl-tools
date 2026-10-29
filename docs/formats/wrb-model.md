@@ -35,17 +35,64 @@ Exact tags are required for known dispatch. Other tags remain opaque.
 An STMS body begins with a 16-byte header containing big-endian field
 count, item count, and stride in its first three dwords. Each descriptor
 occupies 16 bytes, followed by exactly `itemCount * stride` data bytes.
-Descriptor dwords are retained as metadata without assigning meanings to
-unrecognized layouts. The model path recognizes the existing position
-and index stream layouts for bounded mesh counts. The remainder remains
-opaque. Descriptor extents, size arithmetic, count limits, and nesting
-are checked before reporting.
+Descriptor dwords are retained as metadata. Supported declaration mappings
+also report element type, field offset, byte length, method, API usage,
+semantic name, and usage index as described below. The model path recognizes
+the existing position and index stream layouts for bounded mesh counts.
+Descriptor extents, size arithmetic, count limits, and nesting are checked
+before reporting.
 
 A valid WRB without MESH is accepted with zero decoded mesh parts. This
 does not establish that the unknown chunks describe no geometry. An
 unsupported or malformed MESH stream fails with a typed error and source
 offset. Validation reports parse success and a round-trip check of
 `not-applicable`.
+
+## Vertex declaration metadata
+
+The mapping follows `xivl-decomp:docs/resource/wrb-vertex-declaration.md`,
+sections "Descriptor and intermediate record", "API array conversion", and
+"Bounded numeric lookups". That finding joins the ordinary STMS descriptor
+path to the retail executable's D3D9 declaration converter and constant tables.
+The report describes declaration metadata without decoding additional vertex
+values or asserting that a shader consumes a field according to its API name.
+
+| Native usage | API semantic | Usage index |
+|---:|---|---:|
+| 0 | POSITION | 0 |
+| 1 | BLENDWEIGHT | 0 |
+| 2 | NORMAL | 0 |
+| 3, 4 | COLOR | 0, 1 |
+| 5 | FOG | 0 |
+| 6 | PSIZE | 0 |
+| 7 | BLENDINDICES | 0 |
+| 8 through 15 | TEXCOORD | Native usage minus 8 |
+| 16 | TANGENT | 0 |
+| 17 | BINORMAL | 0 |
+
+| Native format | Component count | Element type |
+|---:|---|---|
+| 0 | 2, 4 | SHORT2N, SHORT4N |
+| 1 | 1 through 4 | FLOAT1 through FLOAT4 |
+| 2 | 2, 4 | FLOAT16_2, FLOAT16_4 |
+| 3 | 4 | UBYTE4N |
+| 4 | 2, 4 | SHORT2, SHORT4 |
+| 6 | 4 | UBYTE4 |
+
+The element type and usage numbers and names follow Microsoft's
+[D3DDECLTYPE](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3ddecltype)
+and [D3DDECLUSAGE](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3ddeclusage)
+definitions. Method is zero. The offset is reported as the stored value.
+The descriptor's upper usage half selects the semantic; the lower half
+remains in the raw words, including bit 15, which the converter does not read.
+
+A `declaration` object is emitted only for a mapped type and usage, an offset
+representable as u16, and an element that fits within the stream stride.
+Other fields retain their raw words and spans without a declaration object
+or a new refusal. This includes native usages 18 and above, index usage 255,
+unknown format or component indices, and lookup entries with type UNUSED.
+Authored cases cover every mapped usage and element type and accepted opaque
+descriptors.
 
 ## Retail authentication
 
@@ -68,8 +115,8 @@ The index STMS chunk is `[6508,6604)`, with 24 two-byte items at
 The position STMS chunk is `[6604,6776)`, with nine 12-byte items at
 `[6668,6776)` and descriptors `(0,4,4,0)` and `(8,3,4,0x00020000)`.
 These observations authenticate chunk framing, descriptor-array extents,
-and stream byte counts for this input. The structural inspection keeps the
-descriptor semantics undecoded. A narrow format interpretation used by the
+and stream byte counts for this input. The structural inspection reports the
+documented declaration mappings. A narrow format interpretation used by the
 experimental importer treats the exact usage-2 format-3 field as packed normal
 bytes, based on the [retail normal and winding census](#normals-and-winding);
 the importer rejects overlapping fields and its local tests cover the byte
@@ -240,6 +287,12 @@ WRB model read is `partial`. Public authored cases exercise the accepted
 structure, unknown ranges, exact tags, no-MESH resources, malformed
 descriptors, truncation, counts, and nesting. The pinned private cases
 require an explicit frozen root and preserve only structure and digests.
+
+Declaration metadata does not establish stored skeletal weights, bone indices,
+palette correspondence, or skinning. Those gaps remain unresolved in
+`xivl-decomp:docs/resource/wrb-vertex-declaration.md`, "Reproduction and limits".
+Unmapped usages and format/component combinations remain opaque as described
+under [vertex declaration metadata](#vertex-declaration-metadata).
 
 Structural JSON is a report and does not establish lossless export support.
 This reader does not establish glTF output, rendering, material or texture

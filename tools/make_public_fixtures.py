@@ -902,6 +902,55 @@ def build_fixtures() -> dict[str, bytes]:
     model_mdlc = model_container(b"MDLC", [model_mdl])
     model_wrb = model_container(b"WRB\0", [model_mdlc])
     fixtures["wrb-model/supported.bin"] = model_resource(model_wrb)
+    declaration_fields = [
+        (0, 4, 4, 0 << 16),
+        (8, 3, 4, 1 << 16),
+        (12, 3, 4, 2 << 16),
+        (16, 2, 4, 3 << 16),
+        (24, 2, 4, 4 << 16),
+        (32, 1, 1, 5 << 16),
+        (36, 1, 2, 6 << 16),
+        (44, 6, 4, 7 << 16),
+        (48, 2, 2, 8 << 16),
+        (52, 0, 2, 9 << 16),
+        (56, 0, 4, 10 << 16),
+        (64, 1, 3, 11 << 16),
+        (76, 1, 4, 12 << 16),
+        (92, 3, 4, 13 << 16),
+        (96, 4, 2, 14 << 16),
+        (100, 6, 4, 15 << 16),
+        (104, 3, 4, 16 << 16),
+        (108, 3, 4, (17 << 16) | 0x8000),
+    ]
+    declaration_mesh = model_container(
+        b"MESH", [model_stms(declaration_fields, 3, 112, bytes(336)), index_stream]
+    )
+    declaration_mdl = model_container(
+        b"MDL\0", [model_chunk(b"COMP", comp), declaration_mesh]
+    )
+    fixtures["wrb-model/vertex-declarations.bin"] = model_resource(
+        model_container(b"WRB\0", [model_container(b"MDLC", [declaration_mdl])])
+    )
+    opaque_fields = [
+        (0, 3, 4, 18 << 16),
+        (0, 3, 4, 31 << 16),
+        (0, 3, 4, 32 << 16),
+        (0, 3, 4, 255 << 16),
+        (0, 5, 4, 2 << 16),
+        (0, 9, 4, 2 << 16),
+        (0, 3, 0, 2 << 16),
+        (0, 3, 5, 2 << 16),
+        (65536, 3, 4, 2 << 16),
+        (9, 3, 4, 2 << 16),
+    ]
+    opaque_mesh = model_container(
+        b"MESH",
+        [position_stream, index_stream, model_stms(opaque_fields, 1, 12, bytes(12))],
+    )
+    opaque_mdl = model_container(b"MDL\0", [model_chunk(b"COMP", comp), opaque_mesh])
+    fixtures["wrb-model/opaque-declarations.bin"] = model_resource(
+        model_container(b"WRB\0", [model_container(b"MDLC", [opaque_mdl])])
+    )
     fixtures["wrb-model/no-mesh.bin"] = model_resource(
         model_container(b"WRB\0", [model_chunk(b"HEAD", pattern(13, 0xA2))])
     )

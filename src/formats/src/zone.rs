@@ -317,6 +317,18 @@ pub(crate) struct ModelStreamInspection {
 pub(crate) struct ModelStreamFieldInspection {
     pub(crate) span: Span,
     pub(crate) words: [u32; 4],
+    pub(crate) declaration: Option<ModelVertexDeclaration>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelVertexDeclaration {
+    pub(crate) offset: u16,
+    pub(crate) element_type: u8,
+    pub(crate) element_type_name: &'static str,
+    pub(crate) byte_length: u32,
+    pub(crate) usage: u8,
+    pub(crate) semantic: &'static str,
+    pub(crate) usage_index: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2135,6 +2147,52 @@ struct ParsedStms<'a> {
     metadata: ModelStreamInspection,
 }
 
+fn model_vertex_declaration(words: [u32; 4], stride: u32) -> Option<ModelVertexDeclaration> {
+    // xivl-decomp:docs/resource/wrb-vertex-declaration.md, bounded numeric lookups.
+    let (element_type, element_type_name, byte_length) = match (words[1], words[2]) {
+        (0, 2) => (9, "SHORT2N", 4),
+        (0, 4) => (10, "SHORT4N", 8),
+        (1, 1) => (0, "FLOAT1", 4),
+        (1, 2) => (1, "FLOAT2", 8),
+        (1, 3) => (2, "FLOAT3", 12),
+        (1, 4) => (3, "FLOAT4", 16),
+        (2, 2) => (15, "FLOAT16_2", 4),
+        (2, 4) => (16, "FLOAT16_4", 8),
+        (3, 4) => (8, "UBYTE4N", 4),
+        (4, 2) => (6, "SHORT2", 4),
+        (4, 4) => (7, "SHORT4", 8),
+        (6, 4) => (5, "UBYTE4", 4),
+        _ => return None,
+    };
+    let (usage, semantic, usage_index) = match words[3] >> 16 {
+        0 => (0, "POSITION", 0),
+        1 => (1, "BLENDWEIGHT", 0),
+        2 => (3, "NORMAL", 0),
+        3 => (10, "COLOR", 0),
+        4 => (10, "COLOR", 1),
+        5 => (11, "FOG", 0),
+        6 => (4, "PSIZE", 0),
+        7 => (2, "BLENDINDICES", 0),
+        native @ 8..=15 => (5, "TEXCOORD", (native - 8) as u8),
+        16 => (6, "TANGENT", 0),
+        17 => (7, "BINORMAL", 0),
+        _ => return None,
+    };
+    let offset = u16::try_from(words[0]).ok()?;
+    if words[0].checked_add(byte_length)? > stride {
+        return None;
+    }
+    Some(ModelVertexDeclaration {
+        offset,
+        element_type,
+        element_type_name,
+        byte_length,
+        usage,
+        semantic,
+        usage_index,
+    })
+}
+
 fn parse_stms(bytes: &[u8], base: u64) -> Result<ParsedStms<'_>> {
     let fields_count = bounded_u32(u32_be(bytes, 0, base)?, base, "STMS field")?;
     let item_count = bounded_u32(u32_be(bytes, 4, base)?, base + 4, "STMS item")?;
@@ -2166,9 +2224,11 @@ fn parse_stms(bytes: &[u8], base: u64) -> Result<ParsedStms<'_>> {
             u32_be(bytes, at + 12, base)?,
         ));
         let field = fields[index];
+        let words = [field.0, field.1, field.2, field.3];
         descriptors.push(ModelStreamFieldInspection {
             span: Span::new(base + at as u64, 16),
-            words: [field.0, field.1, field.2, field.3],
+            words,
+            declaration: model_vertex_declaration(words, stride),
         });
     }
     Ok(ParsedStms {
@@ -3101,6 +3161,78 @@ pub(crate) mod tests {
         let mut early_triangle = phb_bytes();
         put_le_u32(&mut early_triangle, 0xc0 + 0x60, 0x70);
         assert!(parse_phb(&early_triangle).is_err());
+    }
+
+    #[test]
+    fn model_vertex_declaration_types_and_usages() {
+        for (format, count, kind, name, size) in [
+            (0, 2, 9, "SHORT2N", 4),
+            (0, 4, 10, "SHORT4N", 8),
+            (1, 1, 0, "FLOAT1", 4),
+            (1, 2, 1, "FLOAT2", 8),
+            (1, 3, 2, "FLOAT3", 12),
+            (1, 4, 3, "FLOAT4", 16),
+            (2, 2, 15, "FLOAT16_2", 4),
+            (2, 4, 16, "FLOAT16_4", 8),
+            (3, 4, 8, "UBYTE4N", 4),
+            (4, 2, 6, "SHORT2", 4),
+            (4, 4, 7, "SHORT4", 8),
+            (6, 4, 5, "UBYTE4", 4),
+        ] {
+            let declaration = model_vertex_declaration([4, format, count, 8 << 16], 32).unwrap();
+            assert_eq!(declaration.offset, 4);
+            assert_eq!(declaration.element_type, kind);
+            assert_eq!(declaration.element_type_name, name);
+            assert_eq!(declaration.byte_length, size);
+        }
+        for (native, usage, semantic, index) in [
+            (0, 0, "POSITION", 0),
+            (1, 1, "BLENDWEIGHT", 0),
+            (2, 3, "NORMAL", 0),
+            (3, 10, "COLOR", 0),
+            (4, 10, "COLOR", 1),
+            (5, 11, "FOG", 0),
+            (6, 4, "PSIZE", 0),
+            (7, 2, "BLENDINDICES", 0),
+            (8, 5, "TEXCOORD", 0),
+            (9, 5, "TEXCOORD", 1),
+            (10, 5, "TEXCOORD", 2),
+            (11, 5, "TEXCOORD", 3),
+            (12, 5, "TEXCOORD", 4),
+            (13, 5, "TEXCOORD", 5),
+            (14, 5, "TEXCOORD", 6),
+            (15, 5, "TEXCOORD", 7),
+            (16, 6, "TANGENT", 0),
+            (17, 7, "BINORMAL", 0),
+        ] {
+            let declaration = model_vertex_declaration([8, 3, 4, native << 16], 12).unwrap();
+            assert_eq!(declaration.usage, usage);
+            assert_eq!(declaration.semantic, semantic);
+            assert_eq!(declaration.usage_index, index);
+        }
+    }
+
+    #[test]
+    fn model_vertex_declaration_leaves_unsupported_fields_opaque() {
+        for words in [
+            [0, 3, 4, 18 << 16],
+            [0, 3, 4, 31 << 16],
+            [0, 3, 4, 32 << 16],
+            [0, 3, 4, 255 << 16],
+            [0, 5, 4, 2 << 16],
+            [0, 9, 4, 2 << 16],
+            [0, 3, 0, 2 << 16],
+            [0, 3, 5, 2 << 16],
+            [65536, 3, 4, 2 << 16],
+            [u32::MAX, 3, 4, 2 << 16],
+            [9, 3, 4, 2 << 16],
+        ] {
+            assert_eq!(model_vertex_declaration(words, 12), None, "{words:?}");
+        }
+        assert_eq!(
+            model_vertex_declaration([8, 3, 4, 0x0002_8000], 12),
+            model_vertex_declaration([8, 3, 4, 0x0002_0000], 12),
+        );
     }
 
     #[test]

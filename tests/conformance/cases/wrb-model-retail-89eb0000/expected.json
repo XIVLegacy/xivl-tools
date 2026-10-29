@@ -898,6 +898,16 @@
                                           "count": 2,
                                           "descriptors": [
                                             {
+                                              "declaration": {
+                                                "byteLength": 8,
+                                                "elementType": 7,
+                                                "elementTypeName": "SHORT4",
+                                                "method": 0,
+                                                "offset": 0,
+                                                "semantic": "POSITION",
+                                                "usage": 0,
+                                                "usageIndex": 0
+                                              },
                                               "span": {
                                                 "length": 16,
                                                 "offset": 6636
@@ -910,6 +920,16 @@
                                               ]
                                             },
                                             {
+                                              "declaration": {
+                                                "byteLength": 4,
+                                                "elementType": 8,
+                                                "elementTypeName": "UBYTE4N",
+                                                "method": 0,
+                                                "offset": 8,
+                                                "semantic": "NORMAL",
+                                                "usage": 3,
+                                                "usageIndex": 0
+                                              },
                                               "span": {
                                                 "length": 16,
                                                 "offset": 6652
