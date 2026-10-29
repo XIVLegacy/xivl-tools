@@ -92,12 +92,12 @@
       "category": "text",
       "phase": 1,
       "read": "verified",
-      "write": "none",
+      "write": "verified",
       "export": "supported",
       "exportViews": [
         "xml"
       ],
-      "notes": "An XML document behind a one-byte trailer, a partial byte reversal, and a two-key word cipher. Recognition is the decode itself, not the trailer byte: two resources in the install end in it and are not documents. The first word key is derived from the encoded length and the second is recovered from the document's own known opening, so nothing is stored and nothing is guessed. Read completely: all 799 scrambled resources in the install decode to well-formed UTF-8 XML, and a decoded document is handed to the same reader a plaintext one gets. Public read cases cover both document kinds, all four encoded-length residues, and five malformed inputs; private read cases cover all four residues against retail 1.23b, recorded by span, key, digest, and name census rather than by content. Supported export writes exact decoded document bytes through extract-resource and selected extract-catalog entries, with deterministic payload manifests, output accounting, and exact source replay. Public extract cases and CLI tests cover byte preservation, all four residues, malformed inputs, determinism, catalog extraction, and verification failures. Export has no private-case parity claim. Evidence: docs/formats/ssd-sheet.md."
+      "notes": "An XML document behind a one-byte trailer, a partial byte reversal, and a two-key word cipher. Recognition is the decode itself, not the trailer byte: two resources in the install end in it and are not documents. The first word key is derived from the encoded length and the second is recovered from the document's own known opening, so nothing is stored and nothing is guessed. Read completely: all 799 scrambled resources in the install decode to well-formed UTF-8 XML, and a decoded document is handed to the same reader a plaintext one gets. Public read cases cover both document kinds, all four encoded-length residues, and five malformed inputs; private read cases cover all four residues against retail 1.23b, recorded by span, key, digest, and name census rather than by content. Supported export writes exact decoded document bytes through extract-resource and selected extract-catalog entries, with deterministic payload manifests, output accounting, and exact source replay. Public extract cases and CLI tests cover byte preservation, all four residues, malformed inputs, determinism, catalog extraction, and verification failures. Export has no private-case parity claim. Evidence: docs/formats/ssd-sheet.md. The public encoder derives both word keys, with key B matched by a first-hand census of all 799 retail scrambled documents in the 1.23b install (799 matches, zero mismatches)."
     },
     {
       "id": "ssd-master",

@@ -103,18 +103,22 @@ owns the grammar, public coverage, and limits. Structural JSON remains a
 report. The `0xF1` token-length form still rests on one retail occurrence;
 synthetic coverage adds no retail confidence or `verified` claim.
 
-The `verified` read status for `scrambled-xml` covers the container and
-nothing above it. Specifically not handled:
+The `verified` read and write statuses for `scrambled-xml` cover the
+container and nothing above it. The encoder derives key A from the encoded
+body length and key B as `(~((a + 1) >> ((a / 3) & 3))) & 0xFFFF`, where
+`a` is key A widened to `u32` before addition. A first-hand census of all
+799 retail scrambled documents in the 1.23b install found 799 matches and
+zero mismatches, and `validate` re-encodes all 799 byte for byte. Public
+round-trip cases cover each encoded-length residue and a foreign key, and a
+private case re-encodes a retail master. The [container contract](formats/ssd-sheet.md#the-encoder)
+defines encoding and byte-exact validation. The decoder keeps recovering
+key B from known plaintext and reports whether it matches the derivation
+without refusing a different key. Specifically not handled:
 
-- what the encoder derives `keyB` from. The decoder recovers it from known
-  plaintext and needs no answer, so this is an open question rather than a
-  gap in the read;
 - a scrambled resource whose plaintext does not open on a byte order mark
   and `<?xml`. The key recovery has nothing to stand on there, and such an
   input is refused with `bad-magic` rather than decoded on a guess. Two
   resources in the install take that path;
-- writing. `write` stays `none`: the encoder is exercised only inside this
-  crate's own tests, and a write claim needs round-trip fixtures of its own;
 - the document's meaning. The container hands plain bytes to `xml` and
   `ssd`, and every claim about what a document says belongs to those rows.
 
@@ -185,7 +189,6 @@ The `supported` write statuses for the same four rows cover the round trip and n
   `stafflist.xml`, an unbound attribute prefix in `Staffroll.form` - imply
   about the client's own reader;
 
-- what the encoder derives the scrambled container's second word key from;
 - why the final-byte correction belongs to one encoded-length residue
   rather than to odd lengths, which is what the shape of the two word
   passes suggests it should;

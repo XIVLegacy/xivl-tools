@@ -1,0 +1,19 @@
+{
+  "arguments": [
+    "--as",
+    "scrambled-xml"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/scrambled/residue-0.bin"
+  },
+  "formatId": "scrambled-xml",
+  "id": "scrambled-round-trip-foreign-key",
+  "notes": "A second key the derivation does not produce still decodes, but the encoder cannot reproduce it, so the round trip fails.",
+  "operation": "validate",
+  "schemaVersion": 1
+}

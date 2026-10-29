@@ -1,0 +1,21 @@
+{
+  "checks": [
+    {
+      "name": "parse",
+      "status": "pass"
+    },
+    {
+      "encodedLength": 218,
+      "encodedSha256": "6861b8c1b455fab0b6eafb3f74ea2aa2432cc67ef55e473a5a7b17d4c0461d99",
+      "name": "round-trip",
+      "status": "pass"
+    }
+  ],
+  "format": "scrambled-xml",
+  "input": {
+    "length": 218
+  },
+  "operation": "validate",
+  "schemaVersion": 1,
+  "sha256": "6861b8c1b455fab0b6eafb3f74ea2aa2432cc67ef55e473a5a7b17d4c0461d99"
+}

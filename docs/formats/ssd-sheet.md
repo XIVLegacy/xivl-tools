@@ -394,6 +394,34 @@ recovered from known plaintext, because bytes 6 and 7 of every document are
 `ml`, from `<?xml` behind the byte order mark, and `0x6C6D` is that pair as
 a little-endian word.
 
+### The encoder
+
+`scrambled::encode` accepts document bytes beginning with the UTF-8 BOM and
+`<?xml`, with at least eight bytes. It derives both word keys from the
+document length, which is also the encoded body length:
+
+```text
+keyA  =  (encodedLength * 7) & 0xFFFF
+a     =  u32(keyA)
+keyB  =  (~((a + 1) >> ((a / 3) & 3))) & 0xFFFF
+```
+
+The addition uses 32 bits so `0xFFFF + 1` does not wrap. A first-hand census
+of all 799 retail scrambled documents in the 1.23b install matched this
+key-B derivation in 799 cases with zero mismatches.
+
+Encoding reverses the decode: apply the final-byte correction when the
+length is 1 modulo 4, apply the key-B word pass, apply the key-A word pass,
+run the partial reversal, then append the trailer. No XML reserialization
+occurs. `validate --as scrambled-xml`, or automatic detection of that
+format, checks that encoding the decoded document reproduces every input
+byte and reports the encoded length and SHA-256.
+
+Decoding still recovers key B from known plaintext and accepts keys that
+differ from the derivation. The inspect container report's `keyBDerived`
+boolean records whether the recovered key matches. Such a container stays
+readable, but its validation round trip fails if encoding changes its bytes.
+
 ### How it was derived
 
 The reading was established from the retail corpus in two stages. The first

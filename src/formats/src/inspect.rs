@@ -394,6 +394,23 @@ pub fn validate_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resu
                 "encodedSha256": sha256_hex(&encoded),
             }));
         }
+        InspectAs::ScrambledXml | InspectAs::Auto if format == "scrambled-xml" => {
+            let parsed = scrambled::decode(data)?;
+            checks.push(match scrambled::encode(&parsed.document) {
+                Ok(encoded) => json!({
+                    "name": "round-trip",
+                    "status": if encoded == data { "pass" } else { "fail" },
+                    "encodedLength": encoded.len() as u64,
+                    "encodedSha256": sha256_hex(&encoded),
+                }),
+                Err(_) => json!({
+                    "name": "round-trip",
+                    "status": "fail",
+                    "encodedLength": null,
+                    "encodedSha256": null,
+                }),
+            });
+        }
         _ => checks.push(json!({
             // Report the unavailable round-trip check explicitly; no writer exists.
             "name": "round-trip",
@@ -937,6 +954,7 @@ fn container_facts(decoded: &scrambled::ScrambledXml) -> Value {
         "trailer": decoded.trailer.to_json(),
         "keyA": decoded.key_a,
         "keyB": decoded.key_b,
+        "keyBDerived": decoded.key_b_derived,
         "finalByteCorrected": decoded.final_byte_corrected,
         "decodedLength": decoded.document.len() as u64,
         "decodedSha256": sha256_hex(&decoded.document),

@@ -9,6 +9,7 @@
     "finalByteCorrected": false,
     "keyA": 2646,
     "keyB": 64874,
+    "keyBDerived": true,
     "kind": "scrambled-xml",
     "trailer": {
       "length": 1,

@@ -177,6 +177,12 @@ def scramble_word_key(buffer: bytearray, start: int, key: int) -> None:
         buffer[offset : offset + 2] = word.to_bytes(2, "little")
 
 
+def derived_key_b(encoded_length: int) -> int:
+    """The second key every retail document uses, derived from the first."""
+    key_a = (encoded_length * 7) & 0xFFFF
+    return ~((key_a + 1) >> ((key_a // 3) & 3)) & 0xFFFF
+
+
 def scramble_document(document: bytes, key_b: int = FIXTURE_WORD_KEY_B) -> bytes:
     """Encode a document into the scrambled container."""
     encoded_length = len(document)
@@ -2426,6 +2432,11 @@ def build_fixtures() -> dict[str, bytes]:
         assert len(document) % 4 == residue
         fixtures["scrambled/residue-{0}.bin".format(residue)] = scramble_document(
             document
+        )
+        # The same document under the derived second key, which the encoder
+        # reproduces, so validate's round trip passes.
+        fixtures["scrambled/derived-residue-{0}.bin".format(residue)] = (
+            scramble_document(document, derived_key_b(len(document)))
         )
 
     # The trailer byte removed. Expect missing-scramble-trailer: without it

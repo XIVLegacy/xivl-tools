@@ -41,6 +41,8 @@ pub struct ScrambledXml {
     pub key_a: u16,
     /// Word key for the second half, recovered from known plaintext.
     pub key_b: u16,
+    /// Whether the recovered key matches the retail length-derived key.
+    pub key_b_derived: bool,
     /// Whether the final byte took the extra correction. It does when the
     /// encoded length leaves it outside both word passes.
     pub final_byte_corrected: bool,
@@ -56,6 +58,54 @@ pub struct ScrambledXml {
 /// scrambled because of one byte would be a guess.
 pub fn has_signature(data: &[u8]) -> bool {
     decode(data).is_ok()
+}
+
+/// Derive the first word key from the encoded body length, excluding the trailer.
+pub fn derive_key_a(encoded_length: usize) -> u16 {
+    encoded_length.wrapping_mul(7) as u16
+}
+
+/// Derive the second word key from the first, as matched by the retail census.
+pub fn derive_key_b(key_a: u16) -> u16 {
+    // Widen before adding: key A 0xFFFF must produce 0x10000, not zero.
+    let a = u32::from(key_a);
+    (!((a + 1) >> ((a / 3) & 3))) as u16
+}
+
+/// Encode a document opening with the BOM and XML declaration signature.
+pub fn encode(document: &[u8]) -> Result<Vec<u8>> {
+    if document.len() < MINIMUM_ENCODED_LENGTH {
+        return Err(FormatError::new(
+            ErrorKind::UnexpectedEndOfInput,
+            document.len() as u64,
+            format!("a scrambled document needs at least {MINIMUM_ENCODED_LENGTH} bytes"),
+        ));
+    }
+    if !document.starts_with(DECODED_SIGNATURE) {
+        return Err(FormatError::new(
+            ErrorKind::BadMagic,
+            0,
+            "a scrambled document must open on a byte order mark and an XML declaration",
+        ));
+    }
+    Ok(encode_with_key_b(
+        document,
+        derive_key_b(derive_key_a(document.len())),
+    ))
+}
+
+fn encode_with_key_b(document: &[u8], key_b: u16) -> Vec<u8> {
+    let encoded_length = document.len();
+    let mut buffer = document.to_vec();
+    let key_a = derive_key_a(encoded_length);
+    if encoded_length % 4 == 1 {
+        buffer[encoded_length - 1] ^= (key_a as u8) ^ (key_b as u8);
+    }
+    apply_word_key(&mut buffer, 2, key_b);
+    apply_word_key(&mut buffer, 0, key_a);
+    unscramble(&mut buffer);
+    buffer.push(TRAILER);
+    buffer
 }
 
 /// Decode a scrambled resource.
@@ -97,7 +147,7 @@ pub fn decode(data: &[u8]) -> Result<ScrambledXml> {
     let mut buffer = body.to_vec();
     unscramble(&mut buffer);
 
-    let key_a = (encoded_length as u32).wrapping_mul(7) as u16;
+    let key_a = derive_key_a(encoded_length);
     let key_b = u16::from_le_bytes([buffer[6], buffer[7]]) ^ KNOWN_PLAINTEXT_WORD;
     apply_word_key(&mut buffer, 0, key_a);
     apply_word_key(&mut buffer, 2, key_b);
@@ -124,6 +174,7 @@ pub fn decode(data: &[u8]) -> Result<ScrambledXml> {
         trailer: Span::new(encoded_length as u64, 1),
         key_a,
         key_b,
+        key_b_derived: key_b == derive_key_b(key_a),
         final_byte_corrected,
         document: buffer,
     })
@@ -169,26 +220,6 @@ fn apply_word_key(buffer: &mut [u8], start: usize, key: u16) {
 mod tests {
     use super::*;
 
-    /// Encode a document the way the client does, so a round trip proves
-    /// the decode rather than restating it.
-    ///
-    /// `key_b` is the encoder's free choice: nothing stores it, and the
-    /// decoder gets it back only because the plaintext at 6..8 is known.
-    /// Passing several values is what tests that recovery.
-    pub(crate) fn encode(document: &[u8], key_b: u16) -> Vec<u8> {
-        let encoded_length = document.len();
-        let mut buffer = document.to_vec();
-        let key_a = (encoded_length as u32).wrapping_mul(7) as u16;
-        if encoded_length % 4 == 1 {
-            buffer[encoded_length - 1] ^= (key_a as u8) ^ (key_b as u8);
-        }
-        apply_word_key(&mut buffer, 2, key_b);
-        apply_word_key(&mut buffer, 0, key_a);
-        unscramble(&mut buffer);
-        buffer.push(TRAILER);
-        buffer
-    }
-
     fn document(body: &str) -> Vec<u8> {
         let mut out = b"\xEF\xBB\xBF<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n".to_vec();
         out.extend_from_slice(body.as_bytes());
@@ -204,7 +235,7 @@ mod tests {
             for key_b in [0x0000, 0x1234, 0xD2E8, 0xFFFF] {
                 let text = format!("<ssd version=\"0.1\">{}</ssd>\r\n", " ".repeat(extra));
                 let plain = document(&text);
-                let decoded = decode(&encode(&plain, key_b)).unwrap();
+                let decoded = decode(&encode_with_key_b(&plain, key_b)).unwrap();
                 assert_eq!(decoded.document, plain, "extra {extra} key {key_b:04x}");
                 assert_eq!(decoded.key_b, key_b);
             }
@@ -214,15 +245,79 @@ mod tests {
     #[test]
     fn the_word_keys_are_derived_not_stored() {
         let plain = document("<ssd version=\"0.1\"></ssd>\r\n");
-        let encoded = encode(&plain, 0xBEEF);
+        let encoded = encode_with_key_b(&plain, 0xBEEF);
         let decoded = decode(&encoded).unwrap();
         assert_eq!(
             decoded.key_a,
             ((encoded.len() - 1) as u32).wrapping_mul(7) as u16
         );
         assert_eq!(decoded.key_b, 0xBEEF);
+        assert!(!decoded.key_b_derived);
         assert_eq!(decoded.encoded.length, (encoded.len() - 1) as u64);
         assert_eq!(decoded.trailer.length, 1);
+    }
+
+    #[test]
+    fn the_second_key_matches_hand_computed_values() {
+        for (key_a, key_b) in [
+            (0, 0xFFFE),
+            (3, 0xFFFD),
+            (6, 0xFFFE),
+            (9, 0xFFFE),
+            (12, 0xFFF2),
+            (0x1234, 0xF6E5),
+            (0xFFFE, 0),
+            (0xFFFF, 0x7FFF),
+        ] {
+            assert_eq!(derive_key_b(key_a), key_b, "key A {key_a:04x}");
+        }
+    }
+
+    #[test]
+    fn encoding_the_minimum_signature_matches_literal_bytes() {
+        assert_eq!(derive_key_a(8), 0x0038);
+        assert_eq!(derive_key_b(0x0038), 0xFFF1);
+        assert_eq!(
+            encode(DECODED_SIGNATURE).unwrap(),
+            [0x93, 0xBB, 0x78, 0xC3, 0x07, 0x4E, 0x9C, 0xD7, TRAILER]
+        );
+    }
+
+    #[test]
+    fn encoding_round_trips_every_length_residue() {
+        for extra in 0..4 {
+            let plain = document(&format!("<ssd>{}</ssd>", " ".repeat(extra)));
+            let encoded = encode(&plain).unwrap();
+            let decoded = decode(&encoded).unwrap();
+            assert_eq!(decoded.document, plain);
+            assert!(decoded.key_b_derived);
+            assert_eq!(encode(&decoded.document).unwrap(), encoded);
+            for how in [crate::InspectAs::Auto, crate::InspectAs::ScrambledXml] {
+                let report =
+                    crate::validate_named_bytes_as(&encoded, "document.bin", &how).unwrap();
+                assert_eq!(report["checks"][1]["status"], "pass");
+                assert_eq!(report["checks"][1]["encodedLength"], encoded.len());
+            }
+        }
+    }
+
+    #[test]
+    fn validation_reports_a_non_derived_key_as_a_failed_round_trip() {
+        let encoded = encode_with_key_b(&document("<ssd/>"), 0xBEEF);
+        for how in [crate::InspectAs::Auto, crate::InspectAs::ScrambledXml] {
+            let report = crate::validate_named_bytes_as(&encoded, "document.bin", &how).unwrap();
+            assert_eq!(report["checks"][1]["status"], "fail");
+        }
+    }
+
+    #[test]
+    fn encoding_rejects_a_short_or_unsigned_document() {
+        let error = encode(&DECODED_SIGNATURE[..7]).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::UnexpectedEndOfInput);
+        assert_eq!(error.offset(), 7);
+        let error = encode(b"<?xml version=\"1.0\"?>").unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::BadMagic);
+        assert_eq!(error.offset(), 0);
     }
 
     #[test]
