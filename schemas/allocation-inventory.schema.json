@@ -1,0 +1,523 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Occupied registration namespace inventory",
+  "description": "Read-only numeric-mode inventory with catalog rows, collisions and evidence blockers. It chooses no allocation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "catalog",
+    "pathInventory",
+    "roots",
+    "collisions",
+    "blockers"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "path",
+        "size",
+        "sha256",
+        "rootCount",
+        "rowCount",
+        "sizeWord",
+        "sizeMatchesInput",
+        "trailingBytes"
+      ],
+      "properties": {
+        "key": {
+          "const": "0x03C00000"
+        },
+        "path": {
+          "const": "data/03/C0/00/00.DAT"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "rootCount": {
+          "$ref": "#/$defs/word"
+        },
+        "rowCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sizeWord": {
+          "$ref": "#/$defs/word"
+        },
+        "sizeMatchesInput": {
+          "type": "boolean"
+        },
+        "trailingBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "pathInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseRule",
+        "occupiedKeyCount",
+        "occupiedKeys",
+        "unmappedPathCount",
+        "unmappedPaths"
+      ],
+      "properties": {
+        "caseRule": {
+          "const": "ASCII case-insensitive hex digits and DAT extension; lowercase data directory; exactly two hex digits per byte"
+        },
+        "occupiedKeyCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "occupiedKeys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key"
+          },
+          "uniqueItems": true
+        },
+        "unmappedPathCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unmappedPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "roots": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/root"
+      }
+    },
+    "collisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duplicateRootKeys",
+        "duplicateChildKeys",
+        "duplicateEffectiveNames",
+        "auxiliaryResourceKeys",
+        "auxiliaryDerivedKeys"
+      ],
+      "properties": {
+        "duplicateRootKeys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/keyCollision"
+          }
+        },
+        "duplicateChildKeys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/keyCollision"
+          }
+        },
+        "duplicateEffectiveNames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nameCollision"
+          }
+        },
+        "auxiliaryResourceKeys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "rootRows",
+              "childRows",
+              "explicitRootRows",
+              "numericPathExists"
+            ],
+            "properties": {
+              "key": {
+                "$ref": "#/$defs/key"
+              },
+              "rootRows": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "childRows": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "explicitRootRows": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "numericPathExists": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "auxiliaryDerivedKeys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/keyCollision"
+          }
+        }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/blocker"
+      },
+      "minItems": 4,
+      "maxItems": 4,
+      "allOf": [
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "numeric-mode-assumed"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "auxiliary-payload-acceptance"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "zone-script-join"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "integration-zone-limit"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "key": {
+      "type": "string",
+      "pattern": "^0x[0-9A-F]{8}$"
+    },
+    "word": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "keyCollision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "rows"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/key"
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "nameCollision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectiveName",
+        "rows"
+      ],
+      "properties": {
+        "effectiveName": {
+          "type": "string"
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "auxiliary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "key",
+        "numericPath",
+        "numericPathExists"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "derived",
+            "nonzero-layout-argument",
+            "no-children",
+            "low-index-overflow"
+          ]
+        },
+        "key": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/key"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "numericPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "numericPathExists": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "derived"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "key": {
+                "$ref": "#/$defs/key"
+              },
+              "numericPath": {
+                "type": "string"
+              },
+              "numericPathExists": {
+                "type": "boolean"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "key": {
+                "type": "null"
+              },
+              "numericPath": {
+                "type": "null"
+              },
+              "numericPathExists": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "child": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rowIndex",
+        "childIndex",
+        "key",
+        "type",
+        "resourceKey",
+        "kind",
+        "effectiveName",
+        "eligible",
+        "numericPath",
+        "numericPathExists"
+      ],
+      "properties": {
+        "rowIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "childIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "key": {
+          "$ref": "#/$defs/key"
+        },
+        "type": {
+          "$ref": "#/$defs/word"
+        },
+        "resourceKey": {
+          "$ref": "#/$defs/key"
+        },
+        "kind": {
+          "$ref": "#/$defs/word"
+        },
+        "effectiveName": {
+          "type": "string"
+        },
+        "eligible": {
+          "type": "boolean"
+        },
+        "numericPath": {
+          "type": "string",
+          "pattern": "^data/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}\\.DAT$"
+        },
+        "numericPathExists": {
+          "type": "boolean"
+        }
+      }
+    },
+    "root": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rowIndex",
+        "rootIndex",
+        "key",
+        "nonzero",
+        "representable16Bit",
+        "word04",
+        "word08",
+        "word20",
+        "effectiveName",
+        "tokenTerminated",
+        "childCount",
+        "auxiliary",
+        "children"
+      ],
+      "properties": {
+        "rowIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rootIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "key": {
+          "$ref": "#/$defs/key"
+        },
+        "nonzero": {
+          "type": "boolean"
+        },
+        "representable16Bit": {
+          "type": "boolean"
+        },
+        "word04": {
+          "$ref": "#/$defs/word"
+        },
+        "word08": {
+          "$ref": "#/$defs/word"
+        },
+        "word20": {
+          "$ref": "#/$defs/word"
+        },
+        "effectiveName": {
+          "type": "string"
+        },
+        "tokenTerminated": {
+          "type": "boolean"
+        },
+        "childCount": {
+          "$ref": "#/$defs/word"
+        },
+        "auxiliary": {
+          "$ref": "#/$defs/auxiliary"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/child"
+          }
+        }
+      }
+    },
+    "blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "statement",
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "numeric-mode-assumed",
+            "auxiliary-payload-acceptance",
+            "zone-script-join",
+            "integration-zone-limit"
+          ]
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

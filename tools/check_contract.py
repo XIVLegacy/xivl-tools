@@ -30,6 +30,7 @@ SCHEMAS = {
     "tests/fixtures/public/zone-project/project.json": "schemas/zone-project.schema.json",
     PRIVATE_FIXTURE_MANIFEST: "schemas/private-fixture-manifest.schema.json",
     "data/lua51-retail-census.json": "schemas/lua51-retail-census.schema.json",
+    "docs/allocation-inventory.example.json": "schemas/allocation-inventory.schema.json",
 }
 
 # Paths whose contents must never be tracked. The policy is the rule. This

@@ -36,6 +36,19 @@ requires an explicit client root and saved local project. Offline output is
 a model/PHB/layout prototype. It does not register or install a zone, allocate
 IDs, or establish client acceptance.
 
+## Inventory occupied registration namespaces
+
+```powershell
+cargo run --locked -p xivl-cli -- allocation-inventory --client-root <root>
+cargo run --locked -p xivl-cli -- allocation-inventory --client-root <root> --output <new-file>
+```
+
+The command prints JSON to stdout, or writes only the explicitly named new
+file outside the client root. It inventories the shared region catalog,
+effective names, numeric DAT keys and collisions, and records evidence blockers.
+It chooses no allocation. The [inventory contract](allocation-inventory.md)
+defines the fields, path case rule, refusal behavior and evidence limits.
+
 ## Decode one fixed control
 
 Supply hexadecimal byte pairs, with optional ASCII whitespace, or a binary file:

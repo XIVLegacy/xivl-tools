@@ -14,6 +14,7 @@ use xivl_cli::{extract, fixed_batch, fixed_control, zone_project};
 use xivl_formats::{extract_lpb, lua_path_document};
 use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_bytes_as, InspectAs};
 
+mod allocation_inventory;
 mod batch_extract;
 mod command_inspect;
 mod resource_export;
@@ -30,6 +31,7 @@ usage:
   xivl validate <file> [--as <format>] [--columns <list>]
   xivl validate-zone-project <project.json> --client-root <root>
   xivl build-zone-project <project.json> --client-root <root> --output <new-directory>
+  xivl allocation-inventory --client-root <root> [--output <new-file>]
   xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--slot-context <command_slot_context.json>] [--monster-attack-profiles <json>] [--format yaml|json]
   xivl inspect-command-loadout --slot-context <command_slot_context.json> [--trace <index>] [--format yaml|json]
   xivl materialize-command-loadout --slot-context <command_slot_context.json> --trace <index> [--record-range <first>:<last>] [--output <new-file>] [--format yaml|json]
@@ -80,6 +82,10 @@ extract-catalog plans and validates an explicit catalog selection before
 writing isolated per-resource outputs; it never has an implicit extract-all.
 verify-extraction checks an existing single or catalog extraction without
 writing or repairing it. Source replay is explicit and optional.
+
+allocation-inventory reports occupied catalog keys, effective names, numeric
+DAT paths, collisions and evidence blockers as JSON. It chooses no allocation.
+An optional output file must be new and outside the client root.
 
 export-zones reads only an explicitly supplied 1.23b client root and writes
 one flattened OBJ plus a versioned metadata sidecar per lyb layout, and one
@@ -229,6 +235,7 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         }
         Some("inspect") => read(&arguments[1..], Operation::Inspect),
         Some("validate") => read(&arguments[1..], Operation::Validate),
+        Some("allocation-inventory") => allocation_inventory::run(&arguments[1..]),
         Some(command @ ("validate-zone-project" | "build-zone-project")) => {
             let report = zone_project::run(&arguments[1..], command == "build-zone-project")
                 .map_err(|failure| Failure {

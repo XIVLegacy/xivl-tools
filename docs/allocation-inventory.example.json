@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "catalog": {
+    "key": "0x03C00000",
+    "path": "data/03/C0/00/00.DAT",
+    "size": 64,
+    "sha256": "ee4d11df9ad304cf401d0fccb9bff3b93be023e5a9d190baeb991393fffd9b08",
+    "rootCount": 0,
+    "rowCount": 0,
+    "sizeWord": 64,
+    "sizeMatchesInput": true,
+    "trailingBytes": 0
+  },
+  "pathInventory": {
+    "caseRule": "ASCII case-insensitive hex digits and DAT extension; lowercase data directory; exactly two hex digits per byte",
+    "occupiedKeyCount": 1,
+    "occupiedKeys": [
+      "0x03C00000"
+    ],
+    "unmappedPathCount": 0,
+    "unmappedPaths": []
+  },
+  "roots": [],
+  "collisions": {
+    "duplicateRootKeys": [],
+    "duplicateChildKeys": [],
+    "duplicateEffectiveNames": [],
+    "auxiliaryResourceKeys": [],
+    "auxiliaryDerivedKeys": []
+  },
+  "blockers": [
+    {
+      "id": "numeric-mode-assumed",
+      "statement": "Numeric formatter mode is assumed. Mode-zero path-table mappings are unsupported; numeric paths cannot prove free identities outside numeric mode.",
+      "source": "xivl-decomp:docs/resource/resource-path-producer.md \"Catalog mode\" at cb3639a9c03ad79724b52b710337a166d52de8ea"
+    },
+    {
+      "id": "auxiliary-payload-acceptance",
+      "statement": "Authored auxiliary payload acceptance and whether absence is acceptable remain unresolved. File existence does not establish either.",
+      "source": "xivl-decomp:docs/resource/region-auxiliary-resource.md \"Selection readiness and remaining evidence\" at cb3639a9c03ad79724b52b710337a166d52de8ea"
+    },
+    {
+      "id": "zone-script-join",
+      "statement": "The numeric zone, ZoneMaster class and script load join remains unresolved. This report does not inventory or allocate those identities.",
+      "source": "xivl-client-structs:docs/map-layout-selector.md \"Zone-master and script dependencies\" at fff480ab502bfae6b3e555d62679b635479821de"
+    },
+    {
+      "id": "integration-zone-limit",
+      "statement": "The zone identity range 0..511 is an integration limit, not a demonstrated native bound or evidence that an identity is free.",
+      "source": "xivl-client-structs:docs/map-layout-selector.md \"Minimal candidate and allocation constraints\" at fff480ab502bfae6b3e555d62679b635479821de"
+    }
+  ]
+}
