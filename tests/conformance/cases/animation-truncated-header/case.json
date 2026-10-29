@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "animation-truncated-header",
+  "formatId": "animation",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/animation/truncated-header.bin"
+  },
+  "arguments": [
+    "--as",
+    "animation"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 12
+  },
+  "notes": "Fixed header flags are missing."
+}

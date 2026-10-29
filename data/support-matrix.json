@@ -344,13 +344,14 @@
       "name": "Animation",
       "category": "graphics",
       "phase": 4,
-      "read": "planned",
+      "read": "partial",
       "write": "none",
       "export": "planned",
       "exportViews": [
         "gltf",
         "json"
-      ]
+      ],
+      "notes": "Explicit --as animation reads bounded PWIB/RES animation bank entries and version 0x43 MTB offset tables, indexed names, and section views. MCB, SCB, curve and motion payloads, nested banks, and unrecognized entries remain opaque. Unsupported MTB versions, unavailable selected extents, and overlapping names or selected entries are refused. Unselected entries remain unvalidated and unclaimed, with spans clamped to the first segment. Writing, animation export, sampling, and playback are outside the claim. Evidence and gaps: docs/formats/animation.md."
     },
     {
       "id": "material",

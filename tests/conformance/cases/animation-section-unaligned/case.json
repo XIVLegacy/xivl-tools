@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "animation-section-unaligned",
+  "formatId": "animation",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/animation/section-unaligned.bin"
+  },
+  "arguments": [
+    "--as",
+    "animation"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "table-out-of-range",
+    "errorOffset": 68
+  },
+  "notes": "A section start violates the evidenced alignment."
+}

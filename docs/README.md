@@ -48,6 +48,7 @@ These pages describe the supported file formats.
 - [Bounded skeleton framing](formats/skeleton.md)
 - [Bounded material samplers](formats/material.md)
 - [Bounded shader FILE framing](formats/shader.md)
+- [Animation bank and MTB framing](formats/animation.md)
 - [GTEX fields and PWIB segments](formats/gtex-pwib.md)
 - [Bounded WRB model inspection](formats/wrb-model.md)
 - [World layout: MapLayout and lyb](formats/world-layout.md)

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "animation-entry-alias",
+  "formatId": "animation",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/animation/entry-alias.bin"
+  },
+  "arguments": [
+    "--as",
+    "animation"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "ambiguous-payload-span",
+    "errorOffset": 100
+  },
+  "notes": "Selected animation entries alias."
+}

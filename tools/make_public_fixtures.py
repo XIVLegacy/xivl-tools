@@ -3013,6 +3013,109 @@ def material_fixtures() -> dict[str, bytes]:
         + sample
         + pattern(16, 0x97)
     )
+    # -- animation bank and MTB framing ---------------------------------
+    # Authored section views, offset tables and opaque bodies. See
+    # docs/formats/animation.md; no curve or motion payload is decoded.
+    animation = bytearray(sedb_header("mtb", 0x43, 0, 0x40, 0))
+    struct.pack_into("<H", animation, 0x30, 3)
+    animation += struct.pack("<3I", 2, 0x60, 0x80)
+    animation += struct.pack("<3I", 2, 0xA0, 0xA7)
+    animation += struct.pack("<2I", 1, 0xAD)
+    animation += struct.pack("<I", 0) + pattern(28, 0x31)
+    animation += struct.pack("<I", 1) + pattern(28, 0x41)
+    animation += b"Header\0Curve\0group0\0"
+    fixtures["animation/sections.bin"] = bytes(animation)
+
+    animation_scb = sedb_header("SCB ", 2, 0, 0x30, 0x40) + pattern(16, 0x51)
+    animation_root = (
+        sedb_header(
+            "RES ",
+            4000,
+            0x200,
+            0x40,
+            0x60 + len(animation) + len(animation_scb),
+            res_extended(2, 0, "anim"),
+        )
+        + directory_entry(0, 0, len(animation), 0)
+        + directory_entry(1, len(animation), len(animation_scb), 0)
+        + animation
+        + animation_scb
+    )
+    animation_second = pattern(16, 0x61)
+    animation_bank = (
+        b"PWIB"
+        + struct.pack(
+            ">III",
+            16 + len(animation_root) + len(animation_second),
+            16,
+            16 + len(animation_root),
+        )
+        + animation_root
+        + animation_second
+    )
+    fixtures["animation/bank.bin"] = animation_bank
+    animation_opaque = bytearray(animation_bank)
+    animation_opaque[296:300] = b"XTRA"
+    struct.pack_into("<I", animation_opaque, 308, 0xFFFFFFFF)
+    fixtures["animation/opaque-entry.bin"] = bytes(animation_opaque)
+    for name, at, length in [
+        ("opaque-overrun", len(animation), 0xFFFFFFFF),
+        ("opaque-outside", 0xFFFFFFFF, 64),
+    ]:
+        opaque_bank = bytearray(animation_opaque)
+        struct.pack_into("<II", opaque_bank, 100, at, length)
+        fixtures[f"animation/{name}.bin"] = bytes(opaque_bank)
+    fixtures["animation/scb.bin"] = animation_scb
+    animation_control = (
+        sedb_header("RES ", 4000, 0x200, 0x40, 0x90, res_extended(1, 0, "anim"))
+        + directory_entry(0, 0, 0x40, 0)
+        + b"CTRL"
+        + pattern(60, 0x71)
+    )
+    fixtures["animation/control-only-bank.bin"] = (
+        b"PWIB" + struct.pack(">III", 0xA0, 16, 0xA0) + animation_control
+    )
+    fixtures["animation/truncated-header.bin"] = bytes(animation[:12])
+    for name, offset, value in [
+        ("table-overrun", 0x40, 0xFFFFFFFF),
+        ("name-overrun", 0x50, len(animation)),
+        ("name-alias", 0x54, 0xA0),
+        ("name-overlap", 0x54, 0xA1),
+        ("group-name-alias", 0x5C, 0xA0),
+        ("section-overrun", 0x44, len(animation) + 16),
+        ("section-index", 0x60, 2),
+        ("section-alias", 0x48, 0x60),
+        ("section-unaligned", 0x44, 0x61),
+        ("old-version", 8, 0x42),
+    ]:
+        malformed = bytearray(animation)
+        struct.pack_into("<I", malformed, offset, value)
+        fixtures[f"animation/{name}.bin"] = bytes(malformed)
+    fixtures["animation/unterminated-name.bin"] = bytes(animation[:-1]) + b"X"
+    fixtures["animation/missing-header.bin"] = (
+        bytes(animation[:0xA0]) + b"Opaque" + bytes(animation[0xA6:])
+    )
+    malformed_bank = bytearray(animation_bank)
+    struct.pack_into("<I", malformed_bank, 16 + 0x40 + 8, 0xFFFFFFFF)
+    fixtures["animation/entry-overrun.bin"] = bytes(malformed_bank)
+    for name, offset, length in [
+        ("entry-alias", 0, len(animation)),
+        ("entry-overlap", len(animation), len(animation_scb)),
+    ]:
+        malformed_bank = bytearray(animation_bank)
+        if name == "entry-overlap":
+            struct.pack_into(
+                "<I", malformed_bank, 88, len(animation) + len(animation_scb)
+            )
+        struct.pack_into("<II", malformed_bank, 100, offset, length)
+        fixtures[f"animation/{name}.bin"] = bytes(malformed_bank)
+    duplicate = bytearray(animation[:0xA7] + b"Header\0group0\0")
+    struct.pack_into("<I", duplicate, 0x5C, 0xAE)
+    fixtures["animation/duplicate-header.bin"] = bytes(duplicate)
+    struct.pack_into("<I", duplicate, 0x60, 1)
+    fixtures["animation/later-header.bin"] = bytes(duplicate)
+    fixtures["animation/wrapper-overrun.bin"] = animation_bank[:-1]
+
     return fixtures
 
 

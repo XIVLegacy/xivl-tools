@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "animation-unterminated-name",
+  "formatId": "animation",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/animation/unterminated-name.bin"
+  },
+  "arguments": [
+    "--as",
+    "animation"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-end-of-input",
+    "errorOffset": 173
+  },
+  "notes": "The group-name terminator is absent."
+}

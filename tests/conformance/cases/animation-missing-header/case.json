@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "animation-missing-header",
+  "formatId": "animation",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/animation/missing-header.bin"
+  },
+  "arguments": [
+    "--as",
+    "animation"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-chunk",
+    "errorOffset": 64
+  },
+  "notes": "No indexed section has the required Header name."
+}

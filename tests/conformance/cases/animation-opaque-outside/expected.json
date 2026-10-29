@@ -1,0 +1,237 @@
+{
+  "directory": {
+    "sha256": "414fd5b9e98d935f420c28a3d452a948ae5d2ddcd4f436a4c8fbb34e9f47bddb",
+    "span": {
+      "length": 32,
+      "offset": 80
+    }
+  },
+  "entries": [
+    {
+      "clamped": false,
+      "motion": {
+        "groupNames": [
+          {
+            "sha256": "4a64b75b66f0a113cc1ad90232d4720d0519b552122ada0f25a9d2101225ad69",
+            "span": {
+              "length": 7,
+              "offset": 285
+            }
+          }
+        ],
+        "opaque": [
+          {
+            "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+            "span": {
+              "length": 2,
+              "offset": 124
+            }
+          },
+          {
+            "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+            "span": {
+              "length": 28,
+              "offset": 132
+            }
+          },
+          {
+            "sha256": "e7ecebbc590bc88b3761fa6cd03d749f87463dabb67021a5c6768c25ec68b3f2",
+            "span": {
+              "length": 14,
+              "offset": 162
+            }
+          },
+          {
+            "sha256": "1685714c7114b3df1779854415d52b88196df72b7223dcaf42f44f9db305fb18",
+            "span": {
+              "length": 28,
+              "offset": 212
+            }
+          },
+          {
+            "sha256": "acfd7f5a0a83329a8db37b08dcfe19a207c1babd589a70799623975574f78f8f",
+            "span": {
+              "length": 28,
+              "offset": 244
+            }
+          }
+        ],
+        "sectionNames": [
+          {
+            "sha256": "05ed944f1b6618cf12c40bef00d1346b11561bcc63ce94e4af512dd246af951e",
+            "span": {
+              "length": 7,
+              "offset": 272
+            }
+          },
+          {
+            "sha256": "43ec4eca692204fb9e27a563e839ebc5e1e0d2f79578ebe313f9d2376e57f6e2",
+            "span": {
+              "length": 6,
+              "offset": 279
+            }
+          }
+        ],
+        "sections": [
+          {
+            "kind": "Header",
+            "nameIndex": 0,
+            "opaque": {
+              "sha256": "1685714c7114b3df1779854415d52b88196df72b7223dcaf42f44f9db305fb18",
+              "span": {
+                "length": 28,
+                "offset": 212
+              }
+            },
+            "sha256": "fb82e3a53c9242880cacf66f429c02e8da2ef3a20ef3995a6d6ad8bff05aad7e",
+            "view": {
+              "length": 32,
+              "offset": 208
+            }
+          },
+          {
+            "kind": "Curve",
+            "nameIndex": 1,
+            "opaque": {
+              "sha256": "acfd7f5a0a83329a8db37b08dcfe19a207c1babd589a70799623975574f78f8f",
+              "span": {
+                "length": 28,
+                "offset": 244
+              }
+            },
+            "sha256": "8f47c5d94c8331cb1bec198311a382ee6db2d68417b236597dd1607810df117d",
+            "view": {
+              "length": 32,
+              "offset": 240
+            }
+          }
+        ],
+        "tables": [
+          {
+            "count": 2,
+            "sha256": "1d6eff74d5737acd287c7e7dc6be7341962dd06b4ef563e9e9a65a8604236654",
+            "span": {
+              "length": 12,
+              "offset": 176
+            }
+          },
+          {
+            "count": 2,
+            "sha256": "8f999dfc7ce6a1b2f906f8eaf9aba5bb213d2c9864f51ecb95e332d2d0641b65",
+            "span": {
+              "length": 12,
+              "offset": 188
+            }
+          },
+          {
+            "count": 1,
+            "sha256": "690c79054366cdb4cf1418e830c791a3a04cd48a429e88afd9cadedd813b7af3",
+            "span": {
+              "length": 8,
+              "offset": 200
+            }
+          }
+        ],
+        "totalProperties": 3,
+        "version": 67
+      },
+      "opaque": [],
+      "selected": true,
+      "sha256": "0cd2dc727dc1a0bad851127810a44070766e9c2b6eb15b2baca04ff92a895fdb",
+      "span": {
+        "length": 180,
+        "offset": 112
+      },
+      "subtype": "mtb\\x00"
+    },
+    {
+      "clamped": true,
+      "motion": null,
+      "opaque": [
+        {
+          "span": {
+            "length": 0,
+            "offset": 356
+          }
+        }
+      ],
+      "selected": false,
+      "sha256": null,
+      "span": {
+        "length": 0,
+        "offset": 356
+      },
+      "subtype": null
+    }
+  ],
+  "format": "animation",
+  "input": {
+    "length": 372
+  },
+  "opaque": [
+    {
+      "sha256": "d6e51532a98180fda3c0c5724839a524cab62b40d112dbe155b6283350bbf1ed",
+      "span": {
+        "length": 16,
+        "offset": 0
+      }
+    },
+    {
+      "sha256": "14ccab066236794f4ea7e63b00e54a6b25325b5f8f32c21a3b6e8a7d351c4976",
+      "span": {
+        "length": 6,
+        "offset": 24
+      }
+    },
+    {
+      "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+      "span": {
+        "length": 28,
+        "offset": 36
+      }
+    },
+    {
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+      "span": {
+        "length": 4,
+        "offset": 68
+      }
+    },
+    {
+      "sha256": "e06b25096cc2f5c3b39a03ce100cdbf804e7128d37f710d6c8acb7e732a0187f",
+      "span": {
+        "length": 4,
+        "offset": 76
+      }
+    },
+    {
+      "sha256": "d042f81121bce934419ba008358661efb3f8959352cea5d2e41a8883595aee11",
+      "span": {
+        "length": 80,
+        "offset": 292
+      }
+    }
+  ],
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "sha256": "5395dd8301dace961924cfe9df31ce817477f8c112c2a6876ecec22b3600159a",
+  "wrapper": {
+    "firstSegment": {
+      "length": 340,
+      "offset": 16
+    },
+    "header": {
+      "length": 16,
+      "offset": 0
+    },
+    "kind": "PWIB",
+    "secondSegment": {
+      "length": 16,
+      "offset": 356
+    },
+    "trailing": {
+      "length": 0,
+      "offset": 372
+    }
+  }
+}

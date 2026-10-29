@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "animation-section-index",
+  "formatId": "animation",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/animation/section-index.bin"
+  },
+  "arguments": [
+    "--as",
+    "animation"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "table-index-out-of-range",
+    "errorOffset": 96
+  },
+  "notes": "A section name index exceeds table 2."
+}

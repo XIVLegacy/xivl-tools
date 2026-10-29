@@ -1,0 +1,151 @@
+{
+  "directory": null,
+  "entries": [
+    {
+      "clamped": false,
+      "motion": {
+        "groupNames": [
+          {
+            "sha256": "4a64b75b66f0a113cc1ad90232d4720d0519b552122ada0f25a9d2101225ad69",
+            "span": {
+              "length": 7,
+              "offset": 174
+            }
+          }
+        ],
+        "opaque": [
+          {
+            "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+            "span": {
+              "length": 2,
+              "offset": 12
+            }
+          },
+          {
+            "sha256": "3addfb141cd7c9c4c6543a82191a3707ac29c7a041217782e61d4d91c691aee8",
+            "span": {
+              "length": 28,
+              "offset": 20
+            }
+          },
+          {
+            "sha256": "e7ecebbc590bc88b3761fa6cd03d749f87463dabb67021a5c6768c25ec68b3f2",
+            "span": {
+              "length": 14,
+              "offset": 50
+            }
+          },
+          {
+            "sha256": "1685714c7114b3df1779854415d52b88196df72b7223dcaf42f44f9db305fb18",
+            "span": {
+              "length": 28,
+              "offset": 100
+            }
+          },
+          {
+            "sha256": "acfd7f5a0a83329a8db37b08dcfe19a207c1babd589a70799623975574f78f8f",
+            "span": {
+              "length": 28,
+              "offset": 132
+            }
+          }
+        ],
+        "sectionNames": [
+          {
+            "sha256": "05ed944f1b6618cf12c40bef00d1346b11561bcc63ce94e4af512dd246af951e",
+            "span": {
+              "length": 7,
+              "offset": 160
+            }
+          },
+          {
+            "sha256": "05ed944f1b6618cf12c40bef00d1346b11561bcc63ce94e4af512dd246af951e",
+            "span": {
+              "length": 7,
+              "offset": 167
+            }
+          }
+        ],
+        "sections": [
+          {
+            "kind": "Header",
+            "nameIndex": 0,
+            "opaque": {
+              "sha256": "1685714c7114b3df1779854415d52b88196df72b7223dcaf42f44f9db305fb18",
+              "span": {
+                "length": 28,
+                "offset": 100
+              }
+            },
+            "sha256": "fb82e3a53c9242880cacf66f429c02e8da2ef3a20ef3995a6d6ad8bff05aad7e",
+            "view": {
+              "length": 32,
+              "offset": 96
+            }
+          },
+          {
+            "kind": "opaque",
+            "nameIndex": 1,
+            "opaque": {
+              "sha256": "acfd7f5a0a83329a8db37b08dcfe19a207c1babd589a70799623975574f78f8f",
+              "span": {
+                "length": 28,
+                "offset": 132
+              }
+            },
+            "sha256": "8f47c5d94c8331cb1bec198311a382ee6db2d68417b236597dd1607810df117d",
+            "view": {
+              "length": 32,
+              "offset": 128
+            }
+          }
+        ],
+        "tables": [
+          {
+            "count": 2,
+            "sha256": "1d6eff74d5737acd287c7e7dc6be7341962dd06b4ef563e9e9a65a8604236654",
+            "span": {
+              "length": 12,
+              "offset": 64
+            }
+          },
+          {
+            "count": 2,
+            "sha256": "8f999dfc7ce6a1b2f906f8eaf9aba5bb213d2c9864f51ecb95e332d2d0641b65",
+            "span": {
+              "length": 12,
+              "offset": 76
+            }
+          },
+          {
+            "count": 1,
+            "sha256": "2db0f56767866978700067a8dc8b1a192771cb58152efbfad6703b49a20b5a50",
+            "span": {
+              "length": 8,
+              "offset": 88
+            }
+          }
+        ],
+        "totalProperties": 3,
+        "version": 67
+      },
+      "opaque": [],
+      "selected": true,
+      "sha256": "e9aeea6c6a5a53aaa39c7ec73e14ca7ed5aaecd1f189e53777ae715ef4210f46",
+      "span": {
+        "length": 181,
+        "offset": 0
+      },
+      "subtype": "mtb\\x00"
+    }
+  ],
+  "format": "animation",
+  "input": {
+    "length": 181
+  },
+  "opaque": [],
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "sha256": "e9aeea6c6a5a53aaa39c7ec73e14ca7ed5aaecd1f189e53777ae715ef4210f46",
+  "wrapper": null
+}

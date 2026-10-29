@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "animation-bank",
+  "formatId": "animation",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/animation/bank.bin"
+  },
+  "arguments": [
+    "--as",
+    "animation"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "PWIB first-segment RES directory with MTB and opaque SCB, plus an opaque second segment."
+}

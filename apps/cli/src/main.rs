@@ -108,7 +108,7 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
 5.1 chunk without interpreting it. The output path must not already exist.
 
   --as sedb | ssd | scrambled-xml | sqwt | lpb | lpb-bytecode | staticactor-san | region | fdt | gtex | pwib
-     | skeleton | material | shader | wrb-model | map-layout | enable-file | row-offsets
+     | skeleton | material | shader | animation | wrb-model | map-layout | enable-file | row-offsets
      | sheet-data | config-sys | config-pad | config-lng | config-rgn
       Read the input as this format. Needed for enable-file and
       row-offsets, which are unsigned 32-bit arrays with no signature,
@@ -136,6 +136,7 @@ removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
       --as skeleton reports bounded SKL record and string spans, hierarchy indices, and digests.
       --as material reports bounded PRAM sampler prefixes, binding bytes, and digests.
       --as shader reports bounded SHD FILE spans and digests with opaque program bodies.
+      --as animation reports animation bank entries and MTB section framing with opaque payloads.
   --columns <type,...>
       Column types of a sheet-data file, from its schema document, for
       example 'str,s32,bool'. Without it the data is read as a stream of

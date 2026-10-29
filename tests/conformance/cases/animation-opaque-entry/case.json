@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "animation-opaque-entry",
+  "formatId": "animation",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/animation/opaque-entry.bin"
+  },
+  "arguments": [
+    "--as",
+    "animation"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "An unrelated SEDB-tagged entry remains wholly opaque even when its internal size field exceeds its bank entry."
+}

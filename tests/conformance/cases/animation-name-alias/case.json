@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "animation-name-alias",
+  "formatId": "animation",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/animation/name-alias.bin"
+  },
+  "arguments": [
+    "--as",
+    "animation"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "ambiguous-payload-span",
+    "errorOffset": 84
+  },
+  "notes": "Table-2 names alias storage."
+}

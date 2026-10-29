@@ -1,0 +1,34 @@
+{
+  "directory": null,
+  "entries": [
+    {
+      "clamped": false,
+      "motion": null,
+      "opaque": [
+        {
+          "sha256": "e473eae5e5d34ce2a563bd3d420f16b11c9538da43d1e33011dfc2d763526fc7",
+          "span": {
+            "length": 64,
+            "offset": 0
+          }
+        }
+      ],
+      "selected": true,
+      "sha256": "e473eae5e5d34ce2a563bd3d420f16b11c9538da43d1e33011dfc2d763526fc7",
+      "span": {
+        "length": 64,
+        "offset": 0
+      },
+      "subtype": "SCB "
+    }
+  ],
+  "format": "animation",
+  "input": {
+    "length": 64
+  },
+  "opaque": [],
+  "operation": "inspect",
+  "schemaVersion": 1,
+  "sha256": "e473eae5e5d34ce2a563bd3d420f16b11c9538da43d1e33011dfc2d763526fc7",
+  "wrapper": null
+}

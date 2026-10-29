@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "animation-later-header",
+  "formatId": "animation",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/animation/later-header.bin"
+  },
+  "arguments": [
+    "--as",
+    "animation"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "unexpected-chunk",
+    "errorOffset": 64
+  },
+  "notes": "A later duplicate cannot select Header."
+}

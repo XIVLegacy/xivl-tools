@@ -10,6 +10,7 @@
 //! `docs/format-evidence.md`. This crate documents what it reads, not how
 //! the evidence was gathered.
 
+pub mod animation;
 pub mod anomaly;
 pub mod blowfish;
 pub mod collision_json;

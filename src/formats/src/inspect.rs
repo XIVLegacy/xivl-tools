@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 
 use serde_json::{json, Map, Value};
 
+use crate::animation;
 use crate::config::{self, ConfigFile, ConfigKind};
 use crate::digest::{sha256_hex, sha256_xor_hex};
 use crate::error::Result;
@@ -69,6 +70,8 @@ pub enum InspectAs {
     Material,
     /// Explicit bounded SHD FILE envelopes with opaque program bodies.
     Shader,
+    /// Animation bank directories and bounded MTB section framing.
+    Animation,
     /// A GTEX texture with loader-backed metadata and source addressing.
     Gtex,
     /// A PWIB resource with two loader-bounded segments.
@@ -90,7 +93,7 @@ pub enum InspectAs {
 
 impl InspectAs {
     /// Names accepted by the `--as` option.
-    pub const NAMES: [&'static str; 23] = [
+    pub const NAMES: [&'static str; 24] = [
         "sedb",
         "ssd",
         "scrambled-xml",
@@ -103,6 +106,7 @@ impl InspectAs {
         "skeleton",
         "material",
         "shader",
+        "animation",
         "gtex",
         "pwib",
         "wrb-model",
@@ -156,6 +160,7 @@ impl InspectAs {
             Some("skeleton") => Self::Skeleton,
             Some("material") => Self::Material,
             Some("shader") => Self::Shader,
+            Some("animation") => Self::Animation,
             Some("gtex") => Self::Gtex,
             Some("pwib") => Self::Pwib,
             Some("wrb-model") => Self::WrbModel,
@@ -236,6 +241,7 @@ pub fn inspect_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resul
         InspectAs::Skeleton => crate::skeleton::inspect(data),
         InspectAs::Material => crate::material::inspect(data),
         InspectAs::Shader => crate::shader::inspect(data),
+        InspectAs::Animation => inspect_animation(data),
         InspectAs::Gtex => inspect_tagged_resource(data, TaggedResourceKind::Gtex),
         InspectAs::Pwib => inspect_tagged_resource(data, TaggedResourceKind::Pwib),
         InspectAs::WrbModel => inspect_wrb_model(data),
@@ -945,6 +951,70 @@ fn inspect_lpb(data: &[u8]) -> Result<Value> {
     object.insert("encodedPayload".into(), file.encoded_payload.to_json());
     object.insert("decodedLength".into(), json!(file.decoded.len() as u64));
     object.insert("decodedSha256".into(), json!(sha256_hex(&file.decoded)));
+    Ok(Value::Object(object))
+}
+
+fn inspect_animation(data: &[u8]) -> Result<Value> {
+    let file = animation::parse(data)?;
+    let spans = |items: &[Span]| -> Vec<Value> {
+        items
+            .iter()
+            .map(|&span| {
+                json!({
+                    "span": span.to_json(), "sha256": span_sha256(data, span),
+                })
+            })
+            .collect()
+    };
+    let mut object = envelope("animation", data);
+    object.insert("sha256".into(), json!(sha256_hex(data)));
+    object.insert(
+        "wrapper".into(),
+        file.wrapper.as_ref().map_or(Value::Null, |wrapper| {
+            json!({
+                "kind": "PWIB", "header": wrapper.header.to_json(),
+                "firstSegment": wrapper.first_segment.to_json(),
+                "secondSegment": wrapper.second_segment.to_json(),
+                "trailing": wrapper.trailing.to_json(),
+            })
+        }),
+    );
+    object.insert(
+        "directory".into(),
+        file.directory.map_or(Value::Null, |span| {
+            json!({
+                "span": span.to_json(), "sha256": span_sha256(data, span),
+            })
+        }),
+    );
+    object.insert("entries".into(), json!(file.entries.iter().map(|entry| {
+        let motion = entry.motion.as_ref().map(|motion| json!({
+            "version": motion.version,
+            "totalProperties": motion.total_properties,
+            "tables": motion.tables.iter().map(|table| json!({
+                "span": table.span.to_json(), "count": table.offsets.len(),
+                "sha256": span_sha256(data, table.span),
+            })).collect::<Vec<_>>(),
+            "sectionNames": spans(&motion.section_names),
+            "groupNames": spans(&motion.group_names),
+            "sections": motion.sections.iter().map(|section| json!({
+                "nameIndex": section.name_index, "kind": section.kind.name(),
+                "view": section.view.to_json(), "sha256": span_sha256(data, section.view),
+                "opaque": { "span": section.opaque.to_json(), "sha256": span_sha256(data, section.opaque) },
+            })).collect::<Vec<_>>(),
+            "opaque": spans(&motion.opaque),
+        }));
+        json!({
+            "span": entry.span.to_json(),
+            "selected": entry.selected, "clamped": entry.clamped,
+            "sha256": if entry.selected { Some(span_sha256(data, entry.span)) } else { None },
+            "subtype": entry.subtype.map(|tag| escape_tag(&tag)),
+            "motion": motion,
+            "opaque": if !entry.selected { vec![json!({ "span": entry.span.to_json() })] }
+                else if entry.motion.is_none() { spans(&[entry.span]) } else { Vec::new() },
+        })
+    }).collect::<Vec<_>>()));
+    object.insert("opaque".into(), json!(spans(&file.opaque)));
     Ok(Value::Object(object))
 }
 

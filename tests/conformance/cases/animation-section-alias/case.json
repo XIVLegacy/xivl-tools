@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "animation-section-alias",
+  "formatId": "animation",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/animation/section-alias.bin"
+  },
+  "arguments": [
+    "--as",
+    "animation"
+  ],
+  "expect": {
+    "outcome": "parse-error",
+    "errorKind": "ambiguous-payload-span",
+    "errorOffset": 68
+  },
+  "notes": "Two section offsets alias one header."
+}

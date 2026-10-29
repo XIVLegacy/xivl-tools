@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "animation-opaque-overrun",
+  "formatId": "animation",
+  "operation": "inspect",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/animation/opaque-overrun.bin"
+  },
+  "arguments": [
+    "--as",
+    "animation"
+  ],
+  "expect": {
+    "outcome": "ok",
+    "output": "expected.json"
+  },
+  "notes": "An opaque extent is clamped without validating its header."
+}
