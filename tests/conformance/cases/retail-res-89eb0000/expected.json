@@ -24,6 +24,7 @@
       }
     ],
     "declaredSize": 7711,
+    "endianByte": 0,
     "entries": [
       {
         "entryCount": 5,
@@ -38,6 +39,7 @@
         "child": {
           "anomalies": [],
           "declaredSize": 5850,
+          "endianByte": 0,
           "entries": [
             {
               "kind": "payload",
@@ -67,7 +69,8 @@
           },
           "subtype": "shd\\x00",
           "totalSize": 5850,
-          "unknownA": 29
+          "unknownA": 29,
+          "version": 29
         },
         "declaredKind": 2,
         "declaredOffset": 0,
@@ -92,6 +95,7 @@
         "child": {
           "anomalies": [],
           "declaredSize": 1216,
+          "endianByte": 0,
           "entries": [
             {
               "kind": "payload",
@@ -121,7 +125,8 @@
           },
           "subtype": "wrb\\x00",
           "totalSize": 1216,
-          "unknownA": 23
+          "unknownA": 23,
+          "version": 23
         },
         "declaredKind": 2,
         "declaredOffset": 5852,
@@ -146,6 +151,7 @@
         "child": {
           "anomalies": [],
           "declaredSize": 292,
+          "endianByte": 0,
           "entries": [
             {
               "kind": "payload",
@@ -227,6 +233,7 @@
     ],
     "kind": "sedb-container",
     "res": {
+      "nameTableOffset": 7472,
       "subresourceCount": 5,
       "typeName": "brt\\x00",
       "unknownB": 7472
@@ -237,7 +244,8 @@
     },
     "subtype": "RES ",
     "totalSize": 7711,
-    "unknownA": 4000
+    "unknownA": 4000,
+    "version": 4000
   },
   "schemaVersion": 1,
   "trailing": []

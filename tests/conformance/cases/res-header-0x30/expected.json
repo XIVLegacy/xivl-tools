@@ -16,6 +16,7 @@
       }
     ],
     "declaredSize": 100,
+    "endianByte": 0,
     "entries": [
       {
         "entryCount": 2,
@@ -65,6 +66,7 @@
     ],
     "kind": "sedb-container",
     "res": {
+      "nameTableOffset": 0,
       "subresourceCount": 2,
       "typeName": "test",
       "unknownB": 0
@@ -75,7 +77,8 @@
     },
     "subtype": "RES ",
     "totalSize": 100,
-    "unknownA": 4000
+    "unknownA": 4000,
+    "version": 4000
   },
   "schemaVersion": 1,
   "trailing": []

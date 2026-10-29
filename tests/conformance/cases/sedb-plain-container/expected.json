@@ -36,7 +36,8 @@
     },
     "subtype": "txb\\x00",
     "totalSize": 80,
-    "unknownA": 1
+    "unknownA": 1,
+    "version": 1
   },
   "schemaVersion": 1,
   "trailing": []

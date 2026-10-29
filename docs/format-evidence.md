@@ -50,8 +50,10 @@ owns the accepted spans and refusal rules. Outside this claim:
 
 - payload interpretation for any subtype. A non-composite container's
   payload is one opaque span with a digest;
-- the meaning of `unknownA`, `flags`, the RES `unknownB`, and the
-  directory `kind` values. The values are carried into the report;
+- the meaning of `unknownA` and `flags` outside the subtypes whose
+  version and endian consumers [the SEDB/RES page](formats/sedb-res.md)
+  cites, and the directory `kind` values. The values are carried into the
+  report;
 - non-SEDB layouts remain outside the SEDB/RES claim. GTEX has its own
   loader-backed reader and PWIB reports two loader-bounded segments without
   treating its SEDB prefix as a standalone child. Its separately documented

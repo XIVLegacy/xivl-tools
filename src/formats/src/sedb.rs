@@ -35,8 +35,7 @@ pub const MAX_NESTING_DEPTH: u32 = 8;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResHeader {
     pub subresource_count: u32,
-    /// Points near the trailing name table, relative to the directory
-    /// start. Semantics unresolved. It is carried so it is not dropped.
+    /// Byte offset of the name table relative to the payload base.
     pub unknown_b: u32,
     pub type_name: String,
 }
@@ -105,6 +104,25 @@ pub struct Container {
 }
 
 impl Container {
+    /// Raw +0x08 value for subtypes with an evidenced version consumer.
+    pub fn header_version(&self) -> Option<u32> {
+        match self.subtype.as_str() {
+            "RES " | "PHB\\x00" | "SSCF" | "mtb\\x00" | "txb\\x00" | "wrb\\x00" | "shd\\x00" => {
+                Some(self.unknown_a)
+            }
+            _ => None,
+        }
+    }
+
+    /// Raw +0x0C byte for subtypes with an evidenced endian consumer.
+    pub fn endian_byte(&self) -> Option<u8> {
+        match self.subtype.as_str() {
+            "RES " | "PHB\\x00" | "SKL " | "wrb\\x00" | "shd\\x00" | "veff" | "vins" | "leaf"
+            | "vmdl" | "vtex" => Some(self.flags as u8),
+            _ => None,
+        }
+    }
+
     /// Payload start relative to the container, including the RES directory.
     pub fn directory_start(&self) -> u16 {
         if self.res.is_some() {
@@ -627,4 +645,60 @@ fn entry_for(
         sha256: sha256_hex(bytes),
         body,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::inspect::inspect_bytes;
+
+    fn header(subtype: &[u8; 4], value: u32, flags: u16) -> [u8; 0x40] {
+        let mut bytes = [0; 0x40];
+        bytes[..4].copy_from_slice(b"SEDB");
+        bytes[4..8].copy_from_slice(subtype);
+        bytes[8..12].copy_from_slice(&value.to_le_bytes());
+        bytes[12..14].copy_from_slice(&flags.to_le_bytes());
+        bytes[14..16].copy_from_slice(&0x40u16.to_le_bytes());
+        bytes[16..20].copy_from_slice(&0x40u32.to_le_bytes());
+        bytes
+    }
+
+    #[test]
+    fn report_version_aliases_without_enforcing_native_constraints() {
+        for (tag, value) in [
+            (b"RES ", 4001),
+            (b"PHB\0", 0x120),
+            (b"SSCF", 3),
+            (b"mtb\0", 0x43),
+            (b"txb\0", 1),
+            (b"wrb\0", 23),
+            (b"shd\0", 29),
+        ] {
+            let report = inspect_bytes(&header(tag, value, 0x0400)).expect("authored header");
+            assert_eq!(report["root"]["version"], value);
+            assert_eq!(report["root"]["unknownA"], value);
+        }
+    }
+
+    #[test]
+    fn report_endian_and_name_offset_aliases_without_reinterpreting_bytes() {
+        let mut bytes = header(b"RES ", 4000, 0x0401);
+        bytes[0x34..0x38].copy_from_slice(&0xffff_ffffu32.to_le_bytes());
+        let report = inspect_bytes(&bytes).expect("opaque fields remain accepted");
+        assert_eq!(report["root"]["endianByte"], 1);
+        assert_eq!(report["root"]["flags"], 0x0401);
+        assert_eq!(report["root"]["res"]["nameTableOffset"], 0xffff_ffffu32);
+        assert_eq!(report["root"]["res"]["unknownB"], 0xffff_ffffu32);
+
+        for tag in [
+            b"PHB\0", b"SKL ", b"wrb\0", b"shd\0", b"veff", b"vins", b"leaf", b"vmdl", b"vtex",
+        ] {
+            let report = inspect_bytes(&header(tag, 0, 0x0201)).expect("authored header");
+            assert_eq!(report["root"]["endianByte"], 1);
+        }
+        for tag in [b"lyb\0", b"SCB\0", b"test"] {
+            let report = inspect_bytes(&header(tag, 8, 0x0400)).expect("opaque header");
+            assert!(report["root"].get("version").is_none());
+            assert!(report["root"].get("endianByte").is_none());
+        }
+    }
 }

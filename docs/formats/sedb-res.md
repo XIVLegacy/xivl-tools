@@ -3,7 +3,8 @@
 [Documentation index](../README.md) | [Format evidence index](../format-evidence.md)
 
 source: retail FFXIV 1.23b client install (game.ver 2012.09.19.0001,
-patch.ver 1.23b) over all 140180 files under `data/`. Reproduce with:
+patch.ver 1.23b). The DAT-only header and WRB observations cover all 140180
+files under `data/`. Reproduce those observations with:
 
 ```bash
 python tools/research/census_sedb.py --client-root <install>
@@ -45,9 +46,10 @@ All integer fields are little-endian.
 0x00  char[4] magic      "SEDB"
 0x04  char[4] subtype    "lyb", "PHB", "txb", "vins", "vmdl", "RES ",
                          "shd", "SKL ", "wrb", ...
-0x08  u32     unknownA   observed values by subtype below; meaning unresolved
-0x0C  u16     flags      0x0000, 0x0200, or 0x0400 observed;
-                         meaning unresolved
+0x08  u32     unknownA   subtype-specific version meanings below
+0x0C  u16     flags      0x0000, 0x0200, or 0x0400 observed in DAT;
+                         low byte has selected endian consumers below;
+                         remaining meaning unresolved
 0x0E  u16     headerSize declared payload boundary; RES directory rule below
                          (0x30, 0x40, 0x48 observed)
 0x10  u32     declaredSize  advisory; see "The 0x10 field" below. It is
@@ -59,8 +61,7 @@ All integer fields are little-endian.
 ```
 
 Observed header values cover top-level SEDB resources, direct SEDB children
-of RES, and MapLayout `lyb` scenes. `unknownA` and `flags` have meaning
-unresolved.
+of RES, and MapLayout `lyb` scenes. Values alone do not establish meanings.
 
 | Location | Subtype | unknownA | flags | headerSize |
 |---|---|---|---|---|
@@ -84,21 +85,69 @@ unresolved.
 rejects a smaller one, and rejects a `headerSize` or `declaredSize` that
 runs past what the input holds, rather than reading what happens to follow.
 
+### Consumer-backed header fields
+
+The native consumer facts below come from retail `ffxivgame.exe`, size
+15996808 bytes, SHA-256
+`9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9`.
+Addresses are VA with image base `0x00400000`.
+
+Generic SEDB/RES inspection adds `version` as a raw alias of `unknownA` only
+for these exact subtypes. The native conditions are evidence about those
+consumers, not additional parser refusals.
+
+| Subtype | Native use of +0x08 | Source and consumer VA |
+|---|---|---|
+| RES | Compared against 4000 | `xivl-decomp:docs/resource/gtex-pwib-loader.md`, "Native consumer boundary", `0x00e0d120` |
+| PHB | Version in [0x118, 0x120] | `xivl-decomp:docs/resource/attribute-resource-and-scene-binding.md`, "Authored floor descriptor", `0x00ac06e0` |
+| SSCF | Version no greater than 3 | `xivl-decomp:docs/resource/music-song-table.md`, "Stream-less containers", `0x00b5eb70`, check at `0x00b5eccf` |
+| mtb | Version at least 0x31, with branches at 0x42 | `xivl-decomp:docs/resource/mtb-container-framing.md`, "Header and tables", `0x00a2d700`, `0x00a2d510`, `0x00a30280` |
+| txb | Version at least 1 | `xivl-decomp:docs/resource/gtex-pwib-loader.md`, "Selected RES/txb consumer", `0x00c78e60` |
+| wrb | Version at least 7 | `xivl-decomp:docs/resource/floor-model-render-path.md`, "Primary resource and concrete receivers", `0x00c77270` |
+| shd | Version 29 bypasses an older-version update | `xivl-decomp:docs/resource/floor-model-render-path.md`, "Selected material binding", `0x00c90018` |
+
+Inspection also adds the raw byte at +0x0C as `endianByte` for the following
+exact subtypes. This does not enable big-endian parsing or reinterpret the
+16-bit `flags` field. Byte +0x0D remains unresolved.
+
+| Subtype | Native use of +0x0C | Source and consumer VA |
+|---|---|---|
+| RES | Nonzero requests in-place conversion before initialization | `xivl-decomp:docs/resource/gtex-pwib-loader.md`, "Native consumer boundary", `0x00e0d120`, `0x00e0ce20` |
+| PHB | Endian selection | `xivl-decomp:docs/resource/attribute-resource-and-scene-binding.md`, `0x00ac06e0` |
+| SKL | Byte 1 invokes conversion and is cleared | `xivl-decomp:docs/resource/skeleton-bone-framing.md`, "Native framing observations", `0x00e0dd6f..0x00e0dd7b` |
+| wrb | Selects version byte order | `xivl-decomp:docs/resource/floor-model-render-path.md`, `0x00c77270` |
+| shd | Zero skips preprocessing conversion | `xivl-decomp:docs/resource/floor-model-render-path.md`, `0x00c902a0` |
+| veff, vins, leaf, vmdl, vtex | Nonzero byte-swaps the header-size word during cloning | `xivl-decomp:docs/resource/vfx-qix-resource-container.md`, "Blob header", `0x00b93e60` |
+
+NUL-terminated tags retain their NUL byte, and `RES ` and `SKL ` retain their
+space byte. Other tag spellings have no added alias. Existing `unknownA`,
+`flags`, and `unknownB` report fields remain present. Specialized format
+views retain their own report contracts.
+
+The SKL consumer additionally requires +0x08 at least 7000
+(`xivl-decomp:docs/resource/skeleton-bone-framing.md`,
+`0x00e0dd7f..0x00e0dd96`), but that source calls it an unnamed scalar.
+It remains `unknownA`. The SCB framing predicate requires +0x08 at least 2
+and +0x0C zero (`xivl-decomp:docs/resource/cut-scheduler-clip-layout.md`,
+"Resource header and directory"), without a consumer VA for those checks.
+Neither predicate supplies a new field name. Other +0x08 meanings, other
++0x0C consumers, +0x0D, and subtype payloads remain gaps.
+
 ## RES subresource directory
 
-Top-level `RES ` containers declare `headerSize` 0x40 except 0x15D90001,
-which declares 0x30 while its directory still starts at 0x40. Nested RES
-children declare 0x30. The reader accepts exactly 0x30, top-level or
-nested, as an additional short-header shape when the directory is
-nonempty, its counts agree, and
+In the DAT census, top-level `RES ` containers declare `headerSize` 0x40
+except 0x15D90001, which declares 0x30 while its directory still starts
+at 0x40. Nested RES children declare 0x30. The reader accepts exactly
+0x30, top-level or nested, as an additional short-header shape when the
+directory is nonempty, its counts agree, and
 the extended fields and complete directory fit in the resolved container
 extent and input. Other RES headers below 0x40 remain refused. The extended
 header fields are:
 
 ```text
 0x30  u32     subresourceCount
-0x34  u32     unknownB          points near the trailing name table,
-                                relative to 0x40 (inferred, unresolved)
+0x34  u32     unknownB          byte offset of the name table,
+                                relative to the payload base below
 0x38  u32     subresourceCount  repeated; both must agree
 0x3C  char[4] typeName          the resource type tag, for example "brt"
 ```
@@ -110,7 +159,7 @@ Directory at `max(headerSize, 0x40)`, one 16-byte entry per subresource:
 0x04  u32 offset   relative to the payload base,
                    max(headerSize, 0x40) + 16 * subresourceCount
 0x08  u32 size
-0x0C  u32 kind     0, 2, and 4 observed; semantics unresolved
+0x0C  u32 kind     0, 1, 2, and 4 observed; semantics unresolved
 ```
 
 Observed subresource contents include nested SEDB containers (`shd`,
@@ -121,7 +170,7 @@ the end of the file (0x1BC40 against a 0x1BC2A file). The parser clamps
 such an extent to the input and reports the clamp as an anomaly. It never
 reads past the input and never drops the entry.
 
-Across the install, 8518 RES directory entries declare an extent past the
+In the DAT census, 8518 RES directory entries declare an extent past the
 end of the file, by at most 57 bytes.
 
 Resource 0x15D90001, `data/15/D9/00/01.DAT`, 1189004 bytes, SHA-256
@@ -132,19 +181,107 @@ size and records an `unexpected-res-header-size` anomaly: the declared header
 size is 0x10 short of the extended fields ending at 0x40 and the directory
 starting there. The fields at 0x30..0x3F are parsed as the extended header,
 so no bytes in that range are unexplained or reported as a payload gap.
-Directory kind values, `unknownB`, and the other unknown header bytes remain
-uninterpreted.
+Directory kind values and the other unknown header bytes remain uninterpreted.
+
+The RES native reader establishes `unknownB` as the byte offset of consecutive
+NUL-terminated names from `D = S + 0x40 + 16 * count`, where S is the SEDB
+start. Reader initializer `0x00e0d120` and name search `0x00e0c8d0` use
+`D + field(+0x34)` (`xivl-decomp:docs/resource/gtex-pwib-loader.md`,
+"Native consumer boundary", with the executable identity above). Generic
+RES inspection adds `res.nameTableOffset` as a raw alias of `unknownB`.
+It does not walk names or require the offset to fit. The native directory
+is at +0x40; behavior for other larger declared headers remains outside
+that consumer evidence.
 
 Supporting observations in
 `xivl-decomp:docs/resource/vfx-qix-resource-container.md`, "Banks that hold
 the blobs", also place the directory at 0x40 for both declared header sizes.
 `xivl-decomp:docs/resource/sqpack.md`, "PackRead's actual scope", distinguishes
-the installer chunk reader from runtime DAT resources. Neither establishes
-additional RES header semantics. Authored public cases `res-header-0x30`
-and `res-header-0x30-directory-overrun` cover the accepted shape and a
-directory that fits the input but exceeds the declared container extent.
+the installer chunk reader from runtime DAT resources and establishes no
+RES header semantics. Authored public cases `res-header-0x30` and
+`res-header-0x30-directory-overrun` cover the accepted shape and a directory
+that fits the input but exceeds the declared container extent.
 
 ## First-hand retail observation
+
+### Complete header and directory census
+
+A read-only byte scan covered all 191960 installed files: 140180 DAT files,
+51772 loose client files, and eight root files. It examined every `SEDB`
+signature, including embedded containers, without requiring the advisory
+declared size to bound a child. Header candidates required the fixed fields
+and declared header to fit the owning file. Each RES directory row was counted
+once per RES header, including overlapping rows and rows outside the declared
+container. These counts describe stored occurrences, including duplicate
+resources in different files, rather than unique resources or runtime loads.
+
+The scan found 529497 headers with the recognized asset tags below. Fifteen
+additional signature candidates were kept separate: ten executable matches,
+two DAT candidates with non-ASCII tags, and three with header size zero.
+The table gives raw value distributions as `value: header count`.
+
+| Subtype | unknownA, decimal | flags |
+|---|---|---|
+| ACB NUL | 2: 4632 | 0x0000: 4632 |
+| CCB NUL | 0: 14795 | 0x0401: 14795 |
+| elb NUL | 3: 335 | 0x0200: 335 |
+| leaf | 0: 4055 | 0x0400: 4055 |
+| lyb NUL | 8: 287 | 0x0000: 287 |
+| MCB NUL | 2: 50738 | 0x0000: 50738 |
+| mtb NUL | 57: 3, 66: 79, 67: 86811 | 0x0000: 36161, 0x0200: 50732 |
+| PHB NUL | 281: 2, 288: 6021 | 0x0400: 6023 |
+| RES space | 4000: 83326 | 0x0200: 38446, 0x0400: 44880 |
+| SCB NUL | 2: 29621 | 0x0000: 29621 |
+| shd NUL | 29: 35978 | 0x0200: 35978 |
+| SKL space | 7000: 21884 | 0x0400: 21884 |
+| SSCF | 2: 736, 3: 76958 | 0x0400: 77694 |
+| txb NUL | 1: 55325 | 0x0200: 55325 |
+| veff | 0: 4824 | 0x0400: 4824 |
+| vins | 0: 4276 | 0x0400: 4276 |
+| vmdl | 0: 14737 | 0x0400: 14737 |
+| vtex | 0: 13484 | 0x0400: 13484 |
+| wrb NUL | 23: 20590 | 0x0200: 20590 |
+
+Every subtype with an `endianByte` alias had byte +0x0C zero. CCB's observed
+0x0401 does not establish its low-byte meaning. The other untraced subtype
+fields and the high byte of `flags` remain unresolved regardless of their
+distributions.
+
+All 83326 asset RES headers had matching entry and name counts, version 4000,
+and a names walk bounded by the owning file when starting at payload base
+plus `unknownB`. This checks whole-file bounds, not a nested entry or PWIB
+first-segment bound. No new offset constraint follows from this observation.
+The raw type tags and offset summaries were:
+
+| Raw type tag | RES headers | Distinct unknownB values | Minimum | Maximum |
+|---|---:|---:|---:|---:|
+| brt NUL | 31224 | 7608 | 176 | 9927328 |
+| nib NUL | 52102 | 9522 | 80 | 34893696 |
+
+The 533540 directory rows had these kind distributions:
+
+| Raw parent type | Kind 0 | Kind 1 | Kind 2 | Kind 4 |
+|---|---:|---:|---:|---:|
+| brt NUL | 62448 | 0 | 73445 | 33014 |
+| nib NUL | 104136 | 463 | 210202 | 49832 |
+| Total | 166584 | 463 | 283647 | 82846 |
+
+For example, all 35978 shd and 20590 wrb directory children had kind 2,
+whereas RES children had kinds 1, 2 and 4. Non-SEDB children had kinds 0,
+1 and 2. These correlations do not assign meanings to kind values.
+`xivl-decomp:docs/resource/gtex-pwib-loader.md`, "Native consumer boundary",
+leaves the fourth directory dword without a promoted meaning, and
+`xivl-decomp:docs/resource/vfx-qix-resource-container.md`, "Banks that hold
+the blobs", explicitly leaves kind unresolved.
+
+The file-identity census records relative name, byte size and SHA-256 per
+input. Its UTF-8 TSV digest is
+`8267068479c7455efdbea006a7aba6b735c1a30fca3202eda95d321bd2eb0b0b`.
+An embedded-header witness is `client/vfx/wsc/0001`, 246692 bytes, SHA-256
+`76f74e50b94d5975a3fa43dc33486de3dd857591cdc241134dabd14fe218a289`:
+the RES header starts at 16, and veff, leaf, vins, vmdl and vtex headers
+start at 36768, 61776, 63056, 6016 and 4640 respectively. The separate
+RES exemplar below pins the names-offset observation.
 
 ### The resource-path convention
 
@@ -186,6 +323,9 @@ only that the header itself does not fit in the input.
 Read directly from the RES exemplar `data/89/94/05/54.DAT`
 (resource 0x89940554):
 
+- `unknownB` is 113376. Adding the payload base 176 gives name-table
+  start 113552. Walking the declared seven NUL-terminated names ends at
+  113706, exactly EOF, corroborating the native payload-relative names offset;
 - the payload base is `headerSize + 16 * subresourceCount` (0x40 + 0x70 =
   0xB0). Subresources 0 through 4 begin exactly on `SEDB` signatures at
   0xB0, 0x55E8, 0xA638, 0xEED8, and 0x1B9E0, which is what fixes the base;

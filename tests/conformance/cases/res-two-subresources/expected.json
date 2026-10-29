@@ -7,6 +7,7 @@
   "root": {
     "anomalies": [],
     "declaredSize": 192,
+    "endianByte": 0,
     "entries": [
       {
         "entryCount": 2,
@@ -21,6 +22,7 @@
         "child": {
           "anomalies": [],
           "declaredSize": 48,
+          "endianByte": 0,
           "entries": [
             {
               "kind": "payload",
@@ -50,7 +52,8 @@
           },
           "subtype": "shd\\x00",
           "totalSize": 48,
-          "unknownA": 29
+          "unknownA": 29,
+          "version": 29
         },
         "declaredKind": 2,
         "declaredOffset": 0,
@@ -98,6 +101,7 @@
     ],
     "kind": "sedb-container",
     "res": {
+      "nameTableOffset": 96,
       "subresourceCount": 2,
       "typeName": "brt\\x00",
       "unknownB": 96
@@ -108,7 +112,8 @@
     },
     "subtype": "RES ",
     "totalSize": 192,
-    "unknownA": 4000
+    "unknownA": 4000,
+    "version": 4000
   },
   "schemaVersion": 1,
   "trailing": []

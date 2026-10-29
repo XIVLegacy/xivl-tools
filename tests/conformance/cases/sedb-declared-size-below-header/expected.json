@@ -45,7 +45,8 @@
     },
     "subtype": "mtb\\x00",
     "totalSize": 64,
-    "unknownA": 67
+    "unknownA": 67,
+    "version": 67
   },
   "schemaVersion": 1,
   "trailing": [

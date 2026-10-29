@@ -444,7 +444,7 @@ fn inspect_sedb(data: &[u8]) -> Result<Value> {
     }
 
     let mut object = envelope(root.format_id(), data);
-    object.insert("root".into(), container_to_json(&root));
+    object.insert("root".into(), container_to_json_with_fields(&root, true));
     object.insert("trailing".into(), Value::Array(trailing));
     Ok(Value::Object(object))
 }
@@ -742,12 +742,24 @@ fn model_opaque_to_json(data: &[u8], item: &zone::ModelOpaqueSpan) -> Value {
 }
 
 fn container_to_json(container: &Container) -> Value {
+    container_to_json_with_fields(container, false)
+}
+
+fn container_to_json_with_fields(container: &Container, header_fields: bool) -> Value {
     let mut object = Map::new();
     object.insert("kind".into(), json!("sedb-container"));
     object.insert("span".into(), container.span.to_json());
     object.insert("subtype".into(), json!(container.subtype));
     object.insert("unknownA".into(), json!(container.unknown_a));
     object.insert("flags".into(), json!(container.flags));
+    if header_fields {
+        if let Some(version) = container.header_version() {
+            object.insert("version".into(), json!(version));
+        }
+        if let Some(endian_byte) = container.endian_byte() {
+            object.insert("endianByte".into(), json!(endian_byte));
+        }
+    }
     object.insert("headerSize".into(), json!(container.header_size));
     object.insert("declaredSize".into(), json!(container.declared_size));
     object.insert("totalSize".into(), json!(container.total_size));
@@ -756,18 +768,25 @@ fn container_to_json(container: &Container) -> Value {
         Value::Array(container.header_unknown.iter().map(entry_to_json).collect()),
     );
     if let Some(res) = &container.res {
-        object.insert(
-            "res".into(),
-            json!({
-                "subresourceCount": res.subresource_count,
-                "unknownB": res.unknown_b,
-                "typeName": res.type_name,
-            }),
-        );
+        let mut fields = json!({
+            "subresourceCount": res.subresource_count,
+            "unknownB": res.unknown_b,
+            "typeName": res.type_name,
+        });
+        if header_fields {
+            fields["nameTableOffset"] = json!(res.unknown_b);
+        }
+        object.insert("res".into(), fields);
     }
     object.insert(
         "entries".into(),
-        Value::Array(container.entries.iter().map(entry_to_json).collect()),
+        Value::Array(
+            container
+                .entries
+                .iter()
+                .map(|entry| entry_to_json_with_fields(entry, header_fields))
+                .collect(),
+        ),
     );
     object.insert(
         "anomalies".into(),
@@ -783,6 +802,10 @@ fn container_to_json(container: &Container) -> Value {
 }
 
 fn entry_to_json(entry: &Entry) -> Value {
+    entry_to_json_with_fields(entry, false)
+}
+
+fn entry_to_json_with_fields(entry: &Entry, header_fields: bool) -> Value {
     let mut object = Map::new();
     object.insert("kind".into(), json!(entry.body.kind_name()));
     object.insert("span".into(), entry.span.to_json());
@@ -804,7 +827,10 @@ fn entry_to_json(entry: &Entry) -> Value {
             object.insert("declaredSize".into(), json!(declared_size));
             object.insert("declaredKind".into(), json!(kind));
             if let Some(child) = child {
-                object.insert("child".into(), container_to_json(child));
+                object.insert(
+                    "child".into(),
+                    container_to_json_with_fields(child, header_fields),
+                );
             }
         }
     }

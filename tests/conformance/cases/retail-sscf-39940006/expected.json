@@ -36,7 +36,8 @@
     },
     "subtype": "SSCF",
     "totalSize": 700,
-    "unknownA": 3
+    "unknownA": 3,
+    "version": 3
   },
   "schemaVersion": 1,
   "trailing": []
