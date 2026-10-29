@@ -54,11 +54,31 @@ pub struct EnableFile {
 }
 
 impl EnableFile {
+    /// Preserve range order and boundaries, ignoring source spans and anomalies.
+    pub fn encode(&self) -> Vec<u8> {
+        let ranges: Vec<_> = self
+            .ranges
+            .iter()
+            .map(|range| (range.first_row, range.count))
+            .collect();
+        encode_enable_file(&ranges)
+    }
+
     /// Total row identifiers named, counting a repeat twice. Overlaps are
     /// reported as anomalies rather than folded away here.
     pub fn row_count(&self) -> u64 {
         self.ranges.iter().map(|range| u64::from(range.count)).sum()
     }
+}
+
+/// Write enable ranges verbatim, without sorting or merging them.
+pub fn encode_enable_file(ranges: &[(u32, u32)]) -> Vec<u8> {
+    let mut data = Vec::new();
+    for &(first_row, count) in ranges {
+        data.extend_from_slice(&first_row.to_le_bytes());
+        data.extend_from_slice(&count.to_le_bytes());
+    }
+    data
 }
 
 /// Parse an enable file: pairs of first row identifier and run length.
@@ -198,6 +218,64 @@ pub fn parse_row_offsets(data: &[u8]) -> Result<RowOffsets> {
     })
 }
 
+/// Write non-empty slots as `(slot index, row end offset)` pairs in increasing
+/// order. Pair each end from [`encode_rows`] with its [`RowSlot::index`], not
+/// [`Row::index`]. A row identifier is the slot index plus the block's `begin`;
+/// enable ranges name those identifiers. Unlisted slots repeat the prior end.
+pub fn encode_row_offsets(slot_count: usize, slots: &[(u64, u32)]) -> Result<Vec<u8>> {
+    let mut next_slot = 0;
+    let mut previous_end = 0;
+    for &(index, end) in slots {
+        let slot = usize::try_from(index)
+            .ok()
+            .filter(|&slot| slot >= next_slot && slot < slot_count)
+            .ok_or_else(|| {
+                FormatError::new(
+                    ErrorKind::TableIndexOutOfRange,
+                    index.saturating_mul(ROW_OFFSET_SIZE as u64),
+                    "row slot indices must increase strictly and fit the slot count",
+                )
+            })?;
+        if end <= previous_end {
+            return Err(FormatError::new(
+                ErrorKind::TableOutOfRange,
+                index.saturating_mul(ROW_OFFSET_SIZE as u64),
+                "non-empty row slots must have strictly increasing end offsets",
+            ));
+        }
+        next_slot = slot + 1;
+        previous_end = end;
+    }
+
+    let size = slot_count.checked_mul(ROW_OFFSET_SIZE).ok_or_else(|| {
+        FormatError::new(
+            ErrorKind::TableOutOfRange,
+            0,
+            "row-offset file size overflows usize",
+        )
+    })?;
+    let mut data = Vec::new();
+    data.try_reserve_exact(size).map_err(|_| {
+        FormatError::new(
+            ErrorKind::TableOutOfRange,
+            0,
+            "row-offset file is too large to allocate",
+        )
+    })?;
+    let mut next = 0;
+    let mut end = 0u32;
+    for index in 0..slot_count {
+        if let Some(&(slot, row_end)) = slots.get(next) {
+            if slot == index as u64 {
+                end = row_end;
+                next += 1;
+            }
+        }
+        data.extend_from_slice(&end.to_le_bytes());
+    }
+    Ok(data)
+}
+
 /// A column type from a sheet schema.
 ///
 /// Only the ten types the 1.23b documents actually declare are modeled. A
@@ -292,10 +370,74 @@ pub struct SheetString {
 }
 
 impl SheetString {
+    /// Build a value from decoded bytes, retaining the rich-token framing.
+    /// Source spans use zero as a placeholder until the written rows are parsed.
+    pub fn from_decoded(decoded: &[u8], scrambled: bool) -> Result<Self> {
+        let declared_length = sheet_string_body_length(decoded.len(), scrambled)?;
+        if !scrambled {
+            validate_plain_sheet_string(decoded, 0)?;
+        }
+        Ok(Self {
+            span: Span::new(0, 0),
+            declared_length,
+            scrambled,
+            rich: RichString::parse(decoded, 0)?,
+            sha256: sha256_hex(decoded),
+        })
+    }
+
     /// Length of the decoded bytes, terminator excluded.
     pub fn decoded_length(&self) -> u64 {
         u64::from(self.declared_length) - 1 - u64::from(self.scrambled)
     }
+}
+
+fn sheet_string_body_length(decoded_length: usize, scrambled: bool) -> Result<u16> {
+    decoded_length
+        .checked_add(1 + usize::from(scrambled))
+        .and_then(|length| u16::try_from(length).ok())
+        .ok_or_else(|| {
+            FormatError::new(
+                ErrorKind::MalformedSheetString,
+                0,
+                "a sheet string body exceeds the u16 length field",
+            )
+        })
+}
+
+/// The length prefix frames the body, so interior NULs are unambiguous and
+/// retail token payloads carry them. Only a leading marker byte would read
+/// back as a scrambled string.
+fn validate_plain_sheet_string(decoded: &[u8], base: u64) -> Result<()> {
+    if decoded.first() == Some(&SCRAMBLE_MARKER) {
+        return Err(FormatError::new(
+            ErrorKind::MalformedSheetString,
+            base,
+            "a plain sheet string cannot begin with the scramble marker",
+        ));
+    }
+    Ok(())
+}
+
+/// Recompute the length prefix and framing from the rich bytes and cipher state.
+pub fn encode_sheet_string(value: &SheetString) -> Result<Vec<u8>> {
+    let decoded = value.rich.encode();
+    let length = sheet_string_body_length(decoded.len(), value.scrambled)?;
+    if !value.scrambled {
+        validate_plain_sheet_string(&decoded, 2)?;
+    }
+    RichString::parse(&decoded, 2 + u64::from(value.scrambled))?;
+    let mut data = Vec::with_capacity(2 + usize::from(length));
+    data.extend_from_slice(&length.to_le_bytes());
+    if value.scrambled {
+        data.push(SCRAMBLE_MARKER);
+        data.extend(decoded.iter().map(|byte| byte ^ SCRAMBLE_KEY));
+        data.push(SCRAMBLE_KEY);
+    } else {
+        data.extend_from_slice(&decoded);
+        data.push(0);
+    }
+    Ok(data)
 }
 
 /// Parse the string value beginning at `position` in `data`.
@@ -416,12 +558,67 @@ impl ColumnValue {
     }
 }
 
+/// Append a column, ignoring its source span. Boolean and binary16 values use
+/// their raw fields; binary32 values retain their exact bit patterns.
+pub fn encode_column_value(value: &ColumnValue, out: &mut Vec<u8>) -> Result<()> {
+    match value {
+        ColumnValue::Text(string) => out.extend_from_slice(&encode_sheet_string(string)?),
+        ColumnValue::Unsigned8 { value, .. } => out.push(*value),
+        ColumnValue::Signed8 { value, .. } => out.extend_from_slice(&value.to_le_bytes()),
+        ColumnValue::Boolean { raw, .. } => out.push(*raw),
+        ColumnValue::Unsigned16 { value, .. } => out.extend_from_slice(&value.to_le_bytes()),
+        ColumnValue::Signed16 { value, .. } => out.extend_from_slice(&value.to_le_bytes()),
+        ColumnValue::Half16 { raw, .. } => out.extend_from_slice(&raw.to_le_bytes()),
+        ColumnValue::Unsigned32 { value, .. } => out.extend_from_slice(&value.to_le_bytes()),
+        ColumnValue::Signed32 { value, .. } => out.extend_from_slice(&value.to_le_bytes()),
+        ColumnValue::Float32 { value, .. } => out.extend_from_slice(&value.to_bits().to_le_bytes()),
+    }
+    Ok(())
+}
+
 /// One row of a sheet data file.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Row {
     pub index: u64,
     pub span: Span,
     pub values: Vec<ColumnValue>,
+}
+
+/// Data bytes and cumulative row ends in input order, without empty slots.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EncodedRows {
+    pub data: Vec<u8>,
+    pub row_ends: Vec<u32>,
+}
+
+/// Write rows and columns in input order, ignoring stored indices and spans.
+pub fn encode_rows(rows: &[Row]) -> Result<EncodedRows> {
+    let mut data = Vec::new();
+    let mut row_ends = Vec::with_capacity(rows.len());
+    for row in rows {
+        if row.values.is_empty() {
+            return Err(FormatError::new(
+                ErrorKind::UnknownColumnType,
+                data.len() as u64,
+                "a row needs at least one column",
+            ));
+        }
+        for value in &row.values {
+            encode_column_value(value, &mut data)?;
+        }
+        row_ends.push(row_end_offset(data.len())?);
+    }
+    Ok(EncodedRows { data, row_ends })
+}
+
+fn row_end_offset(length: usize) -> Result<u32> {
+    u32::try_from(length).map_err(|_| {
+        FormatError::new(
+            ErrorKind::DeclaredSizeOutOfRange,
+            length as u64,
+            "sheet data exceeds the u32 row-offset range",
+        )
+    })
 }
 
 /// Parse a data file as rows of the given columns.
@@ -749,5 +946,242 @@ mod tests {
         assert_eq!(half_to_f32(0x8000).to_bits(), (-0.0f32).to_bits());
         assert_eq!(half_to_f32(0x7C00), f32::INFINITY);
         assert!(half_to_f32(0x7E01).is_nan());
+    }
+
+    #[test]
+    fn enable_writer_preserves_range_boundaries_and_order() {
+        let data = [10, 0, 0, 0, 2, 0, 0, 0, 12, 0, 0, 0, 1, 0, 0, 0];
+        let parsed = parse_enable_file(&data).unwrap();
+        assert!(parsed.anomalies.is_empty());
+        assert_eq!(parsed.encode(), data);
+        assert_eq!(encode_enable_file(&[(10, 2), (12, 1)]), data);
+        assert!(encode_enable_file(&[]).is_empty());
+    }
+
+    #[test]
+    fn row_offset_writer_preserves_sparse_slots() {
+        let data = [
+            0, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 8, 0, 0, 0, 8, 0, 0, 0,
+        ];
+        let parsed = parse_row_offsets(&data).unwrap();
+        assert!(parsed.anomalies.is_empty());
+        let slots: Vec<_> = parsed
+            .rows
+            .iter()
+            .map(|row| (row.index, row.span.end() as u32))
+            .collect();
+        assert_eq!(
+            encode_row_offsets(parsed.slot_count(), &slots).unwrap(),
+            data
+        );
+        assert_eq!(encode_row_offsets(2, &[]).unwrap(), [0; 8]);
+        assert!(encode_row_offsets(0, &[]).unwrap().is_empty());
+    }
+
+    #[test]
+    fn row_offset_writer_rejects_invalid_slots_and_ends() {
+        for slots in [
+            &[(3, 1)][..],
+            &[(1, 1), (1, 2)],
+            &[(2, 1), (1, 2)],
+            &[(u64::MAX, 1)],
+        ] {
+            let error = encode_row_offsets(3, slots).unwrap_err();
+            assert_eq!(error.kind(), ErrorKind::TableIndexOutOfRange);
+        }
+        for slots in [&[(0, 0)][..], &[(0, 2), (2, 2)], &[(0, 2), (2, 1)]] {
+            let error = encode_row_offsets(3, slots).unwrap_err();
+            assert_eq!(error.kind(), ErrorKind::TableOutOfRange);
+            assert_eq!(error.offset(), slots.last().unwrap().0 * 4);
+        }
+        let error = encode_row_offsets(usize::MAX, &[]).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::TableOutOfRange);
+    }
+
+    #[test]
+    fn string_constructor_and_writer_preserve_framing_and_tokens() {
+        let decoded = b"ab\x02\x10\x01\x03cd\x02\x09\xf0\x02ef\x03";
+        for (source, scrambled, expected) in [
+            (&decoded[..], false, plain(decoded)),
+            (&decoded[..], true, scramble(decoded)),
+            (&b""[..], false, vec![1, 0, 0]),
+            (&b""[..], true, vec![2, 0, 0xff, 0x73]),
+        ] {
+            let mut value = SheetString::from_decoded(source, scrambled).unwrap();
+            assert_eq!(value.span, Span::new(0, 0));
+            assert_eq!(value.rich.encode(), source);
+            assert_eq!(value.sha256, sha256_hex(source));
+            value.declared_length = 0;
+            assert_eq!(encode_sheet_string(&value).unwrap(), expected);
+            let parsed = parse_sheet_string(&expected, 0, 0).unwrap();
+            assert_eq!(encode_sheet_string(&parsed).unwrap(), expected);
+        }
+        let abc = SheetString::from_decoded(b"abc", false).unwrap();
+        assert_eq!(
+            abc.sha256,
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    #[test]
+    fn a_plain_string_cannot_open_on_the_scramble_marker() {
+        let error = SheetString::from_decoded(b"\xffx", false).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::MalformedSheetString);
+        assert_eq!(error.offset(), 0);
+        // Interior NULs are framed by the length prefix, plain or scrambled.
+        for scrambled in [false, true] {
+            let value = SheetString::from_decoded(b"a\0b", scrambled).unwrap();
+            let encoded = encode_sheet_string(&value).unwrap();
+            let parsed = parse_sheet_string(&encoded, 0, 0).unwrap();
+            assert_eq!(parsed.rich.encode(), b"a\0b");
+            assert_eq!(parsed.scrambled, scrambled);
+        }
+    }
+
+    #[test]
+    fn sheet_string_writer_checks_length_limits_and_edited_tokens() {
+        for scrambled in [false, true] {
+            let maximum = usize::from(u16::MAX) - 1 - usize::from(scrambled);
+            let mut decoded = vec![b'a'; maximum];
+            let mut value = SheetString::from_decoded(&decoded, scrambled).unwrap();
+            let encoded = encode_sheet_string(&value).unwrap();
+            assert_eq!(&encoded[..2], &[0xff, 0xff]);
+            assert_eq!(encoded.len(), usize::from(u16::MAX) + 2);
+            decoded.push(b'b');
+            assert_eq!(
+                SheetString::from_decoded(&decoded, scrambled)
+                    .unwrap_err()
+                    .kind(),
+                ErrorKind::MalformedSheetString
+            );
+            value.rich = RichString::parse(&decoded, 0).unwrap();
+            assert_eq!(
+                encode_sheet_string(&value).unwrap_err().kind(),
+                ErrorKind::MalformedSheetString
+            );
+        }
+        let mut value = SheetString::from_decoded(b"\x02\x10\x01\x03", false).unwrap();
+        if let crate::richstring::Segment::Token(token) = &mut value.rich.segments[0] {
+            token.payload.push(b'x');
+        }
+        let mut out = vec![42];
+        let error = encode_column_value(&ColumnValue::Text(Box::new(value)), &mut out).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::MalformedRichStringToken);
+        assert_eq!(out, [42]);
+    }
+
+    #[test]
+    fn row_writer_round_trips_all_ten_column_types_exactly() {
+        let columns = parse_column_list("str,u8,s8,bool,u16,s16,f16,u32,s32,float").unwrap();
+        let mut data = plain(b"ab\x02\x10\x01\x03cd\x02\x09\xf0\x02ef\x03");
+        let mut fixed = [
+            0xfe, 0x80, 2, 0x34, 0x12, 0xfe, 0xff, 1, 0x7e, 0x78, 0x56, 0x34, 0x12, 0xfe, 0xff,
+            0xff, 0xff, 0x45, 0x23, 0x81, 0x7f,
+        ];
+        data.extend_from_slice(&fixed);
+        let first_end = data.len() as u32;
+        data.extend(scramble(b"\x02\x0a\xf2\x00\x03e\0g\x03"));
+        fixed[8] = 0;
+        data.extend_from_slice(&fixed);
+        let mut rows = parse_rows(&data, &columns).unwrap();
+        assert_eq!(rows.len(), 2);
+        assert!(matches!(
+            rows[0].values[3],
+            ColumnValue::Boolean {
+                raw: 2,
+                value: true,
+                ..
+            }
+        ));
+        assert!(matches!(
+            rows[0].values[6],
+            ColumnValue::Half16 { raw: 0x7e01, .. }
+        ));
+        assert!(matches!(
+            rows[1].values[6],
+            ColumnValue::Half16 { raw: 1, .. }
+        ));
+        if let ColumnValue::Float32 { value, .. } = rows[0].values[9] {
+            assert_eq!(value.to_bits(), 0x7f81_2345);
+        } else {
+            panic!("expected a binary32 column");
+        }
+        for row in &mut rows {
+            row.span = Span::new(u64::MAX, 0);
+            row.index = u64::MAX;
+            if let ColumnValue::Boolean { value, .. } = &mut row.values[3] {
+                *value = false;
+            }
+            if let ColumnValue::Half16 { value, .. } = &mut row.values[6] {
+                *value = 0.0;
+            }
+        }
+        let encoded = encode_rows(&rows).unwrap();
+        assert_eq!(encoded.data, data);
+        assert_eq!(encoded.row_ends, [first_end, data.len() as u32]);
+    }
+
+    #[test]
+    fn edited_rows_rebuild_data_and_sparse_row_spans() {
+        let columns = parse_column_list("u32,str").unwrap();
+        let mut data = Vec::new();
+        for (number, text) in [(1u32, plain(b"a")), (2, scramble(b"b")), (3, plain(b"c"))] {
+            data.extend_from_slice(&number.to_le_bytes());
+            data.extend(text);
+        }
+        let mut rows = parse_rows(&data, &columns).unwrap();
+        if let ColumnValue::Unsigned32 { value, .. } = &mut rows[1].values[0] {
+            *value = 0x1234_5678;
+        }
+        rows[1].values[1] = ColumnValue::Text(Box::new(
+            SheetString::from_decoded(b"longer", true).unwrap(),
+        ));
+        let encoded = encode_rows(&rows).unwrap();
+        assert_eq!(encoded.row_ends, [8, 22, 30]);
+        let mut expected = data[..8].to_vec();
+        expected.extend_from_slice(&[
+            0x78, 0x56, 0x34, 0x12, 8, 0, 0xff, 0x1f, 0x1c, 0x1d, 0x14, 0x16, 1, 0x73,
+        ]);
+        expected.extend_from_slice(&data[17..]);
+        assert_eq!(encoded.data, expected);
+        let slots: Vec<_> = [1, 3, 4].into_iter().zip(encoded.row_ends).collect();
+        let offsets = encode_row_offsets(7, &slots).unwrap();
+        let offsets = parse_row_offsets(&offsets).unwrap();
+        assert_eq!(offsets.offsets, [0, 8, 8, 22, 30, 30, 30]);
+        assert!(offsets.anomalies.is_empty());
+        let reparsed = parse_rows(&encoded.data, &columns).unwrap();
+        for (row, slot) in reparsed.iter().zip(&offsets.rows) {
+            assert_eq!(row.span, slot.span);
+        }
+        assert_eq!(reparsed.len(), offsets.rows.len());
+        assert_eq!(reparsed[0], rows[0]);
+        match &reparsed[1].values[0] {
+            ColumnValue::Unsigned32 { value, .. } => assert_eq!(*value, 0x1234_5678),
+            other => panic!("expected u32, got {other:?}"),
+        }
+        match &reparsed[1].values[1] {
+            ColumnValue::Text(value) => assert_eq!(value.rich.encode(), b"longer"),
+            other => panic!("expected text, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn row_writer_checks_offset_range_and_empty_rows() {
+        assert_eq!(row_end_offset(u32::MAX as usize).unwrap(), u32::MAX);
+        if let Ok(length) = usize::try_from(u64::from(u32::MAX) + 1) {
+            let error = row_end_offset(length).unwrap_err();
+            assert_eq!(error.kind(), ErrorKind::DeclaredSizeOutOfRange);
+            assert_eq!(error.offset(), u64::from(u32::MAX) + 1);
+        }
+        let empty = encode_rows(&[]).unwrap();
+        assert!(empty.data.is_empty());
+        assert!(empty.row_ends.is_empty());
+        let error = encode_rows(&[Row {
+            index: 0,
+            span: Span::new(0, 0),
+            values: vec![],
+        }])
+        .unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::UnknownColumnType);
     }
 }

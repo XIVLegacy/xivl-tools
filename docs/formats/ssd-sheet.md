@@ -129,6 +129,30 @@ That second line is what makes reading a data file on its own sound, and
 it is why `xivl inspect --as sheet-data --columns <list>` needs no second
 file.
 
+## Writing a sheet block
+
+The `xivl_formats::sheet` writers produce the block's data, enable, and
+row-offset files. `encode_rows` writes columns back to back in input row
+order and returns cumulative `u32` row ends. Stored spans and row indices
+do not control output. The caller keeps each row's values in schema order.
+
+Pair those row ends with the original non-empty `RowSlot::index` values for
+`encode_row_offsets`, retaining the block's slot count. Unlisted slots
+repeat the previous end, starting at zero. Slot indices must increase
+strictly, and each listed end must advance. Enable ranges use row identifiers
+(block `begin` plus slot index). `encode_enable_file` and `EnableFile::encode`
+preserve their order and boundaries without merging ranges.
+
+Unchanged accepted models without anomalies reproduce the three files
+byte for byte. Strings retain rich-token bytes and plain or scrambled state,
+with recomputed length prefixes. Boolean and binary16 columns retain their
+raw fields, and binary32 columns retain their exact bits, including NaN
+payloads. `SheetString::from_decoded` constructs replacement strings and
+computes their decoded digest. Plain strings containing an interior NUL or
+starting with the scramble marker are refused. String bodies must fit the
+`u16` length field, and data must fit the `u32` row-offset range. Reparse
+written bytes to obtain current spans and digests after edits.
+
 ## The sheet string and its obfuscation
 
 A string value is `u16` little-endian length, then a body of that many
