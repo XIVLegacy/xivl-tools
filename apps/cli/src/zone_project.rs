@@ -2,8 +2,8 @@
 
 use std::collections::BTreeSet;
 use std::fmt;
-use std::fs::{self, File, Metadata};
-use std::io::Read;
+use std::fs::{self, File, Metadata, OpenOptions};
+use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
 
 use serde::de::{value::MapAccessDeserializer, MapAccess, Visitor};
@@ -21,7 +21,7 @@ use xivl_formats::zone::{
     flatten_zone, parse_layout_with_structure, parse_model, parse_phb, FlattenedZone, Layout,
     LayoutInspection, Matrix4, Model, Vec3,
 };
-use xivl_formats::{ErrorKind, FormatError, ResourceId};
+use xivl_formats::{to_canonical_json, ErrorKind, FormatError, ResourceId};
 
 /// Limits apply before parsing or allocating the declared input size.
 pub const MAX_PROJECT_BYTES: u64 = 1024 * 1024;
@@ -130,6 +130,7 @@ impl<'de> Deserialize<'de> for ProjectId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProjectFailureKind {
+    Usage,
     Io,
     InvalidProject,
     IdentityMismatch,
@@ -165,7 +166,10 @@ impl ProjectFailure {
         }
     }
     pub fn code(&self) -> u8 {
-        if self.kind == ProjectFailureKind::Io {
+        if matches!(
+            self.kind,
+            ProjectFailureKind::Usage | ProjectFailureKind::Io
+        ) {
             1
         } else {
             2
@@ -224,6 +228,123 @@ pub fn prepare_project(
     client_root: &Path,
 ) -> Result<PreparedZoneProject, ProjectFailure> {
     prepare_loaded(load_project(project_path, client_root)?)
+}
+
+/// Parse the project commands and return the canonical offline report.
+pub fn run(arguments: &[String], build: bool) -> Result<String, ProjectFailure> {
+    let usage = || {
+        ProjectFailure::new(
+            ProjectFailureKind::Usage,
+            "zone project command",
+            if build {
+                "usage: xivl build-zone-project <project.json> --client-root <root> --output <new-directory>"
+            } else {
+                "usage: xivl validate-zone-project <project.json> --client-root <root>"
+            },
+        )
+    };
+    let project = arguments
+        .first()
+        .filter(|arg| !arg.starts_with("--"))
+        .ok_or_else(usage)?;
+    let mut client_root = None;
+    let mut output = None;
+    let (options, remainder) = arguments[1..].as_chunks::<2>();
+    for pair in options {
+        if pair[1].is_empty() || pair[1].starts_with("--") {
+            return Err(usage());
+        }
+        match pair[0].as_str() {
+            "--client-root" if client_root.is_none() => client_root = Some(Path::new(&pair[1])),
+            "--output" if build && output.is_none() => output = Some(Path::new(&pair[1])),
+            _ => return Err(usage()),
+        }
+    }
+    if !remainder.is_empty() || (build && output.is_none()) {
+        return Err(usage());
+    }
+    let client_root = client_root.ok_or_else(usage)?;
+    let prepared = prepare_project(Path::new(project), client_root)?;
+    let report = match output {
+        Some(output) => write_project(prepared, client_root, output)?,
+        None => prepared.report,
+    };
+    Ok(to_canonical_json(&report))
+}
+
+/// Publish prepared resources in a new directory and publish their report last.
+pub fn write_project(
+    prepared: PreparedZoneProject,
+    client_root: &Path,
+    output: &Path,
+) -> Result<Value, ProjectFailure> {
+    write_project_with_writer(prepared, client_root, output, write_new)
+}
+
+fn write_project_with_writer(
+    mut prepared: PreparedZoneProject,
+    client_root: &Path,
+    output: &Path,
+    mut write: impl FnMut(&Path, &[u8]) -> Result<(), ProjectFailure>,
+) -> Result<Value, ProjectFailure> {
+    let io = |error: std::io::Error| {
+        ProjectFailure::new(ProjectFailureKind::Io, "output", error.to_string())
+    };
+    let refuse = |detail| ProjectFailure::new(ProjectFailureKind::Usage, "output", detail);
+    let name = output
+        .components()
+        .next_back()
+        .filter(|component| matches!(component, Component::Normal(_)))
+        .ok_or_else(|| refuse("expected a new directory name"))?;
+    let parent = output
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let parent = fs::canonicalize(parent).map_err(io)?;
+    let output = parent.join(name);
+    let client_root = checked_root(client_root, "client root")?;
+    if output.starts_with(&client_root) {
+        return Err(refuse("output must be outside the client input tree"));
+    }
+    // create_dir refuses all existing entries, including empty directories and source aliases.
+    fs::create_dir(&output).map_err(io)?;
+    prepared.report["status"] = json!("offline-built");
+    for (name, bytes) in [
+        ("layout.dat", &prepared.layout),
+        ("model.dat", &prepared.model),
+        ("collision.dat", &prepared.collision),
+    ] {
+        write(&output.join(name), bytes)?;
+    }
+    let pending = output.join("build-report.json.pending");
+    write(&pending, to_canonical_json(&prepared.report).as_bytes())?;
+    let report = output.join("build-report.json");
+    match fs::symlink_metadata(&report) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(io(error)),
+        Ok(_) => return Err(refuse("build-report.json already exists")),
+    }
+    fs::rename(pending, report).map_err(io)?;
+    Ok(prepared.report)
+}
+
+fn write_new(path: &Path, bytes: &[u8]) -> Result<(), ProjectFailure> {
+    let io = |error: std::io::Error| {
+        ProjectFailure::new(
+            ProjectFailureKind::Io,
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("output"),
+            error.to_string(),
+        )
+    };
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(io)?;
+    file.write_all(bytes).map_err(io)?;
+    file.sync_all().map_err(io)
 }
 
 fn prepare_loaded(loaded: LoadedZoneProject) -> Result<PreparedZoneProject, ProjectFailure> {
@@ -1099,7 +1220,11 @@ fn checked_root(root: &Path, role: &str) -> Result<PathBuf, ProjectFailure> {
     }
     if !metadata.is_dir() {
         return Err(ProjectFailure::new(
-            ProjectFailureKind::InvalidPath,
+            if role == "client root" {
+                ProjectFailureKind::Usage
+            } else {
+                ProjectFailureKind::InvalidPath
+            },
             role,
             "expected a directory",
         ));
@@ -1261,6 +1386,61 @@ mod tests {
             }
             let _ = fs::remove_dir(self.root.join("client"));
             let _ = fs::remove_dir(&self.root);
+        }
+    }
+
+    #[test]
+    fn zone_project_partial_write_failure_preserves_files_without_publishing_report() {
+        for fail_at in [2, 3, 4] {
+            let inputs = Inputs::new();
+            let prepared = prepare_loaded(inputs.load().unwrap()).unwrap();
+            let expected = [
+                ("layout.dat", prepared.layout.clone()),
+                ("model.dat", prepared.model.clone()),
+                ("collision.dat", prepared.collision.clone()),
+                ("build-report.json.pending", Vec::new()),
+            ];
+            let output = inputs.root.join("partial-output");
+            let mut writes = 0;
+            let error = write_project_with_writer(
+                prepared,
+                &inputs.root.join("client"),
+                &output,
+                |path, bytes| {
+                    assert_eq!(path.file_name().unwrap(), expected[writes].0);
+                    writes += 1;
+                    if writes == fail_at {
+                        write_new(path, b"partial")?;
+                        return Err(ProjectFailure::new(
+                            ProjectFailureKind::Io,
+                            "output",
+                            "injected write failure",
+                        ));
+                    }
+                    write_new(path, bytes)
+                },
+            )
+            .unwrap_err();
+            assert_eq!(error.kind, ProjectFailureKind::Io);
+            assert_eq!(error.detail, "injected write failure");
+            assert_eq!(writes, fail_at);
+            assert!(!output.join("build-report.json").exists());
+            assert_eq!(fs::read_dir(&output).unwrap().count(), fail_at);
+            for (index, (name, bytes)) in expected.iter().take(fail_at).enumerate() {
+                let retained = fs::read(output.join(name)).unwrap();
+                if index + 1 == fail_at {
+                    assert_eq!(retained, b"partial");
+                } else {
+                    assert_eq!(&retained, bytes);
+                }
+            }
+            for (path, bytes) in FIXTURES {
+                assert_eq!(fs::read(inputs.root.join(path)).unwrap(), *bytes);
+            }
+            for (name, _) in expected.iter().take(fail_at) {
+                fs::remove_file(output.join(name)).unwrap();
+            }
+            fs::remove_dir(output).unwrap();
         }
     }
 

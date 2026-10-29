@@ -10,7 +10,7 @@
 use std::io::{Read, Write};
 use std::process::ExitCode;
 
-use xivl_cli::{extract, fixed_batch, fixed_control};
+use xivl_cli::{extract, fixed_batch, fixed_control, zone_project};
 use xivl_formats::{extract_lpb, lua_path_document};
 use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_bytes_as, InspectAs};
 
@@ -28,6 +28,8 @@ xivl - Final Fantasy XIV 1.23b client file tools
 usage:
   xivl inspect <file> [--as <format>] [--columns <list>]
   xivl validate <file> [--as <format>] [--columns <list>]
+  xivl validate-zone-project <project.json> --client-root <root>
+  xivl build-zone-project <project.json> --client-root <root> --output <new-directory>
   xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--slot-context <command_slot_context.json>] [--monster-attack-profiles <json>] [--format yaml|json]
   xivl inspect-command-loadout --slot-context <command_slot_context.json> [--trace <index>] [--format yaml|json]
   xivl materialize-command-loadout --slot-context <command_slot_context.json> --trace <index> [--record-range <first>:<last>] [--output <new-file>] [--format yaml|json]
@@ -58,6 +60,13 @@ input exactly.
 extract discovers SSD sheet definitions under a 1.23b game directory,
 reads their data, enable, and row-offset resources, and writes one
 lossless CSV view per definition document.
+
+validate-zone-project prepares and checks a floor-blockout-v1 project in memory
+and prints an offline-validated JSON report without writing files.
+build-zone-project performs the same checks, then writes layout.dat, model.dat,
+collision.dat and build-report.json into a new directory outside the client
+input tree. Its offline-built report remains client-unverified. Existing output
+paths are refused; retry a failed build with a new destination.
 
 catalog inventories DAT resources without changing them. It records known,
 malformed, and unknown formats without guessing. extract-resource writes a
@@ -217,6 +226,19 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         }
         Some("inspect") => read(&arguments[1..], Operation::Inspect),
         Some("validate") => read(&arguments[1..], Operation::Validate),
+        Some(command @ ("validate-zone-project" | "build-zone-project")) => {
+            let report = zone_project::run(&arguments[1..], command == "build-zone-project")
+                .map_err(|failure| Failure {
+                    message: failure.to_string(),
+                    code: failure.code(),
+                })?;
+            if command == "validate-zone-project" {
+                std::io::stdout()
+                    .write_all(report.as_bytes())
+                    .map_err(|error| Failure::usage(format!("stdout: {error}")))?;
+            }
+            Ok(())
+        }
         Some("decode-fixed") => fixed_control::run(&arguments[1..]).map_err(Into::into),
         Some("decode-fixed-batch") => fixed_batch::run(&arguments[1..]).map_err(Into::into),
         Some("inspect-command") => command_inspect::run(&arguments[1..]),
