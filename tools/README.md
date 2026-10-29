@@ -76,6 +76,9 @@ These commands require `--client-root`:
 - `research/census_wrb_counts.py` - census WRB field counts and inventory
   digests. Run with
   `python tools/research/census_wrb_counts.py --client-root <install>`.
+- `research/census_allocation.py` - census RegionResourceData allocation keys,
+  name digests, auxiliary keys, and numeric DAT inventory. Run with
+  `python tools/research/census_allocation.py --client-root <install>`.
 - `research/census_animation.py` - census animation bank and MTB framing.
   Run with
   `python tools/research/census_animation.py --client-root <install> --cli <xivl>`.
