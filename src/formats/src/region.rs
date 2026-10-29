@@ -20,6 +20,11 @@ pub struct RegionRow {
     pub membership: RegionMembership,
     pub id: u32,
     pub dat_key: u32,
+    /// Raw row words +0x04, +0x0C and +0x20. A child's +0x04 is its type and
+    /// +0x0C its stored kind; a root's +0x20 is its layout-world argument.
+    pub word_04: u32,
+    pub word_0c: u32,
+    pub word_20: u32,
     pub token: Span,
     pub unknown: Vec<Span>,
 }
@@ -115,6 +120,62 @@ pub fn parse(data: &[u8]) -> Result<RegionResourceData> {
     })
 }
 
+/// Name bytes the native constructors copy: at most 15 token bytes, ending
+/// at the first NUL. `None` when `data` is not the parsed input.
+pub fn effective_name<'a>(data: &'a [u8], row: &RegionRow) -> Option<&'a [u8]> {
+    let start = row.token.offset as usize;
+    let copied = data.get(start..start + 15)?;
+    let end = copied.iter().position(|byte| *byte == 0).unwrap_or(15);
+    Some(&copied[..end])
+}
+
+/// Whether the 16-byte token holds a NUL. The root's second name copy scans
+/// for one when global 0x00F67298 holds its pinned sentinel 0xFFFFFFFF.
+pub fn token_terminated(data: &[u8], row: &RegionRow) -> Option<bool> {
+    let start = row.token.offset as usize;
+    Some(data.get(start..start + 16)?.contains(&0))
+}
+
+/// The key of the extra resource request a root derives when its +0x20 word
+/// is zero; the request itself is conditional.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuxiliaryKey {
+    Derived(u32),
+    NonzeroLayoutArgument,
+    NoChildren,
+    LowIndexOverflow,
+}
+
+/// Derives the auxiliary key for the root at `rows[index]`: the first
+/// child's high 16 bits with one plus the largest child low index. Children
+/// of every type count. Returns `None` when the row is not a root.
+pub fn auxiliary_key(table: &RegionResourceData, index: usize) -> Option<AuxiliaryKey> {
+    let root = table.rows.get(index)?;
+    let RegionMembership::Root { child_count, .. } = root.membership else {
+        return None;
+    };
+    if root.word_20 != 0 {
+        return Some(AuxiliaryKey::NonzeroLayoutArgument);
+    }
+    let children = table
+        .rows
+        .get(index + 1..index + 1 + child_count as usize)?;
+    let Some(first) = children.first() else {
+        return Some(AuxiliaryKey::NoChildren);
+    };
+    let mut highest = 0;
+    for child in children {
+        let low = child.dat_key & 0xFFFF;
+        if low >= 0xFFFF {
+            return Some(AuxiliaryKey::LowIndexOverflow);
+        }
+        highest = highest.max(low);
+    }
+    Some(AuxiliaryKey::Derived(
+        (first.dat_key & 0xFFFF_0000) | (highest + 1),
+    ))
+}
+
 fn count_error(offset: u64, detail: &str) -> FormatError {
     FormatError::new(ErrorKind::SubresourceCountOutOfRange, offset, detail)
 }
@@ -122,8 +183,11 @@ fn count_error(offset: u64, detail: &str) -> FormatError {
 fn parse_row(bytes: &[u8], start: u64, membership: RegionMembership) -> Result<RegionRow> {
     let mut reader = Reader::with_base(bytes, start);
     let id = reader.u32_le()?;
-    reader.seek(0x08)?;
+    let word_04 = reader.u32_le()?;
     let dat_key = reader.u32_le()?;
+    let word_0c = reader.u32_le()?;
+    reader.seek(0x20)?;
+    let word_20 = reader.u32_le()?;
     let mut unknown = vec![Span::new(start + 4, 4), Span::new(start + 0x20, 0x10)];
     // Only roots have a following-child count. Child +0x0C is opaque.
     if matches!(membership, RegionMembership::Child { .. }) {
@@ -134,6 +198,9 @@ fn parse_row(bytes: &[u8], start: u64, membership: RegionMembership) -> Result<R
         membership,
         id,
         dat_key,
+        word_04,
+        word_0c,
+        word_20,
         token: Span::new(start + 0x10, 16),
         unknown,
     })

@@ -76,3 +76,58 @@ fn size_word_does_not_invent_a_row_bound_and_trailing_bytes_remain_opaque() {
     assert_eq!(document["endsAtEof"], false);
     assert_eq!(document["trailing"]["span"]["length"], 3);
 }
+
+#[test]
+fn allocation_helpers_report_names_words_and_auxiliary_keys() {
+    let mut data = vec![0u8; 0x40 + 4 * 0x30];
+    data[..19].copy_from_slice(region::NAME);
+    data[0x18..0x1E].copy_from_slice(region::VERSION);
+    let size = data.len() as u32;
+    data[0x20..0x24].copy_from_slice(&size.to_le_bytes());
+    data[0x24..0x28].copy_from_slice(&2u32.to_le_bytes());
+    let row = |data: &mut Vec<u8>, index: usize, words: [u32; 4], name: &[u8], word_20: u32| {
+        let start = 0x40 + index * 0x30;
+        for (slot, word) in words.iter().enumerate() {
+            data[start + slot * 4..start + slot * 4 + 4].copy_from_slice(&word.to_le_bytes());
+        }
+        data[start + 0x10..start + 0x10 + name.len()].copy_from_slice(name);
+        data[start + 0x20..start + 0x24].copy_from_slice(&word_20.to_le_bytes());
+    };
+    row(&mut data, 0, [7, 1, 2, 2], b"root\0", 0);
+    row(&mut data, 1, [70, 0, 0x1234_0005, 9], b"sky", 0);
+    row(
+        &mut data,
+        2,
+        [71, 0x3000, 0x5678_0002, 0x102],
+        b"abcdefghijklmnopq",
+        0,
+    );
+    row(&mut data, 3, [8, 0, 0, 0], b"sixteen-bytes-xx", 5);
+    let parsed = region::parse(&data).unwrap();
+
+    assert_eq!(parsed.rows[2].word_04, 0x3000);
+    assert_eq!(parsed.rows[2].word_0c, 0x102);
+    assert_eq!(
+        region::effective_name(&data, &parsed.rows[0]),
+        Some(&b"root"[..])
+    );
+    assert_eq!(
+        region::effective_name(&data, &parsed.rows[2]),
+        Some(&b"abcdefghijklmno"[..])
+    );
+    assert_eq!(region::token_terminated(&data, &parsed.rows[0]), Some(true));
+    assert_eq!(
+        region::token_terminated(&data, &parsed.rows[3]),
+        Some(false)
+    );
+    assert_eq!(region::effective_name(&[], &parsed.rows[0]), None);
+    assert_eq!(
+        region::auxiliary_key(&parsed, 0),
+        Some(region::AuxiliaryKey::Derived(0x1234_0006))
+    );
+    assert_eq!(region::auxiliary_key(&parsed, 1), None);
+    assert_eq!(
+        region::auxiliary_key(&parsed, 3),
+        Some(region::AuxiliaryKey::NonzeroLayoutArgument)
+    );
+}
