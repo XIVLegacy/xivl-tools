@@ -60,6 +60,12 @@ size dword. The decoded PNG preview boundary is described below.
 
 ## Writing GTEX
 
+The CLI's [Encode a GTEX texture](../cli.md#encode-a-gtex-texture) command
+encodes an 8-bit RGBA PNG or losslessly repacks DDS mip bytes into a new
+canonical GTEX, optionally matching an existing texture's format, dimensions
+and mip count. Its post-write parser and exact rebuild checks establish file
+consistency without establishing client acceptance.
+
 `gtex_write::rebuild_gtex(data, gtex)` reconstructs every standalone GTEX
 accepted by the parser. It writes the model's header fields and table entries,
 copies `header_unknown` spans and data gaps from the source, and copies encoded

@@ -49,6 +49,51 @@ effective names, numeric DAT keys and collisions, and records evidence blockers.
 It chooses no allocation. The [inventory contract](allocation-inventory.md)
 defines the fields, path case rule, refusal behavior and evidence limits.
 
+## Encode a GTEX texture
+
+```powershell
+cargo run --locked -p xivl-cli -- encode-gtex input.png --output new.gtex --format dxt5 --mips 4
+cargo run --locked -p xivl-cli -- encode-gtex input.dds --output new.gtex --like existing.gtex
+```
+
+`encode-gtex <input.png|input.dds> --output <new-file> [--like <existing.gtex>]
+[--format a8r8g8b8|a4r4g4b4|dxt1|dxt5] [--mips <n>]` detects input kind from
+the PNG signature or DDS magic, regardless of filename extension.
+The PNG decoder requires 8-bit RGBA samples and limits decoded data to 64 MiB.
+PNG input is decoded, filtered into the requested mip chain, and encoded with
+the [pixel encoder](formats/gtex-pwib.md#pixel-encoding).
+
+`--like` takes the format index, width, height, and mip count from a standalone
+GTEX. Input dimensions must match exactly. There is no resampling, and
+`--like` cannot be combined with `--format` or `--mips`. Without `--like`,
+`--format` is required. `--mips` defaults to one for PNG input and to the
+DDS mip count for DDS input. A `--like` template must be a 2D GTEX with depth one. Supported format indices
+are A8R8G8B8 = 4, A4R4G4B4 = 22, DXT1 = 24, and DXT5 = 26. Dimensions must
+fit nonzero 16-bit values. Mip counts must be between one and
+`1 + floor(log2(max(width, height)))`.
+
+DDS input is repacked losslessly. Its pixel format must match the target.
+The first requested mip levels are copied byte-for-byte, allowing a shorter
+chain. Requesting more mips than the DDS contains is refused. DDS pixels are
+never transcoded and missing levels are never generated.
+
+The output parent directory must exist. Output uses create-new semantics:
+existing paths, including the input and template, are refused. A new file
+may share their directory. Failed writes or post-write checks remove the
+created file. After writing, the command re-reads the GTEX, checks format,
+dimensions and mip count, compares the written bytes, and requires exact
+reconstruction by `rebuild_gtex`.
+
+Success prints canonical JSON with `operation: "encode-gtex"`, `inputKind`,
+`format`, `formatIndex`, `width`, `height`, `mips`, `outputLength`, and
+`outputSha256`. PNG encoding to A4R4G4B4, DXT1 or DXT5 also reports
+`rgbMsePerMip`, ordered from mip zero. Each value is the mean squared error
+over the three stored 8-bit RGB channels, comparing the decoded written mip
+against its source RGBA level. Alpha is excluded, but DXT1 texels encoded as
+transparent decode to black and count toward the error. Reports contain no pixel
+values. Client acceptance of a written texture is not established by these
+checks.
+
 ## Decode one fixed control
 
 Supply hexadecimal byte pairs, with optional ASCII whitespace, or a binary file:

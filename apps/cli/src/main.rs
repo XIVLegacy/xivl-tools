@@ -17,6 +17,7 @@ use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_byt
 mod allocation_inventory;
 mod batch_extract;
 mod command_inspect;
+mod encode_gtex;
 mod resource_export;
 mod scan;
 mod sscf_census;
@@ -32,6 +33,7 @@ usage:
   xivl validate-zone-project <project.json> --client-root <root>
   xivl build-zone-project <project.json> --client-root <root> --output <new-directory>
   xivl allocation-inventory --client-root <root> [--output <new-file>]
+  xivl encode-gtex <input.png|input.dds> --output <new-file> [--like <existing.gtex>] [--format a8r8g8b8|a4r4g4b4|dxt1|dxt5] [--mips <n>]
   xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--slot-context <command_slot_context.json>] [--monster-attack-profiles <json>] [--format yaml|json]
   xivl inspect-command-loadout --slot-context <command_slot_context.json> [--trace <index>] [--format yaml|json]
   xivl materialize-command-loadout --slot-context <command_slot_context.json> --trace <index> [--record-range <first>:<last>] [--output <new-file>] [--format yaml|json]
@@ -93,6 +95,16 @@ writing or repairing it. Source replay is explicit and optional.
 allocation-inventory reports occupied catalog keys, effective names, numeric
 DAT paths, collisions and evidence blockers as JSON. It chooses no allocation.
 An optional output file must be new and outside the client root.
+
+encode-gtex detects PNG or DDS by content and creates a new GTEX file.
+PNG input must be 8-bit RGBA. --format is required without --like; --mips
+defaults to 1 for PNG and to the DDS mip count for DDS. --like takes format,
+dimensions and mip count from a 2D GTEX,
+requires equal input dimensions, and excludes --format and --mips.
+DDS repacking preserves mip bytes, refuses format changes and missing mips,
+and allows truncation. Output is re-read and rebuilt exactly before a JSON
+report of metadata, SHA-256 and per-mip RGB MSE for lossy PNG encodes.
+Existing output paths are refused. These checks do not establish client acceptance.
 
 export-zones reads only an explicitly supplied 1.23b client root and writes
 one flattened OBJ plus a versioned metadata sidecar per lyb layout, and one
@@ -243,6 +255,7 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         Some("inspect") => read(&arguments[1..], Operation::Inspect),
         Some("validate") => read(&arguments[1..], Operation::Validate),
         Some("allocation-inventory") => allocation_inventory::run(&arguments[1..]),
+        Some("encode-gtex") => encode_gtex::run(&arguments[1..]),
         Some(command @ ("validate-zone-project" | "build-zone-project")) => {
             let report = zone_project::run(&arguments[1..], command == "build-zone-project")
                 .map_err(|failure| Failure {
