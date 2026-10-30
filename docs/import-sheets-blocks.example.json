@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "grow": [
+    { "csv": "item.csv", "begin": 2300000, "count": 11500 }
+  ],
+  "add": [
+    {
+      "csv": "item.csv",
+      "begin": 2400000,
+      "count": 100,
+      "definitions": [
+        {
+          "sheet": "item",
+          "lang": "en",
+          "data": "0x70000001",
+          "enable": "0x70000002",
+          "offsets": "0x70000003"
+        }
+      ]
+    }
+  ]
+}

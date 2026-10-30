@@ -156,6 +156,21 @@ pub(crate) fn load_document(
     document: &ssd::SsdDocument,
     summary: &mut ExtractSummary,
 ) -> Result<(CsvTable, Vec<LoadedBlock>), Failure> {
+    load_document_overlay(game, None, source, document, summary)
+}
+
+pub(crate) fn load_document_overlay(
+    game: &Path,
+    overlay: Option<&Path>,
+    source: &Path,
+    document: &ssd::SsdDocument,
+    summary: &mut ExtractSummary,
+) -> Result<(CsvTable, Vec<LoadedBlock>), Failure> {
+    let root = |id| {
+        overlay
+            .filter(|output| resource_path(output, id).is_file())
+            .unwrap_or(game)
+    };
     let mut table = CsvTable::default();
     let mut loaded_blocks = Vec::new();
 
@@ -211,7 +226,7 @@ pub(crate) fn load_document(
 
         for block in blocks {
             let present = [block.data, block.enable, block.offsets]
-                .map(|id| resource_path(game, id).is_file());
+                .map(|id| resource_path(root(id), id).is_file());
             if present.iter().all(|value| !value) {
                 summary.absent_blocks += 1;
                 continue;
@@ -225,9 +240,9 @@ pub(crate) fn load_document(
                     ),
                 ));
             }
-            let data = read_resource(game, block.data)?;
-            let enable = read_resource(game, block.enable)?;
-            let offsets_data = read_resource(game, block.offsets)?;
+            let data = read_resource(root(block.data), block.data)?;
+            let enable = read_resource(root(block.enable), block.enable)?;
+            let offsets_data = read_resource(root(block.offsets), block.offsets)?;
             let enable_bytes = enable;
             let enable = parse_enable_file(&enable_bytes)
                 .map_err(|error| resource_failure(block.enable, error))?;
@@ -375,7 +390,10 @@ pub(crate) fn load_document(
     Ok((table, loaded_blocks))
 }
 
-fn collect_dat_paths(directory: &Path, output: &mut Vec<PathBuf>) -> Result<(), Failure> {
+pub(crate) fn collect_dat_paths(
+    directory: &Path,
+    output: &mut Vec<PathBuf>,
+) -> Result<(), Failure> {
     let entries = fs::read_dir(directory).map_err(|error| {
         Failure::io(format!(
             "cannot read directory '{}': {error}",

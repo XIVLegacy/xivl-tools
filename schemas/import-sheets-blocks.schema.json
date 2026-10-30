@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SSD import block plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "grow": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["csv", "begin", "count"],
+        "properties": {
+          "csv": { "type": "string", "minLength": 1 },
+          "begin": { "$ref": "#/$defs/u32" },
+          "count": { "type": "integer", "minimum": 1, "maximum": 4294967295 }
+        }
+      }
+    },
+    "add": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["csv", "begin", "count", "definitions"],
+        "properties": {
+          "csv": { "type": "string", "minLength": 1 },
+          "begin": { "$ref": "#/$defs/u32" },
+          "count": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+          "definitions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sheet", "data", "enable", "offsets"],
+              "properties": {
+                "sheet": { "type": "string" },
+                "lang": { "type": ["string", "null"] },
+                "data": { "$ref": "#/$defs/resourceId" },
+                "enable": { "$ref": "#/$defs/resourceId" },
+                "offsets": { "$ref": "#/$defs/resourceId" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "u32": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+    "resourceId": {
+      "type": "string",
+      "pattern": "^(0[xX][0-9a-fA-F]{1,8}|[0-9]{1,10})$",
+      "description": "A nonzero 32-bit resource id in hexadecimal with a 0x prefix or in decimal. Decimal values above 4294967295 are refused by the command."
+    }
+  }
+}

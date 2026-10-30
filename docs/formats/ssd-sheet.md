@@ -153,6 +153,39 @@ marker are refused. String bodies must fit the `u16` length field, and data
 must fit the `u32` row-offset range. Reparse
 written bytes to obtain current spans and digests after edits.
 
+## Writing a definition document
+
+`xivl_formats::ssd_edit::edit_definition` edits decoded document bytes with
+`DefinitionEdit::GrowFile` and `DefinitionEdit::InsertFile`. Sheet and file
+indices refer to the original parsed document. Growth replaces only the
+file's `count` value. Insertion splices a decimal `<file>` element in sorted
+order, copies sibling indentation and line endings, and increases the enclosing
+`<block count>` by the number of inserted files. Decimal zero padding is
+retained where present. Other bytes remain identical. Inline synthetic
+documents retain inline formatting. Insertion requires a sibling file.
+
+`rewrite_definition_container` decodes, edits and re-encodes a scrambled
+document with the length-derived keys. Plain documents stay plain. Both APIs
+return the original bytes when given no edits, including scrambled bytes.
+The editor reparses the result and checks sheet order, attributes, column
+types, indexes, untouched files and every requested change.
+
+The first-hand 1.23b definition census found 803 documents: 797 scrambled and
+6 plain XML, all with CRLF line endings. Each of 3680 definition sheets had
+one `<block>` whose count equalled its number of `<file>` children. All 5384
+files used attribute order `begin, count, offset, enable` with the data id
+as element text. File indentation was three tabs in 5351 and six spaces in
+33. Files were sorted by `begin` without overlap; 134 of 1708 adjacent pairs
+had no gap. Among 720 sheet names with several language definitions in one
+document, 717 shared identical block ranges and 3 differed. These observations
+justify preserving the local formatting and checking each definition's ranges.
+
+The editor refuses shrinking counts, overlapping or overflowing ranges,
+non-definition targets, repeated edits to a file, and inserted resource ids
+already named by the document or another edit. The importer also checks the
+install and the whole plan for occupied ids. Client acceptance of grown or
+added blocks is not established. This is an offline structural write.
+
 ## The sheet string and its obfuscation
 
 A string value is `u16` little-endian length, then a body of that many
@@ -642,16 +675,45 @@ shared ordinary cell update every block that stores that row and column.
 Existing language-specific disabled rows stay disabled. Deleting a CSV line
 disables the row in all its blocks. Inserting a new id enables its present
 blocks only within their declared slot ranges and requires every stored cell.
-Changing definitions or synthesizing wholly absent triples is outside this
-command's scope.
+Without `--blocks`, rows outside those ranges remain refused.
+
+`--blocks <plan.json>` accepts a strict version-1 JSON plan, described in the
+[CLI guide](../cli.md#import-edited-sheet-csvs) and
+[plan schema](../../schemas/import-sheets-blocks.schema.json). A `grow` entry
+matches an exact `begin` in every definition in its CSV's document and refuses
+overlap in any of them. An `add` entry names each receiving definition by
+sheet name and optional `lang`, with explicit data, enable and offsets ids.
+Omitted or null `lang` matches only a definition without that attribute.
+Each target must identify exactly one definition. Planned CSVs must be present.
+Resource ids accept decimal strings or `0x` hexadecimal strings. New ids must
+be distinct throughout the plan, absent from the game's data tree, and unnamed
+by every discovered definition document, including absent block triples.
+
+Planned ranges the install ships participate in CSV row validation like existing ranges. The
+import writes the edited definition at its original resource path in its
+original plain or scrambled container, plus all three resources for every
+planned block the install ships, even if their bytes did not change. An added
+block with no enabled rows has empty data, enable and offsets files (zero
+offset entries). A grown block whose triple the install does not ship changes
+only its declared count; no resource is synthesized and its rows stay
+unavailable. The report uses roles `definition`, `data`, `enable` and
+`offsets`, and includes `blocksGrown`, `blocksAdded` and
+`growSkippedDefinitions` when a plan is supplied. These count definition files touched,
+so one grow entry can count several files across languages.
 
 Existing strings retain their scramble flag. A new string uses that column's
 flag from the block's first enabled row, or plain framing in an empty block.
+For an added block, the fallback is the same column in the same definition's
+first original block's first enabled row. It is plain if that block is absent,
+empty, or has no value in that column. No other definition supplies this flag.
 Omitted trailing columns stay omitted and cannot be filled. Changed enabled
 sets use maximal ordered runs. Unchanged enable bytes and unchanged resources
 are retained verbatim. Written blocks are reparsed and compared with the
-intended rows before the command succeeds. Failures remove this run's files
-and directories. The JSON report contains resource identities, lengths,
+intended rows before the command succeeds. The import also reloads each
+processed document through the original loading path with output files taking
+precedence over game files, checking planned blocks and enabled rows.
+Failures remove this run's files and directories. The JSON report contains
+resource identities, lengths,
 digests and counts without cell values. Cell and row counts refer to the
 merged logical tables. Public generated-tree Rust tests
 cover no-op imports, edits, row toggles, omissions and refusals.

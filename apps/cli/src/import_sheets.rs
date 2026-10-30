@@ -5,6 +5,7 @@ use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 
+use serde::Deserialize;
 use serde_json::{json, Value};
 use xivl_formats::csv::{parse_cell, read_table};
 use xivl_formats::digest::sha256_hex;
@@ -12,12 +13,14 @@ use xivl_formats::sheet::{
     encode_enable_file, encode_row_offsets, encode_rows, parse_enable_file, parse_row_offsets,
     parse_rows,
 };
+use xivl_formats::ssd::{self, SheetBody};
+use xivl_formats::{rewrite_definition_container, scrambled, DefinitionEdit};
 use xivl_formats::{ColumnValue, CsvTable, ResourceId, Row, Span};
 
 use crate::extract::{self, LoadedBlock};
 use crate::{ExtractFailure as Failure, ExtractFailureKind};
 
-const USAGE: &str = "usage: xivl import-sheets <game-directory> --csv <extract-output-directory> --output <new-directory>";
+const USAGE: &str = "usage: xivl import-sheets <game-directory> --csv <extract-output-directory> --output <new-directory> [--blocks <plan.json>]";
 
 pub fn run(arguments: &[String]) -> Result<Value, Failure> {
     let Some(game) = arguments.first() else {
@@ -25,11 +28,13 @@ pub fn run(arguments: &[String]) -> Result<Value, Failure> {
     };
     let mut csv = None;
     let mut output = None;
+    let mut blocks = None;
     let mut position = 1;
     while position < arguments.len() {
         let slot = match arguments[position].as_str() {
             "--csv" => &mut csv,
             "--output" => &mut output,
+            "--blocks" => &mut blocks,
             option => {
                 return Err(Failure::usage(format!(
                     "unknown import-sheets option '{option}'"
@@ -46,11 +51,25 @@ pub fn run(arguments: &[String]) -> Result<Value, Failure> {
         }
         position += 2;
     }
-    import_directory(
-        Path::new(game),
-        Path::new(csv.ok_or_else(|| Failure::usage(USAGE))?),
+    let game = Path::new(game);
+    let csv = Path::new(csv.ok_or_else(|| Failure::usage(USAGE))?);
+    let output = output_path(
+        game,
         Path::new(output.ok_or_else(|| Failure::usage(USAGE))?),
-    )
+    )?;
+    let plan = blocks
+        .map(|path| {
+            let bytes = fs::read(path).map_err(io_failure)?;
+            let plan = serde_json::from_slice::<BlockPlan>(&bytes)
+                .map_err(|error| invalid(format!("{path}: {error}")))?;
+            if plan.schema_version != 1 {
+                return Err(invalid("unsupported block plan schemaVersion"));
+            }
+            Ok(plan)
+        })
+        .transpose()?
+        .unwrap_or_default();
+    import_with_plan(game, csv, &output, &plan)
 }
 
 #[derive(Default)]
@@ -60,6 +79,173 @@ struct Counts {
     cells: usize,
     enabled: usize,
     disabled: usize,
+    blocks_grown: usize,
+    grow_skipped: usize,
+    blocks_added: usize,
+}
+
+#[derive(Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct BlockPlan {
+    schema_version: u32,
+    #[serde(default)]
+    grow: Vec<GrowPlan>,
+    #[serde(default)]
+    add: Vec<AddPlan>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GrowPlan {
+    csv: String,
+    begin: u32,
+    count: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AddPlan {
+    csv: String,
+    begin: u32,
+    count: u32,
+    definitions: Vec<AddDefinition>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AddDefinition {
+    sheet: String,
+    lang: Option<String>,
+    data: String,
+    enable: String,
+    offsets: String,
+}
+
+fn plan_id(text: &str) -> Result<ResourceId, Failure> {
+    let hex = text.strip_prefix("0x").or_else(|| text.strip_prefix("0X"));
+    if !hex.map_or_else(
+        || !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()),
+        |digits| {
+            !digits.is_empty() && digits.len() <= 8 && digits.bytes().all(|b| b.is_ascii_hexdigit())
+        },
+    ) {
+        return Err(invalid(format!("invalid plan resource id '{text}'")));
+    }
+    let value = if let Some(hex) = hex {
+        u32::from_str_radix(hex, 16)
+    } else {
+        text.parse::<u32>()
+    }
+    .map_err(|_| invalid(format!("invalid plan resource id '{text}'")))?;
+    Ok(ResourceId::new(value))
+}
+
+fn document_bytes(bytes: &[u8]) -> Result<ssd::SsdDocument, Failure> {
+    let plain = if bytes.last() == Some(&scrambled::TRAILER) {
+        scrambled::decode(bytes)
+            .map_err(|e| invalid(e.to_string()))?
+            .document
+    } else {
+        bytes.to_vec()
+    };
+    ssd::parse_document(&plain).map_err(|e| invalid(e.to_string()))
+}
+
+/// Returns the edits and the number of same-name definitions a grow skipped
+/// because they declare no file at that `begin`.
+fn definition_edits(
+    name: &str,
+    document: &ssd::SsdDocument,
+    plan: &BlockPlan,
+) -> Result<(Vec<DefinitionEdit>, usize), Failure> {
+    let mut edits = Vec::new();
+    let mut skipped = 0;
+    for grow in plan.grow.iter().filter(|entry| entry.csv == name) {
+        let before = edits.len();
+        let mut grown_names = BTreeSet::new();
+        for (sheet, definition) in document.sheets.iter().enumerate() {
+            if let SheetBody::Definition { blocks, .. } = &definition.body {
+                for (file, block) in blocks
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, block)| block.begin == grow.begin)
+                {
+                    if grow.count <= block.count {
+                        return Err(invalid(format!(
+                            "{name}: grow begin {} must exceed the current count {}",
+                            grow.begin, block.count
+                        )));
+                    }
+                    grown_names.insert(definition.name.as_str());
+                    edits.push(DefinitionEdit::GrowFile {
+                        sheet,
+                        file,
+                        count: grow.count,
+                    });
+                }
+            }
+        }
+        // Language definitions usually share ranges (717 of 720 retail
+        // names); count the ones a grow passes over so the report shows them.
+        for definition in &document.sheets {
+            if let SheetBody::Definition { blocks, .. } = &definition.body {
+                if grown_names.contains(definition.name.as_str())
+                    && !blocks.iter().any(|block| block.begin == grow.begin)
+                {
+                    skipped += 1;
+                }
+            }
+        }
+        if edits.len() == before {
+            return Err(invalid(format!(
+                "{name}: grow begin {} matches no file",
+                grow.begin
+            )));
+        }
+    }
+    for add in plan.add.iter().filter(|entry| entry.csv == name) {
+        if add.definitions.is_empty() {
+            return Err(invalid("add requires at least one definition"));
+        }
+        if add.count == 0 {
+            return Err(invalid(format!(
+                "{name}: add begin {} needs a nonzero count",
+                add.begin
+            )));
+        }
+        let mut seen = BTreeSet::new();
+        for target in &add.definitions {
+            let matches: Vec<_> = document
+                .sheets
+                .iter()
+                .enumerate()
+                .filter(|(_, sheet)| {
+                    sheet.name == target.sheet
+                        && sheet
+                            .attributes
+                            .iter()
+                            .find(|a| a.name == "lang")
+                            .map(|a| a.value.as_str())
+                            == target.lang.as_deref()
+                        && matches!(sheet.body, SheetBody::Definition { .. })
+                })
+                .collect();
+            if matches.len() != 1 || !seen.insert(matches[0].0) {
+                return Err(invalid(format!(
+                    "{name}: added definition must identify exactly one sheet and lang"
+                )));
+            }
+            edits.push(DefinitionEdit::InsertFile {
+                sheet: matches[0].0,
+                begin: add.begin,
+                count: add.count,
+                data: plan_id(&target.data)?,
+                enable: plan_id(&target.enable)?,
+                offsets: plan_id(&target.offsets)?,
+            });
+        }
+    }
+    Ok((edits, skipped))
 }
 
 /// Write only resources whose bytes differ from the client. Absent CSVs leave
@@ -70,6 +256,18 @@ pub fn import_directory(game: &Path, csv: &Path, output: &Path) -> Result<Value,
 }
 
 fn import_into_directory(game: &Path, csv: &Path, output: &Path) -> Result<Value, Failure> {
+    import_with_plan(game, csv, output, &BlockPlan::default())
+}
+
+fn import_with_plan(
+    game: &Path,
+    csv: &Path,
+    output: &Path,
+    plan: &BlockPlan,
+) -> Result<Value, Failure> {
+    if plan.schema_version != 0 && plan.schema_version != 1 {
+        return Err(invalid("unsupported block plan schemaVersion"));
+    }
     let definitions = extract::discover_definitions(game)?;
     let mut used = BTreeSet::new();
     let mut named = Vec::new();
@@ -80,6 +278,54 @@ fn import_into_directory(game: &Path, csv: &Path, output: &Path) -> Result<Value
         }
     }
     let names: BTreeSet<_> = named.iter().map(|(name, _, _)| name.as_str()).collect();
+    for name in plan
+        .grow
+        .iter()
+        .map(|entry| &entry.csv)
+        .chain(plan.add.iter().map(|entry| &entry.csv))
+    {
+        if !names.contains(name.as_str()) || !csv.join(name).is_file() {
+            return Err(invalid(format!(
+                "{name}: block plan requires an extracted CSV in this import"
+            )));
+        }
+    }
+    let mut occupied = BTreeSet::new();
+    if !plan.add.is_empty() {
+        let mut paths = Vec::new();
+        extract::collect_dat_paths(&game.join("data"), &mut paths)?;
+        occupied.extend(
+            paths
+                .iter()
+                .filter_map(|path| xivl_formats::parse_dat_path(&path.to_string_lossy(), 0).ok()),
+        );
+    }
+    for (_, source, document) in &named {
+        let id = xivl_formats::parse_dat_path(&source.to_string_lossy(), 0)
+            .map_err(|e| invalid(e.to_string()))?;
+        occupied.insert(id);
+        for sheet in &document.sheets {
+            if let SheetBody::Definition { blocks, .. } = &sheet.body {
+                for block in blocks {
+                    occupied.extend([block.data, block.enable, block.offsets]);
+                }
+            } else if let SheetBody::Reference { infofile } = &sheet.body {
+                occupied.insert(*infofile);
+            }
+        }
+    }
+    for definition in plan.add.iter().flat_map(|entry| &entry.definitions) {
+        for text in [&definition.data, &definition.enable, &definition.offsets] {
+            let id = plan_id(text)?;
+            if id.value() == 0 || !occupied.insert(id) || extract::resource_path(game, id).exists()
+            {
+                return Err(invalid(format!(
+                    "{}: added resource id is occupied or repeated",
+                    id.dat_path()
+                )));
+            }
+        }
+    }
     for entry in fs::read_dir(csv).map_err(io_failure)? {
         let path = entry.map_err(io_failure)?.path();
         if path
@@ -100,14 +346,124 @@ fn import_into_directory(game: &Path, csv: &Path, output: &Path) -> Result<Value
     let mut resources = BTreeMap::<u32, (ResourceId, &'static str, Vec<u8>)>::new();
     let mut expected_resources = BTreeMap::new();
     let mut intended = Vec::new();
+    let mut documents_to_verify = Vec::new();
     for (name, source, document) in named {
         counts.documents += 1;
-        let (table, blocks) = extract::load_document(
+        let (table, mut blocks) = extract::load_document(
             game,
             &source,
             &document,
             &mut extract::ExtractSummary::default(),
         )?;
+        let (edits, skipped) = definition_edits(&name, &document, plan)?;
+        counts.grow_skipped += skipped;
+        let mut planned = BTreeSet::new();
+        let mut defaults = BTreeMap::new();
+        let original_positions: BTreeMap<_, _> = blocks
+            .iter()
+            .enumerate()
+            .map(|(index, block)| (block.definition.span.offset, index))
+            .collect();
+        let first_flags: Vec<Vec<bool>> = document
+            .sheets
+            .iter()
+            .map(|sheet| {
+                if let SheetBody::Definition {
+                    columns,
+                    blocks: files,
+                    ..
+                } = &sheet.body
+                {
+                    let first = files.first().and_then(|file| {
+                        blocks
+                            .iter()
+                            .find(|block| block.definition.span == file.span)
+                    });
+                    columns
+                        .iter()
+                        .enumerate()
+                        .map(|(column, _)| {
+                            let value = first
+                                .and_then(|block| block.rows.first_key_value())
+                                .and_then(|(_, values)| values[column].as_ref());
+                            matches!(value, Some(ColumnValue::Text(text)) if text.scrambled)
+                        })
+                        .collect()
+                } else {
+                    Vec::new()
+                }
+            })
+            .collect();
+        let edited_document = if edits.is_empty() {
+            document.clone()
+        } else {
+            let original = fs::read(&source).map_err(io_failure)?;
+            let bytes = rewrite_definition_container(&original, &edits).map_err(|error| {
+                let message = format!("{}: {error}", source.display());
+                Failure::format(error, message)
+            })?;
+            let id = xivl_formats::parse_dat_path(&source.to_string_lossy(), 0)
+                .map_err(|e| invalid(e.to_string()))?;
+            resources.insert(id.value(), (id, "definition", bytes.clone()));
+            document_bytes(&bytes)?
+        };
+        for edit in &edits {
+            let (sheet_index, old_file, begin, data) = match *edit {
+                DefinitionEdit::GrowFile { sheet, file, .. } => {
+                    counts.blocks_grown += 1;
+                    let SheetBody::Definition { blocks, .. } = &document.sheets[sheet].body else {
+                        unreachable!()
+                    };
+                    (
+                        sheet,
+                        Some(&blocks[file]),
+                        blocks[file].begin,
+                        blocks[file].data,
+                    )
+                }
+                DefinitionEdit::InsertFile {
+                    sheet, begin, data, ..
+                } => {
+                    counts.blocks_added += 1;
+                    (sheet, None, begin, data)
+                }
+            };
+            let SheetBody::Definition {
+                columns,
+                index,
+                blocks: new_files,
+            } = &edited_document.sheets[sheet_index].body
+            else {
+                unreachable!()
+            };
+            let file = new_files
+                .iter()
+                .find(|file| file.begin == begin && file.data == data)
+                .ok_or_else(|| invalid("planned block missing from edited definition"))?;
+            if let Some(block) = old_file.and_then(|old| {
+                original_positions
+                    .get(&old.span.offset)
+                    .and_then(|&index| blocks.get_mut(index))
+            }) {
+                block.definition = file.clone();
+            } else if old_file.is_some() {
+                // A grown triple the install does not ship stays absent: only
+                // its declared count changes, and no resource is synthesized.
+                continue;
+            } else {
+                blocks.push(LoadedBlock {
+                    definition: file.clone(),
+                    columns: columns.clone(),
+                    indexes: index.clone(),
+                    data: Vec::new(),
+                    enable: Vec::new(),
+                    offsets: Vec::new(),
+                    rows: BTreeMap::new(),
+                });
+                defaults.insert(file.data, first_flags[sheet_index].clone());
+            }
+            planned.insert(file.data);
+        }
         let path = csv.join(name);
         let text = match fs::read_to_string(&path) {
             Ok(text) => text,
@@ -136,10 +492,18 @@ fn import_into_directory(game: &Path, csv: &Path, output: &Path) -> Result<Value
             Failure::format(error, message)
         })?;
         validate_cells(&path, &table, &blocks, &rows, &mut counts)?;
+        let mut expected_blocks = Vec::new();
         for block in blocks {
+            let force = planned.contains(&block.definition.data);
+            let expected_definition = block.definition.clone();
+            let expected_ids: Vec<_> = block.rows.keys().copied().collect();
             let original_resources =
                 resource_signatures(&block, &block.data, &block.enable, &block.offsets);
-            if let Some(edited) = edit_block(&path, &table, &rows, block)? {
+            let fallback = defaults.get(&block.definition.data).map(Vec::as_slice);
+            if let Some(edited) =
+                edit_block_with_defaults(&path, &table, &rows, block, force, fallback)?
+            {
+                expected_blocks.push((expected_definition, edited.ids.clone()));
                 register_resources(
                     &mut expected_resources,
                     &edited.block,
@@ -167,7 +531,7 @@ fn import_into_directory(game: &Path, csv: &Path, output: &Path) -> Result<Value
                         &edited.offsets,
                     ),
                 ] {
-                    if old == bytes {
+                    if old == bytes && !force {
                         continue;
                     }
                     if let Some((_, previous_role, previous_bytes)) = resources.get(&id.value()) {
@@ -183,8 +547,14 @@ fn import_into_directory(game: &Path, csv: &Path, output: &Path) -> Result<Value
                 }
                 intended.push(edited);
             } else {
+                expected_blocks.push((expected_definition, expected_ids));
                 register_signatures(&mut expected_resources, original_resources)?;
             }
+        }
+        // Only a planned definition change needs the reloaded overlay; cell
+        // edits are already checked block by block in verify_written.
+        if !edits.is_empty() {
+            documents_to_verify.push((source, edited_document, expected_blocks));
         }
     }
     let mut created = CreatedPaths::default();
@@ -206,12 +576,47 @@ fn import_into_directory(game: &Path, csv: &Path, output: &Path) -> Result<Value
         for block in &intended {
             verify_written(game, output, &resources, block)?;
         }
-        Ok(json!({
+        for (source, expected, expected_blocks) in &documents_to_verify {
+            let relative = source
+                .strip_prefix(game)
+                .map_err(|_| invalid("definition is outside game"))?;
+            let overlay = output.join(relative);
+            let bytes =
+                fs::read(if overlay.is_file() { &overlay } else { source }).map_err(io_failure)?;
+            let document = document_bytes(&bytes)?;
+            if document != *expected {
+                return Err(invalid("written definition disagrees with planned blocks"));
+            }
+            let (_, loaded) = extract::load_document_overlay(
+                game,
+                Some(output),
+                source,
+                &document,
+                &mut extract::ExtractSummary::default(),
+            )?;
+            if loaded.len() != expected_blocks.len()
+                || loaded.iter().any(|block| {
+                    !expected_blocks.iter().any(|(file, ids)| {
+                        same_file_block(file, &block.definition)
+                            && block.rows.keys().copied().eq(ids.iter().copied())
+                    })
+                })
+            {
+                return Err(invalid("overlay enabled rows disagree with intended rows"));
+            }
+        }
+        let mut report = json!({
             "schemaVersion": 1, "operation": "import-sheets", "resources": report,
             "counts": { "documentsRead": counts.documents, "csvFilesRead": counts.csv_files,
                 "cellsChanged": counts.cells, "rowsEnabled": counts.enabled, "rowsDisabled": counts.disabled,
                 "resourcesWritten": resources.len() }
-        }))
+        });
+        if plan.schema_version == 1 {
+            report["counts"]["blocksGrown"] = json!(counts.blocks_grown);
+            report["counts"]["growSkippedDefinitions"] = json!(counts.grow_skipped);
+            report["counts"]["blocksAdded"] = json!(counts.blocks_added);
+        }
+        Ok(report)
     })();
     match result {
         Ok(report) => {
@@ -238,6 +643,11 @@ fn resource_signatures(
         (block.definition.enable, sha256_hex(enable)),
         (block.definition.offsets, sha256_hex(offsets)),
     ]
+}
+
+fn same_file_block(a: &ssd::FileBlock, b: &ssd::FileBlock) -> bool {
+    (a.begin, a.count, a.data, a.enable, a.offsets)
+        == (b.begin, b.count, b.data, b.enable, b.offsets)
 }
 
 fn register_resources(
@@ -283,7 +693,7 @@ fn validate_cells(
         .count();
     for (&id, cells) in rows {
         if !blocks.iter().any(|block| contains(block, id)) {
-            return Err(invalid(format!("{}: row {id}: no present block covers this row; adding rows outside the shipped block ranges needs a definition-document change, which import-sheets does not perform", path.display())));
+            return Err(invalid(format!("{}: row {id}: no present block covers this row; adding rows outside the shipped block ranges needs a definition-document change; pass a --blocks plan that grows or adds a shipped block", path.display())));
         }
         if !table.rows.contains_key(&id) {
             counts.enabled += 1;
@@ -363,11 +773,23 @@ fn contains(block: &LoadedBlock, id: u32) -> bool {
         && u64::from(id) < u64::from(block.definition.begin) + u64::from(block.definition.count)
 }
 
+#[cfg(test)]
 fn edit_block(
     path: &Path,
     table: &CsvTable,
     csv: &BTreeMap<u32, Vec<String>>,
     block: LoadedBlock,
+) -> Result<Option<EditedBlock>, Failure> {
+    edit_block_with_defaults(path, table, csv, block, false, None)
+}
+
+fn edit_block_with_defaults(
+    path: &Path,
+    table: &CsvTable,
+    csv: &BTreeMap<u32, Vec<String>>,
+    block: LoadedBlock,
+    force: bool,
+    fallback: Option<&[bool]>,
 ) -> Result<Option<EditedBlock>, Failure> {
     let defaults: Vec<bool> = block
         .columns
@@ -378,12 +800,15 @@ fn edit_block(
                 .rows
                 .first_key_value()
                 .and_then(|(_, values)| values[column].as_ref())
-                .is_some_and(|value| matches!(value, ColumnValue::Text(string) if string.scrambled))
+                .map_or_else(
+                    || fallback.is_some_and(|flags| flags[column]),
+                    |value| matches!(value, ColumnValue::Text(string) if string.scrambled),
+                )
         })
         .collect();
     let mut rows = Vec::new();
     let mut ids = Vec::new();
-    let mut changed = block.rows.keys().any(|id| !csv.contains_key(id));
+    let mut changed = force || block.rows.keys().any(|id| !csv.contains_key(id));
     for (&id, cells) in csv.range(block.definition.begin..) {
         if !contains(&block, id) {
             break;
@@ -721,6 +1146,7 @@ mod tests {
         fn overlay(&self, output: &str, report: &Value) {
             for resource in report["resources"].as_array().unwrap() {
                 let relative = resource["path"].as_str().unwrap();
+                fs::create_dir_all(self.game.join(relative).parent().unwrap()).unwrap();
                 fs::copy(
                     self.root.join(output).join(relative),
                     self.game.join(relative),
@@ -1219,5 +1645,293 @@ mod tests {
             .message()
             .contains("conflicting shared resource contents"));
         assert!(!output.exists());
+    }
+
+    fn block_plan(value: Value) -> BlockPlan {
+        serde_json::from_value(value).unwrap()
+    }
+
+    #[test]
+    fn block_plans_grow_all_matching_definitions_and_reload_the_overlay() {
+        let fixture = Fixture::new();
+        let source = extract::resource_path(&fixture.game, ResourceId::new(0x12000001));
+        let text = fs::read_to_string(&source).unwrap().replacen(
+            "name=\"synthetic/main\"",
+            "name=\"synthetic/main\" lang=\"en\"",
+            1,
+        );
+        fs::write(source, text).unwrap();
+        fixture.edit(
+            "synthetic_main.csv",
+            "100,alpha,7,true",
+            "90,inserted,1,true\n100,alpha,7,true",
+        );
+        fixture.edit(
+            "synthetic_main.csv",
+            "200,solo,1,true",
+            "103,grown,4,false\n200,solo,1,true",
+        );
+        let plan = block_plan(json!({ "schemaVersion": 1, "grow": [
+            { "csv": "synthetic_main.csv", "begin": 100, "count": 4 },
+            { "csv": "synthetic_main.csv", "begin": 500, "count": 2 }
+        ], "add": [{ "csv": "synthetic_main.csv", "begin": 90, "count": 10, "definitions": [
+            { "sheet": "synthetic/main", "lang": "en", "data": "0x22000001", "enable": "0x22000002", "offsets": "0x22000003" }
+        ] }] }));
+        let output = fixture.root.join("grow");
+        let report = import_with_plan(&fixture.game, &fixture.csv, &output, &plan).unwrap();
+        assert_eq!(report["counts"]["blocksGrown"], 5);
+        assert_eq!(report["counts"]["growSkippedDefinitions"], 3);
+        assert_eq!(report["counts"]["blocksAdded"], 1);
+        assert_eq!(report["counts"]["resourcesWritten"], 10);
+        let resources = report["resources"].as_array().unwrap();
+        assert_eq!(
+            resources
+                .iter()
+                .filter(|r| r["role"] == "definition")
+                .count(),
+            1
+        );
+        assert_eq!(resources.iter().filter(|r| r["role"] == "data").count(), 3);
+        // The grown begin-500 triple is not shipped, so it stays absent.
+        assert!(!extract::resource_path(&output, ResourceId::new(301989800)).exists());
+        fixture.overlay("grow", &report);
+        assert_eq!(
+            import_into_directory(
+                &fixture.game,
+                &fixture.csv,
+                &fixture.root.join("repeat-grow")
+            )
+            .unwrap()["counts"]["resourcesWritten"],
+            0
+        );
+    }
+
+    #[test]
+    fn block_plans_add_populated_and_empty_blocks_in_both_containers() {
+        for scrambled_container in [false, true] {
+            let fixture = Fixture::new();
+            let source = extract::resource_path(&fixture.game, ResourceId::new(0x12000001));
+            if scrambled_container {
+                let text = fs::read_to_string(&source).unwrap().replace(
+                    "name=\"synthetic/other\"",
+                    "name=\"synthetic/other\" lang=\"en\"",
+                );
+                fs::write(&source, scrambled::encode(text.as_bytes()).unwrap()).unwrap();
+                let path = extract::resource_path(&fixture.game, ResourceId::new(0x12000016));
+                let mut rows = parse_rows(
+                    &fs::read(&path).unwrap(),
+                    &[
+                        xivl_formats::ColumnType::Text,
+                        xivl_formats::ColumnType::Unsigned8,
+                        xivl_formats::ColumnType::Boolean,
+                    ],
+                )
+                .unwrap();
+                rows[0].values[0] = ColumnValue::Text(Box::new(
+                    xivl_formats::SheetString::from_decoded(b"solo", true).unwrap(),
+                ));
+                let encoded = encode_rows(&rows).unwrap();
+                fs::write(path, &encoded.data).unwrap();
+                fs::write(
+                    extract::resource_path(&fixture.game, ResourceId::new(0x120000a1)),
+                    encode_row_offsets(1, &[(0, encoded.row_ends[0])]).unwrap(),
+                )
+                .unwrap();
+            }
+            fixture.edit(
+                "synthetic_main.csv",
+                "200,solo,1,true",
+                "200,solo,1,true\n301,added,4,false",
+            );
+            let mut plan_value = json!({ "schemaVersion": 1, "add": [
+                { "csv": "synthetic_main.csv", "begin": 300, "count": 3, "definitions": [
+                    { "sheet": "synthetic/other", "data": "0x22000001", "enable": "570425346", "offsets": "0x22000003" }
+                ] },
+                { "csv": "synthetic_main.csv", "begin": 400, "count": 5, "definitions": [
+                    { "sheet": "synthetic/other", "lang": null, "data": "0x22000004", "enable": "0x22000005", "offsets": "0x22000006" }
+                ] }
+            ] });
+            if scrambled_container {
+                for definition in plan_value["add"].as_array_mut().unwrap() {
+                    definition["definitions"][0]["lang"] = json!("en");
+                }
+            }
+            let plan = block_plan(plan_value);
+            let output = fixture.root.join("add");
+            let report = import_with_plan(&fixture.game, &fixture.csv, &output, &plan).unwrap();
+            assert_eq!(report["counts"]["blocksAdded"], 2);
+            assert_eq!(report["counts"]["resourcesWritten"], 7);
+            let bytes =
+                fs::read(extract::resource_path(&output, ResourceId::new(0x12000001))).unwrap();
+            assert_eq!(scrambled::decode(&bytes).is_ok(), scrambled_container);
+            for id in 0x22000004..=0x22000006 {
+                assert!(
+                    fs::read(extract::resource_path(&output, ResourceId::new(id)))
+                        .unwrap()
+                        .is_empty()
+                );
+            }
+            assert_eq!(
+                fs::read(extract::resource_path(&output, ResourceId::new(0x22000002))).unwrap(),
+                [45, 1, 0, 0, 1, 0, 0, 0]
+            );
+            let rows = parse_rows(
+                &fs::read(extract::resource_path(&output, ResourceId::new(0x22000001))).unwrap(),
+                &[
+                    xivl_formats::ColumnType::Text,
+                    xivl_formats::ColumnType::Unsigned8,
+                    xivl_formats::ColumnType::Boolean,
+                ],
+            )
+            .unwrap();
+            assert_eq!(xivl_formats::value_text(&rows[0].values[0]), "added");
+            assert!(
+                matches!(&rows[0].values[0], ColumnValue::Text(text) if text.scrambled == scrambled_container)
+            );
+            fixture.overlay("add", &report);
+            assert_eq!(
+                import_into_directory(
+                    &fixture.game,
+                    &fixture.csv,
+                    &fixture.root.join("repeat-add")
+                )
+                .unwrap()["counts"]["resourcesWritten"],
+                0
+            );
+        }
+    }
+
+    #[test]
+    fn block_plans_refuse_unknown_fields_ranges_targets_and_occupied_ids() {
+        let schema: Value = serde_json::from_str(include_str!(
+            "../../../schemas/import-sheets-blocks.schema.json"
+        ))
+        .unwrap();
+        let example: Value = serde_json::from_str(include_str!(
+            "../../../docs/import-sheets-blocks.example.json"
+        ))
+        .unwrap();
+        let validator = jsonschema::JSONSchema::options()
+            .with_draft(jsonschema::Draft::Draft202012)
+            .compile(&schema)
+            .unwrap();
+        assert!(validator.is_valid(&example));
+        assert!(serde_json::from_value::<BlockPlan>(example).is_ok());
+        for value in [
+            json!({ "schemaVersion": 1, "extra": 0 }),
+            json!({ "schemaVersion": 1, "grow": [{"csv":"a.csv", "begin": 0, "count": 1, "extra": 0}] }),
+            json!({ "schemaVersion": 1, "add": [{"csv":"a.csv", "begin": 0, "count": 1, "definitions": [], "extra": 0}] }),
+            json!({ "schemaVersion": 1, "add": [{"csv":"a.csv", "begin": 0, "count": 1, "definitions": [{"sheet":"s", "data":"1", "enable":"2", "offsets":"3", "extra":0}]}] }),
+        ] {
+            assert!(!validator.is_valid(&value));
+            assert!(serde_json::from_value::<BlockPlan>(value).is_err());
+        }
+        let fixture = Fixture::new();
+        let add = |data: &str, enable: &str, sheet: &str, lang: Value, begin: u32| {
+            block_plan(json!({"schemaVersion":1,"add":[{
+                "csv":"synthetic_main.csv", "begin":begin, "count":2, "definitions":[{"sheet":sheet,"lang":lang,"data":data,"enable":enable,"offsets":"0x22000003"}]
+            }]}))
+        };
+        for (plan, detail) in [
+            (
+                block_plan(
+                    json!({"schemaVersion":1,"grow":[{"csv":"synthetic_main.csv","begin":999,"count":1}]}),
+                ),
+                "matches no file",
+            ),
+            (
+                block_plan(
+                    json!({"schemaVersion":1,"grow":[{"csv":"synthetic_main.csv","begin":100,"count":401}]}),
+                ),
+                "overlap",
+            ),
+            (
+                block_plan(
+                    json!({"schemaVersion":1,"grow":[{"csv":"unknown.csv","begin":100,"count":4}]}),
+                ),
+                "requires an extracted CSV",
+            ),
+            (
+                block_plan(
+                    json!({"schemaVersion":1,"grow":[{"csv":"synthetic_main.csv","begin":100,"count":3}]}),
+                ),
+                "must exceed the current count",
+            ),
+            (
+                block_plan(json!({"schemaVersion":1,"add":[{
+                    "csv":"synthetic_main.csv", "begin":90, "count":0, "definitions":[{"sheet":"synthetic/main","lang":null,"data":"0x22000001","enable":"0x22000002","offsets":"0x22000003"}]
+                }]})),
+                "nonzero count",
+            ),
+            (
+                add(
+                    "0x12000011",
+                    "0x22000002",
+                    "synthetic/other",
+                    Value::Null,
+                    300,
+                ),
+                "occupied",
+            ),
+            (
+                add(
+                    "301989800",
+                    "0x22000002",
+                    "synthetic/other",
+                    Value::Null,
+                    300,
+                ),
+                "occupied",
+            ),
+            (
+                add(
+                    "0x22000001",
+                    "0x22000001",
+                    "synthetic/other",
+                    Value::Null,
+                    300,
+                ),
+                "repeated",
+            ),
+            (
+                add("0x22000001", "0x22000002", "absent", Value::Null, 300),
+                "exactly one",
+            ),
+            (
+                add(
+                    "0x22000001",
+                    "0x22000002",
+                    "synthetic/main",
+                    Value::Null,
+                    300,
+                ),
+                "exactly one",
+            ),
+            (
+                add(
+                    "0x22000001",
+                    "0x22000002",
+                    "synthetic/other",
+                    json!("en"),
+                    300,
+                ),
+                "exactly one",
+            ),
+            (
+                add(
+                    "0x22000001",
+                    "0x22000002",
+                    "synthetic/other",
+                    Value::Null,
+                    200,
+                ),
+                "overlap",
+            ),
+        ] {
+            let output = fixture.root.join("bad-plan");
+            let error = import_with_plan(&fixture.game, &fixture.csv, &output, &plan).unwrap_err();
+            assert!(error.message().contains(detail), "{}", error.message());
+            assert!(!output.exists());
+        }
     }
 }

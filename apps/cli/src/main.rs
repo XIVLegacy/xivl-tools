@@ -40,7 +40,7 @@ usage:
   xivl decode-fixed-batch <messages.jsonl | -> [--initial-registry <client-root> --locale ja|en|de|fr]
   xivl extract-lpb <file> --output <file>
   xivl extract <game-directory> --output <directory>
-  xivl import-sheets <game-directory> --csv <extract-output-directory> --output <new-directory>
+  xivl import-sheets <game-directory> --csv <extract-output-directory> --output <new-directory> [--blocks <plan.json>]
   xivl catalog <game-or-resource-directory> --output <directory> [--format json|jsonl]
   xivl extract-resource <file> --output <directory> [--format yaml|json] [--materialize-payloads] [--export-dds] [--preview-png] [--pwib-entry <index>] [--as <format>] [--columns <list>]
   xivl extract-catalog <catalog.json|catalog.jsonl> --root <directory> --output <directory> (--id <resource-id> | --path <catalog-path>)+ [--max-resources <count>] [--max-source-bytes <bytes>] [--max-output-bytes <bytes>] [--format yaml|json] [--materialize-payloads] [--export-dds] [--preview-png] [--pwib-entry <index>]
@@ -66,7 +66,9 @@ lossless CSV view per definition document.
 
 import-sheets reads edited extract CSVs and writes changed data, enable, and
 row-offset resources into a new or empty directory outside the game directory.
-Absent CSVs leave sheets unchanged. The JSON report contains counts and digests.
+Absent CSVs leave sheets unchanged. --blocks names a plan that grows or adds
+sheet blocks; the edited definition document is written in its original
+container. The JSON report contains counts and digests.
 
 validate-zone-project prepares and checks a floor-blockout-v1 project in memory
 and prints an offline-validated JSON report without writing files.

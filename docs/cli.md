@@ -561,13 +561,54 @@ specified row within a declared block range, or delete a line to disable a row.
 Missing and duplicate markers must remain unchanged. Cell spellings must
 render exactly, including floating-point values and rich-token names and hex.
 
-The output must be new or empty and outside the game directory. Only changed
-data, enable, and row-offset resources are written at their original `data/`
-paths. An unedited extract writes zero resources. A failure removes entries
-created by the import. The canonical JSON report lists resource ids, paths,
+The output must be new or empty and outside the game directory. Without a
+block plan, only changed data, enable, and row-offset resources are written
+at their original `data/` paths. An unedited extract writes zero resources.
+A failure removes entries created by the import. The canonical JSON report lists resource ids, paths,
 roles, byte lengths and SHA-256 digests, plus document, CSV, cell, row and
 resource counts. It contains no client values. See
 [Importing edited CSV](formats/ssd-sheet.md#importing-edited-csv).
+
+Supply `--blocks <plan.json>` to grow declared ranges or insert blocks with
+explicit resource ids. This strict JSON plan rejects unknown fields at every
+level. `schemaVersion` is required and must be 1; `grow` and `add` default to
+empty arrays:
+
+```json
+{
+  "schemaVersion": 1,
+  "grow": [ { "csv": "item.csv", "begin": 2300000, "count": 11500 } ],
+  "add": [ {
+    "csv": "item.csv", "begin": 2400000, "count": 100,
+    "definitions": [ {
+      "sheet": "item", "lang": "en",
+      "data": "0x70000001", "enable": "0x70000002", "offsets": "0x70000003"
+    } ]
+  } ]
+}
+```
+
+`csv` is an exact extracted filename. `begin` and `count` are unsigned 32-bit
+integers. Growth applies to all definitions in that document with the exact
+`begin`, and cannot shrink or overlap another file. Additions select each
+definition by sheet name and `lang`; absent or null `lang` requires no language
+attribute. Resource ids are decimal strings or `0x` hex strings and must be
+unused by the install, its definitions and the plan. See the
+[JSON schema](../schemas/import-sheets-blocks.schema.json) and
+[example plan](import-sheets-blocks.example.json).
+
+The output includes the edited definition in its original container and all
+three resources of every planned block the install ships, including empty
+added blocks. A grown block whose resources the install does not ship changes
+only its declared count, and its rows stay unavailable. A grow's count must
+exceed the current count in every definition that declares that `begin`.
+Same-name definitions that declare no file at its `begin` are left
+unchanged. Resource roles include `definition`, and plan reports add
+`blocksGrown`, `blocksAdded` and `growSkippedDefinitions` counts per
+definition file. Output is reloaded over the game tree before
+success. Client acceptance of grown or added blocks is not established; this
+is an offline structural write. The format guide specifies the string framing
+fallback for new blocks.
 
 ## Export zone collision geometry
 
