@@ -5,7 +5,8 @@
 The `region` reader recognizes the `RegionResourceData` table and version
 `1.1.0`. It reads a bounded root/child structure, retains all rows in file
 order, and supplies structural inspection and validation. Read support is
-`partial`. Writing and resource export are outside this contract.
+`partial`. Writing supports the bounded append profile below and is `partial`.
+Resource export is outside this contract.
 
 ## Evidence and identity
 
@@ -172,6 +173,68 @@ remaining roots, opaque trailing bytes, size mismatches, unterminated root
 tokens, nonzero LayoutWorld arguments, low-index overflow, and type zero/one
 children supplying the auxiliary maximum. The
 malformed-input sweep also mutates and truncates the region fixtures.
+
+## Writing
+
+`xivl_formats::region_write::append_region_root` appends exactly one root
+with one child to a copy of catalog `0x03C00000`. The input must parse,
+have a size word equal to its length, and end at the counted row boundary.
+Trailing bytes and size mismatches are refused. This no-tail profile is
+stricter than the native loader: `xivl-decomp:docs/resource/region-weather-resource-rows.md`,
+"Size and counted-row boundary", establishes size equality and count-based
+iteration without a remaining-length or final cursor check.
+
+The template root key must occur exactly once and its `+0x20` must be zero.
+An explicit template child index is local and zero-based. Without one, the
+writer selects the first child whose type is neither zero nor one. Missing
+roots, missing eligible children and out-of-range indices are refused.
+The new rows copy those template bytes, replacing only the root key,
+root child count (one), root token, child key, child resource key, child
+token, and child type when supplied. The resulting type must not be zero
+or one. Root `+0x04/+0x08/+0x24..+0x30` and child
+`+0x0C/+0x20..+0x30` remain exact template bytes.
+
+Names must contain 1 to 15 printable ASCII bytes, excluding NUL. Each is
+written with NUL fill through the 16-byte token. This authoring restriction
+supplies termination for the root's second copy and prevents truncation in
+the first copy. The native copies, row construction and conditional auxiliary
+request are established by `xivl-decomp:docs/resource/map-layout-selector.md`,
+"Root and child construction" and "Normal construction and name resolution".
+Printable ASCII is a tool profile, not a native character rule.
+
+The writer refuses these catalog collisions:
+
+- A root key that is zero, above `0xFFFF`, or already a root key.
+- A child key already used by any existing root or child.
+- Either new effective name already present on any root or child, or the
+  two new names matching each other.
+- A zero child resource, low16 `0xFFFF`, or a child resource matching an
+  existing child resource, raw root `+0x08` word or derived auxiliary key.
+- A new derived auxiliary key matching any of those occupied values or
+  the new child resource.
+
+The root key bound follows the normal 16-bit scene transport profile even
+though native root lookup compares full dwords. The derived key for one
+child is `(child resource & 0xFFFF0000) | (child low16 + 1)`. Existing
+auxiliary statuses that cannot derive a key supply no collision value.
+These rules preserve raw root `+0x08` words without assigning them a
+resource meaning. They do not claim a complete allocation policy.
+
+The two rows are appended after the last existing row. Only header
+`+0x20..+0x28` changes in the original prefix: size becomes the output
+length and root count increases by one. Sizes above u32 are refused.
+Appending to the pinned 52336-byte no-tail catalog produces 52432 bytes,
+root count 62 and size word `0xCCD0`. A first-hand census of that pinned
+catalog found no child sharing its own root's effective name and 59 of
+61 roots with zero `+0x20`; these are retail observations, not native rules.
+
+Synthetic Rust tests check exact bytes, template selection, name boundaries
+and refusals. The conformance runner has no comparable append operation.
+The [CLI command](../cli.md#append-a-region-root) re-reads and verifies its
+new output and removes it on write or verification failure. Filesystem path
+occupancy belongs to [allocation-inventory](../allocation-inventory.md).
+Client acceptance, the auxiliary payload and zone initialization are not
+established by these checks.
 
 ## Evidence limits
 

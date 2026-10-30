@@ -208,12 +208,12 @@
       "category": "world",
       "phase": 1,
       "read": "partial",
-      "write": "none",
+      "write": "partial",
       "export": "planned",
       "exportViews": [
         "json"
       ],
-      "notes": "Bounded RegionResourceData 1.1.0 root/child structure, with root count at +0x24, rows at +0x40, stride 0x30, and root-only following-child count at +0x0C. Reports row IDs and DAT keys as spans and digests and locates the other raw words by span: root +0x04/+0x08 stored dwords and +0x20 LayoutWorld argument, child +0x04 type, +0x08 resource key and +0x0C stored kind. Tokens remain spans and digests, with effective 15-byte name length/digest and tokenTerminated, never text. Reports sizeMatchesInput without refusing mismatches; the native loader skips construction when the word differs from its reported extent, which equals the file length for a whole-file read. Root auxiliary-key status accounts for every child type and low-index overflow. Public cases exercise these metadata and existing header/count/truncation boundaries without changing acceptance. The pinned 52336-byte private vector accounts for 61 roots and 1089 rows ending at EOF. Opaque field meanings, token character rules, downstream payload and trailing-byte validity, and other versions remain unresolved. Writing and resource export are outside this partial read claim. Evidence and limits: docs/formats/region.md."
+      "notes": "Bounded RegionResourceData 1.1.0 root/child structure, with root count at +0x24, rows at +0x40, stride 0x30, and root-only following-child count at +0x0C. Reports row IDs and DAT keys as spans and digests and locates the other raw words by span: root +0x04/+0x08 stored dwords and +0x20 LayoutWorld argument, child +0x04 type, +0x08 resource key and +0x0C stored kind. Tokens remain spans and digests, with effective 15-byte name length/digest and tokenTerminated, never text. Reports sizeMatchesInput without refusing mismatches; the native loader skips construction when the word differs from its reported extent, which equals the file length for a whole-file read. Root auxiliary-key status accounts for every child type and low-index overflow. Public cases exercise these metadata and existing header/count/truncation boundaries without changing acceptance. The pinned 52336-byte private vector accounts for 61 roots and 1089 rows ending at EOF. Opaque field meanings, token character rules, downstream payload and trailing-byte validity, and other versions remain unresolved. The partial writer appends one template-based root with one child to a new no-tail catalog, checking catalog collisions and preserving the original prefix except size and count; client acceptance, auxiliary payloads and zone initialization remain unverified. Resource export is outside this claim. Evidence and limits: docs/formats/region.md."
     },
     {
       "id": "zone-geometry",

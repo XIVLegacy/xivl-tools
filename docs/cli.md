@@ -49,6 +49,49 @@ effective names, numeric DAT keys and collisions, and records evidence blockers.
 It chooses no allocation. The [inventory contract](allocation-inventory.md)
 defines the fields, path case rule, refusal behavior and evidence limits.
 
+## Append a region root
+
+```text
+xivl append-region <catalog.dat> --output <new-file> --like <root-key> [--like-child <index>] --root-key <key> --root-name <name> --child-key <key> --child-name <name> --child-resource <key> [--child-type <u32>]
+```
+
+The command appends one new root with exactly one child to a copy of the
+RegionResourceData catalog `0x03C00000`. Keys and child type accept decimal
+or `0x` hexadecimal u32 values. `--like` selects a unique existing root
+with zero `+0x20`. `--like-child` is a zero-based local decimal child index;
+the default is its first child whose type is neither zero nor one.
+`--child-type` overrides the copied type, which must remain neither zero nor
+one. Names require 1 to 15 printable ASCII bytes, are NUL-filled to 16 bytes,
+and must differ from each other and all existing effective names.
+The [writing profile](formats/region.md#writing) defines the complete key,
+resource and auxiliary collision rules and template byte preservation.
+
+Input must parse without trailing bytes and its size word must equal its
+length. The output must be new, including when it names the input; its
+parent must already exist. After writing, the command re-reads the file,
+requires a complete counted walk and matching size, checks the increased
+root count and requested row fields, verifies the derived auxiliary key,
+and compares every original byte except header `+0x20..+0x28`. It also
+requires the output to equal the prepared bytes, preserving all copied
+opaque template fields. A write or verification failure removes the newly
+created output.
+
+Success prints canonical JSON with `operation: "append-region"`,
+`inputLength`, `inputSha256`, `inputRootCount`, `outputLength`,
+`outputSha256`, `outputRootCount`, `sizeWord`, `rootRowOffset`,
+`childRowOffset`, `rootKey`, `childKey`, `childResource`, `childType`,
+`templateRootKey`, `templateChildIndex`, `derivedAuxiliaryKey`,
+`derivedAuxiliaryNumericPath`, `rootNameByteLength` and `childNameByteLength`.
+Keys use `0x` plus eight uppercase hexadecimal digits. The auxiliary path
+uses uppercase MSB-first numeric DAT groups, as allocation-inventory does.
+Lengths, counts, offsets, size word and child type are JSON numbers. Name
+strings are never printed. Usage and filesystem failures exit 1;
+format and append-profile refusals exit 2.
+
+Collision checks cover only the supplied catalog. `xivl allocation-inventory`
+owns filesystem path occupancy. Client acceptance, the auxiliary payload and
+zone initialization are not established by these checks.
+
 ## Add static-actor records
 
 ```powershell
