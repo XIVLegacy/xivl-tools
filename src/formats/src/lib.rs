@@ -43,6 +43,7 @@ pub mod skeleton;
 pub mod sqwt;
 pub mod sscf;
 pub mod ssd;
+pub mod ssd_edit;
 pub mod staticactor;
 pub mod texture_preview;
 pub mod xml;
@@ -70,6 +71,7 @@ pub use scrambled::ScrambledXml;
 pub use sheet::{ColumnType, ColumnValue, EnableFile, Row, RowOffsets, SheetString};
 pub use sqwt::SqwtFile;
 pub use ssd::SsdDocument;
+pub use ssd_edit::{edit_definition, rewrite_definition_container, DefinitionEdit};
 pub use zone::{
     compose_transforms, flatten_zone, parse_layout, parse_layout_with_structure, parse_model,
     parse_phb, transform_matrix, CollisionHullInfo, CollisionPrimitive, CollisionResourceInfo,
