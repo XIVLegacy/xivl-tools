@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "lpb-raw-round-trip",
+  "formatId": "lpb",
+  "operation": "validate",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/raw.bin"
+  },
+  "arguments": ["--as", "lpb"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Exact raw-wrapper rebuild and canonical encoding."
+}

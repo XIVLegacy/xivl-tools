@@ -19,17 +19,28 @@ public API rejects non-ASCII input rather than extending the evidence with a
 locale or Unicode case rule. Unit coverage exhausts all 128 ASCII bytes and
 public conformance covers a mixed path plus the rejected non-ASCII boundary.
 
-LPB has two evidenced wrappers around compiled Lua 5.1 chunks:
+LPB has two evidenced wrappers around compiled Lua 5.1 chunks. A census of
+all 2671 `.le.lpb` files under `client/script` in the 1.23b install found
+2670 `rle\x0c` files and one `rlu\x0b` file:
 
 ```text
 rlu 0B: 8-byte header, then an unmodified chunk beginning 1B 4C 75 61 51
 rle 0C: 16-byte header; bytes 13 onward XOR 73 decode to that same signature
 ```
 
-For `rlu`, bytes 4 through 7 are preserved as uninterpreted header bytes. For
-`rle`, bytes 4 through 7 and byte 12 are preserved the same way; bytes 8
-through 11 are reported as a little-endian advisory size but are not enforced,
-because the evidence records both offsets from decoded size and one outlier.
+For `rlu`, bytes 4 through 7 are preserved as uninterpreted header bytes.
+The census's single `rlu` file held `96 1D 00 00` there with a 131-byte chunk,
+so this word is not its chunk length. For `rle`, bytes 4 through 7 and byte 12
+are preserved the same way. In all 2670 `rle` files, the little-endian u32
+at bytes 8 through 11 equaled the decoded chunk length (`file length - 13`),
+and byte 12 was `FF`. The reader reports that size as advisory and does not
+enforce equality.
+
+The `rle` word at bytes 4 through 7 had zero high 16 bits in every file,
+34 distinct values, and the value `0x0000C51F` in 2513 files. Its low 16 bits
+did not match CRC32, Adler-32, or a byte sum of the chunk. Its meaning remains
+unknown.
+
 Bytes 13 through 15 are the encoded prefix of the Lua signature and bytes 16
 onward are the remaining encoded payload. Inspection reports every span and a
 digest for uninterpreted bytes, and extraction returns the complete decoded
@@ -37,10 +48,34 @@ chunk. Public cases cover both wrappers, a truncated header, and a payload
 whose decoded signature is not Lua 5.1.
 
 The LPB statuses remain `partial`: the wrapper reader does not assign meaning
-to the advisory size or unknown header bytes, claim that no additional wrapper
-variant exists, or write LPB. The binary export is the compiled chunk only;
+to unknown header bytes or claim that no additional wrapper variant exists.
+The binary export is the compiled chunk only;
 retaining the parsed `LpbFile` alongside it is what keeps the original
 wrapper's unknown bytes available to callers.
+
+## Writing LPB
+
+`encode_lpb(&LpbWrapper, chunk)` writes either `Rle { tag, byte12 }` or
+`Rlu { tag }`, retaining all four supplied tag bytes. It requires the decoded
+chunk to start with `1B 4C 75 61 51`. RLE output uses XOR `73` from byte 13
+onward and sets the little-endian size word to the complete chunk length,
+refusing lengths beyond u32. RLU output places the unmodified chunk at byte 8.
+The encoder checks the signature only. The [pack-lpb command](../cli.md#pack-an-lpb-script)
+also parses the whole chunk and applies prototype-local Lua validation.
+
+`rebuild_lpb(data, &file)` requires an extracted model paired with its source
+and reconstructs every accepted wrapper exactly, including an advisory size
+word that differs from the chunk length. `LpbFile::wrapper()` recovers the
+wrapper choice, tag and byte 12 for a fresh encoding. `validate --as lpb`
+checks this exact round trip, then checks `canonical-build` with the fresh
+encoder when the RLE size equals the chunk length. RLU has no size word and
+always receives the canonical-build check. A differing RLE size makes that
+check `not-applicable`. The same checks apply to `--as lpb-bytecode` after
+structural parsing.
+
+The tag meaning, byte 12 meaning, and client acceptance of a repacked script
+are not established. A caller must supply the tag or preserve it from an
+existing wrapper. The majority retail value is an observation, not a default.
 
 ## The bounded Lua 5.1 structure view
 

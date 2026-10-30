@@ -61,7 +61,10 @@ pub use inspect::{
     export_fdt_glyphs, inspect_bytes, inspect_bytes_as, inspect_named_bytes_as,
     inspect_selected_pwib, validate_named_bytes_as, InspectAs, FDT_GLYPH_METADATA_SCHEMA_VERSION,
 };
-pub use lpb::{extract as extract_lpb, LpbFile, LpbVariant, PreservedBytes};
+pub use lpb::{
+    encode_lpb, extract as extract_lpb, rebuild_lpb, LpbFile, LpbVariant, LpbWrapper,
+    PreservedBytes,
+};
 pub use lua51::{
     parse as parse_lua51, Lua51ArgumentMode, Lua51Chunk, Lua51Header, Lua51Instruction,
     Lua51InstructionMode, Lua51Opcode, Lua51Operand, Lua51Operands, Lua51Prototype, LuaConstant,

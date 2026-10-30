@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "lpb-xor-canonical-build",
+  "formatId": "lpb",
+  "operation": "validate",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/bytecode-xor.bin"
+  },
+  "arguments": ["--as", "lpb"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "The canonical XOR size word permits exact fresh encoding."
+}

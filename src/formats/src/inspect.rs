@@ -424,6 +424,39 @@ pub fn validate_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resu
                 "encodedSha256": sha256_hex(&encoded),
             }));
         }
+        _ if format == "lpb" || format == "client-lua" => {
+            let file = lpb::extract(data)?;
+            let encoded = lpb::rebuild_lpb(data, &file)?;
+            checks.push(json!({
+                "name": "round-trip",
+                "status": if encoded == data { "pass" } else { "fail" },
+                "encodedLength": encoded.len() as u64,
+                "encodedSha256": sha256_hex(&encoded),
+            }));
+            checks.push(
+                if file
+                    .advisory_size
+                    .is_none_or(|size| u64::from(size) == file.decoded.len() as u64)
+                {
+                    match lpb::encode_lpb(&file.wrapper()?, &file.decoded) {
+                        Ok(encoded) => json!({
+                            "name": "canonical-build",
+                            "status": if encoded == data { "pass" } else { "fail" },
+                            "encodedLength": encoded.len() as u64,
+                            "encodedSha256": sha256_hex(&encoded),
+                        }),
+                        Err(_) => json!({
+                            "name": "canonical-build",
+                            "status": "fail",
+                            "encodedLength": null,
+                            "encodedSha256": null,
+                        }),
+                    }
+                } else {
+                    json!({ "name": "canonical-build", "status": "not-applicable" })
+                },
+            );
+        }
         _ if format == "gtex" => {
             let gtex_pwib::TaggedResource::Gtex(gtex) =
                 gtex_pwib::parse(data, TaggedResourceKind::Gtex)?

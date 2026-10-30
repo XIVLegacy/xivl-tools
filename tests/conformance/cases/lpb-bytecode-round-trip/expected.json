@@ -1,0 +1,27 @@
+{
+  "checks": [
+    {
+      "name": "parse",
+      "status": "pass"
+    },
+    {
+      "encodedLength": 271,
+      "encodedSha256": "cd236aa7d0815bc62c3cb4a67c8fa413a3e096092b06a192c8c736550681e5c0",
+      "name": "round-trip",
+      "status": "pass"
+    },
+    {
+      "encodedLength": 271,
+      "encodedSha256": "cd236aa7d0815bc62c3cb4a67c8fa413a3e096092b06a192c8c736550681e5c0",
+      "name": "canonical-build",
+      "status": "pass"
+    }
+  ],
+  "format": "client-lua",
+  "input": {
+    "length": 271
+  },
+  "operation": "validate",
+  "schemaVersion": 1,
+  "sha256": "cd236aa7d0815bc62c3cb4a67c8fa413a3e096092b06a192c8c736550681e5c0"
+}

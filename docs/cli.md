@@ -735,6 +735,45 @@ bounded headers, prototypes, constants by type and digest, and instruction
 structure, but it does not execute, decompile, recover source, or print string
 constant values.
 
+## Pack an LPB script
+
+```powershell
+cargo run --locked -p xivl-cli -- pack-lpb chunk.luac --output new.le.lpb --tag 0xC51F
+cargo run --locked -p xivl-cli -- pack-lpb chunk.luac --output new.le.lpb --like existing.le.lpb
+cargo run --locked -p xivl-cli -- pack-lpb chunk.luac --output new.le.lpb --wrapper rlu --tag 0x1D96
+```
+
+`pack-lpb <chunk.luac> --output <new.lpb> [--like <existing.lpb>]
+[--wrapper rle|rlu] [--tag <hex u16>]` requires a complete decoded Lua 5.1
+chunk in the [evidenced representation](formats/lua-lpb.md#the-bounded-lua-51-structure-view).
+The existing structure reader must consume the entire input and pass its
+prototype-local validation. Unsupported headers, malformed prototypes, invalid
+instructions and trailing bytes are refused with the reader's error.
+
+`--like` copies the wrapper kind, all four tag bytes and RLE byte 12 from an
+existing LPB. It excludes `--wrapper` and `--tag`. Without `--like`, the wrapper
+defaults to `rle` with byte 12 `FF`, and `--tag` is required. The tag accepts
+one to four hexadecimal digits with an optional `0x` prefix and is written
+as a little-endian u32 with zero high 16 bits. Its meaning is unknown.
+`0xC51F` was the majority RLE value in the [install census](formats/lua-lpb.md).
+RLE output always sets the size word to the new chunk length, including when
+using `--like`.
+
+The output must be new. After writing, the command re-reads it, requires its
+decoded chunk to equal the input and its exact rebuild to equal the output,
+and removes the output if writing or verification fails. Success prints
+canonical JSON with `operation: "pack-lpb"`, `wrapper` (`rle` or `rlu`),
+`tag` (the full little-endian word as `0x` plus eight lowercase hex digits),
+`chunkLength`, `chunkSha256`, `outputLength`, `outputSha256`, and `lua` with
+`prototypeCount` and `instructionCount` summed across all prototypes.
+Instruction counts include serialized SETLIST extra words, as in the structure
+reader. No source names or string values are reported.
+
+The command uses the output path supplied by the caller. The client's filename
+cipher is the reversible ASCII transform exposed by [`xivl lua-path`](#lua-helpers);
+use that command to transform a resource name when choosing the output path.
+Client acceptance of a repacked script is not established by these checks.
+
 ## Advanced reports
 
 The command-report commands are for callers who already have the corresponding

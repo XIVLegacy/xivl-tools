@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "lpb-bytecode-round-trip",
+  "formatId": "client-lua",
+  "operation": "validate",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/bytecode.bin"
+  },
+  "arguments": ["--as", "lpb-bytecode"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Lua structure validation also checks exact wrapper reconstruction."
+}

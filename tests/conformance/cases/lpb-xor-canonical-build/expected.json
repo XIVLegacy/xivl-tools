@@ -1,0 +1,27 @@
+{
+  "checks": [
+    {
+      "name": "parse",
+      "status": "pass"
+    },
+    {
+      "encodedLength": 276,
+      "encodedSha256": "27d43bab8bb00841550a6c603c3fe29b1a9ecbc73927bf8edbacd5598a45f28f",
+      "name": "round-trip",
+      "status": "pass"
+    },
+    {
+      "encodedLength": 276,
+      "encodedSha256": "27d43bab8bb00841550a6c603c3fe29b1a9ecbc73927bf8edbacd5598a45f28f",
+      "name": "canonical-build",
+      "status": "pass"
+    }
+  ],
+  "format": "lpb",
+  "input": {
+    "length": 276
+  },
+  "operation": "validate",
+  "schemaVersion": 1,
+  "sha256": "27d43bab8bb00841550a6c603c3fe29b1a9ecbc73927bf8edbacd5598a45f28f"
+}

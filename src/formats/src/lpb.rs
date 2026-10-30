@@ -1,4 +1,4 @@
-//! Bounded extraction of the two evidenced LPB wrapper variants.
+//! Bounded extraction and exact writing of the two evidenced LPB wrappers.
 
 use crate::error::{ErrorKind, FormatError, Result};
 use crate::reader::{Reader, Span};
@@ -43,6 +43,102 @@ pub struct LpbFile {
     pub encoded_prefix: Option<Span>,
     pub encoded_payload: Span,
     pub decoded: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LpbWrapper {
+    Rle { tag: [u8; 4], byte12: u8 },
+    Rlu { tag: [u8; 4] },
+}
+
+impl LpbFile {
+    /// Recover the wrapper choice and uninterpreted bytes from an extracted file.
+    pub fn wrapper(&self) -> Result<LpbWrapper> {
+        let field = |index: usize, offset: u64, length: usize| {
+            self.unknown_header
+                .get(index)
+                .filter(|field| {
+                    field.span == Span::new(offset, length as u64) && field.bytes.len() == length
+                })
+                .map(|field| field.bytes.as_slice())
+                .ok_or_else(|| {
+                    FormatError::new(
+                        ErrorKind::InvalidAttributeValue,
+                        offset,
+                        "missing or inconsistent preserved LPB header bytes",
+                    )
+                })
+        };
+        let tag = field(0, 4, 4)?.try_into().expect("checked four-byte tag");
+        Ok(match self.variant {
+            LpbVariant::Raw => LpbWrapper::Rlu { tag },
+            LpbVariant::Xor73 => LpbWrapper::Rle {
+                tag,
+                byte12: field(1, 12, 1)?[0],
+            },
+        })
+    }
+}
+
+/// Wrap a complete decoded chunk. Only its Lua 5.1 signature is checked here.
+pub fn encode_lpb(wrapper: &LpbWrapper, chunk: &[u8]) -> Result<Vec<u8>> {
+    if !chunk.starts_with(LUA_51_SIGNATURE) {
+        return Err(FormatError::new(
+            ErrorKind::InvalidLuaChunk,
+            0,
+            "chunk does not begin with the Lua 5.1 signature",
+        ));
+    }
+    let size = match wrapper {
+        LpbWrapper::Rle { .. } => rle_size(chunk.len())?,
+        LpbWrapper::Rlu { .. } => 0,
+    };
+    Ok(write_lpb(wrapper, chunk, size))
+}
+
+fn write_lpb(wrapper: &LpbWrapper, chunk: &[u8], size: u32) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    match wrapper {
+        LpbWrapper::Rle { tag, byte12 } => {
+            bytes.extend_from_slice(XOR_MAGIC);
+            bytes.extend_from_slice(tag);
+            bytes.extend_from_slice(&size.to_le_bytes());
+            bytes.push(*byte12);
+            bytes.extend(chunk.iter().map(|byte| byte ^ XOR_KEY));
+        }
+        LpbWrapper::Rlu { tag } => {
+            bytes.extend_from_slice(RAW_MAGIC);
+            bytes.extend_from_slice(tag);
+            bytes.extend_from_slice(chunk);
+        }
+    }
+    bytes
+}
+
+/// Rebuild an extracted model paired with its source, retaining a noncanonical size word.
+pub fn rebuild_lpb(data: &[u8], file: &LpbFile) -> Result<Vec<u8>> {
+    if extract(data)? != *file {
+        return Err(FormatError::new(
+            ErrorKind::InvalidAttributeValue,
+            0,
+            "LPB model does not match its source",
+        ));
+    }
+    Ok(write_lpb(
+        &file.wrapper()?,
+        &file.decoded,
+        file.advisory_size.unwrap_or(0),
+    ))
+}
+
+fn rle_size(length: usize) -> Result<u32> {
+    u32::try_from(length).map_err(|_| {
+        FormatError::new(
+            ErrorKind::DeclaredSizeOutOfRange,
+            8,
+            "RLE chunk length exceeds the u32 size word",
+        )
+    })
 }
 
 /// Extract a Lua 5.1 chunk while retaining every uninterpreted header byte.
@@ -128,6 +224,11 @@ mod tests {
         assert_eq!(file.variant, LpbVariant::Raw);
         assert_eq!(file.unknown_header[0].bytes, b"ABCD");
         assert_eq!(file.decoded, b"\x1bLuaQbody");
+        assert_eq!(rebuild_lpb(data, &file).unwrap(), data);
+        assert_eq!(
+            encode_lpb(&file.wrapper().unwrap(), &file.decoded).unwrap(),
+            data
+        );
     }
 
     #[test]
@@ -141,6 +242,49 @@ mod tests {
         assert_eq!(file.unknown_header[0].bytes, b"ABCD");
         assert_eq!(file.unknown_header[1].bytes, b"Z");
         assert_eq!(file.decoded, chunk);
+        assert_eq!(rebuild_lpb(&data, &file).unwrap(), data);
+        let encoded = encode_lpb(&file.wrapper().unwrap(), chunk).unwrap();
+        let mut expected = b"rle\x0cABCD\x09\x00\x00\x00Z".to_vec();
+        expected.extend_from_slice(b"h?\x06\x12\x22\x11\x1c\x17\x0a");
+        assert_eq!(encoded, expected);
+        assert_eq!(
+            rebuild_lpb(&encoded, &extract(&encoded).unwrap()).unwrap(),
+            encoded
+        );
+    }
+
+    #[test]
+    fn refuses_invalid_chunks_and_inconsistent_models() {
+        for wrapper in [
+            LpbWrapper::Rle {
+                tag: *b"ABCD",
+                byte12: 0xff,
+            },
+            LpbWrapper::Rlu { tag: *b"ABCD" },
+        ] {
+            for chunk in [b"".as_slice(), b"\x1bLua", b"\x1bLuaRbody"] {
+                let error = encode_lpb(&wrapper, chunk).unwrap_err();
+                assert_eq!(error.kind(), ErrorKind::InvalidLuaChunk);
+                assert_eq!(error.offset(), 0);
+            }
+        }
+        let data = b"rlu\x0bABCD\x1bLuaQbody";
+        let mut file = extract(data).unwrap();
+        file.decoded.push(0);
+        assert_eq!(
+            rebuild_lpb(data, &file).unwrap_err().kind(),
+            ErrorKind::InvalidAttributeValue
+        );
+        file.unknown_header.clear();
+        assert_eq!(file.wrapper().unwrap_err().offset(), 4);
+    }
+
+    #[test]
+    #[cfg(target_pointer_width = "64")]
+    fn refuses_rle_size_overflow() {
+        let error = rle_size(u32::MAX as usize + 1).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::DeclaredSizeOutOfRange);
+        assert_eq!(error.offset(), 8);
     }
 
     #[test]

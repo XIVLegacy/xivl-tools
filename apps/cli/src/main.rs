@@ -19,6 +19,7 @@ mod batch_extract;
 mod command_inspect;
 mod edit_staticactor;
 mod encode_gtex;
+mod pack_lpb;
 mod resource_export;
 mod scan;
 mod sscf_census;
@@ -43,6 +44,7 @@ usage:
   xivl decode-fixed (<file> | --hex <bytes>) [--message | --offset <decimal>] [--fixed-phrase-csv <file> | --initial-registry <client-root>] [--locale ja|en|de|fr] [--noun-inputs <config>:<count>:<attributive-key>:<retained-word>]
   xivl decode-fixed-batch <messages.jsonl | -> [--initial-registry <client-root> --locale ja|en|de|fr]
   xivl extract-lpb <file> --output <file>
+  xivl pack-lpb <chunk.luac> --output <new.lpb> [--like <existing.lpb>] [--wrapper rle|rlu] [--tag <hex u16>]
   xivl extract <game-directory> --output <directory>
   xivl import-sheets <game-directory> --csv <extract-output-directory> --output <new-directory> [--blocks <plan.json>]
   xivl catalog <game-or-resource-directory> --output <directory> [--format json|jsonl]
@@ -139,6 +141,14 @@ stream headers as JSON. It reports no file bytes and writes no files.
 lua-path applies the reversible ASCII resource-path transform. extract-lpb
 removes an evidenced raw or XOR-0x73 LPB wrapper and writes the compiled Lua
 5.1 chunk without interpreting it. The output path must not already exist.
+
+pack-lpb validates a complete Lua 5.1 chunk and creates a new LPB file.
+--like copies the wrapper, tag and byte 12 and excludes --wrapper and --tag.
+Otherwise --wrapper defaults to rle with byte 12 FF and --tag is required
+as a hex u16. Output is re-read and rebuilt exactly before a canonical JSON
+report of wrapper, tag, lengths, SHA-256 and Lua prototype/instruction counts.
+Use lua-path to transform a resource name; pack-lpb uses the supplied output path.
+Client acceptance of a repacked script is not established by these checks.
 
   --as sedb | ssd | scrambled-xml | sqwt | lpb | lpb-bytecode | staticactor-san | region | fdt | gtex | pwib
      | skeleton | material | shader | animation | wrb-model | map-layout | enable-file | row-offsets
@@ -265,6 +275,7 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         Some("allocation-inventory") => allocation_inventory::run(&arguments[1..]),
         Some("encode-gtex") => encode_gtex::run(&arguments[1..]),
         Some("edit-staticactor") => edit_staticactor::run(&arguments[1..]),
+        Some("pack-lpb") => pack_lpb::run(&arguments[1..]),
         Some(command @ ("validate-zone-project" | "build-zone-project")) => {
             let report = zone_project::run(&arguments[1..], command == "build-zone-project")
                 .map_err(|failure| Failure {

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "lpb-xor-round-trip",
+  "formatId": "lpb",
+  "operation": "validate",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/lpb/xor.bin"
+  },
+  "arguments": ["--as", "lpb"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Exact XOR-wrapper rebuild retains an odd size word; canonical encoding is not applicable."
+}

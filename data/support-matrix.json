@@ -235,13 +235,13 @@
       "category": "script",
       "phase": 1,
       "read": "partial",
-      "write": "none",
+      "write": "partial",
       "export": "partial",
       "exportViews": [
         "json",
         "binary"
       ],
-      "notes": "Reads and extracts the raw and XOR-0x73 wrappers while preserving unknown header bytes. An explicit lpb-bytecode view structurally inspects an evidenced Lua 5.1 payload without changing wrapper boundaries. Unknown wrapper fields, the advisory size, unsupported wrapper variants, and LPB writing remain unresolved."
+      "notes": "Reads and extracts the raw and XOR-0x73 wrappers while preserving unknown header bytes. An explicit lpb-bytecode view structurally inspects an evidenced Lua 5.1 payload without changing wrapper boundaries. Exact rebuilds preserve every accepted wrapper, and pack-lpb wraps validated Lua 5.1 chunks with an explicit tag or template; tag and byte 12 meanings, unsupported wrapper variants, and client acceptance remain unresolved."
     },
     {
       "id": "lua-path",
