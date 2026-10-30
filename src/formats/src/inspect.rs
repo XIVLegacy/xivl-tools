@@ -412,6 +412,18 @@ pub fn validate_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resu
                 }),
             });
         }
+        _ if format == "staticactor-san" => {
+            let san = staticactor::parse(data)?;
+            let header = crate::staticactor_write::decoded_unknown_header(data, &san)?;
+            let entries = crate::staticactor_write::decoded_entries(data, &san)?;
+            let encoded = crate::staticactor_write::encode_staticactor(header, &entries)?;
+            checks.push(json!({
+                "name": "round-trip",
+                "status": if encoded == data { "pass" } else { "fail" },
+                "encodedLength": encoded.len() as u64,
+                "encodedSha256": sha256_hex(&encoded),
+            }));
+        }
         _ if format == "gtex" => {
             let gtex_pwib::TaggedResource::Gtex(gtex) =
                 gtex_pwib::parse(data, TaggedResourceKind::Gtex)?

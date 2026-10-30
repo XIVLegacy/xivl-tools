@@ -195,12 +195,12 @@
       "category": "world",
       "phase": 1,
       "read": "partial",
-      "write": "none",
+      "write": "partial",
       "export": "planned",
       "exportViews": [
         "json"
       ],
-      "notes": "Reads the retail-evidenced 13-byte header and XOR-0x73 variable-record framing, preserving the five unknown header bytes and reporting both record members without semantic names. The one retail 1.23b file has 2812 complete records and no trailing bytes. Public conformance covers the positive shape, header truncation, count bombs, missing and unterminated records, and trailing partial or complete records. Unknown header meaning, record-member meanings, string character rules, ordering and uniqueness requirements, other SAN variants, writing, and lossless export remain unresolved. Evidence: docs/formats/staticactor-san.md."
+      "notes": "Reads the retail-evidenced 13-byte header and XOR-0x73 variable-record framing, preserving the five unknown header bytes and reporting both record members without semantic names. The one retail 1.23b file has 2812 complete records and no trailing bytes. Public conformance covers the positive shape, header truncation, count bombs, missing and unterminated records, and trailing partial or complete records. Writes this framing byte-exactly and adds records to a new ascending table with edit-staticactor, preserving original records and unknown header bytes. Unknown header meaning, record-member meanings, string character rules, ordering and uniqueness requirements, other SAN variants, client acceptance, and lossless export remain unresolved. Evidence: docs/formats/staticactor-san.md."
     },
     {
       "id": "region",

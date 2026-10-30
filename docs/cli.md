@@ -49,6 +49,36 @@ effective names, numeric DAT keys and collisions, and records evidence blockers.
 It chooses no allocation. The [inventory contract](allocation-inventory.md)
 defines the fields, path case rule, refusal behavior and evidence limits.
 
+## Add static-actor records
+
+```powershell
+cargo run --locked -p xivl-cli -- edit-staticactor input.san --output new.san --add 400000=/Synthetic/Actor --add 400001=/Synthetic/Actor
+```
+
+`edit-staticactor <input.san> --output <new-file> --add <value>=<path>
+[--add ...]` adds decimal u32 values to a static-actor SAN table. Each value
+must be absent from the input and all other additions. Input values must be
+ascending (equal original values retain their order); a descending pair is
+refused. The command inserts records in ascending order and preserves every
+original record and the five unknown header bytes.
+
+Added paths must be ASCII, start with `/`, contain no NUL or control bytes,
+and be at most 255 bytes. The 255-byte bound is a tool rule, not a format fact.
+Existing strings are preserved without these restrictions. Reusing an input
+path creates an alias under a new value. These edits do not establish client
+acceptance or the meanings of the header and record members. See
+[Writing SAN](formats/staticactor-san.md#writing-san) for the encoding contract.
+
+The output must be new, including when it names the input. After writing, the
+command re-reads the file and checks its count, header, original records in
+order, additions, and exact re-encoding. A write or verification failure removes
+the newly created output. The canonical JSON report contains `operation`,
+`inputRecordCount`, `inputSha256`, `outputRecordCount`, `outputLength`,
+`outputSha256`, and `adds`. Each add records `value`, its final zero-based
+`insertionIndex`, `pathLength`, and `pathExisting`, which is true only when that
+path already occurred in the input. Add reports follow argument order and never
+contain path strings.
+
 ## Encode a GTEX texture
 
 ```powershell

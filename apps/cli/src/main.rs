@@ -17,6 +17,7 @@ use xivl_formats::{inspect_named_bytes_as, to_canonical_json, validate_named_byt
 mod allocation_inventory;
 mod batch_extract;
 mod command_inspect;
+mod edit_staticactor;
 mod encode_gtex;
 mod resource_export;
 mod scan;
@@ -34,6 +35,7 @@ usage:
   xivl build-zone-project <project.json> --client-root <root> --output <new-directory>
   xivl allocation-inventory --client-root <root> [--output <new-file>]
   xivl encode-gtex <input.png|input.dds> --output <new-file> [--like <existing.gtex>] [--format a8r8g8b8|a4r4g4b4|dxt1|dxt5] [--mips <n>]
+  xivl edit-staticactor <input.san> --output <new-file> --add <value>=<path> [--add ...]
   xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--slot-context <command_slot_context.json>] [--monster-attack-profiles <json>] [--format yaml|json]
   xivl inspect-command-loadout --slot-context <command_slot_context.json> [--trace <index>] [--format yaml|json]
   xivl materialize-command-loadout --slot-context <command_slot_context.json> --trace <index> [--record-range <first>:<last>] [--output <new-file>] [--format yaml|json]
@@ -95,6 +97,12 @@ writing or repairing it. Source replay is explicit and optional.
 allocation-inventory reports occupied catalog keys, effective names, numeric
 DAT paths, collisions and evidence blockers as JSON. It chooses no allocation.
 An optional output file must be new and outside the client root.
+
+edit-staticactor adds decimal u32 values to an ascending SAN table in a new
+file, preserving its unknown header and original records. Added paths must
+be ASCII, start with /, contain no NUL or control bytes, and fit the tool
+limit of 255 bytes. Values must be absent from the input and other adds.
+The verified JSON report omits paths and marks aliases with pathExisting.
 
 encode-gtex detects PNG or DDS by content and creates a new GTEX file.
 PNG input must be 8-bit RGBA. --format is required without --like; --mips
@@ -256,6 +264,7 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         Some("validate") => read(&arguments[1..], Operation::Validate),
         Some("allocation-inventory") => allocation_inventory::run(&arguments[1..]),
         Some("encode-gtex") => encode_gtex::run(&arguments[1..]),
+        Some("edit-staticactor") => edit_staticactor::run(&arguments[1..]),
         Some(command @ ("validate-zone-project" | "build-zone-project")) => {
             let report = zone_project::run(&arguments[1..], command == "build-zone-project")
                 .map_err(|failure| Failure {

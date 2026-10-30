@@ -62,5 +62,24 @@ establish:
   ASCII and a leading slash are requirements rather than properties of this
   one retail input;
 - whether another SAN header or record variant exists;
-- writing or lossless JSON export. Inspection is a redacted structural report,
-  so export remains `planned` and write remains `none`.
+- lossless JSON export. Inspection is a redacted structural report, so export
+  remains `planned`.
+
+## Writing SAN
+
+`staticactor_write::encode_staticactor` writes plain `sane`, the supplied five
+unknown header bytes, a big-endian record count, and each supplied big-endian
+u32 value followed by its byte string and a zero terminator. It XORs every byte
+after the magic with 0x73. It refuses more than the reader's 100000-record
+budget and strings containing NUL. It preserves supplied order and accepts
+empty, non-ASCII, and non-path strings and repeated values.
+
+`decoded_entries` retrieves the decoded strings and values from a parsed table;
+`decoded_unknown_header` retrieves the five decoded header bytes. Together with
+the encoder they reproduce the complete input exactly. `validate` reports this
+as a `round-trip` check, including the encoded length and SHA-256.
+
+The [edit-staticactor command](../cli.md#add-static-actor-records) inserts records
+into a new copy of an ascending table. Its path restrictions are tool rules.
+This partial write support does not establish the header's meaning, whether
+values must ascend, or client acceptance of an edited table.

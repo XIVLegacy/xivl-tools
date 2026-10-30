@@ -1,0 +1,21 @@
+{
+  "checks": [
+    {
+      "name": "parse",
+      "status": "pass"
+    },
+    {
+      "encodedLength": 51,
+      "encodedSha256": "b48f6093ed97c55316052a35867b25a59cfe586640ef19b68b357680e5e7dd35",
+      "name": "round-trip",
+      "status": "pass"
+    }
+  ],
+  "format": "staticactor-san",
+  "input": {
+    "length": 51
+  },
+  "operation": "validate",
+  "schemaVersion": 1,
+  "sha256": "b48f6093ed97c55316052a35867b25a59cfe586640ef19b68b357680e5e7dd35"
+}
