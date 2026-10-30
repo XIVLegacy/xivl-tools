@@ -1,0 +1,768 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Additive offline zone package manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profile",
+    "toolVersion",
+    "status",
+    "clientVerification",
+    "complete",
+    "inputs",
+    "registration",
+    "allocations",
+    "outputs",
+    "dependencies",
+    "blockers"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "type": "integer"
+    },
+    "profile": {
+      "const": "additive-floor-v1"
+    },
+    "toolVersion": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "offline-validated",
+        "offline-built"
+      ]
+    },
+    "clientVerification": {
+      "const": "unverified"
+    },
+    "complete": {
+      "const": false
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package",
+        "project",
+        "catalog",
+        "zoneProject",
+        "directResources"
+      ],
+      "properties": {
+        "package": {
+          "$ref": "#/$defs/file"
+        },
+        "project": {
+          "$ref": "#/$defs/file"
+        },
+        "catalog": {
+          "$ref": "#/$defs/file"
+        },
+        "zoneProject": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "layout",
+            "collisionTemplate",
+            "renderObj",
+            "collisionJson"
+          ],
+          "properties": {
+            "layout": {
+              "$ref": "#/$defs/file"
+            },
+            "collisionTemplate": {
+              "$ref": "#/$defs/file"
+            },
+            "renderObj": {
+              "$ref": "#/$defs/file"
+            },
+            "collisionJson": {
+              "$ref": "#/$defs/file"
+            }
+          }
+        },
+        "directResources": {
+          "items": {
+            "$ref": "#/$defs/direct"
+          },
+          "type": "array"
+        }
+      }
+    },
+    "registration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rootKey",
+        "childKey",
+        "childType",
+        "templateRootKey",
+        "templateChildIndex",
+        "rootNameByteLength",
+        "childNameByteLength",
+        "rootCountBefore",
+        "rootCountAfter",
+        "sizeWordBefore",
+        "sizeWordAfter",
+        "rootRowOffset",
+        "childRowOffset",
+        "changedHeaderSpan"
+      ],
+      "properties": {
+        "rootKey": {
+          "$ref": "#/$defs/key"
+        },
+        "childKey": {
+          "$ref": "#/$defs/key"
+        },
+        "childType": {
+          "$ref": "#/$defs/word"
+        },
+        "templateRootKey": {
+          "$ref": "#/$defs/key"
+        },
+        "templateChildIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rootNameByteLength": {
+          "maximum": 15,
+          "type": "integer",
+          "minimum": 1
+        },
+        "childNameByteLength": {
+          "maximum": 15,
+          "type": "integer",
+          "minimum": 1
+        },
+        "rootCountBefore": {
+          "$ref": "#/$defs/word"
+        },
+        "rootCountAfter": {
+          "$ref": "#/$defs/word"
+        },
+        "sizeWordBefore": {
+          "$ref": "#/$defs/word"
+        },
+        "sizeWordAfter": {
+          "$ref": "#/$defs/word"
+        },
+        "rootRowOffset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "childRowOffset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "changedHeaderSpan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "offset",
+            "length"
+          ],
+          "properties": {
+            "offset": {
+              "const": 32
+            },
+            "length": {
+              "const": 8
+            }
+          }
+        }
+      }
+    },
+    "allocations": {
+      "prefixItems": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "key",
+            "numericPath",
+            "occupancyChecks"
+          ],
+          "properties": {
+            "role": {
+              "const": "layout"
+            },
+            "key": {
+              "$ref": "#/$defs/key"
+            },
+            "numericPath": {
+              "type": "string",
+              "pattern": "^data/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}\\.DAT$"
+            },
+            "occupancyChecks": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "nonzero",
+                "pairwiseDistinct",
+                "scannedNumericDat",
+                "uppercaseNumericPath",
+                "catalogChildResource",
+                "catalogRootWord08",
+                "catalogRootWord20",
+                "catalogDerivedAuxiliary"
+              ],
+              "properties": {
+                "nonzero": {
+                  "const": true
+                },
+                "pairwiseDistinct": {
+                  "const": true
+                },
+                "scannedNumericDat": {
+                  "const": "absent"
+                },
+                "uppercaseNumericPath": {
+                  "const": "absent"
+                },
+                "catalogChildResource": {
+                  "const": "absent"
+                },
+                "catalogRootWord08": {
+                  "const": "absent"
+                },
+                "catalogRootWord20": {
+                  "const": "absent"
+                },
+                "catalogDerivedAuxiliary": {
+                  "const": "absent"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "key",
+            "numericPath",
+            "occupancyChecks"
+          ],
+          "properties": {
+            "role": {
+              "const": "model"
+            },
+            "key": {
+              "$ref": "#/$defs/key"
+            },
+            "numericPath": {
+              "type": "string",
+              "pattern": "^data/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}\\.DAT$"
+            },
+            "occupancyChecks": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "nonzero",
+                "pairwiseDistinct",
+                "scannedNumericDat",
+                "uppercaseNumericPath",
+                "catalogChildResource",
+                "catalogRootWord08",
+                "catalogRootWord20",
+                "catalogDerivedAuxiliary"
+              ],
+              "properties": {
+                "nonzero": {
+                  "const": true
+                },
+                "pairwiseDistinct": {
+                  "const": true
+                },
+                "scannedNumericDat": {
+                  "const": "absent"
+                },
+                "uppercaseNumericPath": {
+                  "const": "absent"
+                },
+                "catalogChildResource": {
+                  "const": "absent"
+                },
+                "catalogRootWord08": {
+                  "const": "absent"
+                },
+                "catalogRootWord20": {
+                  "const": "absent"
+                },
+                "catalogDerivedAuxiliary": {
+                  "const": "absent"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "key",
+            "numericPath",
+            "occupancyChecks"
+          ],
+          "properties": {
+            "role": {
+              "const": "collision"
+            },
+            "key": {
+              "$ref": "#/$defs/key"
+            },
+            "numericPath": {
+              "type": "string",
+              "pattern": "^data/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}\\.DAT$"
+            },
+            "occupancyChecks": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "nonzero",
+                "pairwiseDistinct",
+                "scannedNumericDat",
+                "uppercaseNumericPath",
+                "catalogChildResource",
+                "catalogRootWord08",
+                "catalogRootWord20",
+                "catalogDerivedAuxiliary"
+              ],
+              "properties": {
+                "nonzero": {
+                  "const": true
+                },
+                "pairwiseDistinct": {
+                  "const": true
+                },
+                "scannedNumericDat": {
+                  "const": "absent"
+                },
+                "uppercaseNumericPath": {
+                  "const": "absent"
+                },
+                "catalogChildResource": {
+                  "const": "absent"
+                },
+                "catalogRootWord08": {
+                  "const": "absent"
+                },
+                "catalogRootWord20": {
+                  "const": "absent"
+                },
+                "catalogDerivedAuxiliary": {
+                  "const": "absent"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "key",
+            "numericPath",
+            "occupancyChecks"
+          ],
+          "properties": {
+            "role": {
+              "const": "auxiliary"
+            },
+            "key": {
+              "$ref": "#/$defs/key"
+            },
+            "numericPath": {
+              "type": "string",
+              "pattern": "^data/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}\\.DAT$"
+            },
+            "occupancyChecks": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "nonzero",
+                "pairwiseDistinct",
+                "scannedNumericDat",
+                "uppercaseNumericPath",
+                "catalogChildResource",
+                "catalogRootWord08",
+                "catalogRootWord20",
+                "catalogDerivedAuxiliary"
+              ],
+              "properties": {
+                "nonzero": {
+                  "const": true
+                },
+                "pairwiseDistinct": {
+                  "const": true
+                },
+                "scannedNumericDat": {
+                  "const": "absent"
+                },
+                "uppercaseNumericPath": {
+                  "const": "absent"
+                },
+                "catalogChildResource": {
+                  "const": "absent"
+                },
+                "catalogRootWord08": {
+                  "const": "absent"
+                },
+                "catalogRootWord20": {
+                  "const": "absent"
+                },
+                "catalogDerivedAuxiliary": {
+                  "const": "absent"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "minItems": 4,
+      "items": false,
+      "type": "array",
+      "maxItems": 4
+    },
+    "outputs": {
+      "prefixItems": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "path",
+            "size",
+            "sha256",
+            "new"
+          ],
+          "properties": {
+            "role": {
+              "const": "catalog"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^data/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}\\.DAT$"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "new": {
+              "const": true
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "path",
+            "size",
+            "sha256",
+            "new"
+          ],
+          "properties": {
+            "role": {
+              "const": "layout"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^data/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}\\.DAT$"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "new": {
+              "const": true
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "path",
+            "size",
+            "sha256",
+            "new"
+          ],
+          "properties": {
+            "role": {
+              "const": "model"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^data/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}\\.DAT$"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "new": {
+              "const": true
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "path",
+            "size",
+            "sha256",
+            "new"
+          ],
+          "properties": {
+            "role": {
+              "const": "collision"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^data/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}/[0-9A-F]{2}\\.DAT$"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "new": {
+              "const": true
+            }
+          }
+        }
+      ],
+      "minItems": 4,
+      "items": false,
+      "type": "array",
+      "maxItems": 4
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "directResources",
+        "sceneDependencies",
+        "transitiveDependencies"
+      ],
+      "properties": {
+        "directResources": {
+          "items": {
+            "$ref": "#/$defs/direct"
+          },
+          "type": "array"
+        },
+        "sceneDependencies": {
+          "const": "unresolved"
+        },
+        "transitiveDependencies": {
+          "const": "unresolved"
+        }
+      }
+    },
+    "blockers": {
+      "prefixItems": [
+        {
+          "const": {
+            "id": "numeric-mode-assumed",
+            "statement": "Numeric formatter mode is assumed. Mode-zero path-table mappings are unsupported; numeric paths cannot prove free identities outside numeric mode.",
+            "source": "xivl-decomp:docs/resource/resource-path-producer.md \"Catalog mode\" at cb3639a9c03ad79724b52b710337a166d52de8ea"
+          }
+        },
+        {
+          "const": {
+            "id": "auxiliary-payload-acceptance",
+            "statement": "Authored auxiliary payload acceptance and whether absence is acceptable remain unresolved. File existence does not establish either.",
+            "source": "xivl-decomp:docs/resource/region-auxiliary-resource.md \"Selection readiness and remaining evidence\" at cb3639a9c03ad79724b52b710337a166d52de8ea"
+          }
+        },
+        {
+          "const": {
+            "id": "zone-script-join",
+            "statement": "The numeric zone, ZoneMaster class and script load join remains unresolved. This report does not inventory or allocate those identities.",
+            "source": "xivl-client-structs:docs/map-layout-selector.md \"Zone-master and script dependencies\" at fff480ab502bfae6b3e555d62679b635479821de"
+          }
+        },
+        {
+          "const": {
+            "id": "integration-zone-limit",
+            "statement": "The zone identity range 0..511 is an integration limit, not a demonstrated native bound or evidence that an identity is free.",
+            "source": "xivl-client-structs:docs/map-layout-selector.md \"Minimal candidate and allocation constraints\" at fff480ab502bfae6b3e555d62679b635479821de"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "key",
+            "statement"
+          ],
+          "properties": {
+            "id": {
+              "const": "auxiliary-payload-absent"
+            },
+            "key": {
+              "$ref": "#/$defs/key"
+            },
+            "statement": {
+              "const": "The reserved auxiliary key has no output payload."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "statement"
+          ],
+          "properties": {
+            "id": {
+              "const": "scene-transitive-dependencies"
+            },
+            "statement": {
+              "const": "Scene and transitive dependency coverage remains unresolved."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "statement"
+          ],
+          "properties": {
+            "id": {
+              "const": "client-acceptance"
+            },
+            "statement": {
+              "const": "Client acceptance remains unverified."
+            }
+          }
+        }
+      ],
+      "minItems": 7,
+      "items": false,
+      "type": "array",
+      "maxItems": 7
+    }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "size",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[\\x20-\\x7e]+$",
+          "allOf": [
+            {
+              "not": {
+                "pattern": "(^/|/$|//|[\\\\:\u003c\u003e\"|?*])"
+              }
+            },
+            {
+              "not": {
+                "pattern": "(^|/)\\.{1,2}(/|$)"
+              }
+            },
+            {
+              "not": {
+                "pattern": "[. ](/|$)"
+              }
+            },
+            {
+              "not": {
+                "pattern": "(^|/)([cC][oO][nN]|[pP][rR][nN]|[aA][uU][xX]|[nN][uU][lL]|[cC][oO][mM][1-9]|[lL][pP][tT][1-9])(\\.|/|$)"
+              }
+            }
+          ]
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 268435456
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "key": {
+      "type": "string",
+      "pattern": "^0x[0-9A-F]{8}$"
+    },
+    "word": {
+      "maximum": 4294967295,
+      "type": "integer",
+      "minimum": 0
+    },
+    "direct": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "row",
+        "id",
+        "tag",
+        "input",
+        "retained"
+      ],
+      "properties": {
+        "row": {
+          "$ref": "#/$defs/word"
+        },
+        "id": {
+          "$ref": "#/$defs/key"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^[ -~]{0,4}$"
+        },
+        "input": {
+          "$ref": "#/$defs/file"
+        },
+        "retained": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

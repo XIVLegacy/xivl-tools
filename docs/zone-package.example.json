@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "profile": "additive-floor-v1",
+  "project": {
+    "path": "floor/project.json",
+    "size": 1,
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "layoutKey": "0xF1000000",
+  "region": {
+    "like": "0x0000006F",
+    "likeChild": null,
+    "rootKey": "0x0000F000",
+    "rootName": "new-root",
+    "childKey": "0xF0000001",
+    "childName": "new-child",
+    "childType": null
+  }
+}

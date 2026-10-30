@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Additive offline zone package",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profile",
+    "project",
+    "layoutKey",
+    "region"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "type": "integer"
+    },
+    "profile": {
+      "const": "additive-floor-v1"
+    },
+    "project": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/file"
+        },
+        {
+          "properties": {
+            "size": {
+              "maximum": 1048576
+            }
+          }
+        }
+      ]
+    },
+    "layoutKey": {
+      "$ref": "#/$defs/key"
+    },
+    "region": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "like",
+        "likeChild",
+        "rootKey",
+        "rootName",
+        "childKey",
+        "childName",
+        "childType"
+      ],
+      "properties": {
+        "like": {
+          "$ref": "#/$defs/key"
+        },
+        "likeChild": {
+          "maximum": 4294967295,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "rootKey": {
+          "$ref": "#/$defs/key"
+        },
+        "rootName": {
+          "type": "string",
+          "pattern": "^[ -~]{1,15}$"
+        },
+        "childKey": {
+          "$ref": "#/$defs/key"
+        },
+        "childName": {
+          "type": "string",
+          "pattern": "^[ -~]{1,15}$"
+        },
+        "childType": {
+          "maximum": 4294967295,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "size",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[\\x20-\\x7e]+$",
+          "allOf": [
+            {
+              "not": {
+                "pattern": "(^/|/$|//|[\\\\:\u003c\u003e\"|?*])"
+              }
+            },
+            {
+              "not": {
+                "pattern": "(^|/)\\.{1,2}(/|$)"
+              }
+            },
+            {
+              "not": {
+                "pattern": "[. ](/|$)"
+              }
+            },
+            {
+              "not": {
+                "pattern": "(^|/)([cC][oO][nN]|[pP][rR][nN]|[aA][uU][xX]|[nN][uU][lL]|[cC][oO][mM][1-9]|[lL][pP][tT][1-9])(\\.|/|$)"
+              }
+            }
+          ]
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 268435456
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "key": {
+      "type": "string",
+      "pattern": "^0x[0-9A-F]{8}$"
+    },
+    "word": {
+      "maximum": 4294967295,
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

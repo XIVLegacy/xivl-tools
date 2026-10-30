@@ -47,7 +47,7 @@ pub fn run(arguments: &[String]) -> Result<(), Failure> {
     let root = fs::canonicalize(client_root)
         .map_err(|error| Failure::usage(format!("cannot resolve client root: {error}")))?;
     let output = output.map(|path| output_path(&root, &path)).transpose()?;
-    let report = inventory(&root)?;
+    let report = inventory(&root)?.report;
     let text = to_canonical_json(&report);
     if let Some(path) = output {
         let mut file = fs::OpenOptions::new()
@@ -91,7 +91,14 @@ fn output_path(root: &Path, path: &Path) -> Result<PathBuf, Failure> {
     Ok(parent.join(name))
 }
 
-fn inventory(root: &Path) -> Result<Value, Failure> {
+pub struct Inventory {
+    pub report: Value,
+    pub scanned_keys: HashSet<u32>,
+    pub catalog_bytes: Vec<u8>,
+    pub catalog: region::RegionResourceData,
+}
+
+pub fn inventory(root: &Path) -> Result<Inventory, Failure> {
     let data_root = root.join("data");
     let kind = fs::symlink_metadata(&data_root)
         .map_err(|error| Failure::usage(format!("cannot inspect data directory: {error}")))?;
@@ -226,7 +233,7 @@ fn inventory(root: &Path) -> Result<Value, Failure> {
         .filter(|(_, rows)| rows.len() > 1)
         .collect();
     duplicate_names.sort_by(|left, right| left.0.cmp(&right.0));
-    Ok(json!({
+    let report = json!({
         "schemaVersion": 1,
         "catalog": {
             "key": "0x03C00000",
@@ -257,7 +264,13 @@ fn inventory(root: &Path) -> Result<Value, Failure> {
             "auxiliaryDerivedKeys": duplicate_keys(auxiliary),
         },
         "blockers": blockers(),
-    }))
+    });
+    Ok(Inventory {
+        report,
+        scanned_keys: occupied,
+        catalog_bytes: bytes,
+        catalog: table,
+    })
 }
 
 fn duplicate_keys(groups: HashMap<u32, Vec<usize>>) -> Vec<Value> {
@@ -290,12 +303,12 @@ fn hex(key: u32) -> String {
     format!("0x{key:08X}")
 }
 
-fn numeric_path(key: u32) -> String {
+pub fn numeric_path(key: u32) -> String {
     let [a, b, c, d] = key.to_be_bytes();
     format!("data/{a:02X}/{b:02X}/{c:02X}/{d:02X}.DAT")
 }
 
-fn numeric_path_exists(root: &Path, key: u32) -> Result<bool, Failure> {
+pub fn numeric_path_exists(root: &Path, key: u32) -> Result<bool, Failure> {
     root.join(numeric_path(key))
         .try_exists()
         .map_err(|error| Failure::usage(format!("cannot inspect numeric resource path: {error}")))

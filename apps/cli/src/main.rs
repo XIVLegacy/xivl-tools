@@ -26,6 +26,7 @@ mod scan;
 mod sscf_census;
 mod verify_extract;
 mod zone_export;
+mod zone_package;
 
 const USAGE: &str = "\
 xivl - Final Fantasy XIV 1.23b client file tools
@@ -35,6 +36,8 @@ usage:
   xivl validate <file> [--as <format>] [--columns <list>]
   xivl validate-zone-project <project.json> --client-root <root>
   xivl build-zone-project <project.json> --client-root <root> --output <new-directory>
+  xivl validate-zone-package <package.json> --client-root <root>
+  xivl build-zone-package <package.json> --client-root <root> --output <new-directory>
   xivl allocation-inventory --client-root <root> [--output <new-file>]
   xivl append-region <catalog.dat> --output <new-file> --like <root-key> [--like-child <index>] --root-key <key> --root-name <name> --child-key <key> --child-name <name> --child-resource <key> [--child-type <u32>]
   xivl encode-gtex <input.png|input.dds> --output <new-file> [--like <existing.gtex>] [--format a8r8g8b8|a4r4g4b4|dxt1|dxt5] [--mips <n>]
@@ -84,6 +87,13 @@ build-zone-project performs the same checks, then writes layout.dat, model.dat,
 collision.dat and build-report.json into a new directory outside the client
 input tree. Its offline-built report remains client-unverified. Existing output
 paths are refused; retry a failed build with a new destination.
+
+validate-zone-package checks an additive-floor-v1 package in memory and prints
+its manifest. build-zone-package checks the same allocations and writes the
+extended catalog, layout, model and collision at numeric paths, then publishes
+package-manifest.json last. The new output directory must be outside the client
+root. Packages remain incomplete and client-unverified; nothing is installed
+or launched. Retry a failed publication with a new destination.
 
 catalog inventories DAT resources without changing them. It records known,
 malformed, and unknown formats without guessing. extract-resource writes a
@@ -287,6 +297,9 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         Some("encode-gtex") => encode_gtex::run(&arguments[1..]),
         Some("edit-staticactor") => edit_staticactor::run(&arguments[1..]),
         Some("pack-lpb") => pack_lpb::run(&arguments[1..]),
+        Some(command @ ("validate-zone-package" | "build-zone-package")) => {
+            zone_package::run(&arguments[1..], command == "build-zone-package")
+        }
         Some(command @ ("validate-zone-project" | "build-zone-project")) => {
             let report = zone_project::run(&arguments[1..], command == "build-zone-project")
                 .map_err(|failure| Failure {

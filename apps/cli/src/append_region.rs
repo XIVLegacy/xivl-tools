@@ -209,7 +209,7 @@ fn append(options: Options<'_>) -> Result<Value, Failure> {
     verified
 }
 
-fn verify(
+pub fn verify(
     input: &[u8],
     output: &[u8],
     root_count: u32,

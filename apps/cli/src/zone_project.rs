@@ -32,7 +32,7 @@ pub const MAX_OBJ_BYTES: u64 = 64 * 1024 * 1024;
 pub const MAX_TOTAL_INPUT_BYTES: u64 = 512 * 1024 * 1024;
 
 // Serde's derived struct visitor accepts sequences as well as maps.
-struct ObjectOnly<T>(T);
+pub struct ObjectOnly<T>(pub T);
 
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for ObjectOnly<T> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -149,7 +149,7 @@ pub struct ProjectFailure {
 }
 
 impl ProjectFailure {
-    fn new(kind: ProjectFailureKind, role: &str, detail: impl Into<String>) -> Self {
+    pub fn new(kind: ProjectFailureKind, role: &str, detail: impl Into<String>) -> Self {
         Self {
             kind,
             role: role.into(),
@@ -157,7 +157,7 @@ impl ProjectFailure {
             detail: detail.into(),
         }
     }
-    fn format(role: &str, error: FormatError) -> Self {
+    pub fn format(role: &str, error: FormatError) -> Self {
         Self {
             kind: ProjectFailureKind::Format(error.kind()),
             role: role.into(),
@@ -287,6 +287,43 @@ fn write_project_with_writer(
     output: &Path,
     mut write: impl FnMut(&Path, &[u8]) -> Result<(), ProjectFailure>,
 ) -> Result<Value, ProjectFailure> {
+    let output = new_output_directory(client_root, output)?;
+    prepared.report["status"] = json!("offline-built");
+    for (name, bytes) in [
+        ("layout.dat", &prepared.layout),
+        ("model.dat", &prepared.model),
+        ("collision.dat", &prepared.collision),
+    ] {
+        write(&output.join(name), bytes)?;
+    }
+    let pending = output.join("build-report.json.pending");
+    write(&pending, to_canonical_json(&prepared.report).as_bytes())?;
+    let report = output.join("build-report.json");
+    match fs::symlink_metadata(&report) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => {
+            return Err(ProjectFailure::new(
+                ProjectFailureKind::Io,
+                "output",
+                error.to_string(),
+            ))
+        }
+        Ok(_) => {
+            return Err(ProjectFailure::new(
+                ProjectFailureKind::Usage,
+                "output",
+                "build-report.json already exists",
+            ))
+        }
+    }
+    fs::rename(pending, report).map_err(|error| {
+        ProjectFailure::new(ProjectFailureKind::Io, "output", error.to_string())
+    })?;
+    Ok(prepared.report)
+}
+
+/// Create an absent destination beneath an existing parent outside the client tree.
+pub fn new_output_directory(client_root: &Path, output: &Path) -> Result<PathBuf, ProjectFailure> {
     let io = |error: std::io::Error| {
         ProjectFailure::new(ProjectFailureKind::Io, "output", error.to_string())
     };
@@ -308,27 +345,10 @@ fn write_project_with_writer(
     }
     // create_dir refuses all existing entries, including empty directories and source aliases.
     fs::create_dir(&output).map_err(io)?;
-    prepared.report["status"] = json!("offline-built");
-    for (name, bytes) in [
-        ("layout.dat", &prepared.layout),
-        ("model.dat", &prepared.model),
-        ("collision.dat", &prepared.collision),
-    ] {
-        write(&output.join(name), bytes)?;
-    }
-    let pending = output.join("build-report.json.pending");
-    write(&pending, to_canonical_json(&prepared.report).as_bytes())?;
-    let report = output.join("build-report.json");
-    match fs::symlink_metadata(&report) {
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => return Err(io(error)),
-        Ok(_) => return Err(refuse("build-report.json already exists")),
-    }
-    fs::rename(pending, report).map_err(io)?;
-    Ok(prepared.report)
+    Ok(output)
 }
 
-fn write_new(path: &Path, bytes: &[u8]) -> Result<(), ProjectFailure> {
+pub fn write_new(path: &Path, bytes: &[u8]) -> Result<(), ProjectFailure> {
     let io = |error: std::io::Error| {
         ProjectFailure::new(
             ProjectFailureKind::Io,
@@ -347,7 +367,7 @@ fn write_new(path: &Path, bytes: &[u8]) -> Result<(), ProjectFailure> {
     file.sync_all().map_err(io)
 }
 
-fn prepare_loaded(loaded: LoadedZoneProject) -> Result<PreparedZoneProject, ProjectFailure> {
+pub fn prepare_loaded(loaded: LoadedZoneProject) -> Result<PreparedZoneProject, ProjectFailure> {
     let project = &loaded.project;
     let binding = &project.binding;
     let selected = |row| {
@@ -889,7 +909,7 @@ fn validate_project(project: &ZoneProject) -> Result<(), ProjectFailure> {
     Ok(())
 }
 
-fn validate_reference(
+pub fn validate_reference(
     reference: &FileReference,
     role: &str,
     limit: u64,
@@ -953,6 +973,15 @@ pub fn load_project(
     project_path: &Path,
     client_root: &Path,
 ) -> Result<LoadedZoneProject, ProjectFailure> {
+    load_project_with_bytes(project_path, client_root, None)
+}
+
+/// Use already identity-checked saved project bytes when supplied by an assembler.
+pub fn load_project_with_bytes(
+    project_path: &Path,
+    client_root: &Path,
+    bytes: Option<&[u8]>,
+) -> Result<LoadedZoneProject, ProjectFailure> {
     if client_root.as_os_str().is_empty() {
         return Err(ProjectFailure::new(
             ProjectFailureKind::InvalidPath,
@@ -970,8 +999,15 @@ pub fn load_project(
         .ok_or_else(|| invalid("project has no file name"))?;
     let project_path = checked_path(&project_root, Path::new(project_name), "project")?;
     let client_root = checked_root(client_root, "client root")?;
-    let project_bytes = read_bounded(&project_path, "project", MAX_PROJECT_BYTES)?;
-    let project = parse_project(&project_bytes)?;
+    let project_bytes;
+    let bytes = match bytes {
+        Some(bytes) => bytes,
+        None => {
+            project_bytes = read_bounded(&project_path, "project", MAX_PROJECT_BYTES)?;
+            &project_bytes
+        }
+    };
+    let project = parse_project(bytes)?;
     let mut total = 0;
     let layout = load_input(
         &client_root,
@@ -1147,7 +1183,7 @@ fn validate_binding(project: &ZoneProject, layout: &Layout) -> Result<(), Projec
     Ok(())
 }
 
-fn load_input(
+pub fn load_input(
     root: &Path,
     reference: &FileReference,
     role: &str,
@@ -1207,7 +1243,7 @@ fn is_reparse(metadata: &Metadata) -> bool {
     }
 }
 
-fn checked_root(root: &Path, role: &str) -> Result<PathBuf, ProjectFailure> {
+pub fn checked_root(root: &Path, role: &str) -> Result<PathBuf, ProjectFailure> {
     let root = root.components().collect::<PathBuf>();
     let metadata = fs::symlink_metadata(&root)
         .map_err(|error| ProjectFailure::new(ProjectFailureKind::Io, role, error.to_string()))?;
@@ -1233,7 +1269,7 @@ fn checked_root(root: &Path, role: &str) -> Result<PathBuf, ProjectFailure> {
         .map_err(|error| ProjectFailure::new(ProjectFailureKind::Io, role, error.to_string()))
 }
 
-fn checked_path(root: &Path, relative: &Path, role: &str) -> Result<PathBuf, ProjectFailure> {
+pub fn checked_path(root: &Path, relative: &Path, role: &str) -> Result<PathBuf, ProjectFailure> {
     let mut resolved = root.to_path_buf();
     for component in relative.components() {
         if !matches!(component, Component::Normal(_)) {
@@ -1267,7 +1303,7 @@ fn checked_path(root: &Path, relative: &Path, role: &str) -> Result<PathBuf, Pro
     Ok(resolved)
 }
 
-fn read_bounded(path: &Path, role: &str, limit: u64) -> Result<Vec<u8>, ProjectFailure> {
+pub fn read_bounded(path: &Path, role: &str, limit: u64) -> Result<Vec<u8>, ProjectFailure> {
     let io = |error: std::io::Error| {
         ProjectFailure::new(ProjectFailureKind::Io, role, error.to_string())
     };

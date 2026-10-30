@@ -29,6 +29,7 @@ are detailed references.
 | Export sheet definitions as CSV | [CLI: export sheets](cli.md#export-sheets) |
 | Export collision geometry | [Zone geometry](formats/zone-geometry.md) |
 | Validate and build an experimental offline floor prototype | [Zone projects](zone-project.md) |
+| Assemble an incomplete additive offline zone package | [Zone packages](zone-package.md) |
 | Inventory occupied registration namespaces without allocating IDs | [Allocation inventory](allocation-inventory.md) |
 | Read Lua paths, LPB wrappers, or bytecode structure | [Lua and LPB](formats/lua-lpb.md) |
 | Query command metadata and observed loadout writes | [CLI: advanced reports](cli.md#advanced-reports) |

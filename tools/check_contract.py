@@ -31,6 +31,7 @@ SCHEMAS = {
     PRIVATE_FIXTURE_MANIFEST: "schemas/private-fixture-manifest.schema.json",
     "data/lua51-retail-census.json": "schemas/lua51-retail-census.schema.json",
     "docs/allocation-inventory.example.json": "schemas/allocation-inventory.schema.json",
+    "docs/zone-package.example.json": "schemas/zone-package.schema.json",
     "docs/import-sheets-blocks.example.json": "schemas/import-sheets-blocks.schema.json",
 }
 

@@ -36,6 +36,19 @@ requires an explicit client root and saved local project. Offline output is
 a model/PHB/layout prototype. It does not register or install a zone, allocate
 IDs, or establish client acceptance.
 
+## Experimental zone packages
+
+`validate-zone-package <package.json> --client-root <root>` prepares a
+package in memory and prints its manifest. `build-zone-package <package.json>
+--client-root <root> --output <new-directory>` checks allocations and writes
+an extended catalog and the floor project's layout, model and collision at
+numeric paths, then publishes `package-manifest.json` last. Build success is
+silent on stdout. The output directory must be new and outside the client root.
+
+The [zone-package guide](zone-package.md) defines the strict package file,
+manifest, occupancy checks, outputs and blockers. Packages remain incomplete
+and client-unverified. Installation and launching are out of scope.
+
 ## Inventory occupied registration namespaces
 
 ```powershell
