@@ -87,6 +87,11 @@ These commands require `--client-root`:
 - `research/census_fdt.py` - census bitmap font records. Run with
   `python tools/research/census_fdt.py --client-root <install>`.
 - `research/census_phb.py` - census SEDB PHB collision resources.
+- `research/census_phb_tree.py` - census PHB branching trees, reference
+  coverage, quantized bounds and table relationships. Run with
+  `python tools/research/census_phb_tree.py --client-root <install>`.
+  The [PHB format finding](../docs/formats/phb-collision.md) describes the
+  measurements and the proposed branching writer profile.
 - `research/census_sheet_stack.py` - census scrambled XML documents, the SSD
   sheet stack, and rich strings in one resource-tree walk.
 - `research/census_sqwt.py` - census SQEX widget containers.
