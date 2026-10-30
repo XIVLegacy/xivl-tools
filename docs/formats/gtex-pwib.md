@@ -530,3 +530,64 @@ previews. The standalone retail checks above reproduce the documented
 preview conversion for their three pinned inputs. GPU compatibility
 remains unproved. The selected PWIB replay above covers its pinned retail
 vector only.
+
+## Pixel encoding
+
+The library's `texture_encode::encode_surface(format_index, width, height,
+rgba)` converts row-major RGBA8 samples into the exact surface layout for
+indices 4, 22, 24, and 26. A8R8G8B8 preserves every sample and writes blue,
+green, red, alpha bytes. A4R4G4B4 writes the little-endian channel layout
+described under Pixel conversion, quantizing each sample with
+`(v * 15 + 127) / 255`. Expanded 4-bit samples round-trip exactly.
+
+DXT encoding replicates the last logical row and column to pad each 4 by 4
+block. RGB endpoint fitting uses the block's principal color axis with
+eight power iterations, projects the colors to its extremes, and performs
+up to four least-squares refinement passes. DXT1 excludes transparent
+samples from fitting. Selectors minimize squared RGB error, preferring the
+lowest selector on ties. Endpoint quantization chooses the nearest expanded
+RGB565 sample, preferring the lower value on ties. Equal quantized endpoints
+use a solid endpoint selector, and solid blocks decode to their nearest
+RGB565 color. Equal-error block candidates use byte order to break ties.
+
+DXT1 uses three-color mode when any sample's alpha is below 128, assigning
+exactly those samples to transparent selector 3. All other samples decode
+with alpha 255. Otherwise it uses four-color mode with strictly descending
+endpoints. DXT5 always uses four-color RGB encoding. Its alpha encoder
+compares eight-alpha and six-alpha-plus-0/255 palettes by squared alpha
+error, using the sample extrema and, for the latter mode, also the extrema
+excluding 0 and 255. It retains the best candidate deterministically.
+These are lossy compression choices, without a client rendering claim.
+
+`texture_encode::mip_chain_rgba(width, height, rgba, levels)` returns the
+unchanged top level followed by the requested lower levels. Dimensions use
+`max(1, dimension / 2)` at each step. Each destination sample averages the
+corresponding 2 by 2 source samples, or 2 by 1, 1 by 2, or 1 by 1 when a
+dimension is clamped to one, with round-half-up per channel. Integer
+halving omits an unpaired final source row or column in an odd dimension
+greater than one. Filtering uses stored sample values and unassociated
+alpha independently. It is not gamma-correct.
+
+Both APIs reject zero dimensions and RGBA lengths unequal to
+`width * height * 4`. Encoding rejects unmapped indices. Mip generation
+rejects zero levels or more than `1 + floor(log2(max(width, height)))`.
+Invalid requests return `InvalidAttributeValue`; failed allocations return
+`ResourceLimitExceeded`. No new dependency is required.
+
+The synthetic quality test in `src/formats/src/texture_encode.rs` measures
+mean squared error per 8-bit channel after decoding with `decode_surface`.
+Its 32 by 20 images contain a linear RGB/alpha gradient, a diagonal
+two-color edge, and noise from an LCG seeded with `0x19a473d2`. DXT1 quality
+inputs use opaque alpha; its threshold behavior is checked separately.
+Rounded measurements and strict test bounds are:
+
+| Input | RGB MSE, both formats | DXT1 RGBA MSE | DXT5 RGBA MSE | RGB bound | RGBA bound |
+|---|---:|---:|---:|---:|---:|
+| Gradient | 44.524 | 33.393 | 33.627 | < 50 | < 40 |
+| Diagonal edge | 2.829 | 2.122 | 2.122 | < 4 | < 3 |
+| Fixed-seed noise | 2727.655 | 2045.741 | 2065.029 | < 2800 | < 2100 |
+
+Additional tests check literal channel layouts, all byte values for
+A8R8G8B8, all expanded A4R4G4B4 combinations, nearest-RGB565 solid blocks,
+both DXT5 alpha modes, DXT1 transparency, padded edges, mip dimensions and
+rounding, invalid requests, and byte-for-byte repeatability.

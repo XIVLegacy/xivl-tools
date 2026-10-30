@@ -46,6 +46,7 @@ pub mod sscf;
 pub mod ssd;
 pub mod ssd_edit;
 pub mod staticactor;
+pub mod texture_encode;
 pub mod texture_preview;
 pub mod xml;
 pub mod zone;

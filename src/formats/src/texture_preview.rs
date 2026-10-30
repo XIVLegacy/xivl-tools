@@ -257,7 +257,8 @@ fn checked_rgba_len(width: u32, height: u32) -> Result<usize> {
     })
 }
 
-fn decode_surface(
+/// Decode one encoded surface into a caller-provided RGBA8 buffer of width * height * 4 bytes.
+pub fn decode_surface(
     format_index: u8,
     width: u32,
     height: u32,
