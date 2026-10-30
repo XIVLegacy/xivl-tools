@@ -477,3 +477,123 @@ fn package_requires_strict_objects_members_keys_and_region_profile() {
     status(&help, 0);
     assert!(String::from_utf8_lossy(&help.stdout).contains("build-zone-package <package.json>"));
 }
+
+fn overlay_package(package: &Package, overlays: &[&Path], output: Option<&Path>) -> Output {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_xivl"));
+    command
+        .arg(if output.is_some() {
+            "build-zone-package"
+        } else {
+            "validate-zone-package"
+        })
+        .arg(package.root.join("package.json"))
+        .arg("--client-root")
+        .arg(package.root.join("client"));
+    for overlay in overlays {
+        command.arg("--overlay").arg(overlay);
+    }
+    if let Some(output) = output {
+        command.arg("--output").arg(output);
+    }
+    command.output().unwrap()
+}
+
+#[test]
+fn package_extends_effective_overlay_catalog_with_unchanged_floor_outputs() {
+    schema(
+        &serde_json::from_str(include_str!(
+            "../../../docs/zone-package-manifest.example.json"
+        ))
+        .unwrap(),
+        include_str!("../../../schemas/zone-package-manifest.schema.json"),
+    );
+    let package = Package::new();
+    let overlay = package.root.join("overlay");
+    let path = overlay.join(CATALOG);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let mut bytes = catalog();
+    bytes[0xE0] = b'x';
+    fs::write(&path, &bytes).unwrap();
+    let result = overlay_package(&package, &[&overlay], None);
+    status(&result, 0);
+    let validated: Value = serde_json::from_slice(&result.stdout).unwrap();
+    schema(
+        &validated,
+        include_str!("../../../schemas/zone-package-manifest.schema.json"),
+    );
+    assert_eq!(
+        validated["inputs"]["catalog"]["source"],
+        json!({"overlay": 0})
+    );
+    assert_eq!(validated["inputs"]["catalog"]["sha256"], sha256_hex(&bytes));
+    assert_eq!(
+        validated["inputs"]["overlays"],
+        json!([{"index": 0, "datFileCount": 1}])
+    );
+    let destination = package.root.join("built");
+    status(
+        &overlay_package(&package, &[&overlay], Some(&destination)),
+        0,
+    );
+    let built = fs::read(destination.join(CATALOG)).unwrap();
+    assert_eq!(&built[..0x20], &bytes[..0x20]);
+    assert_eq!(&built[0x28..bytes.len()], &bytes[0x28..]);
+    assert_ne!(&built[0x28..bytes.len()], &catalog()[0x28..]);
+    assert_eq!(built.len(), bytes.len() + 0x60);
+    let baseline = package.root.join("baseline");
+    status(&package.invoke(Some(&baseline)), 0);
+    for path in [
+        "data/F1/00/00/00.DAT",
+        "data/FF/FF/00/01.DAT",
+        "data/FF/FF/00/02.DAT",
+    ] {
+        assert_eq!(
+            fs::read(destination.join(path)).unwrap(),
+            fs::read(baseline.join(path)).unwrap()
+        );
+    }
+    let inside = overlay.join("output");
+    let result = overlay_package(&package, &[&overlay], Some(&inside));
+    status(&result, 1);
+    assert!(String::from_utf8_lossy(&result.stderr).contains("overlay 0"));
+    assert!(!inside.exists());
+}
+
+#[test]
+fn package_refuses_overlay_occupancy_and_every_pinned_client_input() {
+    let package = Package::new();
+    let overlay = package.root.join("overlay");
+    let occupied = overlay.join("data/F1/00/00/00.DAT");
+    fs::create_dir_all(occupied.parent().unwrap()).unwrap();
+    fs::write(&occupied, b"occupied").unwrap();
+    let destination = package.root.join("refused");
+    let result = overlay_package(&package, &[&overlay], Some(&destination));
+    status(&result, 2);
+    let error = String::from_utf8_lossy(&result.stderr);
+    assert!(
+        error.contains("layout") && error.contains("0xF1000000"),
+        "{error}"
+    );
+    assert!(!destination.exists());
+    fs::remove_file(occupied).unwrap();
+    let empty = package.root.join("empty-overlay");
+    fs::create_dir_all(empty.join("data")).unwrap();
+    for path in [
+        "layout.bin",
+        "model.bin",
+        "old-collision.bin",
+        "unplaced.bin",
+        "collision-template.bin",
+    ] {
+        fs::write(overlay.join(path), b"shadow").unwrap();
+        let result = overlay_package(&package, &[&empty, &overlay], Some(&destination));
+        status(&result, 2);
+        let error = String::from_utf8_lossy(&result.stderr);
+        assert!(
+            error.contains(path) && error.contains("overlay 1"),
+            "{error}"
+        );
+        assert!(!destination.exists());
+        fs::remove_file(overlay.join(path)).unwrap();
+    }
+}

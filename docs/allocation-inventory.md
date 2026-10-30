@@ -1,6 +1,6 @@
 # Allocation inventory
 
-`xivl allocation-inventory --client-root <root> [--output <new-file>]` reports
+`xivl allocation-inventory --client-root <root> [--overlay <dir>]... [--output <new-file>]` reports
 occupied registration namespaces from an explicitly supplied client tree.
 It chooses no allocation or candidate. The command writes JSON to stdout when
 `--output` is absent. With `--output`, it creates only that new file and leaves
@@ -75,6 +75,30 @@ trailing bytes, duplicate keys/names and auxiliary overflow are reported rather
 than rejected. A completed inventory, including one with collisions or blockers,
 exits 0. A failed output write removes the file this command created; it
 never reuses or overwrites an existing path.
+
+## Overlay roots
+
+Repeat `--overlay <dir>` in the order the loader applies DAT overlays. Each
+overlay root must contain a `data/` subtree mirroring client-relative paths.
+For each relative path, the first overlay containing that path wins; otherwise
+the client root supplies it. The catalog and `numericPathExists` use this rule.
+Numeric keys and unmapped DAT paths are the union of scans of the client and
+every overlay, including files hidden by a higher-priority overlay. Scans refuse
+symbolic links and reparse points.
+
+Roots must be directories, must not be symbolic links or reparse points, and
+must not equal, contain or be inside any other input root. Output must be
+outside all input roots. Keep input trees unchanged during the run.
+
+The required `overlays` array records each zero-based index, `datFileCount`
+and distinct `numericKeyCount`. `catalog.source` is `"client"` or
+`{"overlay": index}`. Neither records absolute paths. Without overlays these
+fields are `[]` and `"client"`; the other report fields retain their behavior.
+
+Zone packages also refuse an overlay containing any pinned client input read
+by project preparation: the layout, every declared direct resource, or the
+collision template. Those identities describe install bytes, so shadowing one
+would make the loaded scene differ. See [zone packages](zone-package.md#overlay-roots).
 
 ## Evidence and limits
 

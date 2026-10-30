@@ -6,6 +6,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde_json::{json, Value};
+use xivl_cli::zone_project::{self, ProjectFailure, ProjectFailureKind};
 use xivl_formats::digest::sha256_hex;
 use xivl_formats::region::{self, AuxiliaryKey, RegionMembership};
 use xivl_formats::to_canonical_json;
@@ -20,9 +21,17 @@ const STRUCTS_REVISION: &str = "fff480ab502bfae6b3e555d62679b635479821de";
 pub fn run(arguments: &[String]) -> Result<(), Failure> {
     let mut client_root = None;
     let mut output = None;
+    let mut overlays = Vec::new();
     let (options, remainder) = arguments.as_chunks::<2>();
     for pair in options {
+        if pair[1].is_empty() || pair[1].starts_with("--") {
+            return Err(Failure::usage("expected a directory or file after option"));
+        }
         let target = match pair[0].as_str() {
+            "--overlay" => {
+                overlays.push(PathBuf::from(&pair[1]));
+                continue;
+            }
             "--client-root" => &mut client_root,
             "--output" => &mut output,
             option => {
@@ -40,14 +49,21 @@ pub fn run(arguments: &[String]) -> Result<(), Failure> {
     }
     if !remainder.is_empty() || client_root.is_none() {
         return Err(Failure::usage(
-            "usage: xivl allocation-inventory --client-root <root> [--output <new-file>]",
+            "usage: xivl allocation-inventory --client-root <root> [--overlay <dir>]... [--output <new-file>]",
         ));
     }
     let client_root = client_root.ok_or_else(|| Failure::usage("--client-root is required"))?;
-    let root = fs::canonicalize(client_root)
-        .map_err(|error| Failure::usage(format!("cannot resolve client root: {error}")))?;
-    let output = output.map(|path| output_path(&root, &path)).transpose()?;
-    let report = inventory(&root)?.report;
+    let roots = DatRoots::new(&client_root, &overlays)
+        .map_err(|error| Failure::usage(error.to_string()))?;
+    let output = output
+        .map(|path| output_path(&roots.client, &path, "client root"))
+        .transpose()?;
+    if let Some(path) = &output {
+        for (index, overlay) in roots.overlays.iter().enumerate() {
+            output_path(overlay, path, &format!("overlay {index}"))?;
+        }
+    }
+    let report = inventory(&roots)?.report;
     let text = to_canonical_json(&report);
     if let Some(path) = output {
         let mut file = fs::OpenOptions::new()
@@ -68,7 +84,7 @@ pub fn run(arguments: &[String]) -> Result<(), Failure> {
     }
 }
 
-fn output_path(root: &Path, path: &Path) -> Result<PathBuf, Failure> {
+fn output_path(root: &Path, path: &Path, role: &str) -> Result<PathBuf, Failure> {
     match fs::symlink_metadata(path) {
         Ok(_) => return Err(Failure::usage("output path already exists")),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
@@ -85,7 +101,7 @@ fn output_path(root: &Path, path: &Path) -> Result<PathBuf, Failure> {
         if same_file::is_same_file(root, ancestor)
             .map_err(|error| Failure::usage(format!("cannot compare output parent: {error}")))?
         {
-            return Err(Failure::usage("output path is inside the client root"));
+            return Err(Failure::usage(format!("output path is inside the {role}")));
         }
     }
     Ok(parent.join(name))
@@ -98,30 +114,104 @@ pub struct Inventory {
     pub catalog: region::RegionResourceData,
 }
 
-pub fn inventory(root: &Path) -> Result<Inventory, Failure> {
-    let data_root = root.join("data");
-    let kind = fs::symlink_metadata(&data_root)
-        .map_err(|error| Failure::usage(format!("cannot inspect data directory: {error}")))?;
-    if kind.file_type().is_symlink() {
-        return Err(Failure::usage("data directory is a symbolic link"));
+pub struct DatRoots {
+    pub client: PathBuf,
+    pub overlays: Vec<PathBuf>,
+}
+
+impl DatRoots {
+    pub fn new(client: &Path, overlays: &[PathBuf]) -> Result<Self, ProjectFailure> {
+        let client = zone_project::checked_root(client, "client root")?;
+        let mut roots = Self {
+            client,
+            overlays: Vec::new(),
+        };
+        for (index, overlay) in overlays.iter().enumerate() {
+            let role = format!("overlay {index}");
+            let overlay = zone_project::checked_root(overlay, &role)?;
+            for other in std::iter::once(&roots.client).chain(&roots.overlays) {
+                if overlay.starts_with(other)
+                    || other.starts_with(&overlay)
+                    || same_file::is_same_file(&overlay, other).map_err(|error| {
+                        ProjectFailure::new(ProjectFailureKind::Io, &role, error.to_string())
+                    })?
+                {
+                    return Err(ProjectFailure::new(
+                        ProjectFailureKind::InvalidPath,
+                        &role,
+                        "roots must not overlap or duplicate",
+                    ));
+                }
+            }
+            roots.overlays.push(overlay);
+        }
+        for (root, role) in std::iter::once((&roots.client, "client root".to_string())).chain(
+            roots
+                .overlays
+                .iter()
+                .enumerate()
+                .map(|(index, root)| (root, format!("overlay {index}"))),
+        ) {
+            let data = zone_project::checked_path(root, Path::new("data"), &role)?;
+            zone_project::checked_root(&data, &role)?;
+        }
+        Ok(roots)
     }
-    let mut paths = Vec::new();
-    scan::collect_dat_paths(&data_root, &mut paths)?;
+
+    pub fn resolve(&self, relative: &str) -> Result<(PathBuf, Option<usize>), Failure> {
+        for (index, root) in self.overlays.iter().enumerate() {
+            let path = root.join(relative);
+            if path.try_exists().map_err(|error| {
+                Failure::usage(format!(
+                    "cannot inspect overlay {index} path {relative}: {error}"
+                ))
+            })? {
+                return Ok((path, Some(index)));
+            }
+        }
+        Ok((self.client.join(relative), None))
+    }
+}
+
+fn source(index: Option<usize>) -> Value {
+    index.map_or_else(|| json!("client"), |index| json!({"overlay": index}))
+}
+
+pub fn inventory(roots: &DatRoots) -> Result<Inventory, Failure> {
     let mut occupied = HashSet::new();
-    let mut unmapped = Vec::new();
-    for path in paths {
-        let relative = scan::relative_path(root, &path);
-        if let Some(key) = numeric_key(&relative) {
-            occupied.insert(key);
-        } else {
-            unmapped.push(relative);
+    let mut unmapped = HashSet::new();
+    let mut overlays = Vec::new();
+    for (index, root) in std::iter::once(&roots.client)
+        .chain(&roots.overlays)
+        .enumerate()
+    {
+        let mut paths = Vec::new();
+        scan::collect_dat_paths(&root.join("data"), &mut paths)?;
+        let mut root_keys = HashSet::new();
+        let dat_file_count = paths.len();
+        for path in paths {
+            let relative = scan::relative_path(root, &path);
+            if let Some(key) = numeric_key(&relative) {
+                root_keys.insert(key);
+                occupied.insert(key);
+            } else {
+                unmapped.insert(relative);
+            }
+        }
+        if index != 0 {
+            overlays.push(json!({"index": index - 1, "datFileCount": dat_file_count, "numericKeyCount": root_keys.len()}));
         }
     }
     let mut keys: Vec<_> = occupied.iter().copied().collect();
     keys.sort_unstable();
+    let mut unmapped: Vec<_> = unmapped.into_iter().collect();
     unmapped.sort();
 
-    let bytes = read_capped(&root.join(CATALOG_PATH).display().to_string())?;
+    let (catalog_path, catalog_overlay) = roots.resolve(CATALOG_PATH)?;
+    let catalog_root = catalog_overlay.map_or(&roots.client, |index| &roots.overlays[index]);
+    zone_project::checked_path(catalog_root, Path::new(CATALOG_PATH), "catalog")
+        .map_err(|error| Failure::usage(error.to_string()))?;
+    let bytes = read_capped(&catalog_path.display().to_string())?;
     let table = region::parse(&bytes)
         .map_err(|error| Failure::parse(format!("{CATALOG_PATH}: {error}")))?;
     let mut root_keys = HashMap::<u32, Vec<usize>>::new();
@@ -130,7 +220,7 @@ pub fn inventory(root: &Path) -> Result<Inventory, Failure> {
     let mut resources = HashMap::<u32, Vec<usize>>::new();
     let mut explicit_resources = HashMap::<u32, Vec<usize>>::new();
     let mut auxiliary = HashMap::<u32, Vec<usize>>::new();
-    let mut roots = Vec::new();
+    let mut catalog_roots = Vec::new();
     let mut index = 0;
     while index < table.rows.len() {
         let row = &table.rows[index];
@@ -180,10 +270,10 @@ pub fn inventory(root: &Path) -> Result<Inventory, Failure> {
                 "effectiveName": child_name,
                 "eligible": !matches!(child.word_04, 0 | 1),
                 "numericPath": numeric_path(child.dat_key),
-                "numericPathExists": numeric_path_exists(root, child.dat_key)?,
+                "numericPathExists": numeric_path_exists(roots, child.dat_key)?,
             }));
         }
-        roots.push(json!({
+        catalog_roots.push(json!({
             "rowIndex": index,
             "rootIndex": root_index,
             "key": hex(row.id),
@@ -199,7 +289,7 @@ pub fn inventory(root: &Path) -> Result<Inventory, Failure> {
                 "status": status,
                 "key": derived.map(hex),
                 "numericPath": derived.map(numeric_path),
-                "numericPathExists": derived.map(|key| numeric_path_exists(root, key)).transpose()?,
+                "numericPathExists": derived.map(|key| numeric_path_exists(roots, key)).transpose()?,
             },
             "children": children,
         }));
@@ -210,7 +300,7 @@ pub fn inventory(root: &Path) -> Result<Inventory, Failure> {
     auxiliary_keys.sort_unstable();
     let mut resource_collisions = Vec::new();
     for key in auxiliary_keys {
-        let file_exists = numeric_path_exists(root, key)?;
+        let file_exists = numeric_path_exists(roots, key)?;
         let child_rows = resources.get(&key).cloned().unwrap_or_default();
         let explicit_root_rows = explicit_resources.get(&key).cloned().unwrap_or_default();
         // A scanned key is occupied even if its spelling is not openable in uppercase.
@@ -235,7 +325,9 @@ pub fn inventory(root: &Path) -> Result<Inventory, Failure> {
     duplicate_names.sort_by(|left, right| left.0.cmp(&right.0));
     let report = json!({
         "schemaVersion": 1,
+        "overlays": overlays,
         "catalog": {
+            "source": source(catalog_overlay),
             "key": "0x03C00000",
             "path": CATALOG_PATH,
             "size": bytes.len(),
@@ -253,7 +345,7 @@ pub fn inventory(root: &Path) -> Result<Inventory, Failure> {
             "unmappedPathCount": unmapped.len(),
             "unmappedPaths": unmapped,
         },
-        "roots": roots,
+        "roots": catalog_roots,
         "collisions": {
             "duplicateRootKeys": duplicate_keys(root_keys),
             "duplicateChildKeys": duplicate_keys(child_keys),
@@ -308,8 +400,10 @@ pub fn numeric_path(key: u32) -> String {
     format!("data/{a:02X}/{b:02X}/{c:02X}/{d:02X}.DAT")
 }
 
-pub fn numeric_path_exists(root: &Path, key: u32) -> Result<bool, Failure> {
-    root.join(numeric_path(key))
+pub fn numeric_path_exists(roots: &DatRoots, key: u32) -> Result<bool, Failure> {
+    roots
+        .resolve(&numeric_path(key))?
+        .0
         .try_exists()
         .map_err(|error| Failure::usage(format!("cannot inspect numeric resource path: {error}")))
 }

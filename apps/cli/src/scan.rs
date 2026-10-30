@@ -134,9 +134,20 @@ pub(crate) fn collect_dat_paths(
             .file_type()
             .map_err(|error| Failure::usage(error.to_string()))?;
         let path = entry.path();
-        if kind.is_symlink() {
+        #[cfg(windows)]
+        let reparse = {
+            use std::os::windows::fs::MetadataExt;
+            fs::symlink_metadata(&path)
+                .map_err(|error| Failure::usage(error.to_string()))?
+                .file_attributes()
+                & 0x400
+                != 0
+        };
+        #[cfg(not(windows))]
+        let reparse = kind.is_symlink();
+        if reparse {
             return Err(Failure::usage(format!(
-                "catalog does not follow symbolic link '{}'",
+                "catalog does not follow symbolic link or reparse point '{}'",
                 path.display()
             )));
         }

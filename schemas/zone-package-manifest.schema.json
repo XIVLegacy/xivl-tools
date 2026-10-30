@@ -48,10 +48,32 @@
         "package",
         "project",
         "catalog",
+        "overlays",
         "zoneProject",
         "directResources"
       ],
       "properties": {
+        "overlays": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "index",
+              "datFileCount"
+            ],
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "datFileCount": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
         "package": {
           "$ref": "#/$defs/file"
         },
@@ -59,7 +81,47 @@
           "$ref": "#/$defs/file"
         },
         "catalog": {
-          "$ref": "#/$defs/file"
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "size",
+            "sha256",
+            "source"
+          ],
+          "properties": {
+            "path": {
+              "const": "data/03/C0/00/00.DAT"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "source": {
+              "oneOf": [
+                {
+                  "const": "client"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "overlay"
+                  ],
+                  "properties": {
+                    "overlay": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              ]
+            }
+          }
         },
         "zoneProject": {
           "type": "object",

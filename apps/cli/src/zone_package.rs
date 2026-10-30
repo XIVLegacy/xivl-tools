@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 use std::fs;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Deserializer};
 use serde_json::{json, Value};
@@ -117,7 +117,11 @@ fn parse_package(bytes: &[u8]) -> Result<Package, ProjectFailure> {
     Ok(package)
 }
 
-fn prepare(path: &Path, client_root: &Path) -> Result<Prepared, ProjectFailure> {
+fn prepare(
+    path: &Path,
+    roots: &allocation_inventory::DatRoots,
+) -> Result<Prepared, ProjectFailure> {
+    let client_root = &roots.client;
     let parent = path
         .parent()
         .filter(|path| !path.as_os_str().is_empty())
@@ -161,11 +165,25 @@ fn prepare(path: &Path, client_root: &Path) -> Result<Prepared, ProjectFailure> 
             })?;
     let model_key = loaded.project.binding.output_model_id.0.value();
     let collision_key = loaded.project.binding.output_collision_id.0.value();
+    for reference in std::iter::once(&loaded.layout.reference)
+        .chain(
+            loaded
+                .resources
+                .iter()
+                .map(|resource| &resource.declaration.file),
+        )
+        .chain(std::iter::once(&loaded.collision_template.reference))
+    {
+        if let (_, Some(index)) = roots.resolve(&reference.path).map_err(project_failure)? {
+            return Err(invalid(
+                "project input",
+                format!("{} is shadowed by overlay {index}", reference.path),
+            ));
+        }
+    }
     let floor = zone_project::prepare_loaded(loaded)?;
-    let client_root = zone_project::checked_root(client_root, "client root")?;
     // The inventory and append writer consume the same catalog bytes.
-    zone_project::checked_path(&client_root, Path::new(CATALOG), "catalog")?;
-    let inventory = allocation_inventory::inventory(&client_root).map_err(project_failure)?;
+    let inventory = allocation_inventory::inventory(roots).map_err(project_failure)?;
     let table = &inventory.catalog;
     let registration = package.region.0;
     let append = RegionAppend {
@@ -199,7 +217,7 @@ fn prepare(path: &Path, client_root: &Path) -> Result<Prepared, ProjectFailure> 
         if inventory.scanned_keys.contains(&key) {
             return Err(refuse("key is occupied by a scanned numeric DAT"));
         }
-        if allocation_inventory::numeric_path_exists(&client_root, key).map_err(project_failure)? {
+        if allocation_inventory::numeric_path_exists(roots, key).map_err(project_failure)? {
             return Err(refuse("uppercase numeric path already exists"));
         }
         for (index, row) in table.rows.iter().enumerate() {
@@ -333,11 +351,19 @@ fn prepare(path: &Path, client_root: &Path) -> Result<Prepared, ProjectFailure> 
         "package",
         zone_project::MAX_PROJECT_BYTES,
     )?;
+    let mut catalog_input = identity(CATALOG, &inventory.catalog_bytes);
+    catalog_input["source"] = inventory.report["catalog"]["source"].clone();
+    let overlays = inventory.report["overlays"]
+        .as_array()
+        .ok_or_else(|| invalid("inventory", "missing overlays"))?
+        .iter()
+        .map(|overlay| json!({"index": overlay["index"], "datFileCount": overlay["datFileCount"]}))
+        .collect::<Vec<_>>();
     let manifest = json!({
         "schemaVersion": 1, "profile": "additive-floor-v1", "toolVersion": env!("CARGO_PKG_VERSION"),
         "status": "offline-validated", "clientVerification": "unverified", "complete": false,
         "inputs": {"package": identity(name, &bytes), "project": identity(&package.project.path, &project.bytes),
-            "catalog": identity(CATALOG, &inventory.catalog_bytes), "zoneProject": floor.report["inputs"], "directResources": floor.report["resources"]},
+            "catalog": catalog_input, "overlays": overlays, "zoneProject": floor.report["inputs"], "directResources": floor.report["resources"]},
         "registration": {"rootKey": ResourceId::new(append.root_key).to_hex(), "childKey": ResourceId::new(append.child_key).to_hex(),
             "childType": child_type, "templateRootKey": ResourceId::new(registration.like.0).to_hex(), "templateChildIndex": template_child,
             "rootNameByteLength": append.root_name.len(), "childNameByteLength": append.child_name.len(),
@@ -353,10 +379,11 @@ fn prepare(path: &Path, client_root: &Path) -> Result<Prepared, ProjectFailure> 
 
 fn publish(
     mut prepared: Prepared,
-    client_root: &Path,
+    roots: &allocation_inventory::DatRoots,
     output: &Path,
 ) -> Result<(), ProjectFailure> {
-    let output = zone_project::new_output_directory(client_root, output)?;
+    let output =
+        zone_project::new_output_directory_outside(&roots.client, &roots.overlays, output)?;
     for (path, bytes) in &prepared.files {
         let path = output.join(path);
         fs::create_dir_all(
@@ -401,9 +428,9 @@ pub fn run(arguments: &[String], build: bool) -> Result<(), Failure> {
                 ProjectFailureKind::Usage,
                 "zone package command",
                 if build {
-                    "usage: xivl build-zone-package <package.json> --client-root <root> --output <new-directory>"
+                    "usage: xivl build-zone-package <package.json> --client-root <root> [--overlay <dir>]... --output <new-directory>"
                 } else {
-                    "usage: xivl validate-zone-package <package.json> --client-root <root>"
+                    "usage: xivl validate-zone-package <package.json> --client-root <root> [--overlay <dir>]..."
                 },
             )
         };
@@ -413,6 +440,7 @@ pub fn run(arguments: &[String], build: bool) -> Result<(), Failure> {
             .ok_or_else(usage)?;
         let mut root = None;
         let mut output = None;
+        let mut overlays = Vec::new();
         let (pairs, remainder) = arguments[1..].as_chunks::<2>();
         for [flag, value] in pairs {
             if value.is_empty() || value.starts_with("--") {
@@ -421,6 +449,7 @@ pub fn run(arguments: &[String], build: bool) -> Result<(), Failure> {
             match flag.as_str() {
                 "--client-root" if root.is_none() => root = Some(Path::new(value)),
                 "--output" if build && output.is_none() => output = Some(Path::new(value)),
+                "--overlay" => overlays.push(PathBuf::from(value)),
                 _ => return Err(usage()),
             }
         }
@@ -428,9 +457,10 @@ pub fn run(arguments: &[String], build: bool) -> Result<(), Failure> {
             return Err(usage());
         }
         let root = root.ok_or_else(usage)?;
-        let prepared = prepare(Path::new(package), root)?;
+        let roots = allocation_inventory::DatRoots::new(root, &overlays)?;
+        let prepared = prepare(Path::new(package), &roots)?;
         if let Some(output) = output {
-            publish(prepared, root, output)
+            publish(prepared, &roots, output)
         } else {
             std::io::stdout()
                 .write_all(to_canonical_json(&prepared.manifest).as_bytes())

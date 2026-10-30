@@ -1,6 +1,8 @@
 {
   "schemaVersion": 1,
+  "overlays": [],
   "catalog": {
+    "source": "client",
     "key": "0x03C00000",
     "path": "data/03/C0/00/00.DAT",
     "size": 64,

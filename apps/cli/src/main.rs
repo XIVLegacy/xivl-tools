@@ -36,9 +36,9 @@ usage:
   xivl validate <file> [--as <format>] [--columns <list>]
   xivl validate-zone-project <project.json> --client-root <root>
   xivl build-zone-project <project.json> --client-root <root> --output <new-directory>
-  xivl validate-zone-package <package.json> --client-root <root>
-  xivl build-zone-package <package.json> --client-root <root> --output <new-directory>
-  xivl allocation-inventory --client-root <root> [--output <new-file>]
+  xivl validate-zone-package <package.json> --client-root <root> [--overlay <dir>]...
+  xivl build-zone-package <package.json> --client-root <root> [--overlay <dir>]... --output <new-directory>
+  xivl allocation-inventory --client-root <root> [--overlay <dir>]... [--output <new-file>]
   xivl append-region <catalog.dat> --output <new-file> --like <root-key> [--like-child <index>] --root-key <key> --root-name <name> --child-key <key> --child-name <name> --child-resource <key> [--child-type <u32>]
   xivl encode-gtex <input.png|input.dds> --output <new-file> [--like <existing.gtex>] [--format a8r8g8b8|a4r4g4b4|dxt1|dxt5] [--mips <n>]
   xivl edit-staticactor <input.san> --output <new-file> --add <value>=<path> [--add ...]
@@ -94,6 +94,10 @@ extended catalog, layout, model and collision at numeric paths, then publishes
 package-manifest.json last. The new output directory must be outside the client
 root. Packages remain incomplete and client-unverified; nothing is installed
 or launched. Retry a failed publication with a new destination.
+--overlay <dir> is repeatable on both package commands and allocation-inventory.
+The first overlay containing a relative path wins, then the client root.
+Overlay order must match the loader. Outputs must be outside every overlay.
+Packages refuse overlays that shadow any pinned client project input.
 
 catalog inventories DAT resources without changing them. It records known,
 malformed, and unknown formats without guessing. extract-resource writes a

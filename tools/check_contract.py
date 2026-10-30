@@ -32,6 +32,7 @@ SCHEMAS = {
     "data/lua51-retail-census.json": "schemas/lua51-retail-census.schema.json",
     "docs/allocation-inventory.example.json": "schemas/allocation-inventory.schema.json",
     "docs/zone-package.example.json": "schemas/zone-package.schema.json",
+    "docs/zone-package-manifest.example.json": "schemas/zone-package-manifest.schema.json",
     "docs/import-sheets-blocks.example.json": "schemas/import-sheets-blocks.schema.json",
 }
 

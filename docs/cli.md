@@ -44,6 +44,10 @@ package in memory and prints its manifest. `build-zone-package <package.json>
 an extended catalog and the floor project's layout, model and collision at
 numeric paths, then publishes `package-manifest.json` last. Build success is
 silent on stdout. The output directory must be new and outside the client root.
+Both commands accept repeatable `--overlay <dir>` options in loader priority
+order and require output outside every overlay. The first overlay containing a
+relative path wins, falling back to the client root. A package refuses overlays
+that shadow pinned client project inputs.
 
 The [zone-package guide](zone-package.md) defines the strict package file,
 manifest, occupancy checks, outputs and blockers. Packages remain incomplete
@@ -61,6 +65,8 @@ file outside the client root. It inventories the shared region catalog,
 effective names, numeric DAT keys and collisions, and records evidence blockers.
 It chooses no allocation. The [inventory contract](allocation-inventory.md)
 defines the fields, path case rule, refusal behavior and evidence limits.
+Repeat `--overlay <dir>` in loader priority order to read the effective catalog
+and inventory numeric keys and unmapped DAT paths from all input trees.
 
 ## Append a region root
 

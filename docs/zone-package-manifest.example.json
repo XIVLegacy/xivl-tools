@@ -1,0 +1,276 @@
+{
+  "allocations": [
+    {
+      "key": "0xF1000000",
+      "numericPath": "data/F1/00/00/00.DAT",
+      "occupancyChecks": {
+        "catalogChildResource": "absent",
+        "catalogDerivedAuxiliary": "absent",
+        "catalogRootWord08": "absent",
+        "catalogRootWord20": "absent",
+        "nonzero": true,
+        "pairwiseDistinct": true,
+        "scannedNumericDat": "absent",
+        "uppercaseNumericPath": "absent"
+      },
+      "role": "layout"
+    },
+    {
+      "key": "0xFFFF0001",
+      "numericPath": "data/FF/FF/00/01.DAT",
+      "occupancyChecks": {
+        "catalogChildResource": "absent",
+        "catalogDerivedAuxiliary": "absent",
+        "catalogRootWord08": "absent",
+        "catalogRootWord20": "absent",
+        "nonzero": true,
+        "pairwiseDistinct": true,
+        "scannedNumericDat": "absent",
+        "uppercaseNumericPath": "absent"
+      },
+      "role": "model"
+    },
+    {
+      "key": "0xFFFF0002",
+      "numericPath": "data/FF/FF/00/02.DAT",
+      "occupancyChecks": {
+        "catalogChildResource": "absent",
+        "catalogDerivedAuxiliary": "absent",
+        "catalogRootWord08": "absent",
+        "catalogRootWord20": "absent",
+        "nonzero": true,
+        "pairwiseDistinct": true,
+        "scannedNumericDat": "absent",
+        "uppercaseNumericPath": "absent"
+      },
+      "role": "collision"
+    },
+    {
+      "key": "0xF1000001",
+      "numericPath": "data/F1/00/00/01.DAT",
+      "occupancyChecks": {
+        "catalogChildResource": "absent",
+        "catalogDerivedAuxiliary": "absent",
+        "catalogRootWord08": "absent",
+        "catalogRootWord20": "absent",
+        "nonzero": true,
+        "pairwiseDistinct": true,
+        "scannedNumericDat": "absent",
+        "uppercaseNumericPath": "absent"
+      },
+      "role": "auxiliary"
+    }
+  ],
+  "blockers": [
+    {
+      "id": "numeric-mode-assumed",
+      "source": "xivl-decomp:docs/resource/resource-path-producer.md \"Catalog mode\" at cb3639a9c03ad79724b52b710337a166d52de8ea",
+      "statement": "Numeric formatter mode is assumed. Mode-zero path-table mappings are unsupported; numeric paths cannot prove free identities outside numeric mode."
+    },
+    {
+      "id": "auxiliary-payload-acceptance",
+      "source": "xivl-decomp:docs/resource/region-auxiliary-resource.md \"Selection readiness and remaining evidence\" at cb3639a9c03ad79724b52b710337a166d52de8ea",
+      "statement": "Authored auxiliary payload acceptance and whether absence is acceptable remain unresolved. File existence does not establish either."
+    },
+    {
+      "id": "zone-script-join",
+      "source": "xivl-client-structs:docs/map-layout-selector.md \"Zone-master and script dependencies\" at fff480ab502bfae6b3e555d62679b635479821de",
+      "statement": "The numeric zone, ZoneMaster class and script load join remains unresolved. This report does not inventory or allocate those identities."
+    },
+    {
+      "id": "integration-zone-limit",
+      "source": "xivl-client-structs:docs/map-layout-selector.md \"Minimal candidate and allocation constraints\" at fff480ab502bfae6b3e555d62679b635479821de",
+      "statement": "The zone identity range 0..511 is an integration limit, not a demonstrated native bound or evidence that an identity is free."
+    },
+    {
+      "id": "auxiliary-payload-absent",
+      "key": "0xF1000001",
+      "statement": "The reserved auxiliary key has no output payload."
+    },
+    {
+      "id": "scene-transitive-dependencies",
+      "statement": "Scene and transitive dependency coverage remains unresolved."
+    },
+    {
+      "id": "client-acceptance",
+      "statement": "Client acceptance remains unverified."
+    }
+  ],
+  "clientVerification": "unverified",
+  "complete": false,
+  "dependencies": {
+    "directResources": [
+      {
+        "id": "0x01020304",
+        "input": {
+          "path": "model.bin",
+          "sha256": "709d855d66fc17fd50320d58fdc228e20c153f0ed0c098fb2b2e981f4982d498",
+          "size": 672
+        },
+        "retained": false,
+        "row": 1,
+        "tag": "brt"
+      },
+      {
+        "id": "0x05060708",
+        "input": {
+          "path": "old-collision.bin",
+          "sha256": "78b664ca3b17443ecb3d5db7898ab9cdcce82ce3dfc13fc5e4c8732601d39e43",
+          "size": 1232
+        },
+        "retained": false,
+        "row": 2,
+        "tag": "bhp"
+      },
+      {
+        "id": "0x090A0B0C",
+        "input": {
+          "path": "unplaced.bin",
+          "sha256": "ad65250377745316e77d96c7fae4532575d53100c4ee22071ee3f1a05cdb44de",
+          "size": 34
+        },
+        "retained": true,
+        "row": 3,
+        "tag": "tex"
+      }
+    ],
+    "sceneDependencies": "unresolved",
+    "transitiveDependencies": "unresolved"
+  },
+  "inputs": {
+    "catalog": {
+      "path": "data/03/C0/00/00.DAT",
+      "sha256": "7f1586788671065601bcf9eaa8707989c62cc45c8d405db986d384d927a71f2a",
+      "size": 256,
+      "source": {
+        "overlay": 0
+      }
+    },
+    "directResources": [
+      {
+        "id": "0x01020304",
+        "input": {
+          "path": "model.bin",
+          "sha256": "709d855d66fc17fd50320d58fdc228e20c153f0ed0c098fb2b2e981f4982d498",
+          "size": 672
+        },
+        "retained": false,
+        "row": 1,
+        "tag": "brt"
+      },
+      {
+        "id": "0x05060708",
+        "input": {
+          "path": "old-collision.bin",
+          "sha256": "78b664ca3b17443ecb3d5db7898ab9cdcce82ce3dfc13fc5e4c8732601d39e43",
+          "size": 1232
+        },
+        "retained": false,
+        "row": 2,
+        "tag": "bhp"
+      },
+      {
+        "id": "0x090A0B0C",
+        "input": {
+          "path": "unplaced.bin",
+          "sha256": "ad65250377745316e77d96c7fae4532575d53100c4ee22071ee3f1a05cdb44de",
+          "size": 34
+        },
+        "retained": true,
+        "row": 3,
+        "tag": "tex"
+      }
+    ],
+    "overlays": [
+      {
+        "datFileCount": 1,
+        "index": 0
+      }
+    ],
+    "package": {
+      "path": "package.json",
+      "sha256": "472289ad925510c75e74dd544e26e231bbb038843330b136be4b89ecfc475c4b",
+      "size": 360
+    },
+    "project": {
+      "path": "floor/project.json",
+      "sha256": "bbc5f360c51eea3f009bd51976cbd937df2f59903691a2ec5fc4c6b05920e837",
+      "size": 3183
+    },
+    "zoneProject": {
+      "collisionJson": {
+        "path": "collision.json",
+        "sha256": "ffd7bb097d1cd4f370f620a3f7bd329f142fedebd0e1c7229e17a64670803057",
+        "size": 418
+      },
+      "collisionTemplate": {
+        "path": "collision-template.bin",
+        "sha256": "03acbe072c6173a68f43b47b40fe542ef8fc45e20b1cdb69a114eb79d7792fb0",
+        "size": 1232
+      },
+      "layout": {
+        "path": "layout.bin",
+        "sha256": "9189da31740637f1a3562ed0385adc7890a37a6b8c90b5b924c335d67f453f1f",
+        "size": 1528
+      },
+      "renderObj": {
+        "path": "floor.obj",
+        "sha256": "cc5a3e94448f88515e4fc924bc0f39247902e4ddf8081ad98ebc0b106eb38e58",
+        "size": 68
+      }
+    }
+  },
+  "outputs": [
+    {
+      "new": true,
+      "path": "data/03/C0/00/00.DAT",
+      "role": "catalog",
+      "sha256": "7110d41cf011cff8f7b382576e8b17e81f55aafc4af867334b434565d77fb957",
+      "size": 352
+    },
+    {
+      "new": true,
+      "path": "data/F1/00/00/00.DAT",
+      "role": "layout",
+      "sha256": "8100c59c03e99ae1391d0be04961bee290075afb1949b1613d4239275b871e8b",
+      "size": 1528
+    },
+    {
+      "new": true,
+      "path": "data/FF/FF/00/01.DAT",
+      "role": "model",
+      "sha256": "952bcdab8ee88d8eeb014262c07acbf1ca13d917a17ebb32805a7bc6fbd73126",
+      "size": 672
+    },
+    {
+      "new": true,
+      "path": "data/FF/FF/00/02.DAT",
+      "role": "collision",
+      "sha256": "3e80076ccdaf248703cecf63b96ca54b9e9c60f995fc58cdbaf7cbe37ffa5b67",
+      "size": 1232
+    }
+  ],
+  "profile": "additive-floor-v1",
+  "registration": {
+    "changedHeaderSpan": {
+      "length": 8,
+      "offset": 32
+    },
+    "childKey": "0xF0000001",
+    "childNameByteLength": 9,
+    "childRowOffset": 304,
+    "childType": 12288,
+    "rootCountAfter": 3,
+    "rootCountBefore": 2,
+    "rootKey": "0x0000F000",
+    "rootNameByteLength": 8,
+    "rootRowOffset": 256,
+    "sizeWordAfter": 352,
+    "sizeWordBefore": 256,
+    "templateChildIndex": 0,
+    "templateRootKey": "0x0000006F"
+  },
+  "schemaVersion": 1,
+  "status": "offline-validated",
+  "toolVersion": "0.1.0"
+}

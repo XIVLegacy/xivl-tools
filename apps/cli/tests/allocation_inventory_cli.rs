@@ -133,7 +133,7 @@ fn normal_tree_reports_structure_paths_and_blockers_without_writes() {
     assert_eq!(
         report["catalog"],
         json!({
-            "key": "0x03C00000", "path": CATALOG, "size": 208,
+            "key": "0x03C00000", "path": CATALOG, "size": 208, "source": "client",
             "sha256": sha256_hex(&before), "rootCount": 1, "rowCount": 3,
             "sizeWord": 208, "sizeMatchesInput": true, "trailingBytes": 0,
         })
@@ -378,4 +378,111 @@ fn authored_example_matches_the_report_and_schema() {
     .unwrap();
     validate_schema(&example);
     assert_eq!(Client::new(&[], 0).report(), example);
+}
+
+fn overlay_inventory(client: &Client, overlays: &[&Path]) -> Output {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_xivl"));
+    command
+        .arg("allocation-inventory")
+        .arg("--client-root")
+        .arg(&client.root);
+    for overlay in overlays {
+        command.arg("--overlay").arg(overlay);
+    }
+    command.output().unwrap()
+}
+
+#[test]
+fn overlays_resolve_catalog_in_priority_order_and_union_occupancy() {
+    let client = Client::new(&[], 0);
+    let first = client.directory.join("first");
+    let second = client.directory.join("second");
+    let first_catalog = Client::new(
+        &[
+            row(1, 0, 0, 1, b"overlay", 0),
+            row(2, 0x3000, 0xF1000010, 0, b"child", 0),
+        ],
+        1,
+    );
+    for (root, bytes) in [
+        (&first, fs::read(first_catalog.root.join(CATALOG)).unwrap()),
+        (&second, fs::read(client.root.join(CATALOG)).unwrap()),
+    ] {
+        let path = root.join(CATALOG);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, bytes).unwrap();
+        fs::write(root.join("data/unmapped.DAT"), b"opaque").unwrap();
+    }
+    let occupied = first.join("data/F1/00/00/10.DAT");
+    fs::create_dir_all(occupied.parent().unwrap()).unwrap();
+    fs::write(occupied, b"occupied").unwrap();
+    let result = overlay_inventory(&client, &[&first, &second]);
+    status(&result, 0);
+    let report: Value = serde_json::from_slice(&result.stdout).unwrap();
+    validate_schema(&report);
+    assert_eq!(report["catalog"]["source"], json!({"overlay": 0}));
+    assert_eq!(
+        report["catalog"]["sha256"],
+        sha256_hex(&fs::read(first.join(CATALOG)).unwrap())
+    );
+    assert_eq!(
+        report["overlays"],
+        json!([
+            {"index": 0, "datFileCount": 3, "numericKeyCount": 2},
+            {"index": 1, "datFileCount": 2, "numericKeyCount": 1}
+        ])
+    );
+    assert_eq!(
+        report["pathInventory"]["occupiedKeys"],
+        json!(["0x03C00000", "0xF1000010"])
+    );
+    assert_eq!(
+        report["pathInventory"]["unmappedPaths"],
+        json!(["data/unmapped.DAT"])
+    );
+    assert_eq!(report["roots"][0]["children"][0]["numericPathExists"], true);
+    let reversed = overlay_inventory(&client, &[&second, &first]);
+    status(&reversed, 0);
+    let reversed: Value = serde_json::from_slice(&reversed.stdout).unwrap();
+    assert_eq!(reversed["catalog"]["rootCount"], 0);
+    assert_eq!(reversed["pathInventory"], report["pathInventory"]);
+    fs::remove_file(second.join(CATALOG)).unwrap();
+    let fallback = overlay_inventory(&client, &[&second, &first]);
+    status(&fallback, 0);
+    let fallback: Value = serde_json::from_slice(&fallback.stdout).unwrap();
+    assert_eq!(fallback["catalog"]["source"], json!({"overlay": 1}));
+    let install = overlay_inventory(&client, &[&second]);
+    status(&install, 0);
+    let install: Value = serde_json::from_slice(&install.stdout).unwrap();
+    assert_eq!(install["catalog"]["source"], "client");
+}
+
+#[test]
+fn refuses_invalid_or_overlapping_overlay_roots() {
+    let client = Client::new(&[], 0);
+    let missing = client.directory.join("missing");
+    let file = client.directory.join("file");
+    fs::write(&file, b"file").unwrap();
+    let empty = client.directory.join("empty");
+    fs::create_dir(&empty).unwrap();
+    let valid = client.directory.join("valid");
+    fs::create_dir_all(valid.join("data")).unwrap();
+    let nested = valid.join("nested");
+    fs::create_dir_all(nested.join("data")).unwrap();
+    let client_data = client.root.join("data");
+    for overlays in [
+        vec![missing.as_path()],
+        vec![file.as_path()],
+        vec![empty.as_path()],
+        vec![client.root.as_path()],
+        vec![client_data.as_path()],
+        vec![client.directory.as_path()],
+        vec![valid.as_path(), valid.as_path()],
+        vec![valid.as_path(), nested.as_path()],
+        vec![nested.as_path(), valid.as_path()],
+    ] {
+        let output = overlay_inventory(&client, &overlays);
+        status(&output, 1);
+        assert!(String::from_utf8_lossy(&output.stderr).contains("overlay"));
+    }
 }

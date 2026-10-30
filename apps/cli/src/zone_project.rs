@@ -324,6 +324,14 @@ fn write_project_with_writer(
 
 /// Create an absent destination beneath an existing parent outside the client tree.
 pub fn new_output_directory(client_root: &Path, output: &Path) -> Result<PathBuf, ProjectFailure> {
+    new_output_directory_outside(client_root, &[], output)
+}
+
+pub fn new_output_directory_outside(
+    client_root: &Path,
+    overlays: &[PathBuf],
+    output: &Path,
+) -> Result<PathBuf, ProjectFailure> {
     let io = |error: std::io::Error| {
         ProjectFailure::new(ProjectFailureKind::Io, "output", error.to_string())
     };
@@ -342,6 +350,15 @@ pub fn new_output_directory(client_root: &Path, output: &Path) -> Result<PathBuf
     let client_root = checked_root(client_root, "client root")?;
     if output.starts_with(&client_root) {
         return Err(refuse("output must be outside the client input tree"));
+    }
+    for (index, overlay) in overlays.iter().enumerate() {
+        if output.starts_with(overlay) {
+            return Err(ProjectFailure::new(
+                ProjectFailureKind::Usage,
+                "output",
+                format!("output must be outside overlay {index}"),
+            ));
+        }
     }
     // create_dir refuses all existing entries, including empty directories and source aliases.
     fs::create_dir(&output).map_err(io)?;

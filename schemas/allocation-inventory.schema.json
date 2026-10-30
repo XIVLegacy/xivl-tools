@@ -6,6 +6,7 @@
   "additionalProperties": false,
   "required": [
     "schemaVersion",
+    "overlays",
     "catalog",
     "pathInventory",
     "roots",
@@ -13,6 +14,32 @@
     "blockers"
   ],
   "properties": {
+    "overlays": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "index",
+          "datFileCount",
+          "numericKeyCount"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "datFileCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "numericKeyCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
     "schemaVersion": {
       "type": "integer",
       "const": 1
@@ -22,6 +49,7 @@
       "additionalProperties": false,
       "required": [
         "key",
+        "source",
         "path",
         "size",
         "sha256",
@@ -32,6 +60,26 @@
         "trailingBytes"
       ],
       "properties": {
+        "source": {
+          "oneOf": [
+            {
+              "const": "client"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "overlay"
+              ],
+              "properties": {
+                "overlay": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          ]
+        },
         "key": {
           "const": "0x03C00000"
         },

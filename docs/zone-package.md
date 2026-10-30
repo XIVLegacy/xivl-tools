@@ -63,11 +63,32 @@ check is a package allocation rule; it does not reinterpret that raw word in
 the inventory report. Numeric formatter mode remains an assumption, as
 documented by the allocation inventory's evidence and blockers.
 
+## Overlay roots
+
+Both commands accept repeatable `--overlay <dir>` options. Supply overlay roots
+in the order the loader applies DAT overlays. A root contains a `data/` subtree
+mirroring client-relative paths. The first overlay containing a relative path
+wins; otherwise the client root supplies it. The catalog to extend uses this
+rule. Occupancy includes numeric keys and unmapped DAT paths scanned from the
+client and every overlay, including hidden files. Scans refuse symbolic links
+and reparse points.
+
+Overlay roots must exist, be directories with `data/`, and must not be symbolic
+links or reparse points. No input root may equal, contain or be inside another.
+The output directory must be outside the client root and every overlay.
+
+Floor preparation reads its pinned inputs from the client root. An overlay
+containing the layout, any declared direct resource (including retained and
+unplaced resources), or the collision template causes exit 2 naming the path
+and zero-based overlay index. These identities were pinned against install
+bytes; a shadowed input would make the loaded scene differ. Project-local OBJ
+and collision JSON inputs keep their existing project-relative rules.
+
 ## Commands and output
 
 ```text
-xivl validate-zone-package <package.json> --client-root <root>
-xivl build-zone-package <package.json> --client-root <root> --output <new-directory>
+xivl validate-zone-package <package.json> --client-root <root> [--overlay <dir>]...
+xivl build-zone-package <package.json> --client-root <root> [--overlay <dir>]... --output <new-directory>
 ```
 
 Both commands prepare and verify every resource in memory before writing.
@@ -102,15 +123,17 @@ Diagnostics identify the role and failure kind; format errors retain offsets.
 ## Manifest contract
 
 [The manifest schema](../schemas/zone-package-manifest.schema.json) defines
-version 1. The manifest hashes the four resource outputs, not itself. It has
-no absolute paths, timestamps or registration name strings. Unchanged inputs
-and the same executable produce byte-identical repeat builds.
+version 1. [The synthetic manifest example](zone-package-manifest.example.json)
+records a catalog supplied by an overlay. The manifest hashes the four resource
+outputs, not itself. It has no absolute paths, timestamps or registration name
+strings. Unchanged inputs and the same executable produce byte-identical repeat builds.
 
 | Field | Contents |
 |---|---|
 | `schemaVersion`, `profile`, `toolVersion` | Version 1, `additive-floor-v1`, and the CLI package version. |
 | `status`, `clientVerification`, `complete` | Offline outcome, always `unverified`, and always false. |
-| `inputs.package`, `inputs.project`, `inputs.catalog` | Relative paths, exact sizes and SHA-256 identities. The package path is its basename; the project path is relative to the package, and catalog path to the client root. |
+| `inputs.package`, `inputs.project`, `inputs.catalog` | Relative paths, exact sizes and SHA-256 identities. The package path is its basename; the project path is relative to the package. The catalog path is relative to its input root, with `source: "client"` or `source: {"overlay": index}`. |
+| `inputs.overlays` | Zero-based index and `datFileCount` for each overlay, in priority order. Always present, empty without overlays. Absolute roots are omitted. |
 | `inputs.zoneProject`, `inputs.directResources` | The floor report's inputs and complete direct resource rows, including retained flags. Their paths retain the saved project's root rules. |
 | `registration` | Root and child keys, resolved child type, template root key and child index, name byte lengths, before/after root counts and size words, appended row offsets and the changed header span. |
 | `allocations` | Layout, model, collision and auxiliary, in that order, with key, numeric path and every occupancy check performed. |
