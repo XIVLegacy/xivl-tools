@@ -58,6 +58,52 @@ for materialization. Bit 2 still has no stable semantic name. Offset `0x1c`
 is not a fixed header field: with the retail table base of 24 it is entry 0's
 size dword. The decoded PNG preview boundary is described below.
 
+## Writing GTEX
+
+`gtex_write::rebuild_gtex(data, gtex)` reconstructs every standalone GTEX
+accepted by the parser. It writes the model's header fields and table entries,
+copies `header_unknown` spans and data gaps from the source, and copies encoded
+surfaces at their recorded offsets. It retains unmapped indices, flags, missing
+tables, and opaque bytes without imposing the canonical builder's limits.
+
+`gtex_write::build_gtex(&GtexBuild)` builds a new 2D container from encoded
+mips for indices 4, 22, 24, and 26. Dimensions must be nonzero. The supplied mip
+count must be between one and `1 + floor(log2(max(width, height)))`; partial
+chains are retained. Each mip must match the sizing formula above at its
+clamped dimensions, and the complete container must fit in a `u32` byte count.
+The builder does not encode pixels or generate mip levels.
+
+The canonical layout follows the census of all 21,161 GTEX files in the
+1.23b install. Every file had `GTEX` at bytes `0x00..0x04`, values one at
+`0x04` and `0x05`, value two at `0x08`, flags zero, and depth one. Every
+offset table began at 24 with one big-endian offset-size pair per mip.
+The data base was the table end rounded up to 16 bytes: padding was zero in
+14,152 files and absent in 7,009. The builder uses these header values,
+zero padding, and contiguous mip surfaces. Rebuilding preserves the two
+observed eight-byte gaps described in [Retail parity](#retail-parity).
+
+The install census found 13,587 index-24 DXT1 files, 6,910 index-26 DXT5
+files, and 664 index-4 A8R8G8B8 files, with no standalone index-22 files.
+Index 22 building uses the loader-backed mapping above. Mip counts were
+texture-specific: 6,007 DXT1 textures at 256 by 256 stopped at 128 by 128,
+and 6,974 files had one mip.
+
+GTEX validation reports an exact `round-trip` check with rebuilt length and
+SHA-256. For 2D textures with flags zero and depth one, table base 24, the
+aligned canonical data base, zero table padding, and no data gaps, `canonical-build` reports whether the
+builder reproduces the complete input, including fixed header bytes.
+Other layouts report `not-applicable` for that check. These byte checks
+do not establish client runtime use or GPU compatibility.
+
+Public validation cases cover `tagged.bin`, `a4r4g4b4.bin`, `trailing.bin`,
+`dds-dxt1-gapped.bin`, `dds-dxt5.bin`, `dds-dxt1-npot.bin`,
+`png-dxt1-four-color.bin`, `png-dxt1-three-color.bin`,
+`png-dxt5-alpha-branches.bin`, `dds-unsupported-flags.bin`,
+`dds-zero-dimensions.bin`, `dds-excess-mips.bin`, and
+`dds-unmapped-format.bin` under `tests/fixtures/public/gtex/`.
+The authored `built-4.bin`, `built-22.bin`, `built-24.bin`, and `built-26.bin`
+fixtures cover canonical construction for each mapped format.
+
 ## PWIB contract
 
 PWIB boundary fields are big-endian:

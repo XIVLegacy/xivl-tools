@@ -17,6 +17,7 @@ use crate::digest::{sha256_hex, sha256_xor_hex};
 use crate::error::Result;
 use crate::fdt;
 use crate::gtex_pwib::{self, TaggedResourceKind};
+use crate::gtex_write::{build_gtex, rebuild_gtex, GtexBuild};
 use crate::lpb;
 use crate::lua51::{
     self, Lua51Instruction, Lua51Operand, Lua51Operands, Lua51Prototype, LuaConstant, LuaString,
@@ -409,6 +410,58 @@ pub fn validate_named_bytes_as(data: &[u8], name: &str, how: &InspectAs) -> Resu
                     "encodedLength": null,
                     "encodedSha256": null,
                 }),
+            });
+        }
+        _ if format == "gtex" => {
+            let gtex_pwib::TaggedResource::Gtex(gtex) =
+                gtex_pwib::parse(data, TaggedResourceKind::Gtex)?
+            else {
+                unreachable!()
+            };
+            let encoded = rebuild_gtex(data, &gtex)?;
+            checks.push(json!({
+                "name": "round-trip",
+                "status": if encoded == data { "pass" } else { "fail" },
+                "encodedLength": encoded.len() as u64,
+                "encodedSha256": sha256_hex(&encoded),
+            }));
+            let table_end = 24 + gtex.surfaces.len() * 8;
+            let canonical_layout = gtex.texture_kind == crate::gtex_pwib::TextureKind::Texture2d
+                && gtex.flags == 0
+                && gtex.depth == 1
+                && gtex.offset_table_base == 24
+                && gtex.data_base as usize == table_end.next_multiple_of(16)
+                && gtex.data_gaps.is_empty()
+                && data[table_end..gtex.data_base as usize]
+                    .iter()
+                    .all(|byte| *byte == 0);
+            checks.push(if canonical_layout {
+                let build = GtexBuild {
+                    format_index: gtex.format_index,
+                    width: gtex.width,
+                    height: gtex.height,
+                    mips: gtex
+                        .surfaces
+                        .iter()
+                        .map(|surface| span_bytes(data, surface.source_span).to_vec())
+                        .collect(),
+                };
+                match build_gtex(&build) {
+                    Ok(encoded) => json!({
+                        "name": "canonical-build",
+                        "status": if encoded == data { "pass" } else { "fail" },
+                        "encodedLength": encoded.len() as u64,
+                        "encodedSha256": sha256_hex(&encoded),
+                    }),
+                    Err(_) => json!({
+                        "name": "canonical-build",
+                        "status": "fail",
+                        "encodedLength": null,
+                        "encodedSha256": null,
+                    }),
+                }
+            } else {
+                json!({ "name": "canonical-build", "status": "not-applicable" })
             });
         }
         _ => checks.push(json!({

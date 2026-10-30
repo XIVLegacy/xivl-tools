@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-round-trip-built-4",
+  "formatId": "gtex",
+  "operation": "validate",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/built-4.bin"
+  },
+  "arguments": ["--as", "gtex"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Exact GTEX rebuild and canonical construction applicability."
+}

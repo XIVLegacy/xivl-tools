@@ -5,7 +5,13 @@
       "status": "pass"
     },
     {
+      "encodedLength": 80,
+      "encodedSha256": "95dbd7d4de0bd7217e05936d8e1664af4cc412a43495b020641d1505786a2c60",
       "name": "round-trip",
+      "status": "pass"
+    },
+    {
+      "name": "canonical-build",
       "status": "not-applicable"
     }
   ],

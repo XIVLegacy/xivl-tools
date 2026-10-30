@@ -1,0 +1,27 @@
+{
+  "checks": [
+    {
+      "name": "parse",
+      "status": "pass"
+    },
+    {
+      "encodedLength": 64,
+      "encodedSha256": "f9fd3cda103be5626641fc43dc933fc39c3abde37e81680fa71429ea76ec04ac",
+      "name": "round-trip",
+      "status": "pass"
+    },
+    {
+      "encodedLength": 64,
+      "encodedSha256": "413b8642a08d1fe826368a1f3df57d7c2296a7d63717bf6bac548870007d1f76",
+      "name": "canonical-build",
+      "status": "fail"
+    }
+  ],
+  "format": "gtex",
+  "input": {
+    "length": 64
+  },
+  "operation": "validate",
+  "schemaVersion": 1,
+  "sha256": "f9fd3cda103be5626641fc43dc933fc39c3abde37e81680fa71429ea76ec04ac"
+}

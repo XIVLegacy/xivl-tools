@@ -21,6 +21,7 @@ pub mod digest;
 pub mod error;
 pub mod fdt;
 pub mod gtex_pwib;
+pub mod gtex_write;
 pub mod inspect;
 pub mod layout_edit;
 pub mod lpb;
@@ -53,6 +54,7 @@ pub use anomaly::Anomaly;
 pub use config::{ConfigFile, ConfigKind};
 pub use csv::{export_sheet_data, parse_row_span, value_text, CsvTable};
 pub use error::{ErrorKind, FormatError, Result};
+pub use gtex_write::{build_gtex, rebuild_gtex, GtexBuild};
 pub use inspect::{
     export_fdt_glyphs, inspect_bytes, inspect_bytes_as, inspect_named_bytes_as,
     inspect_selected_pwib, validate_named_bytes_as, InspectAs, FDT_GLYPH_METADATA_SCHEMA_VERSION,

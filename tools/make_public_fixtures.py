@@ -382,6 +382,23 @@ def build_fixtures() -> dict[str, bytes]:
             header[entry : entry + 8] = struct.pack(">II", offset, size)
         return bytes(header) + data
 
+    for format_index, sizes in [
+        (4, (60, 8, 4)),
+        (22, (30, 4, 2)),
+        (24, (16, 8, 8)),
+        (26, (32, 16, 16)),
+    ]:
+        table_end = 24 + len(sizes) * 8
+        data_base = (table_end + 15) // 16 * 16
+        header = bytearray(data_base)
+        header[:10] = b"GTEX" + bytes((1, 1, format_index, len(sizes), 2, 0))
+        struct.pack_into(">HHHII", header, 10, 5, 3, 1, 24, data_base)
+        payload = bytearray()
+        for level, size in enumerate(sizes):
+            struct.pack_into(">II", header, 24 + level * 8, len(payload), size)
+            payload.extend(pattern(size, 0x35 + level))
+        fixtures[f"gtex/built-{format_index}.bin"] = bytes(header + payload)
+
     fixtures["gtex/tagged.bin"] = gtex(
         pattern(40, 0x44),
         mip_levels=2,

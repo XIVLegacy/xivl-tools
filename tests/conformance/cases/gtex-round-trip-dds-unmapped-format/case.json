@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "gtex-round-trip-dds-unmapped-format",
+  "formatId": "gtex",
+  "operation": "validate",
+  "fixture": {
+    "kind": "public",
+    "path": "tests/fixtures/public/gtex/dds-unmapped-format.bin"
+  },
+  "arguments": ["--as", "gtex"],
+  "expect": { "outcome": "ok", "output": "expected.json" },
+  "notes": "Exact GTEX rebuild and canonical construction applicability."
+}
