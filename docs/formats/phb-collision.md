@@ -3,9 +3,10 @@
 [Zone geometry](zone-geometry.md) | [Format evidence](../format-evidence.md)
 
 The `xivl_formats::phb_author` library accepts local, Y-up triangular
-collision geometry and an explicit native PHB template. The writer's accepted
-profile is a retained allocation with one `PHB.TBC`, one `PHB.TBD`, one tree
-leaf, and no optional GBD tail tables. Client collision acceptance is a
+collision geometry and an explicit native PHB template. The default profile
+retains an allocation with one `PHB.TBC`, one `PHB.TBD`, one tree leaf, and no
+optional GBD tail tables. The separate branching profile reallocates the
+resource into binary trees. Client collision acceptance is untested and is a
 separate requirement from successful serialization or `parse_phb` decoding.
 
 The experimental [zone-project builder](../zone-project.md) uses this writer
@@ -17,8 +18,8 @@ case, and the bounded PHB read used for collision export belongs to the
 `zone-geometry` row.
 
 The [branching writer specification](#branching-writer-specification) below
-describes a proposed larger profile. The implemented writer still accepts
-only the retained single-leaf allocation above.
+defines the implemented experimental larger profile. Its inferred partition
+choices do not reproduce a recovered retail construction algorithm.
 
 ## Input contract
 
@@ -26,9 +27,7 @@ only the retained single-leaf allocation above.
 `CollisionTriangle` records with three zero-based `u16` indices and an explicit
 raw `u16` surface. Triangle order and winding are retained. Empty geometry,
 out-of-range indices, and zero-area triangles are rejected. The accepted
-allocation holds at most ten vertices and four triangles. This is a small
-collision primitive profile; a complete city collision mesh needs additional
-evidence for larger trees or another supported allocation profile.
+allocation holds at most ten vertices and four triangles.
 
 The writer changes the used vertex and triangle records, counts, surface
 aggregates, triangle-reference list, leaf count, terminal count, and three
@@ -38,11 +37,40 @@ reciprocal width is rejected. Declared bounds can therefore exceed decoded
 vertex bounds. The geometry offsets, complete file length, fourth float lanes,
 prefix tables, unused allocation bytes, gaps, and trailer are retained.
 
+`author_phb_branching(template, &CollisionGeometry)` uses the same geometry
+contract and retained single-leaf template input profile. It supports up to
+65536 global vertices and 65536 global triangles, with at most 16384 references
+per TBD and one TBD per TBC. Each triangle is referenced exactly once. The
+dimension-one grid lists every TBC, with a maximum of 512 TBC IDs. The global
+triangle limit bounds this writer to four TBCs. Empty optional tails are
+emitted. Non-finite or unrepresentable float and index arithmetic is rejected.
+
+Consecutive groups retain original triangle IDs. Each group uses stable median
+splits on the widest vertex-centroid axis, with X, Y, Z axis ties and original
+triangle indices for equal centroids. Centroids use the arithmetic mean of the
+three positions in `f64`. Leaves hold one to four references. Bounds round
+outward using separate `f32` subtraction, multiplication by 32768, division by
+the extent, and addition of 16384. TBC geometry margins come from the template.
+An `f64` endpoint check prevents an `f32` rounding step from contracting a bound.
+The SEDB prefix, GBD profile word, reserved header words, fourth float lanes,
+and trailer are retained while tables, chunks, and geometry are reallocated.
+
+`xivl_formats::phb_tree::validate_phb_tree(bytes)` independently reads the
+finished resource and returns `PhbTreeReport`. It checks nested allocations,
+binary topology, references, aggregates, bounds, buckets, and terminal records.
+It also accepts retail grid and tail layouts, allowing wider surface ranges
+and the measured 0.001 world-unit float-box excursion. Integer node coverage
+uses the client query biases of 16383 and 16385 with clamping to 0..65535.5
+before truncation. `PhbTreeReport::candidates(min, max)` returns conservative
+triangle IDs in traversal order without surface filtering. It visits all
+registered buckets, so it can return extra candidates beyond grid selection.
+
 The explicit-path example accepts a native input, a geometry JSON input, and a
 new output:
 
 ```powershell
 cargo run --locked -p xivl-formats --example phb_collision_author -- <native-phb-input> <geometry-json-input> <new-output>
+cargo run --locked -p xivl-formats --example phb_collision_author -- --profile branching <native-phb-input> <geometry-json-input> <new-output>
 ```
 
 The JSON contract is:
@@ -62,6 +90,8 @@ non-finite results rejected. No OBJ, unit conversion, automatic winding
 repair, material naming, or surface default is inferred. The example limits
 native input to 64 MiB and JSON to 16 MiB, refuses existing outputs and input
 overwrites, and uses exclusive creation after authoring and parser checks.
+`--profile single-leaf|branching` selects the profile and defaults to
+`single-leaf`. Branching output also passes the tree validator before writing.
 Retail templates and generated DATs belong outside tracked trees.
 
 ## Retail layout evidence
@@ -453,7 +483,7 @@ full tail semantics and requirements in other consumers remain unknown.
 
 ## Branching writer specification
 
-This is a proposed implementation contract, not a write-support claim or a
+This is the experimental branching profile's contract, not a write-support claim or a
 client acceptance result. Verified byte layouts and static consumers constrain
 the output. Tree partition choices below are inferences from those consumers,
 not a recovered retail builder algorithm.
@@ -477,7 +507,7 @@ starting at `16383` would be misread as a branch. The representable start and
 the total list length are distinct limits. A final four-reference leaf
 starting at `16382` can end at exclusive index `16386`.
 
-Use at most `16384` references per TBD in the proposed writer. This is a
+Use at most `16384` references per TBD in the experimental writer. This is a
 conservative writer limit, not an observed header limit. With each triangle
 referenced once, a mesh of about 21000 triangles needs at least two TBDs.
 Keep the global vertex and triangle indices representable as `u16`, checking
@@ -502,11 +532,11 @@ does not enlarge those global index fields.
    Emit both child subtrees consecutively. Set every node's lane 3 to the
    index immediately after its subtree. A leaf therefore has `next = i + 1`,
    and the root has `next = nodeCount`. The client does not enforce binary
-   arity; binary topology is the proposed writer's stricter invariant.
+   arity; binary topology is the experimental writer's stricter invariant.
 4. Store leaf references consecutively in traversal order. Check every packed
    start/count before narrowing, reject the branch collision, and check each
    reference against the GBD triangle count. Require every input triangle
-   exactly once across the proposed profile's trees. Duplication is not needed
+   exactly once across the experimental profile's trees. Duplication is not needed
    for a bounding-volume hierarchy.
 5. Choose a finite, positive-width float box per TBD. Pad flat axes outward
    before division. Check that the `f32` width and intermediate coordinate
@@ -594,7 +624,7 @@ Use these literal synthetic oracles when implementing the writer:
   extent and misaligned node base must produce bounded validator errors.
 - Multiple TBDs: place triangles in both groups and prove that iteration
   visits both, including a query whose only candidates are in the second.
-  For the proposed one-TBD-per-TBC profile, use two TBC descriptors and the
+  For the experimental one-TBD-per-TBC profile, use two TBC descriptors and the
   literal sole-bucket list `0,1,0xFFFF`. Check its offset in `u16` units,
   global triangle IDs and complete candidate coverage through both trees.
 
@@ -620,8 +650,8 @@ geometry. Parser acceptance and decoded coordinates do not establish either.
 4. Establish which raw surface values and winding rules the movement consumer
    accepts. Serialization retains these inputs without assigning semantics.
 
-The implemented retained single-leaf writer excludes branching trees,
-dimension-eight GBD grids and optional tail tables. Layout activation and
+The retained single-leaf and branching writer profiles exclude
+dimension-eight GBD output grids and optional tail tables. Layout activation and
 full-city walking acceptance remain separate requirements. The writer does
 not modify a layout, installed client, or prototype package.
 

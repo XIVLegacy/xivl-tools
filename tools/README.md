@@ -91,7 +91,7 @@ These commands require `--client-root`:
   coverage, quantized bounds and table relationships. Run with
   `python tools/research/census_phb_tree.py --client-root <install>`.
   The [PHB format finding](../docs/formats/phb-collision.md) describes the
-  measurements and the proposed branching writer profile.
+  measurements and the experimental branching writer profile.
 - `research/census_sheet_stack.py` - census scrambled XML documents, the SSD
   sheet stack, and rich strings in one resource-tree walk.
 - `research/census_sqwt.py` - census SQEX widget containers.

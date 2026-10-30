@@ -12,7 +12,8 @@ use std::process;
 
 use xivl_formats::collision_json::{parse_geometry_json, MAX_GEOMETRY_JSON_BYTES};
 use xivl_formats::digest::sha256_hex;
-use xivl_formats::phb_author::author_phb;
+use xivl_formats::phb_author::{author_phb, author_phb_branching};
+use xivl_formats::phb_tree::validate_phb_tree;
 use xivl_formats::zone::parse_phb;
 
 const MAX_TEMPLATE_BYTES: u64 = 64 * 1024 * 1024;
@@ -29,10 +30,18 @@ fn run() -> Result<(), String> {
     let program = arguments
         .next()
         .unwrap_or_else(|| "phb_collision_author".into());
-    let template = arguments
-        .next()
-        .map(PathBuf::from)
-        .ok_or_else(|| usage(&program))?;
+    let first = arguments.next().ok_or_else(|| usage(&program))?;
+    let (profile, first) = if first == "--profile" {
+        let profile = arguments.next().ok_or_else(|| usage(&program))?;
+        let first = arguments.next().ok_or_else(|| usage(&program))?;
+        (profile, first)
+    } else {
+        ("single-leaf".into(), first)
+    };
+    if profile != "single-leaf" && profile != "branching" {
+        return Err("profile must be single-leaf or branching".into());
+    }
+    let template = PathBuf::from(first);
     let geometry_json = arguments
         .next()
         .map(PathBuf::from)
@@ -76,8 +85,16 @@ fn run() -> Result<(), String> {
     )?;
     let geometry =
         parse_geometry_json(&geometry_json_bytes).map_err(|error| error.detail().to_string())?;
-    let output_bytes = author_phb(&template_bytes, &geometry)
-        .map_err(|error| format!("PHB authoring rejected: {error}"))?;
+    let output_bytes = if profile == "branching" {
+        author_phb_branching(&template_bytes, &geometry)
+    } else {
+        author_phb(&template_bytes, &geometry)
+    }
+    .map_err(|error| format!("PHB authoring rejected: {error}"))?;
+    if profile == "branching" {
+        validate_phb_tree(&output_bytes)
+            .map_err(|error| format!("generated PHB tree is invalid: {error}"))?;
+    }
     let phb =
         parse_phb(&output_bytes).map_err(|error| format!("generated PHB is invalid: {error}"))?;
     write_new_output(&output, &output_bytes)?;
@@ -106,7 +123,7 @@ fn run() -> Result<(), String> {
 
 fn usage(program: &std::ffi::OsStr) -> String {
     format!(
-        "usage: {} <native-phb-input> <geometry-json-input> <new-output>",
+        "usage: {} [--profile single-leaf|branching] <native-phb-input> <geometry-json-input> <new-output>",
         Path::new(program).display()
     )
 }

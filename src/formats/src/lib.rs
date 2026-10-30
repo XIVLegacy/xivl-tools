@@ -31,6 +31,7 @@ pub mod material;
 pub mod model_import;
 pub mod normalize;
 pub mod phb_author;
+pub mod phb_tree;
 pub mod reader;
 pub mod region;
 pub mod region_write;

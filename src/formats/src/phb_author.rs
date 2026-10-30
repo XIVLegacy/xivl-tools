@@ -81,6 +81,383 @@ struct SingleLeaf {
     padding: Vec3,
 }
 
+/// Reallocate a dimension-one PHB with one binary tree per TBC.
+/// The explicit template must satisfy the retained single-leaf input profile.
+pub fn author_phb_branching(template: &[u8], geometry: &CollisionGeometry) -> Result<Vec<u8>> {
+    author_branching_with_capacity(template, geometry, 16384)
+}
+
+struct BuiltTree {
+    min: Vec3,
+    max: Vec3,
+    nodes: Vec<[u16; 8]>,
+    references: Vec<u16>,
+    aggregate: u32,
+    extent: usize,
+}
+
+fn checked_add(a: usize, b: usize) -> Result<usize> {
+    a.checked_add(b)
+        .ok_or_else(|| author_error(0, "PHB allocation overflows"))
+}
+
+fn checked_mul(a: usize, b: usize) -> Result<usize> {
+    a.checked_mul(b)
+        .ok_or_else(|| author_error(0, "PHB allocation overflows"))
+}
+
+fn align(value: usize, alignment: usize) -> Result<usize> {
+    Ok(checked_add(value, alignment - 1)? / alignment * alignment)
+}
+
+fn checked_u16(value: usize, index: usize) -> Result<u16> {
+    u16::try_from(value).map_err(|_| {
+        FormatError::new(
+            ErrorKind::ResourceLimitExceeded,
+            index as u64,
+            "PHB index or count exceeds u16",
+        )
+    })
+}
+
+fn write_size(data: &mut [u8], at: usize, value: usize) -> Result<()> {
+    let value =
+        u32::try_from(value).map_err(|_| author_error(at as u64, "PHB offset exceeds u32"))?;
+    put_u32(data, at, value);
+    Ok(())
+}
+
+fn pack_leaf(start: usize, count: usize) -> Result<u16> {
+    if start > 0x3fff || !(1..=4).contains(&count) {
+        return Err(author_error(start as u64, "unrepresentable PHB leaf span"));
+    }
+    let word = checked_u16(start, start)? | (checked_u16(count - 1, start)? << 14);
+    if word == u16::MAX {
+        return Err(author_error(
+            start as u64,
+            "PHB leaf collides with reserved branch word",
+        ));
+    }
+    Ok(word)
+}
+
+fn triangle_bounds(geometry: &CollisionGeometry, id: u16) -> (Vec3, Vec3) {
+    let mut min = [f32::INFINITY; 3];
+    let mut max = [f32::NEG_INFINITY; 3];
+    for i in geometry.triangles[usize::from(id)].indices {
+        let v = components(geometry.vertices[usize::from(i)]);
+        for a in 0..3 {
+            min[a] = min[a].min(v[a]);
+            max[a] = max[a].max(v[a]);
+        }
+    }
+    (vector(min), vector(max))
+}
+
+fn vector(v: [f32; 3]) -> Vec3 {
+    Vec3 {
+        x: v[0],
+        y: v[1],
+        z: v[2],
+    }
+}
+
+fn group_bounds(geometry: &CollisionGeometry, ids: &[u16]) -> (Vec3, Vec3) {
+    let mut min = [f32::INFINITY; 3];
+    let mut max = [f32::NEG_INFINITY; 3];
+    for &id in ids {
+        let b = triangle_bounds(geometry, id);
+        for a in 0..3 {
+            min[a] = min[a].min(components(b.0)[a]);
+            max[a] = max[a].max(components(b.1)[a]);
+        }
+    }
+    (vector(min), vector(max))
+}
+
+fn surface_aggregate(geometry: &CollisionGeometry, ids: &[u16]) -> u32 {
+    let low = ids
+        .iter()
+        .map(|&i| geometry.triangles[usize::from(i)].surface)
+        .min()
+        .unwrap();
+    let high = ids
+        .iter()
+        .map(|&i| geometry.triangles[usize::from(i)].surface)
+        .max()
+        .unwrap();
+    u32::from(low) | (u32::from(high) << 16)
+}
+
+fn node_coordinate(value: f32, min: f32, max: f32, upper: bool) -> Result<u16> {
+    let delta = value - min;
+    let product = delta * 32768.0;
+    let scaled = product / (max - min);
+    let coordinate = scaled + 16384.0;
+    if !delta.is_finite() || !product.is_finite() || !scaled.is_finite() || !coordinate.is_finite()
+    {
+        return Err(author_error(
+            0,
+            "PHB node coordinate arithmetic is not finite",
+        ));
+    }
+    // Include the exact endpoint relation when f32 addition rounds onto an integer.
+    let exact =
+        16384.0 + 32768.0 * (f64::from(value) - f64::from(min)) / (f64::from(max) - f64::from(min));
+    let rounded = if upper {
+        f64::from(coordinate).max(exact).ceil()
+    } else {
+        f64::from(coordinate).min(exact).floor()
+    };
+    if !(0.0..=65535.0).contains(&rounded) {
+        return Err(author_error(0, "PHB node coordinate exceeds u16"));
+    }
+    Ok(rounded as u16)
+}
+
+fn build_nodes(
+    geometry: &CollisionGeometry,
+    ids: &mut [u16],
+    tree: &mut BuiltTree,
+) -> Result<usize> {
+    let index = tree.nodes.len();
+    tree.nodes.push([0; 8]);
+    let mut node = [0; 8];
+    if ids.len() <= 4 {
+        let bounds = group_bounds(geometry, ids);
+        for a in 0..3 {
+            node[a] = node_coordinate(
+                components(bounds.0)[a],
+                components(tree.min)[a],
+                components(tree.max)[a],
+                false,
+            )?;
+            node[a + 4] = node_coordinate(
+                components(bounds.1)[a],
+                components(tree.min)[a],
+                components(tree.max)[a],
+                true,
+            )?;
+        }
+        node[7] = pack_leaf(tree.references.len(), ids.len())?;
+        tree.references.extend_from_slice(ids);
+    } else {
+        let centroid = |id: u16, a: usize| {
+            geometry.triangles[usize::from(id)]
+                .indices
+                .iter()
+                .map(|&i| f64::from(components(geometry.vertices[usize::from(i)])[a]))
+                .sum::<f64>()
+                / 3.0
+        };
+        let widths: [f64; 3] = std::array::from_fn(|a| {
+            let low = ids
+                .iter()
+                .map(|&i| centroid(i, a))
+                .fold(f64::INFINITY, f64::min);
+            let high = ids
+                .iter()
+                .map(|&i| centroid(i, a))
+                .fold(f64::NEG_INFINITY, f64::max);
+            high - low
+        });
+        let mut axis = 0;
+        for a in 1..3 {
+            if widths[a] > widths[axis] {
+                axis = a;
+            }
+        }
+        ids.sort_by(|&a, &b| {
+            centroid(a, axis)
+                .partial_cmp(&centroid(b, axis))
+                .expect("finite vertex centroids")
+                .then(a.cmp(&b))
+        });
+        let (left, right) = ids.split_at_mut(ids.len() / 2);
+        let first = build_nodes(geometry, left, tree)?;
+        let second = build_nodes(geometry, right, tree)?;
+        for a in 0..3 {
+            node[a] = tree.nodes[first][a].min(tree.nodes[second][a]);
+            node[a + 4] = tree.nodes[first][a + 4].max(tree.nodes[second][a + 4]);
+        }
+        node[7] = u16::MAX;
+    }
+    node[3] = checked_u16(tree.nodes.len(), index)?;
+    tree.nodes[index] = node;
+    Ok(index)
+}
+
+fn author_branching_with_capacity(
+    template: &[u8],
+    geometry: &CollisionGeometry,
+    capacity: usize,
+) -> Result<Vec<u8>> {
+    let profile = SingleLeaf::parse(template)?;
+    let global = geometry_bounds(geometry)?;
+    checked_u16(geometry.triangles.len() - 1, geometry.triangles.len() - 1)?;
+    let count = geometry.triangles.len().div_ceil(capacity);
+    if count > 512 {
+        return Err(FormatError::new(
+            ErrorKind::ResourceLimitExceeded,
+            0,
+            "PHB TBC count exceeds 512",
+        ));
+    }
+    let mut ids = (0..geometry.triangles.len())
+        .map(|i| checked_u16(i, i))
+        .collect::<Result<Vec<_>>>()?;
+    let global_aggregate = surface_aggregate(geometry, &ids);
+    let mut trees = Vec::new();
+    for group in ids.chunks_mut(capacity) {
+        let b = group_bounds(geometry, group);
+        let (min, max) = enclosing_bounds(b.0, b.1, profile.padding)?;
+        let mut tree = BuiltTree {
+            min,
+            max,
+            nodes: Vec::new(),
+            references: Vec::new(),
+            aggregate: surface_aggregate(geometry, group),
+            extent: 0,
+        };
+        build_nodes(geometry, group, &mut tree)?;
+        checked_u16(
+            checked_add(tree.nodes.len(), tree.references.len())?,
+            tree.nodes.len(),
+        )?;
+        let ref_offset = checked_add(0x50, checked_mul(checked_add(tree.nodes.len(), 1)?, 16)?)?;
+        tree.extent = align(
+            checked_add(ref_offset, checked_mul(tree.references.len(), 2)?)?,
+            16,
+        )?;
+        trees.push(tree);
+    }
+    let (min, max) = enclosing_bounds(global.0, global.1, profile.padding)?;
+    // GBD bucket scale is independent of the tree multiply-before-divide path.
+    for a in 0..3 {
+        let scale = 1.0 / (components(max)[a] - components(min)[a]);
+        if !scale.is_finite() {
+            return Err(author_error(GBD as u64 + 0x40, "GBD scale is not finite"));
+        }
+    }
+    let grid_offset = 0x80;
+    let list_offset = 0x100;
+    let list_size = align(checked_mul(checked_add(count, 1)?, 2)?, 128)?;
+    let desc_offset = checked_add(list_offset, list_size)?;
+    let desc_size = align(checked_mul(count, 16)?, 128)?;
+    let tbc_offset = checked_add(desc_offset, desc_size)?;
+    let tbc_size = trees.iter().try_fold(0usize, |sum, t| {
+        checked_add(sum, checked_add(0x70, t.extent)?)
+    })?;
+    let triangle_offset = align(checked_add(tbc_offset, tbc_size)?, 128)?;
+    let vertex_offset = align(
+        checked_add(triangle_offset, checked_mul(geometry.triangles.len(), 8)?)?,
+        128,
+    )?;
+    let payload_end = align(
+        checked_add(vertex_offset, checked_mul(geometry.vertices.len(), 12)?)?,
+        128,
+    )?;
+    let file_size = checked_add(checked_add(GBD, payload_end)?, 16)?;
+    u32::try_from(payload_end)
+        .map_err(|_| author_error(GBD as u64 + 8, "PHB payload exceeds u32"))?;
+    let mut out = vec![0; file_size];
+    out[..GBD + 0x80].copy_from_slice(&template[..GBD + 0x80]);
+    out[file_size - 16..].copy_from_slice(&template[template.len() - 16..]);
+    for (field, value) in [
+        (8, payload_end),
+        (0x10, 1),
+        (0x14, grid_offset),
+        (0x18, 128),
+        (0x1c, list_offset),
+        (0x20, list_size),
+        (0x24, desc_offset),
+        (0x28, desc_size),
+        (0x2c, tbc_offset),
+        (0x30, tbc_size),
+        (0x34, count),
+        (0x38, vertex_offset),
+        (0x3c, geometry.vertices.len()),
+        (0x60, triangle_offset),
+        (0x64, geometry.triangles.len()),
+        (0x70, payload_end),
+        (0x74, payload_end),
+        (0x78, payload_end),
+    ] {
+        write_size(&mut out, GBD + field, value)?;
+    }
+    put_u32(&mut out, GBD + 0x68, global_aggregate);
+    put_bounds(&mut out, GBD + 0x40, min, max);
+    put_u32(&mut out, GBD + grid_offset, 0);
+    for id in 0..count {
+        put_u16(&mut out, GBD + list_offset + id * 2, checked_u16(id, id)?);
+    }
+    put_u16(&mut out, GBD + list_offset + count * 2, u16::MAX);
+    let mut cursor = GBD + tbc_offset;
+    for (id, tree) in trees.iter().enumerate() {
+        let size = checked_add(0x70, tree.extent)?;
+        let descriptor = GBD + desc_offset + id * 16;
+        write_size(&mut out, descriptor, cursor - GBD - tbc_offset)?;
+        write_size(&mut out, descriptor + 4, size)?;
+        out[cursor..cursor + 0x70].copy_from_slice(&template[TBC..TBC + 0x70]);
+        write_size(&mut out, cursor + 0xc, size)?;
+        put_bounds(&mut out, cursor + 0x10, tree.min, tree.max);
+        put_u32(&mut out, cursor + 0x30, 1);
+        put_u32(&mut out, cursor + 0x34, 0x50);
+        put_u32(&mut out, cursor + 0x38, 0x60);
+        put_u32(&mut out, cursor + 0x3c, tree.aggregate);
+        put_u32(&mut out, cursor + 0x50, 0x70);
+        write_size(&mut out, cursor + 0x60, tree.extent)?;
+        let tbd = cursor + 0x70;
+        out[tbd..tbd + 0x50].copy_from_slice(&template[TBD..TBD + 0x50]);
+        let refs = checked_add(0x50, checked_mul(checked_add(tree.nodes.len(), 1)?, 16)?)?;
+        for (field, value) in [
+            (8, tree.extent),
+            (0xc, tree.nodes.len()),
+            (0x10, 0x50),
+            (0x14, tree.references.len()),
+            (0x18, refs),
+        ] {
+            write_size(&mut out, tbd + field, value)?;
+        }
+        put_bounds(&mut out, tbd + 0x20, tree.min, tree.max);
+        put_u32(&mut out, tbd + 0x40, tree.aggregate);
+        for (i, node) in tree.nodes.iter().enumerate() {
+            for (a, &v) in node.iter().enumerate() {
+                put_u16(&mut out, tbd + 0x50 + i * 16 + a * 2, v);
+            }
+        }
+        let terminal = [
+            65535,
+            65535,
+            65535,
+            checked_u16(checked_add(tree.nodes.len(), tree.references.len())?, id)?,
+            0,
+            0,
+            0,
+            65535,
+        ];
+        for (a, v) in terminal.into_iter().enumerate() {
+            put_u16(&mut out, tbd + 0x50 + tree.nodes.len() * 16 + a * 2, v);
+        }
+        for (i, &r) in tree.references.iter().enumerate() {
+            put_u16(&mut out, tbd + refs + i * 2, r);
+        }
+        cursor = checked_add(cursor, size)?;
+    }
+    for (i, t) in geometry.triangles.iter().enumerate() {
+        for (a, v) in t.indices.into_iter().chain([t.surface]).enumerate() {
+            put_u16(&mut out, GBD + triangle_offset + i * 8 + a * 2, v);
+        }
+    }
+    for (i, v) in geometry.vertices.iter().enumerate() {
+        for (a, v) in components(*v).into_iter().enumerate() {
+            put_u32(&mut out, GBD + vertex_offset + i * 12 + a * 4, v.to_bits());
+        }
+    }
+    crate::phb_tree::validate_phb_tree(&out)?;
+    Ok(out)
+}
+
 impl SingleLeaf {
     fn parse(template: &[u8]) -> Result<Self> {
         if template.len() > MAX_TEMPLATE_BYTES {
@@ -911,5 +1288,333 @@ mod tests {
             .contains("not finite"));
         put_u32(&mut malformed, GBD + 0x3c, 1_000_000);
         assert!(author_phb(&malformed, &floor()).is_err());
+    }
+
+    fn seeded_mesh(count: usize) -> CollisionGeometry {
+        let mut seed = 0x42a31f29u32;
+        let mut next = || {
+            seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+            (seed >> 8) as f32 / 16777216.0 * 100.0 - 50.0
+        };
+        let mut geometry = CollisionGeometry {
+            vertices: Vec::new(),
+            triangles: Vec::new(),
+        };
+        for i in 0..count {
+            let [x, y, z] = [next(), next(), next()];
+            let base = checked_u16(geometry.vertices.len(), i).unwrap();
+            geometry.vertices.extend([
+                vertex(x, y, z),
+                vertex(x + 0.25, y, z),
+                vertex(x, y + 0.5, z + 0.125),
+            ]);
+            geometry.triangles.push(CollisionTriangle {
+                indices: [base, base + 1, base + 2],
+                surface: (i % 121) as u16,
+            });
+        }
+        geometry
+    }
+
+    #[test]
+    fn branching_packing_limits_are_separate_from_capacity() {
+        for (start, count, word) in [
+            (0, 1, 0),
+            (0, 4, 0xc000),
+            (16382, 4, 0xfffe),
+            (16383, 1, 0x3fff),
+            (16383, 3, 0xbfff),
+        ] {
+            assert_eq!(pack_leaf(start, count).unwrap(), word);
+            assert_eq!(usize::from(word & 0x3fff), start);
+            assert_eq!(usize::from((word >> 14) + 1), count);
+        }
+        let error = pack_leaf(16383, 4).unwrap_err();
+        assert_eq!(
+            (error.kind(), error.offset()),
+            (ErrorKind::InvalidAttributeValue, 16383)
+        );
+        assert!(pack_leaf(16384, 1).is_err());
+        assert!(pack_leaf(0, 0).is_err());
+        assert!(pack_leaf(0, 5).is_err());
+    }
+
+    #[test]
+    fn branching_preorder_balanced_counts_identity_and_template_bytes() {
+        let mut source = template();
+        source[TBC + 0x40..TBC + 0x44].copy_from_slice(b"KEEP");
+        source[TBD + 0x44..TBD + 0x48].copy_from_slice(b"WORD");
+        let geometry = seeded_mesh(5);
+        let output = author_phb_branching(&source, &geometry).unwrap();
+        assert_eq!(output, author_phb_branching(&source, &geometry).unwrap());
+        assert_eq!(&output[..GBD], &source[..GBD]);
+        assert_eq!(&output[output.len() - 16..], &source[source.len() - 16..]);
+        assert_eq!(read_u32(&output, GBD + 0xc).unwrap(), 0x212);
+        let tbc = GBD + read_u32(&output, GBD + 0x2c).unwrap() as usize;
+        let tbd = tbc + 0x70;
+        let nodes = tbd + 0x50;
+        assert_eq!(&output[tbc + 0x40..tbc + 0x44], b"KEEP");
+        assert_eq!(&output[tbd + 0x44..tbd + 0x48], b"WORD");
+        assert_eq!(
+            [
+                read_u16(&output, nodes + 6).unwrap(),
+                read_u16(&output, nodes + 22).unwrap(),
+                read_u16(&output, nodes + 38).unwrap()
+            ],
+            [3, 2, 3]
+        );
+        assert_eq!(
+            [
+                read_u16(&output, nodes + 14).unwrap(),
+                read_u16(&output, nodes + 30).unwrap(),
+                read_u16(&output, nodes + 46).unwrap()
+            ],
+            [65535, 0x4000, 0x8002]
+        );
+        for a in 0..3 {
+            assert_eq!(
+                read_u16(&output, nodes + a * 2).unwrap(),
+                read_u16(&output, nodes + 16 + a * 2)
+                    .unwrap()
+                    .min(read_u16(&output, nodes + 32 + a * 2).unwrap())
+            );
+            assert_eq!(
+                read_u16(&output, nodes + 8 + a * 2).unwrap(),
+                read_u16(&output, nodes + 24 + a * 2)
+                    .unwrap()
+                    .max(read_u16(&output, nodes + 40 + a * 2).unwrap())
+            );
+        }
+        let parsed = crate::zone::parse_phb(&output).unwrap();
+        assert_eq!(parsed.hulls[0].vertices, geometry.vertices);
+        assert_eq!(
+            parsed.hulls[0].indices,
+            geometry
+                .triangles
+                .iter()
+                .flat_map(|t| t.indices.map(u32::from))
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(parsed.hulls[0].surfaces, vec![0, 1, 2, 3, 4]);
+        assert_eq!(read_u16(&output, nodes + 3 * 16 + 6).unwrap(), 8);
+        assert_eq!(read_u16(&output, nodes + 3 * 16 + 14).unwrap(), 65535);
+    }
+
+    #[test]
+    fn branching_centroid_axis_and_original_index_ties() {
+        let mut geometry = seeded_mesh(8);
+        for (i, v) in geometry.vertices.iter_mut().enumerate() {
+            v.x += if i / 3 < 4 { 1000. } else { -1000. };
+        }
+        let out = author_phb_branching(&template(), &geometry).unwrap();
+        let tbd = GBD + read_u32(&out, GBD + 0x2c).unwrap() as usize + 0x70;
+        let refs = tbd + read_u32(&out, tbd + 0x18).unwrap() as usize;
+        let ids = (0..8)
+            .map(|i| read_u16(&out, refs + i * 2).unwrap())
+            .collect::<Vec<_>>();
+        assert!(ids[..4].iter().all(|&i| i >= 4));
+        assert!(ids[4..].iter().all(|&i| i < 4));
+        for (i, positions) in geometry
+            .vertices
+            .as_chunks_mut::<3>()
+            .0
+            .iter_mut()
+            .enumerate()
+        {
+            let x = if i < 4 { 1.0 } else { -1.0 };
+            positions.copy_from_slice(&[
+                vertex(x, -x, 0.),
+                vertex(x + 0.75, -x, 0.),
+                vertex(x, -x + 0.75, 0.),
+            ]);
+        }
+        let out = author_phb_branching(&template(), &geometry).unwrap();
+        let tbd = GBD + read_u32(&out, GBD + 0x2c).unwrap() as usize + 0x70;
+        let refs = tbd + read_u32(&out, tbd + 0x18).unwrap() as usize;
+        assert_eq!(
+            (0..8)
+                .map(|i| read_u16(&out, refs + i * 2).unwrap())
+                .collect::<Vec<_>>(),
+            [4, 5, 6, 7, 0, 1, 2, 3]
+        );
+        geometry = floor();
+        geometry.triangles = vec![geometry.triangles[0].clone(); 8];
+        let out = author_phb_branching(&template(), &geometry).unwrap();
+        let tbd = GBD + read_u32(&out, GBD + 0x2c).unwrap() as usize + 0x70;
+        let refs = tbd + read_u32(&out, tbd + 0x18).unwrap() as usize;
+        assert_eq!(
+            (0..8)
+                .map(|i| read_u16(&out, refs + i * 2).unwrap())
+                .collect::<Vec<_>>(),
+            [0, 1, 2, 3, 4, 5, 6, 7]
+        );
+        assert_eq!(out, author_phb_branching(&template(), &geometry).unwrap());
+    }
+
+    #[test]
+    fn branching_quantization_flat_axes_and_refusals() {
+        assert_eq!(node_coordinate(0., 0., 2., false).unwrap(), 16384);
+        assert_eq!(node_coordinate(2., 0., 2., true).unwrap(), 49152);
+        assert_eq!(node_coordinate(0.1, 0., 2., false).unwrap(), 18022);
+        assert_eq!(node_coordinate(0.1, 0., 2., true).unwrap(), 18023);
+        assert_eq!(node_coordinate(1e-8, 0., 1., true).unwrap(), 16385);
+        assert_eq!(node_coordinate(-1e-8, 0., 1., false).unwrap(), 16383);
+        for geometry in [floor(), wall(), stairs()] {
+            let out = author_phb_branching(&template(), &geometry).unwrap();
+            let report = crate::phb_tree::validate_phb_tree(&out).unwrap();
+            for (i, t) in geometry.triangles.iter().enumerate() {
+                for &v in &t.indices {
+                    let v = geometry.vertices[usize::from(v)];
+                    assert!(report.candidates(v, v).unwrap().contains(&(i as u16)));
+                }
+            }
+        }
+        let mut geometry = floor();
+        geometry.vertices[1].x = f32::NAN;
+        let e = author_phb_branching(&template(), &geometry).unwrap_err();
+        assert_eq!(
+            (e.kind(), e.offset()),
+            (ErrorKind::InvalidAttributeValue, 12)
+        );
+        geometry = floor();
+        geometry.triangles[0].indices[2] = 65535;
+        assert_eq!(
+            author_phb_branching(&template(), &geometry)
+                .unwrap_err()
+                .offset(),
+            0
+        );
+        geometry = floor();
+        geometry.triangles[1].indices = [0, 0, 0];
+        assert_eq!(
+            author_phb_branching(&template(), &geometry)
+                .unwrap_err()
+                .offset(),
+            8
+        );
+        geometry = floor();
+        geometry.vertices.resize(65537, Vec3::ZERO);
+        assert_eq!(
+            author_phb_branching(&template(), &geometry)
+                .unwrap_err()
+                .kind(),
+            ErrorKind::ResourceLimitExceeded
+        );
+        geometry = floor();
+        geometry
+            .triangles
+            .resize(65537, geometry.triangles[0].clone());
+        let e = author_phb_branching(&template(), &geometry).unwrap_err();
+        assert_eq!(
+            (e.kind(), e.offset()),
+            (ErrorKind::ResourceLimitExceeded, 65536)
+        );
+        geometry = wall();
+        for v in &mut geometry.vertices {
+            v.x = 3.3e38;
+        }
+        assert!(author_phb_branching(&template(), &geometry).is_err());
+        assert!(node_coordinate(f32::MAX, -f32::MAX, f32::MAX, false).is_err());
+        assert!(checked_add(usize::MAX, 1).is_err());
+        assert!(checked_mul(usize::MAX, 2).is_err());
+    }
+
+    #[test]
+    fn branching_multiple_tbds_literal_bucket_and_second_tree_query() {
+        let geometry = seeded_mesh(16385);
+        let mut out = author_phb_branching(&template(), &geometry).unwrap();
+        let report = crate::phb_tree::validate_phb_tree(&out).unwrap();
+        assert_eq!(
+            (
+                report.tbc_count,
+                report.tree_count(),
+                report.reference_count
+            ),
+            (2, 2, 16385)
+        );
+        let list = GBD + read_u32(&out, GBD + 0x1c).unwrap() as usize;
+        assert_eq!(&out[list..list + 6], &[0, 0, 1, 0, 255, 255]);
+        let tbc = GBD + read_u32(&out, GBD + 0x2c).unwrap() as usize;
+        let desc = GBD + read_u32(&out, GBD + 0x24).unwrap() as usize;
+        assert_eq!(
+            read_u32(&out, desc + 16).unwrap(),
+            read_u32(&out, tbc + 0xc).unwrap()
+        );
+        let b = triangle_bounds(&geometry, 16384);
+        assert!(report.candidates(b.0, b.1).unwrap().contains(&16384));
+        // Move the last triangle far beyond the first group, so only tree two can match.
+        let mut geometry = geometry;
+        for v in &mut geometry.vertices[16384 * 3..] {
+            v.x += 10000.;
+        }
+        let out2 = author_phb_branching(&template(), &geometry).unwrap();
+        let report = crate::phb_tree::validate_phb_tree(&out2).unwrap();
+        let b = triangle_bounds(&geometry, 16384);
+        assert_eq!(report.candidates(b.0, b.1).unwrap(), [16384]);
+        // Bucket offsets count halfwords: offset two points four bytes into the allocation.
+        out.copy_within(list..list + 6, list + 4);
+        put_u16(&mut out, list, 65535);
+        let grid = GBD + read_u32(&out, GBD + 0x14).unwrap() as usize;
+        put_u32(&mut out, grid, 2);
+        assert_eq!(
+            crate::phb_tree::validate_phb_tree(&out)
+                .unwrap()
+                .reference_count,
+            16385
+        );
+    }
+
+    #[test]
+    fn branching_seeded_exhaustive_aabb_query_coverage() {
+        let geometry = seeded_mesh(3000);
+        let out = author_branching_with_capacity(&template(), &geometry, 2048).unwrap();
+        let report = crate::phb_tree::validate_phb_tree(&out).unwrap();
+        assert_eq!(report.tree_count(), 2);
+        let boxes = geometry
+            .triangles
+            .iter()
+            .map(|triangle| {
+                let positions = triangle.indices.map(|i| geometry.vertices[usize::from(i)]);
+                let low: [f32; 3] = std::array::from_fn(|a| {
+                    positions
+                        .iter()
+                        .map(|v| [v.x, v.y, v.z][a])
+                        .fold(f32::INFINITY, f32::min)
+                });
+                let high: [f32; 3] = std::array::from_fn(|a| {
+                    positions
+                        .iter()
+                        .map(|v| [v.x, v.y, v.z][a])
+                        .fold(f32::NEG_INFINITY, f32::max)
+                });
+                (
+                    Vec3 {
+                        x: low[0],
+                        y: low[1],
+                        z: low[2],
+                    },
+                    Vec3 {
+                        x: high[0],
+                        y: high[1],
+                        z: high[2],
+                    },
+                )
+            })
+            .collect::<Vec<_>>();
+        for &(min, max) in &boxes {
+            let candidates = report.candidates(min, max).unwrap();
+            let mut present = vec![false; 3000];
+            for id in candidates {
+                present[usize::from(id)] = true;
+            }
+            for (i, &(low, high)) in boxes.iter().enumerate() {
+                if (0..3).all(|a| {
+                    components(min)[a] <= components(high)[a]
+                        && components(max)[a] >= components(low)[a]
+                }) {
+                    assert!(present[i], "missing triangle {i}");
+                }
+            }
+        }
     }
 }
