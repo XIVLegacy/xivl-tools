@@ -169,9 +169,11 @@ def inventory(data_root: Path) -> tuple[list[int], int]:
         with os.scandir(directory) as entries:
             for entry in entries:
                 metadata = entry.stat(follow_symlinks=False)
-                if stat.S_ISLNK(metadata.st_mode) or getattr(
-                    metadata, "st_file_attributes", 0
-                ) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
+                if (
+                    stat.S_ISLNK(metadata.st_mode)
+                    or getattr(metadata, "st_file_attributes", 0)
+                    & stat.FILE_ATTRIBUTE_REPARSE_POINT
+                ):
                     raise ValueError("data inventory contains a link or reparse point")
                 if stat.S_ISDIR(metadata.st_mode):
                     pending.append(Path(entry.path))
