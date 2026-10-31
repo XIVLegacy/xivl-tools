@@ -176,6 +176,88 @@ fn explicit_selection_and_type_override_accept_hex_and_decimal() {
 }
 
 #[test]
+fn environment_option_copies_rows_and_reports_full_child_auxiliary_key() {
+    for key in ["3", "0x3"] {
+        let scratch = Scratch::new();
+        let mut input = catalog();
+        input.extend_from_slice(&catalog()[0x70..0xA0]);
+        input.extend_from_slice(&catalog()[0x70..0xA0]);
+        for (offset, value) in [
+            (0x20, 0x100u32),
+            (0x4C, 3),
+            (0xA4, 1),
+            (0xA8, 0x22220040),
+            (0xD4, 0),
+            (0xD8, 0x33330020),
+        ] {
+            input[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+        }
+        fs::write(scratch.input(), &input).unwrap();
+        let mut args = options();
+        args.extend(["--environment-from", key]);
+        let report = success(scratch.invoke(&args, false));
+        let output = fs::read(scratch.output()).unwrap();
+        let mut expected = input.clone();
+        expected.extend_from_slice(&input[0x40..0xA0]);
+        expected.extend_from_slice(&input[0xA0..0x100]);
+        for (offset, value) in [
+            (0x20, 0x1C0u32),
+            (0x24, 2),
+            (0x100, 4),
+            (0x10C, 3),
+            (0x130, 40),
+            (0x138, 0xABCD0010),
+        ] {
+            expected[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+        }
+        expected[0x110..0x120].copy_from_slice(b"new-root\0\0\0\0\0\0\0\0");
+        expected[0x140..0x150].copy_from_slice(b"new-child\0\0\0\0\0\0\0");
+        assert_eq!(output, expected);
+        assert_eq!(fs::read(scratch.input()).unwrap(), input);
+        assert_eq!(report["environmentRootKey"], "0x00000003");
+        assert_eq!(report["environmentRowCount"], 2);
+        assert_eq!(report["childRowOffset"], 304);
+        assert_eq!(report["outputLength"], 448);
+        assert_eq!(report["derivedAuxiliaryKey"], "0xABCD0041");
+        assert_eq!(
+            report["derivedAuxiliaryNumericPath"],
+            "data/AB/CD/00/41.DAT"
+        );
+    }
+}
+
+#[test]
+fn refuses_environment_option_failures_without_output() {
+    let scratch = Scratch::new();
+    let input = catalog();
+    fs::write(scratch.input(), &input).unwrap();
+    for (extra, code, reason) in [
+        (
+            vec!["--environment-from", "99"],
+            2,
+            "environment root key is absent",
+        ),
+        (
+            vec!["--environment-from", "3"],
+            2,
+            "no type 0 or 1 children",
+        ),
+        (vec!["--environment-from", "4294967296"], 1, "u32"),
+        (
+            vec!["--environment-from", "3", "--environment-from", "0x3"],
+            1,
+            "--environment-from was supplied more than once",
+        ),
+    ] {
+        let mut args = options();
+        args.extend(extra);
+        refused(scratch.invoke(&args, false), code, reason);
+        assert!(!scratch.output().exists());
+        assert_eq!(fs::read(scratch.input()).unwrap(), input);
+    }
+}
+
+#[test]
 fn refuses_catalog_and_allocation_failures_without_output() {
     let scratch = Scratch::new();
     let input = catalog();

@@ -39,7 +39,7 @@ usage:
   xivl validate-zone-package <package.json> --client-root <root> [--overlay <dir>]...
   xivl build-zone-package <package.json> --client-root <root> [--overlay <dir>]... --output <new-directory>
   xivl allocation-inventory --client-root <root> [--overlay <dir>]... [--output <new-file>]
-  xivl append-region <catalog.dat> --output <new-file> --like <root-key> [--like-child <index>] --root-key <key> --root-name <name> --child-key <key> --child-name <name> --child-resource <key> [--child-type <u32>]
+  xivl append-region <catalog.dat> --output <new-file> --like <root-key> [--like-child <index>] --root-key <key> --root-name <name> --child-key <key> --child-name <name> --child-resource <key> [--child-type <u32>] [--environment-from <root-key>]
   xivl encode-gtex <input.png|input.dds> --output <new-file> [--like <existing.gtex>] [--format a8r8g8b8|a4r4g4b4|dxt1|dxt5] [--mips <n>]
   xivl edit-staticactor <input.san> --output <new-file> --add <value>=<path> [--add ...]
   xivl inspect-command <id-or-name> --catalog <command_battle_params.csv> [--slot-context <command_slot_context.json>] [--monster-attack-profiles <json>] [--format yaml|json]
@@ -116,7 +116,8 @@ allocation-inventory reports occupied catalog keys, effective names, numeric
 DAT paths, collisions and evidence blockers as JSON. It chooses no allocation.
 An optional output file must be new and outside the client root.
 
-append-region appends one template-based root and child to a new catalog.
+append-region appends one template-based root and child to a new catalog;
+--environment-from also copies a root's weather and sky rows after the child.
 Keys and child type accept decimal or 0x hexadecimal u32 values. --like-child
 is a zero-based local decimal index; by default the first non-0/1 child is used.
 Names require 1 to 15 printable ASCII bytes and must be unique in the catalog.

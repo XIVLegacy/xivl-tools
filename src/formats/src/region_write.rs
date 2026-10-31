@@ -15,14 +15,32 @@ pub struct RegionAppend {
     pub child_type: Option<u32>,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct RegionAppendRequest<'a> {
+    pub append: &'a RegionAppend,
+    pub environment_root: Option<u32>,
+}
+
+impl<'a> From<&'a RegionAppend> for RegionAppendRequest<'a> {
+    fn from(append: &'a RegionAppend) -> Self {
+        Self {
+            append,
+            environment_root: None,
+        }
+    }
+}
+
 /// Copy a template root and child, preserving the input except size and count.
 /// The input must have an exact counted walk and a matching size word.
-pub fn append_region_root(
+/// A request may also copy a source root's type 0/1 children verbatim.
+pub fn append_region_root<'a>(
     data: &[u8],
     template_root: u32,
     template_child: Option<usize>,
-    append: &RegionAppend,
+    request: impl Into<RegionAppendRequest<'a>>,
 ) -> Result<Vec<u8>> {
+    let request = request.into();
+    let append = request.append;
     let table = region::parse(data)?;
     if table.trailing.length != 0 {
         return Err(FormatError::new(
@@ -38,7 +56,7 @@ pub fn append_region_root(
             "region append requires size word equal to input length",
         ));
     }
-    let size = appended_size(data.len() as u64)?;
+    appended_size(data.len() as u64)?;
     let root_count = table.root_count.checked_add(1).ok_or_else(|| {
         FormatError::new(
             ErrorKind::ResourceLimitExceeded,
@@ -75,6 +93,34 @@ pub fn append_region_root(
             "template child index is out of range",
         )
     })?;
+
+    let mut environment = Vec::new();
+    if let Some(key) = request.environment_root {
+        let mut sources = table.rows.iter().enumerate().filter(|(_, row)| {
+            matches!(row.membership, RegionMembership::Root { .. }) && row.id == key
+        });
+        let (index, source) = sources
+            .next()
+            .ok_or_else(|| invalid(0x24, "environment root key is absent"))?;
+        if sources.next().is_some() {
+            return Err(invalid(
+                source.span.offset,
+                "environment root key is repeated",
+            ));
+        }
+        environment.extend(
+            table.rows[index + 1..index + 1 + source.word_0c as usize]
+                .iter()
+                .filter(|row| matches!(row.word_04, 0 | 1)),
+        );
+        if environment.is_empty() {
+            return Err(invalid(
+                source.span.offset + 0x0C,
+                "environment root has no type 0 or 1 children",
+            ));
+        }
+    }
+    let size = appended_size(data.len() as u64 + environment.len() as u64 * ROW_STRIDE as u64)?;
 
     let start = data.len() as u64;
     let child_start = start + ROW_STRIDE as u64;
@@ -141,7 +187,18 @@ pub fn append_region_root(
             "child resource collides with catalog resource or auxiliary key",
         ));
     }
-    let auxiliary = append.child_resource + 1;
+    let mut highest = append.child_resource & 0xFFFF;
+    for row in &environment {
+        let low = row.dat_key & 0xFFFF;
+        if low == 0xFFFF {
+            return Err(invalid(
+                row.span.offset + 8,
+                "environment resource low16 must not be 0xFFFF",
+            ));
+        }
+        highest = highest.max(low);
+    }
+    let auxiliary = (append.child_resource & 0xFFFF_0000) | (highest + 1);
     if auxiliary == append.child_resource || occupied_resources.contains(&auxiliary) {
         return Err(invalid(
             child_start + 8,
@@ -157,11 +214,15 @@ pub fn append_region_root(
     output.extend_from_slice(
         &data[child.span.offset as usize..child.span.offset as usize + ROW_STRIDE],
     );
+    for row in &environment {
+        let offset = row.span.offset as usize;
+        output.extend_from_slice(&data[offset..offset + ROW_STRIDE]);
+    }
     put_word(&mut output, 0x20, size);
     put_word(&mut output, 0x24, root_count);
     let start = data.len();
     put_word(&mut output, start, append.root_key);
-    put_word(&mut output, start + 0x0C, 1);
+    put_word(&mut output, start + 0x0C, 1 + environment.len() as u32);
     put_name(&mut output, start + 0x10, &append.root_name);
     let start = start + ROW_STRIDE;
     put_word(&mut output, start, append.child_key);
@@ -271,6 +332,130 @@ mod tests {
         assert_eq!(error.kind(), kind, "{error}");
         assert_eq!(error.offset(), offset, "{error}");
         assert!(error.detail().contains(reason), "{error}");
+    }
+
+    fn environment_catalog() -> Vec<u8> {
+        let mut input = catalog();
+        word(&mut input, 0x78, 0x22220040);
+        let source = input[0x40..0x100].to_vec();
+        input.extend_from_slice(&source);
+        input.extend_from_slice(&source[0x30..0x60]);
+        word(&mut input, 0x20, 0x1F0);
+        word(&mut input, 0x24, 2);
+        word(&mut input, 0x100, 7);
+        word(&mut input, 0x10C, 4);
+        word(&mut input, 0x120, 0x9999);
+        word(&mut input, 0x164, 0x100);
+        word(&mut input, 0x194, 1);
+        word(&mut input, 0x198, 0x33330020);
+        input[0x1D0..0x1E0].copy_from_slice(b"opaque-name!!!!Z");
+        input
+    }
+
+    #[test]
+    fn copies_environment_verbatim_from_same_or_different_root() {
+        let input = environment_catalog();
+        let add = addition();
+        for (key, offsets, length) in [
+            (3, vec![0x70, 0xA0], 0x2B0),
+            (7, vec![0x130, 0x190, 0x1C0], 0x2E0),
+        ] {
+            let output = append_region_root(
+                &input,
+                3,
+                None,
+                RegionAppendRequest {
+                    append: &add,
+                    environment_root: Some(key),
+                },
+            )
+            .unwrap();
+            let mut expected = input.clone();
+            expected.extend_from_slice(&input[0x40..0x70]);
+            expected.extend_from_slice(&input[0xD0..0x100]);
+            for offset in &offsets {
+                expected.extend_from_slice(&input[*offset..*offset + 0x30]);
+            }
+            word(&mut expected, 0x20, length);
+            word(&mut expected, 0x24, 3);
+            word(&mut expected, 0x1F0, 4);
+            word(&mut expected, 0x1FC, 1 + offsets.len() as u32);
+            expected[0x200..0x210].copy_from_slice(b"new-root\0\0\0\0\0\0\0\0");
+            word(&mut expected, 0x220, 40);
+            word(&mut expected, 0x228, 0xABCD0010);
+            expected[0x230..0x240].copy_from_slice(b"new-child\0\0\0\0\0\0\0");
+            assert_eq!(output, expected);
+            let table = region::parse(&output).unwrap();
+            assert_eq!(
+                region::auxiliary_key(&table, 9),
+                Some(AuxiliaryKey::Derived(0xABCD0041))
+            );
+        }
+    }
+
+    #[test]
+    fn refuses_invalid_environment_sources_and_low_index_overflow() {
+        let input = environment_catalog();
+        let add = addition();
+        let mut repeated = input.clone();
+        repeated.extend_from_slice(&input[0x100..0x130]);
+        word(&mut repeated, 0x20, 0x220);
+        word(&mut repeated, 0x24, 3);
+        word(&mut repeated, 0x1FC, 0);
+        let mut empty = input.clone();
+        for offset in [0x134, 0x194, 0x1C4] {
+            word(&mut empty, offset, 0x3000);
+        }
+        let mut overflow = input.clone();
+        word(&mut overflow, 0x198, 0x3333FFFF);
+        for (data, key, offset, reason) in [
+            (&input, 99, 0x24, "environment root key is absent"),
+            (&repeated, 7, 0x100, "environment root key is repeated"),
+            (&empty, 7, 0x10C, "no type 0 or 1 children"),
+            (&overflow, 7, 0x198, "environment resource low16"),
+        ] {
+            let error = append_region_root(
+                data,
+                3,
+                None,
+                RegionAppendRequest {
+                    append: &add,
+                    environment_root: Some(key),
+                },
+            )
+            .unwrap_err();
+            assert_eq!(error.kind(), ErrorKind::InvalidAttributeValue, "{error}");
+            assert_eq!(error.offset(), offset, "{error}");
+            assert!(error.detail().contains(reason), "{error}");
+        }
+    }
+
+    #[test]
+    fn refuses_auxiliary_collisions_introduced_by_environment_maximum() {
+        for occupied_offset in [0x48, 0xD8, 0x78] {
+            let mut input = environment_catalog();
+            word(&mut input, occupied_offset, 0xABCD0041);
+            if occupied_offset == 0x78 {
+                // The first child's family derives 0xABCD0041 from the layout maximum.
+                word(&mut input, 0x78, 0xABCD0001);
+                word(&mut input, 0xD8, 0x44440040);
+            }
+            let add = addition();
+            assert!(append_region_root(&input, 3, None, &add).is_ok());
+            let error = append_region_root(
+                &input,
+                3,
+                None,
+                RegionAppendRequest {
+                    append: &add,
+                    environment_root: Some(7),
+                },
+            )
+            .unwrap_err();
+            assert_eq!(error.kind(), ErrorKind::InvalidAttributeValue);
+            assert_eq!(error.offset(), 0x228);
+            assert!(error.detail().contains("derived auxiliary key collides"));
+        }
     }
 
     #[test]

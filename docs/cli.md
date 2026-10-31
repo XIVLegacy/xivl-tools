@@ -71,10 +71,10 @@ and inventory numeric keys and unmapped DAT paths from all input trees.
 ## Append a region root
 
 ```text
-xivl append-region <catalog.dat> --output <new-file> --like <root-key> [--like-child <index>] --root-key <key> --root-name <name> --child-key <key> --child-name <name> --child-resource <key> [--child-type <u32>]
+xivl append-region <catalog.dat> --output <new-file> --like <root-key> [--like-child <index>] --root-key <key> --root-name <name> --child-key <key> --child-name <name> --child-resource <key> [--child-type <u32>] [--environment-from <root-key>]
 ```
 
-The command appends one new root with exactly one child to a copy of the
+The command appends one new root with a new layout child to a copy of the
 RegionResourceData catalog `0x03C00000`. Keys and child type accept decimal
 or `0x` hexadecimal u32 values. `--like` selects a unique existing root
 with zero `+0x20`. `--like-child` is a zero-based local decimal child index;
@@ -85,12 +85,30 @@ and must differ from each other and all existing effective names.
 The [writing profile](formats/region.md#writing) defines the complete key,
 resource and auxiliary collision rules and template byte preservation.
 
+Optional `--environment-from <root-key>` accepts the same decimal or `0x`
+hexadecimal u32 syntax and may occur only once. The source key must occur
+exactly once as a root, may equal `--like`, and must have type zero/one
+children. Every weather (type zero) and sky (type one) child is copied
+verbatim in source order after the new root and new layout child. The root
+child count becomes one plus the copied count. Copies intentionally share
+keys, resources and names with their source and bypass the new-row
+uniqueness checks. The new root and layout child retain all existing checks.
+Copied resource low16 `0xFFFF` is refused, and the derived auxiliary key
+uses the maximum low16 across the layout child and every environment copy.
+The layout child stays first to retain its resource's high 16 bits as the
+auxiliary key family. Retail roots list type zero/one rows first (see the
+[writing profile](formats/region.md#writing) census); this profile places
+them after the new layout child.
+Without the option the new root has exactly one child.
+
 Input must parse without trailing bytes and its size word must equal its
 length. The output must be new, including when it names the input; its
 parent must already exist. After writing, the command re-reads the file,
 requires a complete counted walk and matching size, checks the increased
-root count and requested row fields, verifies the derived auxiliary key,
-and compares every original byte except header `+0x20..+0x28`. It also
+root count, child count and requested row fields, checks each environment
+copy against its source bytes, verifies the derived auxiliary key over
+the full child list, and compares every original byte except header
+`+0x20..+0x28`. It also
 requires the output to equal the prepared bytes, preserving all copied
 opaque template fields. A write or verification failure removes the newly
 created output.
@@ -101,6 +119,9 @@ Success prints canonical JSON with `operation: "append-region"`,
 `childRowOffset`, `rootKey`, `childKey`, `childResource`, `childType`,
 `templateRootKey`, `templateChildIndex`, `derivedAuxiliaryKey`,
 `derivedAuxiliaryNumericPath`, `rootNameByteLength` and `childNameByteLength`.
+Only when `--environment-from` is used, it also includes
+`environmentRootKey` and `environmentRowCount`. `childRowOffset` always
+identifies the new layout child.
 Keys use `0x` plus eight uppercase hexadecimal digits. The auxiliary path
 uses uppercase MSB-first numeric DAT groups, as allocation-inventory does.
 Lengths, counts, offsets, size word and child type are JSON numbers. Name

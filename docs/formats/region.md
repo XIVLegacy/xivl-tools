@@ -177,8 +177,11 @@ malformed-input sweep also mutates and truncates the region fixtures.
 ## Writing
 
 `xivl_formats::region_write::append_region_root` appends exactly one root
-with one child to a copy of catalog `0x03C00000`. The input must parse,
-have a size word equal to its length, and end at the counted row boundary.
+with a new layout child to a copy of catalog `0x03C00000`. Passing
+`&RegionAppend` keeps the one-child profile. `RegionAppendRequest` wraps
+that append data and adds `environment_root: Option<u32>` to copy optional
+environment rows. The input must parse, have a size word equal to its
+length, and end at the counted row boundary.
 Trailing bytes and size mismatches are refused. This no-tail profile is
 stricter than the native loader: `xivl-decomp:docs/resource/region-weather-resource-rows.md`,
 "Size and counted-row boundary", establishes size equality and count-based
@@ -189,10 +192,19 @@ An explicit template child index is local and zero-based. Without one, the
 writer selects the first child whose type is neither zero nor one. Missing
 roots, missing eligible children and out-of-range indices are refused.
 The new rows copy those template bytes, replacing only the root key,
-root child count (one), root token, child key, child resource key, child
+root child count, root token, child key, child resource key, child
 token, and child type when supplied. The resulting type must not be zero
 or one. Root `+0x04/+0x08/+0x24..+0x30` and child
 `+0x0C/+0x20..+0x30` remain exact template bytes.
+
+When `environment_root` is supplied, its key must occur exactly once as a
+root and it must have at least one child with full-dword type zero or one.
+It may be the template root. Every such child is copied in source order
+as an exact `0x30`-byte row, with no field rewritten. Copied weather
+(type zero) and sky (type one) rows intentionally share keys, resources
+and names with their source and are exempt from the new-row uniqueness
+checks below. These exemptions do not relax checks on the new root or
+layout child.
 
 Names must contain 1 to 15 printable ASCII bytes, excluding NUL. Each is
 written with NUL fill through the 16-byte token. This authoring restriction
@@ -212,24 +224,40 @@ The writer refuses these catalog collisions:
   existing child resource, raw root `+0x08` word or derived auxiliary key.
 - A new derived auxiliary key matching any of those occupied values or
   the new child resource.
+- A copied environment resource with low16 `0xFFFF`.
 
 The root key bound follows the normal 16-bit scene transport profile even
-though native root lookup compares full dwords. The derived key for one
-child is `(child resource & 0xFFFF0000) | (child low16 + 1)`. Existing
-auxiliary statuses that cannot derive a key supply no collision value.
+though native root lookup compares full dwords. The derived key uses all
+new children: `(first child resource & 0xFFFF0000) | (max child low16 + 1)`.
+Existing auxiliary statuses that cannot derive a key supply no collision value.
 These rules preserve raw root `+0x08` words without assigning them a
 resource meaning. They do not claim a complete allocation policy.
 
-The two rows are appended after the last existing row. Only header
+The new root is appended after the last existing row, followed by the new
+layout child and then the optional environment copies. Its child count is
+one plus the copied row count. The layout child stays first so the derived
+auxiliary key keeps that resource's high 16 bits, its auxiliary key family.
+Retail roots list type zero/one rows before layout children; this
+profile appends them after the new layout child. Only header
 `+0x20..+0x28` changes in the original prefix: size becomes the output
 length and root count increases by one. Sizes above u32 are refused.
-Appending to the pinned 52336-byte no-tail catalog produces 52432 bytes,
-root count 62 and size word `0xCCD0`. A first-hand census of that pinned
-catalog found no child sharing its own root's effective name and 59 of
-61 roots with zero `+0x20`; these are retail observations, not native rules.
+Appending without environment rows to the pinned 52336-byte no-tail
+catalog produces 52432 bytes, root count 62 and size word `0xCCD0`.
 
-Synthetic Rust tests check exact bytes, template selection, name boundaries
-and refusals. The conformance runner has no comparable append operation.
+A first-hand census of that pinned catalog found:
+
+- No child sharing its own root's effective name.
+- 59 of 61 roots with zero `+0x20`.
+- 49 roots with type zero/one children. All 48 that also have layout
+  children list every type zero/one row first.
+- 22 of 23 distinct type zero/one child keys and 86 of 179 distinct
+  type zero/one resources used under more than one root.
+
+These are retail observations, not native rules.
+
+Synthetic Rust tests check exact bytes, template and environment selection,
+name boundaries, auxiliary derivation and refusals. The conformance runner
+has no comparable append operation.
 The [CLI command](../cli.md#append-a-region-root) re-reads and verifies its
 new output and removes it on write or verification failure. Filesystem path
 occupancy belongs to [allocation-inventory](../allocation-inventory.md).
