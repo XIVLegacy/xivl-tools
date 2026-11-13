@@ -123,8 +123,9 @@ parser.
   `walls` pass, which removes generated walls with floor on both sides.
 - `collision merge` appends layout-frame parts.
 - `collision phb` refuses more than 65535 triangles or vertices and runs the
-  PHB author with `--profile branching`. See the
-  [PHB collision page](formats/phb-collision.md).
+  PHB author with `--profile branching`, `XIVL_PHB_GRID` from `--grid`
+  (default 8) and `XIVL_PHB_CAPACITY` from `--capacity` (default 1000). See
+  the [PHB collision page](formats/phb-collision.md).
 
 ### Audio
 
