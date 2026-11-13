@@ -45,6 +45,14 @@ dimension-one grid lists every TBC, with a maximum of 512 TBC IDs. The global
 triangle limit bounds this writer to four TBCs. Empty optional tails are
 emitted. Non-finite or unrepresentable float and index arithmetic is rejected.
 
+Two environment variables change the branching profile. `XIVL_PHB_CAPACITY`
+(1..16384, default 16384) sets the references per TBD, so a smaller value
+writes more, smaller TBCs; the 512 TBC ID limit still applies.
+`XIVL_PHB_GRID=N` (1..16, default 1) writes an N x N x N bucket grid over the
+GBD box. Cell `x + N * (y + N * z)` lists, 0xFFFF-terminated, every TBC whose
+box overlaps the cell within 0.001 world units. Outputs with either setting
+remain client-unverified.
+
 Consecutive groups retain original triangle IDs. Each group uses stable median
 splits on the widest vertex-centroid axis, with X, Y, Z axis ties and original
 triangle indices for equal centroids. Centroids use the arithmetic mean of the
