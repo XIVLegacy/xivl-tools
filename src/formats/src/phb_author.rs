@@ -84,7 +84,13 @@ struct SingleLeaf {
 /// Reallocate a dimension-one PHB with one binary tree per TBC.
 /// The explicit template must satisfy the retained single-leaf input profile.
 pub fn author_phb_branching(template: &[u8], geometry: &CollisionGeometry) -> Result<Vec<u8>> {
-    author_branching_with_capacity(template, geometry, 16384)
+    // XIVL_PHB_CAPACITY sets triangles per tree (retail trees stay near 1000); default 16384.
+    let capacity = std::env::var("XIVL_PHB_CAPACITY")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .filter(|&c| c > 0 && c <= 16384)
+        .unwrap_or(16384);
+    author_branching_with_capacity(template, geometry, capacity)
 }
 
 struct BuiltTree {
@@ -339,9 +345,49 @@ fn author_branching_with_capacity(
             return Err(author_error(GBD as u64 + 0x40, "GBD scale is not finite"));
         }
     }
+    // XIVL_PHB_GRID=N writes a retail-style N^3 bucket grid (cell index
+    // x + N*(y + N*z) over the GBD box; each cell lists the trees whose boxes overlap it, 0xFFFF-terminated).
+    let dim = std::env::var("XIVL_PHB_GRID")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .filter(|&d| (1..=16).contains(&d))
+        .unwrap_or(1);
+    let mut cell_lists: Vec<Vec<u16>> = Vec::new();
+    if dim > 1 {
+        let (gmin, gmax) = (components(min), components(max));
+        for ci in 0..dim * dim * dim {
+            let idx = [ci % dim, (ci / dim) % dim, ci / (dim * dim)];
+            let mut list = Vec::new();
+            for (id, tree) in trees.iter().enumerate() {
+                let (tmin, tmax) = (components(tree.min), components(tree.max));
+                let overlaps = (0..3).all(|a| {
+                    let size = (gmax[a] - gmin[a]) / dim as f32;
+                    let lo = gmin[a] + idx[a] as f32 * size;
+                    let hi = lo + size;
+                    tmax[a] >= lo - 1e-3 && tmin[a] <= hi + 1e-3
+                });
+                if overlaps {
+                    list.push(checked_u16(id, id)?);
+                }
+            }
+            cell_lists.push(list);
+        }
+    }
     let grid_offset = 0x80;
-    let list_offset = 0x100;
-    let list_size = align(checked_mul(checked_add(count, 1)?, 2)?, 128)?;
+    let grid_size = if dim > 1 {
+        align(checked_mul(dim * dim * dim, 4)?, 128)?
+    } else {
+        128
+    };
+    let list_offset = checked_add(grid_offset, grid_size)?;
+    let list_size = if dim > 1 {
+        align(
+            checked_mul(cell_lists.iter().map(|l| l.len() + 1).sum::<usize>(), 2)?,
+            128,
+        )?
+    } else {
+        align(checked_mul(checked_add(count, 1)?, 2)?, 128)?
+    };
     let desc_offset = checked_add(list_offset, list_size)?;
     let desc_size = align(checked_mul(count, 16)?, 128)?;
     let tbc_offset = checked_add(desc_offset, desc_size)?;
@@ -365,9 +411,9 @@ fn author_branching_with_capacity(
     out[file_size - 16..].copy_from_slice(&template[template.len() - 16..]);
     for (field, value) in [
         (8, payload_end),
-        (0x10, 1),
+        (0x10, dim),
         (0x14, grid_offset),
-        (0x18, 128),
+        (0x18, grid_size),
         (0x1c, list_offset),
         (0x20, list_size),
         (0x24, desc_offset),
@@ -387,11 +433,28 @@ fn author_branching_with_capacity(
     }
     put_u32(&mut out, GBD + 0x68, global_aggregate);
     put_bounds(&mut out, GBD + 0x40, min, max);
-    put_u32(&mut out, GBD + grid_offset, 0);
-    for id in 0..count {
-        put_u16(&mut out, GBD + list_offset + id * 2, checked_u16(id, id)?);
+    if dim > 1 {
+        let mut half = 0usize;
+        for (ci, list) in cell_lists.iter().enumerate() {
+            put_u32(
+                &mut out,
+                GBD + grid_offset + ci * 4,
+                u32::try_from(half).map_err(|_| author_error(0, "grid list overflow"))?,
+            );
+            for &id in list {
+                put_u16(&mut out, GBD + list_offset + half * 2, id);
+                half += 1;
+            }
+            put_u16(&mut out, GBD + list_offset + half * 2, u16::MAX);
+            half += 1;
+        }
+    } else {
+        put_u32(&mut out, GBD + grid_offset, 0);
+        for id in 0..count {
+            put_u16(&mut out, GBD + list_offset + id * 2, checked_u16(id, id)?);
+        }
+        put_u16(&mut out, GBD + list_offset + count * 2, u16::MAX);
     }
-    put_u16(&mut out, GBD + list_offset + count * 2, u16::MAX);
     let mut cursor = GBD + tbc_offset;
     for (id, tree) in trees.iter().enumerate() {
         let size = checked_add(0x70, tree.extent)?;
