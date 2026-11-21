@@ -90,6 +90,29 @@ Of the references, 8596 are PWIB-wrapped and 41648 are direct.
 
 The exemplar also has 30 marker rows.
 
+## VFX dependency groups
+
+Each of the 1335 `BaseObjects/VFX/VFXBaseObject` records has an object name
+that matches exactly one marker row in its MapLayout resource table. Its
+dependency group is the sequence after that marker, ending at the next marker
+or the end of the table. The census checks the declared VFX shape before
+reading the three string references.
+
+Each populated string matches one row by name and type tag within the group.
+A layout-wide lookup by the same pair can find multiple rows.
+
+| String field | Type tag | Populated fields | Unique within group | Multiple rows across layout |
+|---|---|---:|---:|---:|
+| `+0x18` | `sniv` | 1335 | 1335 | 1293 |
+| `+0x1C` | `fael` | 1326 | 1326 | 1229 |
+| `+0x20` | `ffev` | 1326 | 1326 | 53 |
+
+The `vfx_*` counts from the [layout census](#first-hand-retail-observations)
+report this file structure over all 287 layouts. The selected rain
+definition's resource joins are also recorded in
+`xivl-decomp:docs/resource/limsa-rain-presentation.md`, section
+"Authored DrawEnv and rain definitions".
+
 ## lyb payload and object list
 
 The payload base is `SEDB start + headerSize`; the
