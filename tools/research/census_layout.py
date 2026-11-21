@@ -58,6 +58,9 @@ BG = shape(0x54, [(4, 0), (8, 2), (20, 0), (32, 2), (36, 2), (40, 0), (44, 2)])
 POSITION = shape(0x18, [(4, 0), (8, 2)])
 RESOURCE_REFERENCE = shape(0x18, [(4, 0), (8, 2), (16, 2), (20, 0)])
 SHARED = shape(0x1C, [(4, 0), (8, 2), (16, 0), (24, 0)])
+VFX_CLASS = "BaseObjects/VFX/VFXBaseObject"
+VFX = shape(0x28, [(4, 0), (8, 2), (0x18, 2), (0x1C, 2), (0x20, 2)])
+VFX_DEPENDENCY_FIELDS = ((0x18, b"sniv"), (0x1C, b"fael"), (0x20, b"ffev"))
 EXPECTED = {
     "InstanceObject": INSTANCE,
     "UnitTreeObject": TREE,
@@ -284,6 +287,42 @@ def short_class(path: str) -> str:
     return path.rsplit("/", 1)[-1]
 
 
+def observe_vfx_groups(layout: Layout, nodes: list[int], stats: Stats) -> None:
+    if not nodes:
+        return
+    groups: dict[bytes, list[Counter[tuple[bytes, bytes]]]] = defaultdict(list)
+    by_layout: Counter[tuple[bytes, bytes]] = Counter()
+    current: Counter[tuple[bytes, bytes]] | None = None
+    for name, tag, resource_id in layout.rows:
+        if not tag:
+            current = None
+            if resource_id == 0:
+                current = Counter()
+                groups[name].append(current)
+        elif resource_id:
+            by_layout[name, tag] += 1
+            if current is not None:
+                current[name, tag] += 1
+
+    for node in nodes:
+        p = layout.payload
+        name = p.string(p.u32(node + 0x08))
+        matching_groups = groups.get(name, [])
+        stats.test("vfx_unique_group", len(matching_groups) == 1)
+        for offset, tag in VFX_DEPENDENCY_FIELDS:
+            label = f"vfx_{offset:02x}"
+            alias = p.string(p.u32(node + offset))
+            if not alias:
+                stats.counts[label + ".empty"] += 1
+                continue
+            key = (alias, tag)
+            stats.test(label + ".layout_unique", by_layout[key] == 1)
+            stats.test(
+                label + ".group_unique",
+                len(matching_groups) == 1 and matching_groups[0][key] == 1,
+            )
+
+
 def observe(layout: Layout) -> Stats:
     s = Stats()
     p, raw = layout.payload, layout.raw
@@ -318,6 +357,7 @@ def observe(layout: Layout) -> Stats:
         row_names[name].add(tag.decode("ascii", "backslashreplace"))
         if not tag or not rid:
             s.test("marker_empty_tag_and_zero_id", not tag and rid == 0)
+    vfx_nodes = []
     for kind in layout.types:
         s.dist("node_type_one", kind.one)
         for _, descriptor_kind in kind.fields:
@@ -336,6 +376,10 @@ def observe(layout: Layout) -> Stats:
             if path:
                 s.dist("class_instances", path)
                 s.shapes[(path, kind.shape)][layout.rid] += 1
+                if path == VFX_CLASS:
+                    s.test("vfx_expected_shape", kind.shape == VFX)
+                    if kind.shape == VFX:
+                        vfx_nodes.append(node)
                 expected = (
                     SETTINGS
                     if "/LaySettings/" in path
@@ -345,6 +389,7 @@ def observe(layout: Layout) -> Stats:
                     s.test(
                         "expected_shape." + short_class(path), kind.shape == expected
                     )
+    observe_vfx_groups(layout, vfx_nodes, s)
     # A root-folder record shares the class shape. References identify the
     # class extents, including abstract class records with no instances.
     class_types = {
