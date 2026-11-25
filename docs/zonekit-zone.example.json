@@ -1,0 +1,62 @@
+{
+  "name": "example",
+  "zone_id": 500,
+  "region_id": 117,
+  "layout_ids": {"town": "F1000000", "low": "F1000001"},
+  "frames": {
+    "world_offset": [-448, 0, 192],
+    "collision_offset": [20, 0, -20],
+    "source_y_shift": 5.47
+  },
+  "tile_grid": {
+    "x0": -200, "z0": -140,
+    "nx": 7, "nz": 7,
+    "width": 360, "depth": 320,
+    "inactive": [35, 36, 37, 42, 43, 44, 47, 48]
+  },
+  "sources": {
+    "modern_sqpack": "<modern client>/game/sqpack",
+    "bg_path": "bg/ex1/01_roc_r2/twn/r2t1",
+    "pack": ["ex1", "020101"],
+    "fbx": "<exported scene>.fbx",
+    "pristine_client": "<unmodified 1.23b client root>",
+    "base_layout": "<retail town layout DAT>"
+  },
+  "donors": {
+    "tile_model": "89/7C/00/1D",
+    "shader": "89/A4/00/02",
+    "phb_template": "<native PHB used as template>"
+  },
+  "file_ids": {
+    "texture": "FFFF0100",
+    "tile_model": "FFFF1000",
+    "tile_collision": "FFFF1100",
+    "backdrop": "FFFF2000",
+    "empty_model": "FFFF2100",
+    "empty_collision": "FFFF002F",
+    "sound": "FFFF4000"
+  },
+  "layout": {
+    "identity_rot_pool": "231B0",
+    "identity_scale_pool": "309D0",
+    "low_partner": ["<retail low-layer layout DAT>"],
+    "rows_from": "<layout whose extra resource rows are copied>",
+    "avoid_files": ["<layout whose resource keys must not be reused>"]
+  },
+  "tiles": {
+    "shell": [-620, 580, -5000, 5000, -580, 620],
+    "skip": "vfog|fog|leaf|lef\\d|tree|gras|grass|plant|flw|clt|flag|flg|cloth|curtn|smoke|glass|light|lgt|wtr|water|dummy|sit0a|ter5a|ice|icl|ivy|vin\\d|moss|weed|pla0|bgs",
+    "bgs": "bgs",
+    "ground": "grn|bgs|snw|ter",
+    "terrain_sgb": "r2t0_b1_fou1a\\.mdl$",
+    "slotmap": "<material slot map .tsv>",
+    "cut_args": ["--thin", "--band", "40", "--wall", "40", "--run-wall", "200", "--run-floor", "200", "--merge-max", "60",
+                 "--slope-floor", "--single", "--small", "50", "--weld", "--slot-min-tris", "30", "--slot-min-area", "2",
+                 "--slot-group", "fnd(40|8[2-9]|9[0-3])_", "--block", "64"]
+  },
+  "collision": {
+    "tile": 24,
+    "spawn_layout": [2, 0.2, 30]
+  },
+  "lay_range": 3000
+}

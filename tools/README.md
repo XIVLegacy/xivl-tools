@@ -56,6 +56,13 @@ shared boundaries. `xivl-tools` never receives a retail-input credential.
   research command, so the two cannot disagree about it. Its
   tables are computed from the hexadecimal expansion of pi.
 
+## Zone builder
+
+- `zonekit/zonekit.py` - experimental zone builder: extract a modern-client
+  zone, cut and convert city tiles, author a town layout, and build collision
+  and sounds. Machine-local settings live in `local/zonekit/settings.json`;
+  nothing runs in CI. See [zonekit](../docs/zonekit.md).
+
 ## Evidence replay
 
 These optional research commands require an explicit external root, have no
